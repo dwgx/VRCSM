@@ -1,0 +1,280 @@
+#include "Migrator.h"
+
+#include "Common.h"
+#include "JunctionUtil.h"
+#include "ProcessGuard.h"
+
+#include <algorithm>
+#include <fstream>
+#include <system_error>
+
+#include <Windows.h>
+
+namespace vrcsm::core
+{
+
+void to_json(nlohmann::json& j, const MigratePlan& p)
+{
+    j = nlohmann::json{
+        {"source", p.source},
+        {"target", p.target},
+        {"sourceBytes", p.sourceBytes},
+        {"targetFreeBytes", p.targetFreeBytes},
+        {"sourceIsJunction", p.sourceIsJunction},
+        {"vrcRunning", p.vrcRunning},
+        {"blockers", p.blockers},
+    };
+}
+
+void to_json(nlohmann::json& j, const MigrateProgress& p)
+{
+    j = nlohmann::json{
+        {"phase", p.phase},
+        {"bytesDone", p.bytesDone},
+        {"bytesTotal", p.bytesTotal},
+        {"filesDone", p.filesDone},
+        {"filesTotal", p.filesTotal},
+        {"message", p.message},
+    };
+}
+
+void to_json(nlohmann::json& j, const MigrateSummary& s)
+{
+    j = nlohmann::json{
+        {"ok", s.ok},
+        {"bytesCopied", s.bytesCopied},
+        {"filesCopied", s.filesCopied},
+        {"message", s.message},
+    };
+}
+
+namespace
+{
+struct DirectoryStats
+{
+    std::uint64_t bytes = 0;
+    std::uint64_t files = 0;
+};
+
+DirectoryStats sizeOf(const std::filesystem::path& dir)
+{
+    DirectoryStats stats;
+    std::error_code ec;
+    if (!std::filesystem::exists(dir, ec) || ec) return stats;
+    for (const auto& f : std::filesystem::recursive_directory_iterator(
+             dir, std::filesystem::directory_options::skip_permission_denied, ec))
+    {
+        if (ec) break;
+        if (f.is_regular_file())
+        {
+            stats.bytes += f.file_size(ec);
+            if (ec) ec.clear();
+            stats.files += 1;
+        }
+    }
+    return stats;
+}
+
+std::uint64_t freeBytesOnVolume(const std::filesystem::path& target)
+{
+    auto root = target.root_path();
+    if (root.empty()) return 0;
+    ULARGE_INTEGER freeAvail{};
+    ULARGE_INTEGER totalBytes{};
+    ULARGE_INTEGER totalFree{};
+    if (GetDiskFreeSpaceExW(root.c_str(), &freeAvail, &totalBytes, &totalFree))
+    {
+        return static_cast<std::uint64_t>(freeAvail.QuadPart);
+    }
+    return 0;
+}
+} // namespace
+
+Result<MigratePlan> Migrator::preflight(
+    const std::filesystem::path& source,
+    const std::filesystem::path& target)
+{
+    MigratePlan plan;
+    plan.source = toUtf8(source.wstring());
+    plan.target = toUtf8(target.wstring());
+
+    std::error_code ec;
+    if (!std::filesystem::exists(source, ec) || ec)
+    {
+        plan.blockers.push_back("source does not exist");
+    }
+    else
+    {
+        const auto stats = sizeOf(source);
+        plan.sourceBytes = stats.bytes;
+    }
+
+    plan.sourceIsJunction = JunctionUtil::isReparsePoint(source);
+    plan.targetFreeBytes = freeBytesOnVolume(target);
+
+    if (std::filesystem::exists(target, ec))
+    {
+        if (std::filesystem::is_directory(target, ec))
+        {
+            const auto it = std::filesystem::directory_iterator(target, ec);
+            if (!ec && it != std::filesystem::directory_iterator{})
+            {
+                plan.blockers.push_back("target directory is not empty");
+            }
+        }
+        else
+        {
+            plan.blockers.push_back("target path exists and is not a directory");
+        }
+    }
+
+    if (plan.targetFreeBytes < plan.sourceBytes)
+    {
+        plan.blockers.push_back("not enough free space on target volume");
+    }
+
+    const auto vrc = ProcessGuard::IsVRChatRunning();
+    plan.vrcRunning = vrc.running;
+    if (vrc.running)
+    {
+        plan.blockers.push_back("VRChat is currently running");
+    }
+
+    return plan;
+}
+
+Result<MigrateSummary> Migrator::execute(
+    const MigratePlan& plan,
+    const MigrateProgressCallback& onProgress)
+{
+    MigrateSummary summary;
+    if (!plan.blockers.empty())
+    {
+        return Error{"preflight_blocked", "Cannot execute: blockers present"};
+    }
+
+    const auto sourcePath = utf8Path(plan.source);
+    const auto targetPath = utf8Path(plan.target);
+
+    std::error_code ec;
+    std::filesystem::create_directories(targetPath, ec);
+    if (ec)
+    {
+        return Error{"target_create_failed", ec.message()};
+    }
+
+    auto emit = [&](const std::string& phase,
+                    std::uint64_t bytesDone,
+                    std::uint64_t bytesTotal,
+                    std::uint64_t filesDone,
+                    std::uint64_t filesTotal,
+                    const std::string& message) {
+        if (!onProgress) return;
+        MigrateProgress p;
+        p.phase = phase;
+        p.bytesDone = bytesDone;
+        p.bytesTotal = bytesTotal;
+        p.filesDone = filesDone;
+        p.filesTotal = filesTotal;
+        p.message = message;
+        onProgress(p);
+    };
+
+    const auto totalStats = sizeOf(sourcePath);
+    emit("copy", 0, totalStats.bytes, 0, totalStats.files, "starting copy");
+
+    std::uint64_t bytesDone = 0;
+    std::uint64_t filesDone = 0;
+    for (const auto& f : std::filesystem::recursive_directory_iterator(
+             sourcePath, std::filesystem::directory_options::skip_permission_denied, ec))
+    {
+        if (ec) return Error{"iter_failed", ec.message()};
+        const auto rel = std::filesystem::relative(f.path(), sourcePath, ec);
+        if (ec) return Error{"rel_failed", ec.message()};
+        const auto dst = targetPath / rel;
+        if (f.is_directory())
+        {
+            std::filesystem::create_directories(dst, ec);
+            if (ec) return Error{"mkdir_failed", ec.message()};
+            continue;
+        }
+        if (f.is_regular_file())
+        {
+            std::filesystem::copy_file(
+                f.path(),
+                dst,
+                std::filesystem::copy_options::overwrite_existing,
+                ec);
+            if (ec) return Error{"copy_failed", ec.message()};
+            bytesDone += f.file_size(ec);
+            filesDone += 1;
+            if (filesDone % 32 == 0)
+            {
+                emit("copy", bytesDone, totalStats.bytes, filesDone, totalStats.files, "copying");
+            }
+        }
+    }
+    emit("copy", bytesDone, totalStats.bytes, filesDone, totalStats.files, "copy complete");
+
+    emit("verify", bytesDone, totalStats.bytes, filesDone, totalStats.files, "verifying");
+    const auto verifyStats = sizeOf(targetPath);
+    if (verifyStats.bytes != bytesDone)
+    {
+        return Error{"verify_failed", "byte count mismatch after copy"};
+    }
+
+    emit("remove", bytesDone, totalStats.bytes, filesDone, totalStats.files, "removing source");
+    std::filesystem::remove_all(sourcePath, ec);
+    if (ec) return Error{"remove_failed", ec.message()};
+
+    emit("junction", bytesDone, totalStats.bytes, filesDone, totalStats.files, "creating junction");
+    auto jr = JunctionUtil::createJunction(sourcePath, targetPath);
+    if (!isOk(jr))
+    {
+        return Error{"junction_failed", error(jr).message};
+    }
+
+    summary.ok = true;
+    summary.bytesCopied = bytesDone;
+    summary.filesCopied = filesDone;
+    summary.message = "migration complete";
+    emit("done", bytesDone, totalStats.bytes, filesDone, totalStats.files, summary.message);
+    return summary;
+}
+
+nlohmann::json Migrator::Preflight(const nlohmann::json& params)
+{
+    const auto source = utf8Path(params.at("source").get<std::string>());
+    const auto target = utf8Path(params.at("target").get<std::string>());
+    auto result = preflight(source, target);
+    if (isOk(result))
+    {
+        return nlohmann::json(value(result));
+    }
+    return nlohmann::json{{"error", {{"code", error(result).code}, {"message", error(result).message}}}};
+}
+
+MigrateSummary Migrator::Execute(
+    const nlohmann::json& params,
+    const MigrateProgressCallback& onProgress)
+{
+    const auto source = utf8Path(params.at("source").get<std::string>());
+    const auto target = utf8Path(params.at("target").get<std::string>());
+
+    auto plan = preflight(source, target);
+    if (!isOk(plan))
+    {
+        MigrateSummary s;
+        s.ok = false;
+        s.message = error(plan).message;
+        return s;
+    }
+    auto result = execute(value(plan), onProgress);
+    if (isOk(result)) return value(result);
+    MigrateSummary s;
+    s.ok = false;
+    s.message = error(result).message;
+    return s;
+}
+
+} // namespace vrcsm::core
