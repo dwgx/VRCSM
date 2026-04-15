@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Card,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ipc } from "@/lib/ipc";
 import { useReport } from "@/lib/report-context";
 import type {
   AvatarNameInfo,
@@ -70,6 +71,17 @@ function basename(p: string): string {
   return i >= 0 ? p.slice(i + 1) : p;
 }
 
+// Cap on each live-delta array. The page merges baseline (batch-parsed)
+// events with events arriving from `logs.stream.event`, and without a cap
+// a long session would pile up thousands of entries in browser state. 200
+// is well past "what's on screen right now" for any of the 3 panels.
+const LIVE_DELTA_CAP = 200;
+
+interface ClassifiedStreamPayload {
+  kind: "player" | "avatarSwitch" | "screenshot";
+  data: PlayerEvent | AvatarSwitchEvent | ScreenshotEvent;
+}
+
 function Logs() {
   const { t } = useTranslation();
   const { report, loading, error } = useReport();
@@ -77,6 +89,52 @@ function Logs() {
   const [settingsFilter, setSettingsFilter] = useState("");
   const [playerFilter, setPlayerFilter] = useState("");
   const [avatarFilter, setAvatarFilter] = useState("");
+
+  // Live deltas on top of the batch-parsed baseline. Populated by the
+  // `logs.stream.event` subscription below — LogTailer seeks to EOF when
+  // it attaches, so events that land here are strictly newer than anything
+  // already in `logs.player_events` / `avatar_switches` / `screenshots`,
+  // which means we can append without worrying about duplicates.
+  const [livePlayer, setLivePlayer] = useState<PlayerEvent[]>([]);
+  const [liveSwitch, setLiveSwitch] = useState<AvatarSwitchEvent[]>([]);
+  const [liveScreenshot, setLiveScreenshot] = useState<ScreenshotEvent[]>([]);
+
+  useEffect(() => {
+    // The stream is owned by BottomDock (always mounted in the main shell)
+    // but calling `start` here as well is idempotent on the C++ side and
+    // makes the page safe to host in any future layout where the dock
+    // might be collapsed or hidden.
+    void ipc.call("logs.stream.start").catch(() => undefined);
+
+    const off = ipc.on<ClassifiedStreamPayload>("logs.stream.event", (payload) => {
+      if (!payload || typeof payload !== "object") return;
+      if (payload.kind === "player") {
+        setLivePlayer((prev) => {
+          const next = [...prev, payload.data as PlayerEvent];
+          return next.length > LIVE_DELTA_CAP
+            ? next.slice(next.length - LIVE_DELTA_CAP)
+            : next;
+        });
+      } else if (payload.kind === "avatarSwitch") {
+        setLiveSwitch((prev) => {
+          const next = [...prev, payload.data as AvatarSwitchEvent];
+          return next.length > LIVE_DELTA_CAP
+            ? next.slice(next.length - LIVE_DELTA_CAP)
+            : next;
+        });
+      } else if (payload.kind === "screenshot") {
+        setLiveScreenshot((prev) => {
+          const next = [...prev, payload.data as ScreenshotEvent];
+          return next.length > LIVE_DELTA_CAP
+            ? next.slice(next.length - LIVE_DELTA_CAP)
+            : next;
+        });
+      }
+    });
+    return () => {
+      off();
+    };
+  }, []);
 
   const filteredSections = useMemo<LogSettingsSection[]>(() => {
     if (!logs) return [];
@@ -98,39 +156,42 @@ function Logs() {
     return ENV_ORDER.some(({ key }) => logs.environment[key] !== null);
   }, [logs]);
 
-  // VRCX-parity event streams. Backend hands us these already in file-order;
-  // we show most-recent first since the user is usually looking for "who
-  // joined last session" — which is always at the tail of the array.
+  // VRCX-parity event streams. Backend hands us the batch-parsed baseline
+  // in file order; we splice in any live deltas that arrived since mount
+  // (strictly newer, since LogTailer starts at EOF — no dedupe needed) and
+  // then reverse for display so the newest event is at the top.
   const filteredPlayerEvents = useMemo<PlayerEvent[]>(() => {
     if (!logs) return [];
+    const merged = [...logs.player_events, ...livePlayer];
     const q = playerFilter.trim().toLowerCase();
     const base = q
-      ? logs.player_events.filter(
+      ? merged.filter(
           (e) =>
             e.display_name.toLowerCase().includes(q) ||
             (e.user_id?.toLowerCase().includes(q) ?? false),
         )
-      : logs.player_events;
+      : merged;
     return [...base].reverse();
-  }, [logs, playerFilter]);
+  }, [logs, livePlayer, playerFilter]);
 
   const filteredAvatarSwitches = useMemo<AvatarSwitchEvent[]>(() => {
     if (!logs) return [];
+    const merged = [...logs.avatar_switches, ...liveSwitch];
     const q = avatarFilter.trim().toLowerCase();
     const base = q
-      ? logs.avatar_switches.filter(
+      ? merged.filter(
           (e) =>
             e.actor.toLowerCase().includes(q) ||
             e.avatar_name.toLowerCase().includes(q),
         )
-      : logs.avatar_switches;
+      : merged;
     return [...base].reverse();
-  }, [logs, avatarFilter]);
+  }, [logs, liveSwitch, avatarFilter]);
 
   const screenshotsDesc = useMemo<ScreenshotEvent[]>(() => {
     if (!logs) return [];
-    return [...logs.screenshots].reverse();
-  }, [logs]);
+    return [...logs.screenshots, ...liveScreenshot].reverse();
+  }, [logs, liveScreenshot]);
 
   if (loading && !logs) {
     return (
