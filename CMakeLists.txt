@@ -30,6 +30,7 @@ if(VRCSM_BUILD_TOOLS)
     add_subdirectory(tools/dump_settings)
     add_subdirectory(tools/dump_thumbnails)
     add_subdirectory(tools/dump_logs)
+    add_subdirectory(tools/tail_probe)
 endif()
 
 # tests/ will be added to the build later.
