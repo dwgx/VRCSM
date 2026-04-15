@@ -6,6 +6,93 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [0.1.3] — 2026-04-15
+
+Live-tail cut. v0.1.2 shipped a batch log parser — you had to hit
+"Rescan" to see new events. v0.1.3 makes VRCSM watch the running client:
+one second after VRChat writes a line, it shows up in the Logs page
+without a manual refresh. No `FileSystemWatcher` anywhere — that API
+drops writes on buffered stdout and fires false positives on rename, so
+VRCX learned the hard way years ago that a dumb 1-second poll with
+shared-read file handles is the only thing that actually keeps up with
+VRChat's stdout. VRCSM copies that playbook.
+
+### Added
+
+- **`LogTailer` core worker.** New `src/core/LogTailer.{h,cpp}` spawns a
+  single background `std::thread` that wakes every 1000 ms via a
+  `condition_variable::wait_for` (so `Stop()` joins immediately instead
+  of waiting out the poll interval), rescans the VRChat log folder for
+  the newest `output_log_*.txt`, and reads any bytes past the last-known
+  offset. Files are opened with `CreateFileW` +
+  `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE` so VRChat's
+  own non-exclusive writer can keep appending while we read —
+  the bog-standard `std::ifstream` would fight the writer under NTFS
+  sharing rules. The tailer seeks to EOF on first attach (no history
+  replay — that's the batch parser's job), keeps a 1 MB carryover buffer
+  for incomplete trailing lines, handles truncation by resetting the
+  offset to 0, and picks up log rotation on the next tick by noticing
+  that `FindLatestLog()` returned a different path. Emitted
+  `LogTailLine` structs carry the raw body with the
+  `YYYY.MM.DD HH:MM:SS Log -  ` prefix already stripped, a level
+  (`info`/`warn`/`error` mapped from `Log`/`Warning`/`Error`), the ISO
+  timestamp, and the source filename so the frontend can tell lines from
+  a rotation apart.
+- **`LogEventClassifier` streaming classifier.** New
+  `src/core/LogEventClassifier.{h,cpp}` takes one `LogTailLine` at a
+  time and runs it past the same four regexes the batch `LogParser`
+  uses — `OnPlayerJoined`, `OnPlayerLeft`, `Switching <actor> to avatar
+  <name>`, and `[VRC Camera] Took screenshot to:` — then emits a JSON
+  envelope of `{kind, data}` or `null` for noise. A `substring()` prefilter
+  rejects 90%+ of lines before touching `std::regex_search`, so a burst
+  of 50 Udon log lines costs one `find()` each. Because it's stateless,
+  the tailer never has to buffer cross-line context — every classify
+  call is independent and thread-safe.
+- **`logs.stream.start` / `logs.stream.stop` IPC handlers.** New
+  `IpcBridge` endpoints construct / tear down a single
+  `std::unique_ptr<LogTailer>` member (idempotent — calling `start`
+  twice is a no-op). The tailer's callback posts two events per line
+  to the web side: `logs.stream` with the raw body for anyone who wants
+  the console-style firehose, and `logs.stream.event` with the
+  classifier output for UI panels that only care about player /
+  avatarSwitch / screenshot. Both go through
+  `WebView2Host::PostMessageToWeb` so the frontend gets them via the
+  existing `{event, data}` channel.
+- **Logs page live-rolling panels.** `web/src/pages/Logs.tsx` now
+  subscribes to `logs.stream.event` on mount via `ipc.on(...)`, appends
+  each classified event to one of three local state arrays
+  (`livePlayer` / `liveSwitch` / `liveScreenshot`, each capped at 200
+  entries so long sessions don't balloon React state), and merges that
+  delta into the existing `useMemo` timelines. The three panels that
+  v0.1.2 added update in place — no rescan button — and the
+  most-recent-first sort order means new events slide in at the top.
+  The `logs.stream.start` RPC fires once per mount and the listener
+  cleans up on unmount, so navigating away from Logs doesn't leak the
+  subscription.
+- **`tools/tail_probe` self-test harness.** New standalone C++ probe
+  that constructs a `LogTailer` against a temp directory, writes
+  synthetic `output_log_*.txt` files, and asserts ten cases covering
+  the full live-tail chain: pre-start line is NOT replayed on EOF seek,
+  info + warn levels are extracted with correct prefix stripping, a
+  half-line flush stitches via the carryover buffer, a rotation picks
+  up a newer file on the next tick, `Stop()` silences the callback, and
+  five classifier cases for OnPlayerJoined with `usr_id`, OnPlayerLeft,
+  Switching avatar, screenshot path, and noise-line rejection. Exit
+  code is the failure count; 10/10 green as of this commit. It's wired
+  into `CMakeLists.txt` next to the existing dump tools so it builds
+  alongside the host without extra flags.
+
+### Changed
+
+- **Version strings unified.** Every user-visible version string is now
+  `0.1.3`: `installer/vrcsm.wxs` ProductVersion, `scripts/build-msi.bat`
+  output filename, `scripts/install-msi.ps1` default param,
+  `src/core/VrcApi.cpp` User-Agent (sent to `api.vrchat.cloud`),
+  `src/host/IpcBridge.cpp` `HandleAppVersion`, `web/package.json`,
+  `web/src/App.tsx` `shellVersion`, `web/src/components/Sidebar.tsx`
+  footer, and the dev-mode fallbacks in `AboutDialog.tsx` +
+  `Settings.tsx`.
+
 ## [0.1.2] — 2026-04-15
 
 Event-stream cut. v0.1.1 made the app feel like a native tool; v0.1.2 pushes

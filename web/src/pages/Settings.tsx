@@ -131,7 +131,7 @@ function Settings() {
       })
       .catch(() => {
         // Dev-server fallback only — prod reads IpcBridge::HandleAppVersion.
-        if (alive) setVersion({ version: "0.1.2", build: "dev" });
+        if (alive) setVersion({ version: "0.1.3", build: "dev" });
       });
     return () => {
       alive = false;

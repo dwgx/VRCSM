@@ -72,7 +72,7 @@ constexpr const char* kApiKey = "JlE5Jldo5Jibnk5O5hTx6XVqsJu4WJ26";
 // VRChat's API rejects requests without a properly formatted UA — the
 // format is `<tool>/<version> <contact>`. The contact segment just needs
 // to parse as email-ish; it's how VRChat can reach out if a tool misbehaves.
-constexpr const wchar_t* kUserAgentW = L"VRCSM/0.1.2 dwgx@vrcsm.local";
+constexpr const wchar_t* kUserAgentW = L"VRCSM/0.1.3 dwgx@vrcsm.local";
 
 constexpr const wchar_t* kApiHostW = L"api.vrchat.cloud";
 
