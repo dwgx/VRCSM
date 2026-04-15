@@ -13,6 +13,22 @@ namespace vrcsm::core
 {
 
 // ─────────────────────────────────────────────────────────────────────────
+// LogParser — batch scanner over %LocalLow%\VRChat\VRChat\output_log_*.txt.
+//
+// This is one-shot, not a tail. Live follow (à la VRCX's LogWatcher.cs with
+// its 1-second poll + FileShare.ReadWrite + per-file position tracking) is
+// v0.1.3 territory — when it lands, it will replace this, not wrap it. For
+// now we read the 5 newest files cold, scan end-to-end, return a LogReport.
+// Costs ~40ms on a typical 3-session install.
+//
+// Do NOT switch to FileSystemWatcher when live-tail lands. VRChat writes
+// the log buffered, so change notifications fire on flush rather than on
+// append — you miss real events and get phantom ones on rotation. VRCX
+// hit this and left a terse `// FileSystemWatcher() is unreliable` at the
+// top of LogWatcher.cs. Poll every second, like they do.
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
 // JSON serialization
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -74,6 +90,33 @@ void to_json(nlohmann::json& j, const AvatarNameInfo& a)
     };
 }
 
+void to_json(nlohmann::json& j, const PlayerEvent& e)
+{
+    j = nlohmann::json{
+        {"kind", e.kind},
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"display_name", e.display_name},
+        {"user_id", e.user_id ? nlohmann::json(*e.user_id) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const AvatarSwitchEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"actor", e.actor},
+        {"avatar_name", e.avatar_name},
+    };
+}
+
+void to_json(nlohmann::json& j, const ScreenshotEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"path", e.path},
+    };
+}
+
 void to_json(nlohmann::json& j, const LogReport& r)
 {
     j = nlohmann::json{
@@ -90,6 +133,9 @@ void to_json(nlohmann::json& j, const LogReport& r)
         {"avatar_names", r.avatar_names},
         {"world_event_count", r.world_event_count},
         {"avatar_event_count", r.avatar_event_count},
+        {"player_events", r.player_events},
+        {"avatar_switches", r.avatar_switches},
+        {"screenshots", r.screenshots},
     };
 }
 
@@ -101,8 +147,19 @@ namespace
 {
 constexpr std::size_t kMaxLogFiles = 5;
 constexpr std::size_t kMaxRecentIds = 64;
+// Hard cap per event stream. A long party in GoGo Loco routinely generates
+// 2000+ OnPlayerJoined lines and the frontend doesn't need them all — 500
+// gives "recent activity" enough headroom while keeping the IPC payload
+// under a few hundred kilobytes worst case.
+constexpr std::size_t kMaxEventsPerKind = 500;
 
 const std::regex kLogFileRe(R"(^output_log_.*\.txt$)");
+
+// VRChat prefixes every log line with `YYYY.MM.DD HH:MM:SS Log        -  `
+// (or `Error`/`Warning`). We don't care which severity — just grab the stamp
+// so the UI can show "5 minutes ago" on events. Kept separate from the body
+// regex because the body patterns run on the full line and \d is cheap.
+const std::regex kTimestampRe(R"(^(\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}))");
 
 // World destination / join events. Real VRChat lines:
 //   [Behaviour] Destination set: wrld_xxx:port~private(...)~region(jp)
@@ -124,6 +181,22 @@ const std::regex kUnpackAvatarRe(R"(Unpacking Avatar \((.+?) by (.+?)\)\s*$)");
 const std::regex kLoadAvatarDataRe(R"(Loading Avatar Data:(avtr_[0-9a-fA-F-]+))");
 const std::regex kProfileAvatarRe(R"(^\s*-\s*avatar:\s*(avtr_[0-9a-fA-F-]+))");
 const std::regex kUserAuthRe(R"(User Authenticated: (.+?) \((usr_[0-9a-fA-F-]+)\))");
+
+// Player presence. VRChat has emitted both shapes over the years:
+//   [Behaviour] OnPlayerJoined Alice
+//   [Behaviour] OnPlayerJoined Alice (usr_xxx-xxx-xxx)       (2024+ builds)
+// The `(usr_…)` group is optional so we capture both flavours. Same story
+// for OnPlayerLeft. Display names can legitimately contain parentheses, so
+// the lazy `(.+?)` stops at the first ` (usr_` or end-of-line.
+const std::regex kPlayerJoinedRe(
+    R"(\[Behaviour\] OnPlayerJoined (.+?)(?: \((usr_[0-9a-fA-F-]+)\))?\s*$)");
+const std::regex kPlayerLeftRe(
+    R"(\[Behaviour\] OnPlayerLeft (.+?)(?: \((usr_[0-9a-fA-F-]+)\))?\s*$)");
+
+// Screenshot — VRC writes an absolute path; we keep it as-is. Not worth
+// splitting filename from directory on the C++ side when the frontend needs
+// both to build "reveal in Explorer".
+const std::regex kScreenshotRe(R"(\[VRC Camera\] Took screenshot to: (.+?)\s*$)");
 
 // Fallback avatar id scan — some lines (e.g., Initialize PlayerAvatarAPI) only
 // mention the id. Used as a last resort so avatars that never trigger a
@@ -223,6 +296,13 @@ struct ParseState
 {
     BlockState block = BlockState::Normal;
 
+    // Most recent `YYYY.MM.DD HH:MM:SS` seen on any line. Stickiness matters
+    // because VRChat continuation lines (exception stack traces, unpack
+    // spam) inherit the timestamp of the preceding anchor line — that's how
+    // you reconstruct when an event actually happened. We attach this stamp
+    // to every PlayerEvent / AvatarSwitchEvent / ScreenshotEvent we emit.
+    std::optional<std::string> lastTimestamp;
+
     // World pairing state: most recent in-flight world id.
     std::string pendingWorldId;
 
@@ -312,16 +392,75 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
         }
     }
 
-    // Avatar switch — remember the name if it was OUR switch.
+    // Avatar switch — remember the name if it was OUR switch, and record it
+    // in the avatar_switches stream regardless of who the actor was. The
+    // stream is what the UI uses for the "who was wearing what" timeline;
+    // `pendingLocalAvatarName` is only for the local name→id pairing chain.
     if (std::regex_search(line, m, kSwitchingAvatarRe))
     {
         const std::string player = stripTrailing(m[1]);
         const std::string name = stripTrailing(m[2]);
         report.avatar_event_count += 1;
+
+        if (report.avatar_switches.size() < kMaxEventsPerKind)
+        {
+            AvatarSwitchEvent ev;
+            ev.iso_time = st.lastTimestamp;
+            ev.actor = player;
+            ev.avatar_name = name;
+            report.avatar_switches.push_back(std::move(ev));
+        }
+
         if (report.local_user_name && player == *report.local_user_name)
         {
             st.pendingLocalAvatarName = name;
             st.pendingLocalAvatarAuthor.clear();
+        }
+    }
+
+    // Player presence — OnPlayerJoined / OnPlayerLeft.
+    if (std::regex_search(line, m, kPlayerJoinedRe))
+    {
+        if (report.player_events.size() < kMaxEventsPerKind)
+        {
+            PlayerEvent ev;
+            ev.kind = "joined";
+            ev.iso_time = st.lastTimestamp;
+            ev.display_name = stripTrailing(m[1]);
+            if (m.size() > 2 && m[2].matched)
+            {
+                ev.user_id = stripTrailing(m[2]);
+            }
+            report.player_events.push_back(std::move(ev));
+        }
+    }
+    else if (std::regex_search(line, m, kPlayerLeftRe))
+    {
+        if (report.player_events.size() < kMaxEventsPerKind)
+        {
+            PlayerEvent ev;
+            ev.kind = "left";
+            ev.iso_time = st.lastTimestamp;
+            ev.display_name = stripTrailing(m[1]);
+            if (m.size() > 2 && m[2].matched)
+            {
+                ev.user_id = stripTrailing(m[2]);
+            }
+            report.player_events.push_back(std::move(ev));
+        }
+    }
+
+    // Screenshots — VRChat dumps an absolute path on `[VRC Camera] Took
+    // screenshot to:`. We don't touch the path (no normalisation, no drive
+    // remap); the frontend is the one that needs to show it to the user.
+    if (std::regex_search(line, m, kScreenshotRe))
+    {
+        if (report.screenshots.size() < kMaxEventsPerKind)
+        {
+            ScreenshotEvent ev;
+            ev.iso_time = st.lastTimestamp;
+            ev.path = stripTrailing(m[1]);
+            report.screenshots.push_back(std::move(ev));
         }
     }
 
@@ -507,6 +646,16 @@ void handleSettingsBody(const std::string& line, LogReport& report, ParseState& 
 
 void parseLine(const std::string& line, LogReport& report, ParseState& st)
 {
+    // Sniff the timestamp first — sticky across non-anchor lines so things
+    // like unpack spam inherit the most recent `YYYY.MM.DD HH:MM:SS` seen.
+    {
+        std::smatch tm;
+        if (std::regex_search(line, tm, kTimestampRe))
+        {
+            st.lastTimestamp = tm[1];
+        }
+    }
+
     switch (st.block)
     {
         case BlockState::Environment:
@@ -553,6 +702,7 @@ LogReport LogParser::parse(const std::filesystem::path& baseDir)
         st.pendingLocalAvatarAuthor.clear();
         st.hasCurrentSection = false;
         st.currentSectionName.clear();
+        st.lastTimestamp.reset();
 
         while (std::getline(stream, line))
         {
