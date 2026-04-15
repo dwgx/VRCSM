@@ -200,7 +200,20 @@
     "logFiles": "日志文件",
     "noLogFiles": "没有找到日志文件。",
     "failedRead": "读取日志失败",
-    "scanning": "正在扫描日志…"
+    "scanning": "正在扫描日志…",
+    "playerEvents": "玩家事件",
+    "playerEventsDesc": "所有日志里的 OnPlayerJoined / OnPlayerLeft(每类最多 500 条)",
+    "noPlayerEvents": "没有捕获到玩家事件。",
+    "avatarSwitches": "模型切换",
+    "avatarSwitchesDesc": "每一条 [Behaviour] Switching <actor> to avatar <name>(最多 500 条)",
+    "noAvatarSwitches": "没有捕获到模型切换。",
+    "screenshotsHeader": "截图",
+    "screenshotsDesc": "[VRC Camera] Took screenshot to: 的绝对路径(最多 500 条)",
+    "noScreenshots": "没有捕获到截图。",
+    "joined": "加入",
+    "left": "离开",
+    "eventCount": "{{count}} 条事件",
+    "filterEvents": "按名称过滤…"
   },
   "migrate": {
     "title": "迁移",

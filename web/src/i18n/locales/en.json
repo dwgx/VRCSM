@@ -200,7 +200,20 @@
     "logFiles": "Log files",
     "noLogFiles": "No log files found.",
     "failedRead": "Failed to read logs",
-    "scanning": "Scanning logs…"
+    "scanning": "Scanning logs…",
+    "playerEvents": "Player events",
+    "playerEventsDesc": "OnPlayerJoined / OnPlayerLeft across all logs (capped at 500)",
+    "noPlayerEvents": "No player events captured.",
+    "avatarSwitches": "Avatar switches",
+    "avatarSwitchesDesc": "Every [Behaviour] Switching <actor> to avatar <name> (capped at 500)",
+    "noAvatarSwitches": "No avatar switches captured.",
+    "screenshotsHeader": "Screenshots",
+    "screenshotsDesc": "[VRC Camera] Took screenshot to: paths (capped at 500)",
+    "noScreenshots": "No screenshots captured.",
+    "joined": "joined",
+    "left": "left",
+    "eventCount": "{{count}} events",
+    "filterEvents": "Filter by name…"
   },
   "migrate": {
     "title": "Migrate",
