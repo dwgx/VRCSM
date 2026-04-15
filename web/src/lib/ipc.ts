@@ -9,6 +9,12 @@ import type {
   MigratePlan,
   ProcessStatus,
   Report,
+  LogStreamChunk,
+  VrcSettingsReport,
+  VrcSettingsWriteRequest,
+  VrcSettingsWriteResult,
+  VrcSettingsExportResult,
+  VrcSettingValueSnapshot,
 } from "./types";
 
 interface WebViewBridge {
@@ -45,7 +51,7 @@ function nowIso(): string {
 }
 
 function buildMockReport(): Report {
-  const entries = Array.from({ length: 32 }).map((_, i) => {
+  const entries = Array.from({ length: 32 }).map(() => {
     const bytes = Math.floor(20_000_000 + Math.random() * 380_000_000);
     return {
       entry: Math.floor(0xa0000000 + Math.random() * 0x5fffffff)
@@ -158,11 +164,49 @@ function buildMockReport(): Report {
         cache_size_mb: 20480,
         clear_cache_on_start: false,
       },
+      environment: {
+        vrchat_build: "2026.2.2p3-1621--Release",
+        store: "Steam",
+        platform: "Windows",
+        device_model: "MOCK-PC",
+        processor: "AMD Ryzen 9 (Mock)",
+        system_memory: "32678 MB",
+        operating_system: "Windows 11 Pro (Mock)",
+        gpu_name: "NVIDIA RTX 4080 (Mock)",
+        gpu_api: "Direct3D 11",
+        gpu_memory: "16384 MB",
+        xr_device: null,
+      },
+      settings_sections: [
+        {
+          name: "General Settings",
+          entries: [
+            ["Cache Directory", "default"],
+            ["Cache Size (MB)", "20480"],
+            ["Clear Cache On Start", "False"],
+          ],
+        },
+        {
+          name: "Graphics Settings",
+          entries: [
+            ["Quality Level", "Ultra"],
+            ["Target Frame Rate", "90"],
+          ],
+        },
+      ],
+      local_user_name: "mock_user",
+      local_user_id: "usr_mock-1234-5678",
       recent_world_ids: [
         "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
         "wrld_11111111-2222-3333-4444-555555555555",
       ],
       recent_avatar_ids: ["avtr_99999999-8888-7777-6666-555555555555"],
+      avatar_names: {
+        "avtr_99999999-8888-7777-6666-555555555555": {
+          name: "Mock Avatar",
+          author: "VRCSM",
+        },
+      },
       world_names: {
         "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": "Mock World A",
         "wrld_11111111-2222-3333-4444-555555555555": "Mock World B",
@@ -173,17 +217,118 @@ function buildMockReport(): Report {
   };
 }
 
+function buildMockSettingsReport(): VrcSettingsReport {
+  const mk = (
+    key: string,
+    group: string,
+    description: string,
+    value: VrcSettingValueSnapshot,
+  ) => ({
+    encodedKey: `${key}_h123456`,
+    key,
+    group,
+    description,
+    ...value,
+  });
+
+  const entries = [
+    mk("VRC_INPUT_MIC_ENABLED", "audio", "Microphone enabled on launch", {
+      type: "bool",
+      boolValue: true,
+    }),
+    mk("VRC_VOICE_VOLUME", "audio", "Voice mix level (0.0–1.0)", {
+      type: "float",
+      floatValue: 0.85,
+    }),
+    mk("VRC_WORLD_VOLUME", "audio", "World sound mix level", {
+      type: "float",
+      floatValue: 0.7,
+    }),
+    mk("VRC_GRAPHICS_QUALITY", "graphics", "Unity quality preset (0–5)", {
+      type: "int",
+      intValue: 3,
+    }),
+    mk(
+      "VRC_TARGET_FPS",
+      "graphics",
+      "Target frame rate when not VR (-1 = uncapped)",
+      { type: "int", intValue: 90 },
+    ),
+    mk("VRC_PERFORMANCE_UI", "graphics", "Show FPS / perf overlay", {
+      type: "bool",
+      boolValue: false,
+    }),
+    mk(
+      "VRC_NETWORK_DOWNLOAD_LIMIT",
+      "network",
+      "Concurrent asset downloads cap",
+      { type: "int", intValue: 4 },
+    ),
+    mk(
+      "VRC_ALLOW_UNTRUSTED_URL",
+      "network",
+      "Allow video players to load untrusted URLs",
+      { type: "bool", boolValue: false },
+    ),
+    mk(
+      "VRC_AVATAR_HIDE_UNKNOWN",
+      "avatars",
+      "Default: hide avatars from users outside your friends list",
+      { type: "bool", boolValue: false },
+    ),
+    mk(
+      "VRC_AVATAR_MAX_DOWNLOAD_MB",
+      "avatars",
+      "Largest avatar bundle to auto-download",
+      { type: "int", intValue: 200 },
+    ),
+    mk("VRC_OSC_ENABLED", "osc", "Expose OSC endpoints on launch", {
+      type: "bool",
+      boolValue: false,
+    }),
+    mk("VRC_OSC_IN_PORT", "osc", "Incoming OSC UDP port", {
+      type: "int",
+      intValue: 9000,
+    }),
+    mk("VRC_OSC_OUT_PORT", "osc", "Outgoing OSC UDP port", {
+      type: "int",
+      intValue: 9001,
+    }),
+  ];
+
+  const groups: Record<string, number[]> = {
+    audio: [],
+    graphics: [],
+    network: [],
+    avatars: [],
+    osc: [],
+    comfort: [],
+    ui: [],
+    privacy: [],
+    other: [],
+  };
+  entries.forEach((entry, index) => {
+    const bucket = groups[entry.group];
+    if (bucket) bucket.push(index);
+    else groups.other.push(index);
+  });
+
+  return { entries, count: entries.length, groups };
+}
+
 class IpcClient {
   private bridge: WebViewBridge | null;
   private pending: Map<string, Pending>;
   private events: EventTarget;
   private listenerAttached: boolean;
+  private mockLogStreamTimer: number | null;
 
   constructor() {
     this.bridge = window.chrome?.webview ?? null;
     this.pending = new Map();
     this.events = new EventTarget();
     this.listenerAttached = false;
+    this.mockLogStreamTimer = null;
     if (!this.bridge) {
       window.__VRCSM_MOCK__ = true;
     }
@@ -223,7 +368,14 @@ class IpcClient {
       if (!slot) return;
       this.pending.delete(resp.id);
       if (resp.error) {
-        slot.reject(resp.error);
+        // The wire envelope carries `{code, message}`. Promise consumers
+        // invariably do `e instanceof Error ? e.message : String(e)` — if
+        // we reject with the bare object, `String({code,message})` turns
+        // into `[object Object]` in every toast. Wrap in a real Error so
+        // every call site gets a usable message without special casing.
+        const err = new Error(resp.error.message || resp.error.code || "ipc error");
+        (err as Error & { code?: string }).code = resp.error.code;
+        slot.reject(err);
       } else {
         slot.resolve(resp.result);
       }
@@ -275,6 +427,12 @@ class IpcClient {
         return { deleted: 2 } satisfies DeleteResult as unknown as TResult;
       case "process.vrcRunning":
         return { running: false } satisfies ProcessStatus as unknown as TResult;
+      case "logs.stream.start":
+        this.startMockLogStream();
+        return { ok: true } as unknown as TResult;
+      case "logs.stream.stop":
+        this.stopMockLogStream();
+        return { ok: true } as unknown as TResult;
       case "migrate.preflight": {
         const p = (params ?? {}) as { source?: string; target?: string };
         return {
@@ -291,9 +449,83 @@ class IpcClient {
         this.runMigrationMock();
         return { ok: true } as unknown as TResult;
       }
+      case "shell.pickFolder":
+        return { cancelled: true } as unknown as TResult;
+      case "shell.openUrl":
+        // Mock branch: no side effect, just echo success so the UI can be
+        // exercised in browser-only dev mode without shelling out.
+        return { ok: true } as unknown as TResult;
+      case "junction.repair":
+        return { ok: true } as unknown as TResult;
+      case "thumbnails.fetch": {
+        // Mock mirrors the real backend:
+        //   - `wrld_*` → the public worlds endpoint works, so we fake a
+        //     deterministic picsum URL so devs running without the C++
+        //     host still see real-looking Worlds tiles.
+        //   - `avtr_*` → VRChat rejects anonymous avatar lookups with 401
+        //     even with the community API key, so the real VrcApi short-
+        //     circuits and the frontend never actually reaches this branch
+        //     for avatar ids. Kept here for defensive symmetry.
+        const p = (params ?? {}) as { ids?: string[]; id?: string };
+        const ids = p.ids ?? (p.id ? [p.id] : []);
+        const results = ids.map((id) => {
+          if (id.startsWith("wrld_")) {
+            const seed = encodeURIComponent(id.slice(0, 16));
+            return {
+              id,
+              url: `https://picsum.photos/seed/${seed}/256/144`,
+              cached: false,
+              error: null,
+            };
+          }
+          return {
+            id,
+            url: null,
+            cached: false,
+            error: "avatar-api-requires-auth",
+          };
+        });
+        return { results } as unknown as TResult;
+      }
+      case "settings.readAll":
+        return buildMockSettingsReport() as unknown as TResult;
+      case "settings.writeOne":
+        return { ok: true } satisfies VrcSettingsWriteResult as unknown as TResult;
+      case "settings.exportReg":
+        return {
+          ok: true,
+          path: "C:/Users/dev/AppData/Local/Temp/vrcsm-vrc-settings-mock.reg",
+        } satisfies VrcSettingsExportResult as unknown as TResult;
       default:
         return null as unknown as TResult;
     }
+  }
+
+  private startMockLogStream(): void {
+    if (this.mockLogStreamTimer !== null) return;
+
+    const emit = () => {
+      const sample: LogStreamChunk = {
+        line: "[Log] Waiting for host log stream...",
+        level: "info",
+        timestamp: nowIso(),
+        source: "mock",
+      };
+      this.events.dispatchEvent(
+        new CustomEvent("logs.stream", {
+          detail: sample,
+        }),
+      );
+    };
+
+    emit();
+    this.mockLogStreamTimer = window.setInterval(emit, 8000);
+  }
+
+  private stopMockLogStream(): void {
+    if (this.mockLogStreamTimer === null) return;
+    window.clearInterval(this.mockLogStreamTimer);
+    this.mockLogStreamTimer = null;
   }
 
   private runMigrationMock(): void {
@@ -332,6 +564,38 @@ class IpcClient {
   async scan(): Promise<Report> {
     return this.call<undefined, Report>("scan");
   }
+
+  async pickFolder(
+    opts: { title?: string; initialDir?: string } = {},
+  ): Promise<PickFolderResult> {
+    return this.call<typeof opts, PickFolderResult>("shell.pickFolder", opts);
+  }
+
+  async readVrcSettings(): Promise<VrcSettingsReport> {
+    return this.call<undefined, VrcSettingsReport>("settings.readAll");
+  }
+
+  async writeVrcSetting(
+    encodedKey: string,
+    value: VrcSettingValueSnapshot,
+  ): Promise<VrcSettingsWriteResult> {
+    return this.call<VrcSettingsWriteRequest, VrcSettingsWriteResult>(
+      "settings.writeOne",
+      { encodedKey, value },
+    );
+  }
+
+  async exportVrcSettings(outPath?: string): Promise<VrcSettingsExportResult> {
+    return this.call<{ outPath?: string }, VrcSettingsExportResult>(
+      "settings.exportReg",
+      outPath ? { outPath } : {},
+    );
+  }
+}
+
+export interface PickFolderResult {
+  cancelled: boolean;
+  path?: string;
 }
 
 export const ipc = new IpcClient();
