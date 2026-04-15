@@ -88,7 +88,7 @@ function AppContent() {
   );
 
   const currentMeta = routeMeta[location.pathname] ?? routeMeta["/"];
-  const shellVersion = "v0.1.1";
+  const shellVersion = "v0.1.2";
 
   useEffect(() => {
     setSearchQuery("");
