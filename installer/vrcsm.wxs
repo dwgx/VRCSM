@@ -4,7 +4,7 @@
   <Package
     Name="VRCSM"
     Manufacturer="dwgx"
-    Version="0.1.0.0"
+    Version="0.1.1.0"
     UpgradeCode="6e3f2c84-7e1d-4c2f-9a3d-1f0a8b2d4e5c"
     Scope="perUser"
     Compressed="yes">
@@ -14,22 +14,28 @@
       Manufacturer="dwgx" />
 
     <MajorUpgrade
+      Schedule="afterInstallExecute"
+      AllowSameVersionUpgrades="yes"
       DowngradeErrorMessage="A newer version of VRCSM is already installed." />
 
     <MediaTemplate EmbedCab="yes" />
 
-    <Icon Id="VRCSMIcon" SourceFile="$(var.BuildDir)\VRCSM.exe" />
+    <Icon Id="VRCSMIcon" SourceFile="$(var.IconFile)" />
     <Property Id="ARPPRODUCTICON" Value="VRCSMIcon" />
     <Property Id="ARPHELPLINK" Value="https://github.com/dwgx/VRCSM" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/dwgx/VRCSM" />
 
     <StandardDirectory Id="LocalAppDataFolder">
-      <Directory Id="VRCSMINSTALLDIR" Name="VRCSM" />
+      <Directory Id="VRCSMINSTALLDIR" Name="VRCSM">
+        <Directory Id="VRCSMWebDir" Name="web" />
+      </Directory>
     </StandardDirectory>
 
     <StandardDirectory Id="ProgramMenuFolder">
       <Directory Id="VRCSMShortcutDir" Name="VRCSM" />
     </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
 
     <Feature Id="Main" Title="VRCSM" Level="1">
       <ComponentGroupRef Id="HostFiles" />
@@ -39,15 +45,15 @@
 
     <ComponentGroup Id="HostFiles" Directory="VRCSMINSTALLDIR">
       <Files Include="$(var.BuildDir)\VRCSM.exe" />
-      <Files Include="$(var.BuildDir)\WebView2Loader.dll" />
+      <Files Include="$(var.BuildDir)\*.dll" />
     </ComponentGroup>
 
-    <ComponentGroup Id="WebFiles" Directory="VRCSMINSTALLDIR">
+    <ComponentGroup Id="WebFiles" Directory="VRCSMWebDir">
       <Files Include="$(var.BuildDir)\web\**" />
     </ComponentGroup>
 
-    <ComponentGroup Id="Shortcuts" Directory="VRCSMShortcutDir">
-      <Component Id="StartMenuShortcut" Guid="b2a4f7c1-9d3e-4a8f-8c2b-5e7d6f1a3b9c">
+    <ComponentGroup Id="Shortcuts">
+      <Component Id="StartMenuShortcut" Directory="VRCSMShortcutDir" Guid="b2a4f7c1-9d3e-4a8f-8c2b-5e7d6f1a3b9c">
         <Shortcut Id="VRCSMStartMenuShortcut"
                   Name="VRCSM"
                   Description="VRChat Settings &amp; Cache Manager"
@@ -58,6 +64,21 @@
         <RegistryValue Root="HKCU"
                        Key="Software\dwgx\VRCSM"
                        Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+      <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="c8b1e5d9-3f4a-4b7e-a1c6-9d2e8f3b0a4d">
+        <Shortcut Id="VRCSMDesktopShortcut"
+                  Name="VRCSM"
+                  Description="VRChat Settings &amp; Cache Manager"
+                  Target="[VRCSMINSTALLDIR]VRCSM.exe"
+                  WorkingDirectory="VRCSMINSTALLDIR"
+                  Icon="VRCSMIcon" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\dwgx\VRCSM"
+                       Name="desktop_shortcut"
                        Type="integer"
                        Value="1"
                        KeyPath="yes" />
