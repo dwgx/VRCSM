@@ -22,8 +22,41 @@
 #include <shlobj.h>
 #include <shobjidl.h>
 
+#include <thread>
+#include <unordered_set>
+
 namespace
 {
+// IPC methods that touch the filesystem, WinHTTP, or the VRChat API.
+// These run on a detached worker so the WebView2 UI thread is never
+// blocked by a multi-second scan/thumbnail-fetch/API call. The UI can
+// keep rendering and fire other IPCs while the slow work runs in the
+// background; the result is posted back via PostResult on the worker
+// thread, which is safe because PostMessageToWeb marshals to the UI
+// thread internally.
+const std::unordered_set<std::string>& AsyncMethodSet()
+{
+    static const std::unordered_set<std::string> kMethods = {
+        "scan",
+        "bundle.preview",
+        "delete.dryRun",
+        "delete.execute",
+        "settings.readAll",
+        "settings.writeOne",
+        "settings.exportReg",
+        "migrate.preflight",
+        "junction.repair",
+        "thumbnails.fetch",
+        "auth.status",
+        "auth.user",
+        "auth.logout",
+        "friends.list",
+        "avatar.details",
+        "app.factoryReset",
+    };
+    return kMethods;
+}
+
 template <typename T>
 nlohmann::json ToJson(const T& value)
 {
@@ -162,6 +195,32 @@ void IpcBridge::Dispatch(const std::string& jsonText)
         if (it == m_handlers.end())
         {
             PostError(id, "method_not_found", fmt::format("Unknown IPC method: {}", method));
+            return;
+        }
+
+        // Slow handlers run on a detached worker so the UI thread is
+        // never blocked. Fast/UI-bound handlers (path.probe, shell.*,
+        // logs.stream.start/stop, migrate.execute which already spawns
+        // its own thread) stay inline to avoid a pointless thread hop.
+        if (AsyncMethodSet().count(method) > 0)
+        {
+            auto handler = it->second;
+            const auto capturedId = id;
+            std::thread([this, handler = std::move(handler), params, capturedId, method]()
+            {
+                try
+                {
+                    PostResult(capturedId, handler(params, capturedId));
+                }
+                catch (const std::exception& ex)
+                {
+                    PostError(capturedId, "handler_error", ex.what());
+                }
+                catch (...)
+                {
+                    PostError(capturedId, "handler_error", "Unknown handler failure");
+                }
+            }).detach();
             return;
         }
 

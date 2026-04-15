@@ -407,22 +407,26 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
                 {selected.avatar_id}
               </span>
             </div>
-            <div>
-              <span className="text-[hsl(var(--muted-foreground))]">
-                user:{" "}
-              </span>
-              <span className="font-mono text-[hsl(var(--foreground))]">
-                {details?.authorId ?? selected.user_id}
-              </span>
-            </div>
-            <div className="flex items-start gap-1.5">
-              <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
-                path:{" "}
-              </span>
-              <span className="break-all font-mono text-[10.5px] text-[hsl(var(--foreground))]">
-                {selected.path}
-              </span>
-            </div>
+            {(details?.authorId || selected.user_id) ? (
+              <div>
+                <span className="text-[hsl(var(--muted-foreground))]">
+                  user:{" "}
+                </span>
+                <span className="font-mono text-[hsl(var(--foreground))]">
+                  {details?.authorId ?? selected.user_id}
+                </span>
+              </div>
+            ) : null}
+            {selected.path ? (
+              <div className="flex items-start gap-1.5">
+                <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
+                  path:{" "}
+                </span>
+                <span className="break-all font-mono text-[10.5px] text-[hsl(var(--foreground))]">
+                  {selected.path}
+                </span>
+              </div>
+            ) : null}
             {details?.created_at ? (
               <div>
                 <span className="text-[hsl(var(--muted-foreground))]">
@@ -515,22 +519,50 @@ function Avatars() {
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  /**
-   * Merge LocalAvatarData items with the avatar_names map produced by
-   * LogParser so the UI can display a human-readable name + author when
-   * the avatar has been loaded at least once.
-   */
+  // Merge LocalAvatarData with recent_avatar_ids + avatar_names from the
+  // parsed logs. LocalAvatarData only contains avatars the user has
+  // physically cached on disk under LocalLow\VRChat\VRChat\LocalAvatarData,
+  // which in practice skews heavily toward *private* avatars (the ones
+  // VRChat's API will 401/404 on, so no thumbnail). Public avatars the
+  // user has worn recently only show up in output_log_*.txt, so we
+  // fold recent_avatar_ids in as virtual rows and let the thumbnail
+  // fetcher light them up with real images. Rows from logs have no
+  // on-disk metadata, hence the empty path / null eye_height / 0
+  // parameter_count — the row renderer already tolerates those.
   const items = useMemo<AugmentedAvatar[]>(() => {
     if (!report) return [];
     const names = report.logs.avatar_names ?? {};
-    return report.local_avatar_data.recent_items.map((it) => {
+    const seen = new Set<string>();
+    const out: AugmentedAvatar[] = [];
+
+    for (const it of report.local_avatar_data.recent_items) {
+      if (seen.has(it.avatar_id)) continue;
+      seen.add(it.avatar_id);
       const n = names[it.avatar_id];
-      return {
+      out.push({
         ...it,
         display_name: n?.name,
         author: n?.author ?? undefined,
-      };
-    });
+      });
+    }
+
+    for (const id of report.logs.recent_avatar_ids ?? []) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const n = names[id];
+      out.push({
+        user_id: "",
+        avatar_id: id,
+        path: "",
+        eye_height: null,
+        parameter_count: 0,
+        modified_at: null,
+        display_name: n?.name,
+        author: n?.author ?? undefined,
+      });
+    }
+
+    return out;
   }, [report]);
 
   const filtered = useMemo(() => {

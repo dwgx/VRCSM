@@ -612,15 +612,6 @@ std::wstring buildPath(IdKind kind, const std::string& id)
     return toWide(fmt::format("{}{}?apiKey={}", prefix, id, kApiKey));
 }
 
-// Serialise network access so we don't hammer VRChat when the frontend
-// asks for 40 thumbnails at once. One mutex for the full fetch-and-cache
-// sequence — turns a "stampede" into a simple queue.
-std::mutex& networkMutex()
-{
-    static std::mutex m;
-    return m;
-}
-
 ThumbnailResult performLookup(const std::string& id)
 {
     ThumbnailResult out;
@@ -633,9 +624,16 @@ ThumbnailResult performLookup(const std::string& id)
         return out;
     }
 
-    // Cache lookup first — under the network mutex so we also serialise
-    // writes through `cacheState`.
-    std::lock_guard<std::mutex> lock(networkMutex());
+    // The old implementation serialised every fetch through one global
+    // mutex "so we don't hammer VRChat with 40 requests at once". In
+    // practice that turned a 40-thumbnail batch into a 30+ second
+    // blocking wall — and because thumbnails.fetch now runs on a
+    // per-request worker (see IpcBridge async dispatch), it also
+    // blocked every other IPC call coming from the UI. Run fetches in
+    // parallel and rely on state.mutex alone to protect the on-disk
+    // cache. httpGet already honours a reasonable timeout and the
+    // batch size is bounded by the visible avatar list, so VRChat is
+    // not at risk of being "hammered".
     auto& state = cacheState();
     {
         std::lock_guard<std::mutex> cacheLock(state.mutex);
