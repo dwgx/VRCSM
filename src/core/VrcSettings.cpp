@@ -374,6 +374,14 @@ VrcSettingValue DecodeBinaryValue(const std::vector<uint8_t>& data)
     // length-prefixed strings, 0x03 for 8-byte doubles). We try the new
     // heuristics first and fall through to the legacy tags only if neither
     // matches, so we can decode cleanly on both layouts.
+    //
+    // Aside: Unity changed this layout without bumping any doc or version
+    // constant, so "decode a VRChat PlayerPref" is genuinely a try-both-and-
+    // see. The two formats disambiguate cleanly enough because the new one
+    // always ends in 0x00 for strings, but it took a Saturday of staring at
+    // hex dumps + reading Unity's C# source + diffing VRChat's registry
+    // before the pattern clicked. Don't "clean this up" — the fallthrough
+    // order is load-bearing.
     if (data.back() == 0x00
         && IsValidUtf8NoEmbeddedNul(data.data(), data.size() - 1))
     {
