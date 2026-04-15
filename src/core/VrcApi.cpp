@@ -18,6 +18,28 @@
 
 #pragma comment(lib, "Winhttp.lib")
 
+// ─────────────────────────────────────────────────────────────────────────
+// VrcApi — anonymous read-only HTTP client against api.vrchat.cloud.
+//
+// Two dumb things took longer to figure out than they should have:
+//
+//   1. curl with no -A gets 403 from every /api/1/image/* endpoint. Made
+//      the bug invisible from the frontend, because WebView2 sends its own
+//      Chrome UA on <img> loads and everything worked there. Only showed up
+//      when `dump_thumbnails` (a cold C++ harness) started getting 403s.
+//      Fix: always send our own UA on every request. See kUserAgentW below.
+//
+//   2. /api/1/avatars/{id} refuses all anonymous callers with 401 — not
+//      just private ones, *every* avatar. The public API key helps for
+//      worlds but does nothing for avatars. Both VRCX and vrchatapi-python
+//      require a real session cookie for avatar GETs, so we do too (read:
+//      we don't, yet — we short-circuit the avatar branch in performLookup
+//      and let the frontend fall back to a procedural cube).
+//
+// When v0.1.3 lands real auth, most of the `avatar-api-requires-auth`
+// guard rail below becomes dead code.
+// ─────────────────────────────────────────────────────────────────────────
+
 namespace vrcsm::core
 {
 
