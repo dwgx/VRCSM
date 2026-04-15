@@ -34,18 +34,40 @@ type CacheEntry =
 
 const memo = new Map<string, CacheEntry>();
 
+// Generation counter + listeners let mounted `useThumbnail` hooks re-run
+// their fetch effect after something clears the cache. Without this,
+// null results recorded while signed-out would stick around forever
+// even after the user logs in and private-avatar thumbnails start
+// resolving on the host side.
+let memoGeneration = 0;
+const invalidationListeners = new Set<() => void>();
+
+export function invalidateThumbnails(): void {
+  memo.clear();
+  memoGeneration += 1;
+  for (const listener of invalidationListeners) {
+    listener();
+  }
+}
+
+// Auto-wire auth state changes → cache invalidation. This fires exactly
+// once at module load (we subscribe forever), so the frontend no longer
+// has to remember to bump the memo after login/logout at every call
+// site. Avatar cards and friend rows refresh without a page reload.
+ipc.on("auth.loginCompleted", () => {
+  invalidateThumbnails();
+});
+
 /**
- * VRChat's public `/api/1/avatars/{id}` endpoint refuses anonymous
- * requests with HTTP 401 even when the avatar is public and the request
- * carries the community API key — the server explicitly requires a user
- * session cookie. Until VRCSM grows a real login flow there is no point
- * in round-tripping the IPC for an avatar id: the result is always null.
- * We short-circuit here so `useThumbnail(avatarId)` resolves synchronously
- * with `url === null`, the caller renders the procedural cube, and the
- * C++ host never sees an avatar fetch it would reject anyway.
+ * Accept both world and avatar prefixes. The C++ host is now auth-aware
+ * (v0.2.0 AuthStore): worlds always work anonymously, avatars only work
+ * when the user has a VRChat session cookie. If we're not logged in yet
+ * the host returns `url: null` and the frontend falls back to the
+ * procedural cube. Once login lands, the same useThumbnail call starts
+ * returning real CDN URLs without any call-site change.
  */
 function isLookupSupported(id: string): boolean {
-  return id.startsWith("wrld_");
+  return id.startsWith("wrld_") || id.startsWith("avtr_");
 }
 
 function fetchOne(id: string): Promise<string | null> {
@@ -90,6 +112,17 @@ export function useThumbnail(id: string | null): {
       return { url: null, loading: true };
     },
   );
+  // Track memo generation so login / logout triggers an automatic
+  // re-fetch for every mounted hook — no per-page bookkeeping needed.
+  const [generation, setGeneration] = useState(memoGeneration);
+
+  useEffect(() => {
+    const listener = () => setGeneration(memoGeneration);
+    invalidationListeners.add(listener);
+    return () => {
+      invalidationListeners.delete(listener);
+    };
+  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -109,7 +142,7 @@ export function useThumbnail(id: string | null): {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, generation]);
 
   return state;
 }

@@ -42,6 +42,24 @@ public:
     // for. Used by the IPC batch handler so the frontend can request
     // everything visible on screen in one round-trip.
     static std::vector<ThumbnailResult> fetchThumbnails(const std::vector<std::string>& ids);
+
+    // Auth-gated VRChat endpoints. They require a real VRChat browser
+    // session cookie in the `AuthStore`, which is populated by the host's
+    // WebView2 login window (see `AuthLoginWindow`) — VRCSM does not run
+    // its own password / 2FA / Steam-OAuth flow. `fetchCurrentUser` uses
+    // nullopt specifically for the "session expired / not logged in" case
+    // so callers can sign out cleanly without guessing from exception
+    // strings.
+    static std::optional<nlohmann::json> fetchCurrentUser();
+    static std::vector<nlohmann::json> fetchFriends(bool offline);
+
+    /// Full avatar detail record for an `avtr_*` id. Returns the raw JSON
+    /// from `/api/1/avatars/{id}` so the frontend can show whatever
+    /// fields are populated (description, author, tags, release status,
+    /// unity packages, version, etc.) without a second round-trip.
+    /// `nullopt` on 401 / 404 — anonymous callers and private-avatar
+    /// misses both resolve to "nothing to show" rather than raising.
+    static std::optional<nlohmann::json> fetchAvatarDetails(const std::string& avatarId);
 };
 
 } // namespace vrcsm::core

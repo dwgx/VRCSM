@@ -267,3 +267,61 @@ export interface IpcEnvelopeEvent<T = unknown> {
   event: string;
   data: T;
 }
+
+// ─── Auth (v0.2.0) ──────────────────────────────────────────────────────
+// AuthStatus is the cheap "are we logged in" probe used by the TitleBar
+// and router guards. The full user JSON flows separately via `auth.user`
+// so the status poll stays light.
+
+export interface AuthStatus {
+  authed: boolean;
+  userId: string | null;
+  displayName: string | null;
+}
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  displayName: string;
+  currentAvatarImageUrl: string | null;
+  currentAvatarThumbnailImageUrl: string | null;
+  status: string | null;
+  statusDescription: string | null;
+  bio: string | null;
+  last_platform: string | null;
+}
+
+// ─── Friends (v0.2.0) ───────────────────────────────────────────────────
+// Friend = the lightweight list row returned by /auth/user/friends. Full
+// instance / location info is lazily expanded on row hover if we ever
+// add it; for v0.2.0 we just render what the list endpoint gives us.
+
+export interface Friend {
+  id: string;
+  username?: string | null;
+  displayName: string;
+  currentAvatarImageUrl: string | null;
+  currentAvatarThumbnailImageUrl: string | null;
+  statusDescription: string | null;
+  status: string | null;
+  location: string | null;
+  last_platform: string | null;
+  /** Short free-form bio from the user's profile. Empty when missing. */
+  bio: string | null;
+  /** `none` | `trusted` | `internal` | `moderator`. Empty when not a developer. */
+  developerType: string | null;
+  /** ISO timestamp of last login. Empty for currently-online users. */
+  last_login: string | null;
+  /** ISO timestamp of most recent activity (online or off). */
+  last_activity: string | null;
+  /** User's chosen "use instead of avatar image" URL. */
+  profilePicOverride: string | null;
+  /** Upgraded profile icon URL (supporters get it). */
+  userIcon: string | null;
+  /** Curated subset: `system_trust_*` ranks + `admin_*` flags only. */
+  tags: string[];
+}
+
+export interface FriendsListResult {
+  friends: Friend[];
+}

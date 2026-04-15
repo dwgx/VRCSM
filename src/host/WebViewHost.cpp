@@ -57,6 +57,74 @@ void WebViewHost::PostMessageToWeb(const std::string& json) const
     (void)m_webview->PostWebMessageAsString(payload.c_str());
 }
 
+void WebViewHost::ClearVrcCookies() const
+{
+    if (m_webview == nullptr)
+    {
+        return;
+    }
+
+    auto webview2 = m_webview.try_query<ICoreWebView2_2>();
+    if (webview2 == nullptr)
+    {
+        return;
+    }
+
+    wil::com_ptr<ICoreWebView2CookieManager> cookieManager;
+    if (FAILED(webview2->get_CookieManager(cookieManager.put())) || cookieManager == nullptr)
+    {
+        return;
+    }
+
+    // Enumerate every cookie and delete any that look auth-related,
+    // regardless of domain/path. The old targeted DeleteCookiesWith
+    // DomainAndPath calls silently no-op'd when VRChat shifted the
+    // domain to `.vrchat.com` (wildcard) — which is exactly what was
+    // happening in practice, so clicking "sign out" left the cookie
+    // jar intact and the next "sign in" click auto-rehydrated the
+    // session without prompting. Full enumeration is the only way to
+    // be sure the user is actually signed out.
+    (void)cookieManager->GetCookies(
+        nullptr,
+        Microsoft::WRL::Callback<ICoreWebView2GetCookiesCompletedHandler>(
+            [cookieManager](HRESULT result, ICoreWebView2CookieList* list) noexcept -> HRESULT
+            {
+                if (FAILED(result) || list == nullptr)
+                {
+                    return S_OK;
+                }
+                UINT count = 0;
+                if (FAILED(list->get_Count(&count)) || count == 0)
+                {
+                    return S_OK;
+                }
+
+                UINT deleted = 0;
+                for (UINT i = 0; i < count; ++i)
+                {
+                    wil::com_ptr<ICoreWebView2Cookie> cookie;
+                    if (FAILED(list->GetValueAtIndex(i, cookie.put())) || cookie == nullptr)
+                    {
+                        continue;
+                    }
+                    wil::unique_cotaskmem_string name;
+                    if (FAILED(cookie->get_Name(&name)) || name == nullptr)
+                    {
+                        continue;
+                    }
+                    const std::wstring nameStr(name.get());
+                    if (nameStr == L"auth" || nameStr == L"twoFactorAuth")
+                    {
+                        cookieManager->DeleteCookie(cookie.get());
+                        ++deleted;
+                    }
+                }
+                spdlog::info("[auth] ClearVrcCookies removed {} cookie(s)", deleted);
+                return S_OK;
+            })
+            .Get());
+}
+
 std::filesystem::path WebViewHost::GetLocalAppDataPath() const
 {
     std::wstring buffer(static_cast<size_t>(MAX_PATH), L'\0');

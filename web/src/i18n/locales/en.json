@@ -6,6 +6,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "friends": "Friends",
     "bundles": "Bundles",
     "avatars": "Avatars",
     "worlds": "Worlds",
@@ -13,6 +14,69 @@
     "migrate": "Migrate",
     "settings": "Settings",
     "language": "Language"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signInWithVrchat": "Sign in with VRChat",
+    "opening": "Opening…",
+    "signOut": "Sign out",
+    "signedIn": "Signed in",
+    "signedOut": "Signed out",
+    "checking": "Checking…",
+    "loginSuccess": "Signed in to VRChat",
+    "loginWindowHint": "VRCSM will open a secure login window so VRChat's own site handles password, 2FA, Steam, and captcha. Your password never touches VRCSM.",
+    "loginWindowFailed": "Login window failed: {{error}}"
+  },
+  "friends": {
+    "title": "Friends",
+    "subtitle": "Live VRChat friend roster — requires sign-in.",
+    "listPaneTitle": "Friends",
+    "filterPlaceholder": "Filter by name or status…",
+    "totalCount_one": "{{count}} friend",
+    "totalCount_other": "{{count}} friends",
+    "showOffline": "Show offline",
+    "hideOffline": "Hide offline",
+    "empty": "No friends match the filter.",
+    "loading": "Loading friends…",
+    "loadFailed": "Failed to load: {{error}}",
+    "signInRequired": "Sign in to VRChat",
+    "signInRequiredBody": "Friend list, presence, and location all come from the VRChat API. VRCSM opens VRChat's own login page in a secure browser window and only stores the resulting session cookie — DPAPI-encrypted, never the password.",
+    "location": {
+      "offline": "offline",
+      "private": "private",
+      "traveling": "joining…",
+      "world": "in world",
+      "unknown": "unknown"
+    },
+    "bucket": {
+      "joinMe": "Join Me",
+      "active": "Active",
+      "askMe": "Ask Me",
+      "busy": "Busy",
+      "offline": "Offline"
+    },
+    "trust": {
+      "troll": "Nuisance",
+      "veteran": "Trusted User",
+      "trusted": "Known User",
+      "known": "User",
+      "user": "New User",
+      "new": "Visitor",
+      "visitor": "Visitor"
+    },
+    "badges": {
+      "moderator": "VRChat Moderator"
+    },
+    "fields": {
+      "userId": "User ID",
+      "trust": "Trust",
+      "developer": "Developer",
+      "world": "World",
+      "instance": "Instance",
+      "location": "Location",
+      "lastSeen": "Last seen",
+      "bio": "Bio"
+    }
   },
   "menu": {
     "file": "File",
@@ -32,6 +96,7 @@
     "loading": "Loading…",
     "retry": "Retry",
     "rescan": "Rescan",
+    "refresh": "Refresh",
     "back": "Back",
     "next": "Next",
     "cancel": "Cancel",
@@ -47,7 +112,8 @@
     "yes": "Yes",
     "no": "No",
     "browse": "Browse…",
-    "repair": "Repair"
+    "repair": "Repair",
+    "copy": "Copy"
   },
   "about": {
     "title": "About VRCSM",
@@ -152,6 +218,10 @@
     "unknownName": "Unknown avatar",
     "byAuthor": "by {{author}}",
     "nameFromLogOnly": "name from log pairing",
+    "loadingDetails": "Loading details…",
+    "signInForDetails": "Sign in for full metadata",
+    "unityPackages_one": "{{count}} platform variant",
+    "unityPackages_other": "{{count}} platform variants",
     "pickOne": "Select an avatar",
     "noMatch": "No avatars match the filter.",
     "nameNote": "Avatar names are extracted from the VRChat output logs. Names only appear for avatars that have been loaded at least once on this machine."

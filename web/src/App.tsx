@@ -15,6 +15,7 @@ import { StatusBar } from "@/components/StatusBar";
 import { ToolbarSearchProvider } from "@/components/Toolbar";
 import { AboutDialog } from "@/components/AboutDialog";
 import { ReportProvider, useReport } from "@/lib/report-context";
+import { AuthProvider } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
 import type { ProcessStatus } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
@@ -26,6 +27,7 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Bundles = lazy(() => import("@/pages/Bundles"));
 const Avatars = lazy(() => import("@/pages/Avatars"));
 const Worlds = lazy(() => import("@/pages/Worlds"));
+const Friends = lazy(() => import("@/pages/Friends"));
 const Logs = lazy(() => import("@/pages/Logs"));
 const Migrate = lazy(() => import("@/pages/Migrate"));
 const Settings = lazy(() => import("@/pages/Settings"));
@@ -71,6 +73,10 @@ function AppContent() {
         title: t("nav.worlds"),
         breadcrumb: ["Assets", t("nav.worlds")],
       },
+      "/friends": {
+        title: t("nav.friends"),
+        breadcrumb: ["Social", t("nav.friends")],
+      },
       "/logs": {
         title: t("nav.logs"),
         breadcrumb: ["Diagnostics", t("nav.logs")],
@@ -88,7 +94,7 @@ function AppContent() {
   );
 
   const currentMeta = routeMeta[location.pathname] ?? routeMeta["/"];
-  const shellVersion = "v0.1.3";
+  const shellVersion = "v0.3.0";
 
   useEffect(() => {
     setSearchQuery("");
@@ -97,26 +103,29 @@ function AppContent() {
   useEffect(() => {
     let alive = true;
 
-    const updateProcessState = () => {
-      ipc
-        .call<undefined, ProcessStatus>("process.vrcRunning")
-        .then((status) => {
-          if (alive) {
-            setVrcRunning(status.running);
-          }
-        })
-        .catch(() => {
-          if (alive) {
-            setVrcRunning(false);
-          }
-        });
-    };
+    // One-shot seed so the sidebar doesn't flash "unknown" on mount.
+    // After this the host pushes every transition via the event below,
+    // so we never poll again — detection latency drops from 5s to 1s
+    // and the IPC round-trip per tick goes to zero.
+    ipc
+      .call<undefined, ProcessStatus>("process.vrcRunning")
+      .then((status) => {
+        if (alive) setVrcRunning(status.running);
+      })
+      .catch(() => {
+        if (alive) setVrcRunning(false);
+      });
 
-    updateProcessState();
-    const timer = window.setInterval(updateProcessState, 5000);
+    const unsubscribe = ipc.on<ProcessStatus>(
+      "process.vrcStatusChanged",
+      (status) => {
+        if (alive) setVrcRunning(status.running);
+      },
+    );
+
     return () => {
       alive = false;
-      window.clearInterval(timer);
+      unsubscribe();
     };
   }, []);
 
@@ -297,6 +306,7 @@ function AppContent() {
                           <Route path="/bundles" element={<Bundles />} />
                           <Route path="/avatars" element={<Avatars />} />
                           <Route path="/worlds" element={<Worlds />} />
+                          <Route path="/friends" element={<Friends />} />
                           <Route path="/logs" element={<Logs />} />
                           <Route path="/migrate" element={<Migrate />} />
                           <Route path="/settings" element={<Settings />} />
@@ -331,9 +341,11 @@ function AppContent() {
 
 function App() {
   return (
-    <ReportProvider>
-      <AppContent />
-    </ReportProvider>
+    <AuthProvider>
+      <ReportProvider>
+        <AppContent />
+      </ReportProvider>
+    </AuthProvider>
   );
 }
 
