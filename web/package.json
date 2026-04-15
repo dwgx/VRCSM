@@ -1,6 +1,6 @@
 {
   "name": "vrcsm-web",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -26,7 +26,6 @@
     "react-dom": "^19.0.0",
     "react-i18next": "^15.7.4",
     "react-router-dom": "^7.1.0",
-    "recharts": "^2.15.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0"
   },
