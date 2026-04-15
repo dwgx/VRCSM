@@ -5,6 +5,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { Activity, RefreshCcw, Search } from "lucide-react";
+import { AuthChip } from "@/components/AuthChip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,11 +109,9 @@ export function Toolbar({
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <AuthChip />
         <Badge variant="outline" className="rounded-[var(--radius-sm)] px-2.5">
           LOCAL
-        </Badge>
-        <Badge variant="secondary" className="rounded-[var(--radius-sm)] px-2.5">
-          DEFAULT
         </Badge>
       </div>
     </div>

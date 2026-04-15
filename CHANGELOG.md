@@ -6,6 +6,244 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [0.3.0] — 2026-04-15
+
+"Surpass VRCX" sprint. v0.2.0 got the first cut of auth working but the
+UI was mostly plumbing placeholders — raw number/text editors on the
+Settings page, a thumbnail-only Avatar inspector, a flat Friends list.
+v0.3.0 replaces all three with feature-parity (or better) versions of
+what VRCX does, plus a factory-reset escape hatch for when the app
+state gets wedged and the user just wants a clean slate.
+
+Also: rolls up the previously-unshipped v0.2.0 work — Option-A login
+via VRChat's own web form (DPAPI-encrypted session cookies, no password
+ever touches VRCSM), real-time VRChat process watcher (no more 5s
+polling tick), and the full 597-key localized Settings page.
+
+### Added
+
+- **Factory reset button in Settings.**
+  New destructive action in the VRCSM shell preferences card. Wipes
+  everything under `%LocalAppData%\VRCSM\` except the `WebView2/`
+  user-data folder (held open by the running process), clears the
+  in-memory `AuthStore` and the WebView2 cookie jar, reports back the
+  list of removed + skipped paths so the toast can tell the user what
+  actually happened. Gated behind a `Dialog` confirmation with an
+  `AlertTriangle` warning panel — no accidental clicks.
+- **Semantic Settings editors — `web/src/lib/vrcSettingsSemantics.ts`.**
+  Curated metadata table for the ~35 VRChat settings a user most often
+  wants to flip without booting VRChat (audio volumes, FoV, FPS cap,
+  MSAA level, mirror resolution, shadow quality, region, safety level,
+  mouse sensitivity, player height, …). Each entry declares what kind
+  of widget should render it: `slider-float` / `slider-int` /
+  `dropdown-int` / `dropdown-string` with proper range + step + unit
+  metadata. `EntryEditor` in Settings.tsx tries the semantic editor
+  first, falls back to the raw-value editor when the key isn't in the
+  table — so 100% of the 597 keys still work, the 35 common ones just
+  get a much better UX.
+- **Avatar inspector — best-effort `avatar.details` IPC.**
+  New `VrcApi::fetchAvatarDetails(avatarId)` calls
+  `GET /api/1/avatars/{id}` with the stored session cookie and returns
+  the raw JSON. Missing fields (private avatar, 401, 404) resolve to
+  `nullopt` → nullish `details` in the response envelope. Frontend
+  `AvatarInspector` component in `Avatars.tsx` merges local
+  cache-scan data with API data, shows whatever is present (name,
+  author, tags, description, release status, unity packages,
+  version, created / updated), and degrades gracefully to "sign in
+  for details" when the user hasn't logged in.
+- **Friends page — VRCX-parity features.**
+  Rewrote the flat list into status-bucketed sections
+  (Join Me / Active / Ask Me / Busy / Offline) with collapsible headers
+  and per-bucket counts. Full `location` string parser at
+  `web/src/lib/vrcFriends.ts` — extracts instance type
+  (`public` / `friends+` / `friends` / `invite+` / `invite` / `group*`),
+  region (US West / US East / US Central / Europe / Japan), owner id.
+  Trust rank computed from `system_trust_*` tags (Visitor → Trusted
+  User) with per-rank color tokens lifted from VRCX's `TrustColor.js`.
+  Moderator badge when `admin_moderator` is present. Click-to-expand
+  row shows user id, world id, instance id, trust, developer type,
+  bio, and relative "last seen" timestamp, each with a copy-to-
+  clipboard button. Bio is searchable alongside display name + status
+  description.
+- **FilterFriend expanded on the C++ side** — `bio`, `developerType`,
+  `last_login`, `last_activity`, `profilePicOverride`, `userIcon`, and
+  a curated tags subset (`system_trust_*` + `admin_*`) now flow through
+  the `friends.list` envelope so the frontend has everything it needs
+  to match VRCX without additional round-trips.
+- **`docs/v0.5.0-3d-preview-research.md` — design doc for real 3D
+  avatar preview.** Concrete build plan around AssetRipper CLI +
+  fbx2gltf + three.js in the WebView2. Not implemented in v0.3.0 —
+  marked as v0.5.0+ R&D with phase-by-phase ship plan, risk matrix,
+  and fallback paths for encrypted 2023+ bundles.
+
+### Fixed
+
+- **`VrcApi.h` missing `};` on `class VrcApi`.** Class body silently
+  absorbed the namespace-close brace, and every translation unit that
+  `#include`d VrcApi.h through IpcBridge compiled as if it were
+  inside `vrcsm::core` — MSVC reported a cascade of "symbol cannot be
+  defined within namespace 'core'" errors starting at
+  `HandleMigrateExecute`. Root cause was a missing class terminator,
+  not any of the code the errors pointed at.
+- **Login window auto-close after successful sign-in.** VRChat's web
+  frontend uses SPA navigation (`history.pushState`) rather than a
+  real redirect, so `NavigationCompleted` never fires on the post-
+  login URL change. `AuthLoginWindow` now listens to `SourceChanged`
+  as the primary signal and closes within ~1 s of the user landing on
+  `/home`, falling back to a periodic cookie-jar sniff as a safety
+  net.
+- **Logout actually logs out now.** Prior implementation wiped
+  `AuthStore` but left the WebView2 cookie jar populated, so the next
+  API call re-authed with the same credentials. New
+  `WebViewHost::ClearVrcCookies` enumerates every VRChat cookie in
+  the jar via `ICoreWebView2CookieManager::GetCookies` and deletes
+  them individually — the only approach MSVC + WebView2 actually
+  honors.
+- **Thumbnail memo now invalidates on auth flip.** The in-memory cache
+  keyed avatar thumbnails forever; signing in mid-session left the
+  procedural fallback cubes on every row until a full reload.
+  `useThumbnails` now tracks an auth generation counter and clears
+  the memo when it changes.
+- **VRChat process watcher is real-time.** `ProcessGuard::StartWatcher`
+  replaces the 5-second IPC poll with an event-driven watcher thread
+  that pushes `process.vrcStatusChanged` on every transition (and
+  once on start so the frontend doesn't need a bootstrap call).
+
+## [0.2.0] — 2026-04-15
+
+Auth sprint + Friends page. v0.1.x was read-only against VRChat data that
+lived on disk; v0.2.0 is the first cut that talks to the VRChat Web API
+*as the logged-in user* — which is what it took to unblock two things
+that had been pain points since v0.1.0: avatar thumbnails (VRChat's
+`/api/1/avatars/{id}` refuses anonymous callers with 401) and any kind
+of social surface (Friends, presence, location).
+
+No password-scraping, no reverse-engineering the VRChat login form.
+VRCSM pops a secondary WebView2 window pointed at
+`https://vrchat.com/home/login`, lets VRChat's own login page handle
+username + password + 2FA + email codes, and then harvests the
+`auth` / `twoFactorAuth` cookies via the WebView2 CookieManager once the
+user actually lands on `/home`. The cookies go into a DPAPI-encrypted
+blob at `%LocalAppData%\VRCSM\session.dat` so they survive restarts
+without ever touching plaintext on disk. VRCSM never sees, stores, or
+proxies the password.
+
+### Added
+
+- **`src/core/AuthStore.{h,cpp}` — DPAPI-encrypted session store.**
+  Single-instance holder for the `auth` + `twoFactorAuth` cookies.
+  `Save()` runs the pair through `CryptProtectData` with user-scope
+  entropy and drops the ciphertext into `%LocalAppData%\VRCSM\session.dat`;
+  `Load()` walks the file back through `CryptUnprotectData` and silently
+  drops it if the blob fails to decrypt (different user, different
+  machine, corrupted). `BuildCookieHeader()` formats the cookies as a
+  WinHTTP `Cookie:` header. Thread-safe via one mutex — VrcApi + IpcBridge
+  can touch it from any worker without extra synchronisation. Crypt32.lib
+  added to `src/core/CMakeLists.txt`.
+- **`src/host/AuthLoginWindow.{h,cpp}` — secondary WebView2 login modal.**
+  Self-owning popup class (`delete this` on `WM_NCDESTROY`) that reuses
+  the shell's existing `ICoreWebView2Environment` pointer — which means
+  it inherits the main `%LocalAppData%\VRCSM\WebView2` user-data folder
+  and cookie jar, so VRChat's own frontend cookies don't get
+  double-stored. Renders a native HWND popup parented to the main window
+  with `WS_EX_DLGMODALFRAME`, and blocks the owner via
+  `EnableWindow(owner, FALSE)` (re-enabled from the destructor) instead
+  of running a nested message loop — the main shell pump stays in
+  charge of dispatch. Navigates to `vrchat.com/home/login`, subscribes
+  to `NavigationCompleted`, and on every completion whose URL doesn't
+  contain `/login`, `twofactor`, `email-verify`, or `password-reset`
+  walks the entire `ICoreWebView2_2::CookieManager::GetCookies(nullptr,
+  …)` list extracting `auth` + `twoFactorAuth`. The URL filter is what
+  stops the harvest from firing mid-2FA. Once the `auth` cookie lands,
+  it hands the pair to `AuthStore::SetCookies` + `Save` and posts
+  `WM_CLOSE`. Cancellation path is just `WM_CLOSE` from the user — the
+  `Finish(false, "cancelled")` call is idempotent via an `m_finished`
+  guard so an already-succeeded session doesn't get downgraded.
+- **`WebViewHost::Environment()` / `ClearVrcCookies()`.** The shell's
+  WebView2 holder now exposes its environment pointer so
+  `AuthLoginWindow` can create a second controller against the same
+  profile, and a `ClearVrcCookies` helper that walks the main
+  WebView2's cookie manager and calls `DeleteCookiesWithDomainAndPath`
+  on `auth` + `twoFactorAuth` under both `vrchat.com` and
+  `api.vrchat.cloud`. `HandleAuthLogout` calls this right after
+  `AuthStore::Clear()` so the next login popup doesn't silently
+  rehydrate from stale browser state.
+- **`VrcApi::fetchCurrentUser()` / `fetchFriends(offline)`.** Two new
+  auth-gated endpoints. `fetchCurrentUser` hits `/api/1/auth/user` and
+  returns `std::nullopt` specifically on 401 so callers can auto-sign-out
+  on stale cookies instead of surfacing mystery errors. `fetchFriends`
+  hits `/api/1/auth/user/friends?offline=bool&n=100` and returns a raw
+  JSON array. Both thread the AuthStore's cookie header through the
+  existing `httpGet` WinHTTP call.
+- **Frontend: Friends page (`web/src/pages/Friends.tsx`).** Full VRCX-
+  style friend list — avatar thumbnail, display name, status badge
+  (`active` / `join me` / `ask me` / `busy` / `offline`), platform icon
+  (standalonewindows / android / web), and location parsed out of
+  VRChat's compound `wrld_<id>:<inst>~private(usr_xxx)~region(us)`
+  format. Filter box, show/hide offline toggle, refresh button, and a
+  clean "Sign in with VRChat" landing card when the user isn't authed
+  yet — a single button that fires `auth.openLoginWindow` and waits for
+  the host-side `auth.loginCompleted` event. Not signed in → no list,
+  no friendly "empty" lie, just the explicit auth prompt.
+- **Frontend: `auth-context` + `AuthChip`.** One React context
+  (`web/src/lib/auth-context.tsx`) with a visibility-aware 30s
+  `auth.status` poll and a subscription to the host's
+  `auth.loginCompleted` event, powering the whole app. Toolbar chip
+  (`web/src/components/AuthChip.tsx`) renders three states
+  (loading / signed-out → `Sign in with VRChat` button / signed-in →
+  display name + hover-reveal `Sign out`) and is the only piece of
+  chrome that ever calls `openLogin()` / `logout()`. Every other page
+  just reads `useAuth().status.authed`.
+- **Frontend: avatar thumbnails actually load now.** Removed the
+  `isLookupSupported` frontend gate that only allowed `wrld_*` prefixes
+  (`web/src/lib/thumbnails.ts`) — `avtr_*` now flows through the same
+  `useThumbnail()` hook. Avatars page uses a real `<img>` when the host
+  returns a CDN URL, and keeps the procedural cube as a fallback when
+  the lookup 404s or the user isn't authed.
+- **New IPC methods:** `auth.status`, `auth.openLoginWindow`,
+  `auth.logout`, `auth.user`, `friends.list`. A new `auth.loginCompleted`
+  event channel carries `{ok, error?, user?}` from the host to the
+  frontend when the popup resolves. Mock branches added to the dev-mode
+  IPC shim in `web/src/lib/ipc.ts` so the browser dev server works
+  without the C++ host.
+- **i18n:** new `auth.*` and `friends.*` key blocks in both `en.json`
+  and `zh-CN.json`, plus `nav.friends`. The Settings page's 597
+  VRChat registry descriptions are now localized — `Settings.tsx`
+  resolves each row's description via
+  `t('settings.vrc.keys.${key}.description', { defaultValue: entry.description })`,
+  so the C++ English descriptions in `VrcSettingsKnownKeys.inc` stay
+  canonical and `zh-CN.json` carries a full 597-entry `settings.vrc.keys`
+  subtree of terse Simplified Chinese translations with VRChat-specific
+  terminology kept consistent (模型/地图/音量/信任等级/名牌/着色器 etc.)
+  and brand names preserved as-is (VRChat, Steam, OSC, SteamVR, VRC+,
+  Discord).
+
+### Changed
+
+- **`VrcApi::performLookup` no longer short-circuits `avtr_*` with
+  `avatar-api-requires-auth`.** It now calls `/api/1/avatars/{id}` with
+  the cookie header from `AuthStore` when one exists, and treats a 401
+  as a transient error (not a negative-cache entry) so signing in
+  clears stale anonymous misses without wiping the whole cache.
+- **Sidebar:** Friends added as the second nav entry (under Dashboard),
+  using the `Users` lucide icon. Grouped under "Social" in the
+  breadcrumb.
+- **Version strings bumped to 0.2.0** across the installer wxs, MSI
+  build/install scripts, WinHTTP user-agent, `IpcBridge::HandleAppVersion`,
+  `web/package.json`, `App.tsx` shell version, Sidebar footer,
+  AboutDialog, and Settings page.
+
+### Known limits
+
+- Friend list is capped at VRChat's default 100 — pagination comes
+  later if anyone actually runs into it.
+- No favorites / world / avatar API writes yet — v0.2.0 is read-only on
+  the social side. The login infrastructure is the hard part; the rest
+  of the VRChat API surface slots in behind the same cookie header.
+- Offline friends hit a separate endpoint call (`?offline=true`) — we
+  don't union the two lists in one roundtrip, so toggling "Show offline"
+  triggers a refetch rather than a client-side filter.
+
 ## [0.1.3] — 2026-04-15
 
 Live-tail cut. v0.1.2 shipped a batch log parser — you had to hit

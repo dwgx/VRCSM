@@ -7,6 +7,7 @@ add_executable(vrcsm WIN32
     MainWindow.cpp
     WebViewHost.cpp
     IpcBridge.cpp
+    AuthLoginWindow.cpp
     StringUtil.cpp
 )
 

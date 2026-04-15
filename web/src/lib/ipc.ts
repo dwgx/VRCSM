@@ -1,8 +1,12 @@
 import type {
   AppVersion,
+  AuthStatus,
+  AuthUser,
   BundlePreview,
   DeleteResult,
   DryRunResult,
+  Friend,
+  FriendsListResult,
   IpcEnvelopeEvent,
   IpcEnvelopeRequest,
   IpcEnvelopeResponse,
@@ -496,6 +500,65 @@ class IpcClient {
           };
         });
         return { results } as unknown as TResult;
+      }
+      case "auth.status":
+        return {
+          authed: false,
+          userId: null,
+          displayName: null,
+        } satisfies AuthStatus as unknown as TResult;
+      case "auth.openLoginWindow":
+        // Browser-only dev mode has no real WebView2 popup to host the
+        // VRChat sign-in page — just acknowledge the request so the UI
+        // stops the "launching" spinner. The Friends page stays in its
+        // logged-out state because the mock `auth.status` keeps
+        // returning `authed: false`.
+        return { ok: true } as unknown as TResult;
+      case "auth.logout":
+        return { ok: true } as unknown as TResult;
+      case "auth.user":
+        return {
+          id: "usr_mock-1234-5678",
+          username: "mock_user",
+          displayName: "mock_user",
+          currentAvatarImageUrl: null,
+          currentAvatarThumbnailImageUrl: null,
+          status: "active",
+          statusDescription: "browser dev mode",
+          bio: null,
+          last_platform: "standalonewindows",
+        } satisfies AuthUser as unknown as TResult;
+      case "friends.list": {
+        // Emit a deterministic list so the Friends page shows something
+        // in browser dev mode. IDs follow VRChat's real prefix scheme.
+        const mockFriends: Friend[] = Array.from({ length: 12 }).map((_, i) => ({
+          id: `usr_mock_friend_${i.toString().padStart(3, "0")}`,
+          username: `friend_${i}`,
+          displayName: `Mock Friend ${i + 1}`,
+          currentAvatarImageUrl: null,
+          currentAvatarThumbnailImageUrl: null,
+          statusDescription: i % 3 === 0 ? "In a world" : null,
+          status: i % 4 === 0 ? "busy" : i % 4 === 1 ? "join me" : "active",
+          location: i % 3 === 0 ? "wrld_mock:12345" : "offline",
+          last_platform: i % 2 === 0 ? "standalonewindows" : "android",
+          bio: i % 5 === 0 ? "Mock bio for dev mode" : null,
+          developerType: null,
+          last_login: null,
+          last_activity: null,
+          profilePicOverride: null,
+          userIcon: null,
+          tags:
+            i % 6 === 0
+              ? ["system_trust_trusted"]
+              : i % 6 === 1
+                ? ["system_trust_known"]
+                : i % 6 === 2
+                  ? ["system_trust_basic"]
+                  : [],
+        }));
+        return {
+          friends: mockFriends,
+        } satisfies FriendsListResult as unknown as TResult;
       }
       case "settings.readAll":
         return buildMockSettingsReport() as unknown as TResult;

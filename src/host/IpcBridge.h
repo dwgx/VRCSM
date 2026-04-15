@@ -10,6 +10,10 @@ class IpcBridge
 {
 public:
     explicit IpcBridge(WebViewHost& host);
+    ~IpcBridge();
+
+    IpcBridge(const IpcBridge&) = delete;
+    IpcBridge& operator=(const IpcBridge&) = delete;
 
     void Dispatch(const std::string& jsonText);
 
@@ -33,8 +37,15 @@ private:
     nlohmann::json HandleShellPickFolder(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleShellOpenUrl(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleThumbnailsFetch(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAuthStatus(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAuthOpenLoginWindow(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAuthLogout(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAuthUser(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFriendsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsStreamStart(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsStreamStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAppFactoryReset(const nlohmann::json& params, const std::optional<std::string>& id);
 
     void PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const;
     void PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message) const;

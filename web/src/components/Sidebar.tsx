@@ -9,6 +9,7 @@ import {
   Languages,
   Check,
   Globe2,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -24,6 +25,7 @@ interface NavItem {
 
 const items: NavItem[] = [
   { to: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { to: "/friends", labelKey: "nav.friends", icon: Users },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
   { to: "/avatars", labelKey: "nav.avatars", icon: User },
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
@@ -174,7 +176,7 @@ export function Sidebar() {
       <div className="flex flex-col gap-1 border-t border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1.5 py-2">
         <LanguageMenu />
         <div className="px-2.5 pt-0.5 text-[10px] font-mono tracking-tight text-[hsl(var(--muted-foreground))]">
-          v0.1.3 · dwgx
+          v0.3.0 · dwgx
         </div>
       </div>
     </aside>
