@@ -53,13 +53,46 @@ export interface LogSettings {
   clear_cache_on_start: boolean | null;
 }
 
+export interface LogEnvironment {
+  vrchat_build: string | null;
+  store: string | null;
+  platform: string | null;
+  device_model: string | null;
+  processor: string | null;
+  system_memory: string | null;
+  operating_system: string | null;
+  gpu_name: string | null;
+  gpu_api: string | null;
+  gpu_memory: string | null;
+  xr_device: string | null;
+}
+
+export interface LogSettingsSection {
+  name: string;
+  entries: Array<[string, string]>;
+}
+
+export interface AvatarNameInfo {
+  name: string;
+  author: string | null;
+}
+
 export interface LogReport {
   log_files: string[];
   log_count: number;
+  /** Legacy cache-only fields kept for backwards compat. */
   settings: LogSettings;
+  /** Parsed `[UserInfoLogger] Environment Info:` block. */
+  environment: LogEnvironment;
+  /** Parsed `[UserInfoLogger] User Settings Info:` block — ordered by file. */
+  settings_sections: LogSettingsSection[];
+  local_user_name: string | null;
+  local_user_id: string | null;
   recent_world_ids: string[];
   recent_avatar_ids: string[];
   world_names: Record<string, string>;
+  /** avtr_* → pretty name + author pulled from output_log_*.txt pairing. */
+  avatar_names: Record<string, AvatarNameInfo>;
   world_event_count: number;
   avatar_event_count: number;
 }
@@ -135,6 +168,56 @@ export interface DeleteResult {
 export interface ProcessStatus {
   running: boolean;
   pid?: number;
+}
+
+export type LogStreamLevel = "info" | "warn" | "error";
+
+export interface LogStreamChunk {
+  line?: string;
+  message?: string;
+  text?: string;
+  level?: LogStreamLevel;
+  timestamp?: string;
+  source?: string;
+}
+
+export type VrcSettingType = "int" | "float" | "string" | "bool" | "raw";
+
+export interface VrcSettingValueSnapshot {
+  type: VrcSettingType;
+  intValue?: number;
+  floatValue?: number;
+  stringValue?: string;
+  boolValue?: boolean;
+  raw?: number[];
+}
+
+export interface VrcSettingEntry extends VrcSettingValueSnapshot {
+  encodedKey: string;
+  key: string;
+  group: string;
+  description: string;
+}
+
+export interface VrcSettingsReport {
+  entries: VrcSettingEntry[];
+  count: number;
+  /** group name → indices into entries[] */
+  groups: Record<string, number[]>;
+}
+
+export interface VrcSettingsWriteRequest {
+  encodedKey: string;
+  value: VrcSettingValueSnapshot;
+}
+
+export interface VrcSettingsWriteResult {
+  ok: boolean;
+}
+
+export interface VrcSettingsExportResult {
+  ok: boolean;
+  path: string;
 }
 
 export interface IpcEnvelopeRequest<T = unknown> {

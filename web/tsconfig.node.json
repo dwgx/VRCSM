@@ -8,8 +8,9 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "noEmit": true,
     "composite": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./node_modules/.cache/tsconfig.node",
     "types": ["node"]
   },
   "include": ["vite.config.ts"]
