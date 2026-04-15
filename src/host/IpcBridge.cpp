@@ -2,9 +2,11 @@
 
 #include "IpcBridge.h"
 
+#include "AuthLoginWindow.h"
 #include "StringUtil.h"
 #include "WebViewHost.h"
 
+#include "../core/AuthStore.h"
 #include "../core/BundleSniff.h"
 #include "../core/CacheScanner.h"
 #include "../core/JunctionUtil.h"
@@ -37,12 +39,111 @@ std::optional<std::string> ExtractId(const nlohmann::json& envelope)
 
     return envelope.at("id").get<std::string>();
 }
+
+std::optional<std::string> JsonStringField(const nlohmann::json& json, const char* key)
+{
+    if (json.contains(key) && json[key].is_string())
+    {
+        return json[key].get<std::string>();
+    }
+    return std::nullopt;
+}
+
+nlohmann::json MakeAuthSummary(const nlohmann::json& user)
+{
+    nlohmann::json out{
+        {"authed", true},
+        {"displayName", JsonStringField(user, "displayName").value_or("")},
+    };
+
+    if (const auto id = JsonStringField(user, "id"); id.has_value())
+    {
+        out["userId"] = *id;
+    }
+    else
+    {
+        out["userId"] = nullptr;
+    }
+
+    return out;
+}
+
+nlohmann::json FilterFriend(const nlohmann::json& friendJson)
+{
+    // VRCX-parity fields — we pull the same subset their UserDialog renders
+    // (trust tags, bio, last-seen timestamps, developerType, profilePicOverride)
+    // so our Friends page can match feature-by-feature. Every lookup is guarded
+    // so missing fields degrade to empty string / null rather than crashing the
+    // whole batch when one friend's record is partial.
+    nlohmann::json out{
+        {"id", JsonStringField(friendJson, "id").value_or("")},
+        {"displayName", JsonStringField(friendJson, "displayName").value_or("")},
+        {"userId", JsonStringField(friendJson, "id").value_or("")},
+        {"statusDescription", JsonStringField(friendJson, "statusDescription").value_or("")},
+        {"location", JsonStringField(friendJson, "location").value_or("")},
+        {"currentAvatarImageUrl", JsonStringField(friendJson, "currentAvatarImageUrl").value_or("")},
+        {"currentAvatarThumbnailImageUrl", JsonStringField(friendJson, "currentAvatarThumbnailImageUrl").value_or("")},
+        {"status", JsonStringField(friendJson, "status").value_or("")},
+        {"last_platform", JsonStringField(friendJson, "last_platform").value_or("")},
+        {"bio", JsonStringField(friendJson, "bio").value_or("")},
+        {"developerType", JsonStringField(friendJson, "developerType").value_or("")},
+        {"last_login", JsonStringField(friendJson, "last_login").value_or("")},
+        {"last_activity", JsonStringField(friendJson, "last_activity").value_or("")},
+        {"profilePicOverride", JsonStringField(friendJson, "profilePicOverride").value_or("")},
+        {"userIcon", JsonStringField(friendJson, "userIcon").value_or("")},
+    };
+
+    // Trust tags (`system_trust_*`) live inside the `tags` array — we only
+    // echo the tags we'll actually need on the frontend so the IPC envelope
+    // stays small. Everything else (`system_feedback_access`, language tags,
+    // etc.) is discarded at this layer.
+    nlohmann::json tags = nlohmann::json::array();
+    if (friendJson.contains("tags") && friendJson["tags"].is_array())
+    {
+        for (const auto& tag : friendJson["tags"])
+        {
+            if (!tag.is_string()) continue;
+            const auto tagStr = tag.get<std::string>();
+            if (tagStr.rfind("system_trust_", 0) == 0
+                || tagStr == "admin_moderator"
+                || tagStr == "admin_scripting_access"
+                || tagStr == "admin_avatar_access")
+            {
+                tags.push_back(tagStr);
+            }
+        }
+    }
+    out["tags"] = std::move(tags);
+
+    return out;
+}
 }
 
 IpcBridge::IpcBridge(WebViewHost& host)
     : m_host(host)
 {
+    (void)vrcsm::core::AuthStore::Instance().Load();
     RegisterHandlers();
+
+    // Spin up the VRChat process watcher now. It pushes a
+    // `process.vrcStatusChanged` event on every transition (first tick
+    // also emits so the frontend has initial state without polling).
+    // See ProcessGuard::StartWatcher for cadence details.
+    vrcsm::core::ProcessGuard::StartWatcher([this](const vrcsm::core::ProcessStatus& status)
+    {
+        nlohmann::json envelope{
+            {"event", "process.vrcStatusChanged"},
+            {"data", ToJson(status)},
+        };
+        m_host.PostMessageToWeb(envelope.dump());
+    });
+}
+
+IpcBridge::~IpcBridge()
+{
+    // StopWatcher blocks until the polling thread exits, which prevents
+    // the captured `this` from being used after destruction.
+    vrcsm::core::ProcessGuard::StopWatcher();
 }
 
 void IpcBridge::Dispatch(const std::string& jsonText)
@@ -89,6 +190,8 @@ void IpcBridge::Dispatch(const std::string& jsonText)
 
 void IpcBridge::RegisterHandlers()
 {
+    // IPC roster is now 24 methods: the original shell/cache/settings
+    // calls, plus live logs, plus the v0.2.0 auth + friends endpoints.
     m_handlers.emplace("app.version", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleAppVersion(params, id);
@@ -153,6 +256,30 @@ void IpcBridge::RegisterHandlers()
     {
         return HandleThumbnailsFetch(params, id);
     });
+    m_handlers.emplace("auth.status", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAuthStatus(params, id);
+    });
+    m_handlers.emplace("auth.openLoginWindow", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAuthOpenLoginWindow(params, id);
+    });
+    m_handlers.emplace("auth.logout", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAuthLogout(params, id);
+    });
+    m_handlers.emplace("auth.user", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAuthUser(params, id);
+    });
+    m_handlers.emplace("friends.list", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFriendsList(params, id);
+    });
+    m_handlers.emplace("avatar.details", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAvatarDetails(params, id);
+    });
     m_handlers.emplace("logs.stream.start", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleLogsStreamStart(params, id);
@@ -160,6 +287,10 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("logs.stream.stop", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleLogsStreamStop(params, id);
+    });
+    m_handlers.emplace("app.factoryReset", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAppFactoryReset(params, id);
     });
 }
 
@@ -169,7 +300,7 @@ nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::opt
     // web/package.json — the About dialog reads this, so leaving it stale
     // lies to the user.
     return nlohmann::json{
-        {"version", "0.1.3"},
+        {"version", "0.3.0"},
         {"build", std::string(__DATE__) + " " + std::string(__TIME__)}
     };
 }
@@ -510,6 +641,245 @@ nlohmann::json IpcBridge::HandleThumbnailsFetch(const nlohmann::json& params, co
         out.push_back(ToJson(r));
     }
     return nlohmann::json{{"results", std::move(out)}};
+}
+
+nlohmann::json IpcBridge::HandleAuthStatus(const nlohmann::json&, const std::optional<std::string>&)
+{
+    const auto user = vrcsm::core::VrcApi::fetchCurrentUser();
+    if (!user.has_value())
+    {
+        vrcsm::core::AuthStore::Instance().Clear();
+        return nlohmann::json{
+            {"authed", false},
+            {"displayName", nullptr},
+            {"userId", nullptr},
+        };
+    }
+
+    return MakeAuthSummary(*user);
+}
+
+nlohmann::json IpcBridge::HandleAuthOpenLoginWindow(const nlohmann::json&, const std::optional<std::string>& id)
+{
+    // Pop the VRChat login page in its own WebView2 window, let the user
+    // do the whole username+password / Steam / 2FA / captcha dance, then
+    // harvest cookies and persist via AuthStore. The login popup is
+    // self-managed — ownership is transferred to the window itself.
+    // When the window finishes (success or cancellation) it fires the
+    // completion callback which broadcasts an `auth.loginCompleted`
+    // event over the same PostMessageToWeb channel used by logs.stream.
+    auto* env = m_host.Environment();
+    if (env == nullptr)
+    {
+        PostError(id, "auth_env_unavailable", "WebView2 environment is not initialised yet");
+        return nlohmann::json{{"ok", false}};
+    }
+
+    const bool launched = vrcsm::host::AuthLoginWindow::Launch(
+        m_host.ParentHwnd(),
+        env,
+        [this](bool ok, const std::string& error)
+        {
+            nlohmann::json data{{"ok", ok}};
+            if (!ok)
+            {
+                data["error"] = error;
+            }
+            else
+            {
+                const auto user = vrcsm::core::VrcApi::fetchCurrentUser();
+                if (user.has_value())
+                {
+                    data["user"] = MakeAuthSummary(*user);
+                }
+            }
+
+            nlohmann::json envelope{
+                {"event", "auth.loginCompleted"},
+                {"data", std::move(data)},
+            };
+            m_host.PostMessageToWeb(envelope.dump());
+        });
+
+    if (!launched)
+    {
+        PostError(id, "auth_window_failed", "Failed to open login window");
+        return nlohmann::json{{"ok", false}};
+    }
+
+    // The request itself just acknowledges the popup was spawned — the
+    // actual success/failure arrives asynchronously as the event above.
+    return nlohmann::json{{"ok", true}};
+}
+
+nlohmann::json IpcBridge::HandleAuthLogout(const nlohmann::json&, const std::optional<std::string>&)
+{
+    vrcsm::core::AuthStore::Instance().Clear();
+    // Also wipe the WebView2 cookie jar so the next login popup doesn't
+    // silently rehydrate the session from stale browser state.
+    m_host.ClearVrcCookies();
+    return nlohmann::json{{"ok", true}};
+}
+
+nlohmann::json IpcBridge::HandleAuthUser(const nlohmann::json&, const std::optional<std::string>&)
+{
+    const auto user = vrcsm::core::VrcApi::fetchCurrentUser();
+    if (!user.has_value())
+    {
+        vrcsm::core::AuthStore::Instance().Clear();
+        return nlohmann::json{
+            {"authed", false},
+            {"user", nullptr},
+        };
+    }
+
+    return nlohmann::json{
+        {"authed", true},
+        {"user", *user},
+    };
+}
+
+nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const bool offline = params.contains("offline") && params["offline"].is_boolean()
+        ? params["offline"].get<bool>()
+        : false;
+
+    const auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
+    if (!currentUser.has_value())
+    {
+        vrcsm::core::AuthStore::Instance().Clear();
+        return nlohmann::json{{"friends", nlohmann::json::array()}};
+    }
+
+    const auto friends = vrcsm::core::VrcApi::fetchFriends(offline);
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& item : friends)
+    {
+        out.push_back(FilterFriend(item));
+    }
+
+    return nlohmann::json{{"friends", std::move(out)}};
+}
+
+nlohmann::json IpcBridge::HandleAppFactoryReset(const nlohmann::json&, const std::optional<std::string>&)
+{
+    // Factory reset — wipe everything VRCSM owns under %LocalAppData%\VRCSM,
+    // EXCEPT the `WebView2/` user data folder which is held open by the
+    // current WebView2 process and would fail mid-delete. That folder is
+    // the browser's disk store (cache/service workers) — we flush the
+    // cookie jar in-process instead so the session state matches the
+    // "sign out + wipe cache" user expectation.
+    //
+    // What gets wiped:
+    //   session.dat       → AuthStore::Clear() removes + wipes in-memory
+    //   thumb-cache.json  → VrcApi's on-disk thumbnail cache
+    //   logs/*            → spdlog rolling files
+    //   (anything else)   → future-proof — anything new we ever drop
+    //                        under the VRCSM data dir gets reset too
+    //
+    // What does NOT get wiped:
+    //   WebView2/         → kept, held open by the running process
+    //   VRChat's own data → scope is VRCSM's own state, never touch VRC
+    //
+    // The response lists the paths we removed + the ones we skipped so
+    // the frontend toast can tell the user what actually happened.
+    nlohmann::json removed = nlohmann::json::array();
+    nlohmann::json skipped = nlohmann::json::array();
+
+    // Step 1 — in-memory + session.dat.
+    vrcsm::core::AuthStore::Instance().Clear();
+    removed.push_back("session.dat");
+
+    // Step 2 — the persistent cookie jar of the in-process WebView2.
+    // This is the same call the Logout handler uses; running it twice
+    // is safe (idempotent) so we always include it in a factory reset.
+    m_host.ClearVrcCookies();
+
+    // Step 3 — walk %LocalAppData%\VRCSM and remove everything that
+    // isn't WebView2/. Single-level iteration is enough: AuthStore and
+    // VrcApi both write directly into the root, and logs/ is a single
+    // subdirectory.
+    wchar_t buffer[MAX_PATH]{};
+    DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer, MAX_PATH);
+    if (length == 0 || length >= MAX_PATH)
+    {
+        return nlohmann::json{
+            {"ok", false},
+            {"error", "LOCALAPPDATA is not set"},
+            {"removed", std::move(removed)},
+            {"skipped", std::move(skipped)},
+        };
+    }
+
+    const std::filesystem::path dataRoot = std::filesystem::path(buffer) / L"VRCSM";
+    std::error_code ec;
+    if (!std::filesystem::exists(dataRoot, ec))
+    {
+        // Nothing to reset — still report success, caller expects an
+        // idempotent operation.
+        return nlohmann::json{
+            {"ok", true},
+            {"removed", std::move(removed)},
+            {"skipped", std::move(skipped)},
+        };
+    }
+
+    for (const auto& child : std::filesystem::directory_iterator(dataRoot, ec))
+    {
+        if (ec) break;
+        const auto name = child.path().filename().wstring();
+        if (name == L"WebView2")
+        {
+            skipped.push_back(WideToUtf8(name));
+            continue;
+        }
+
+        std::error_code delEc;
+        if (child.is_directory(delEc))
+        {
+            std::filesystem::remove_all(child.path(), delEc);
+        }
+        else
+        {
+            std::filesystem::remove(child.path(), delEc);
+        }
+        if (delEc)
+        {
+            // Best-effort — flag what we couldn't delete but keep going.
+            skipped.push_back(fmt::format("{} ({})", WideToUtf8(name), delEc.message()));
+        }
+        else
+        {
+            removed.push_back(WideToUtf8(name));
+        }
+    }
+
+    return nlohmann::json{
+        {"ok", true},
+        {"removed", std::move(removed)},
+        {"skipped", std::move(skipped)},
+    };
+}
+
+nlohmann::json IpcBridge::HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto idField = JsonStringField(params, "id");
+    if (!idField.has_value() || idField->empty())
+    {
+        return nlohmann::json{{"details", nullptr}};
+    }
+
+    const auto details = vrcsm::core::VrcApi::fetchAvatarDetails(*idField);
+    if (!details.has_value())
+    {
+        return nlohmann::json{{"details", nullptr}};
+    }
+
+    // Pass the whole payload through — the frontend decides which fields
+    // to render. This keeps the host out of the business of guessing
+    // which keys matter for future UI iterations.
+    return nlohmann::json{{"details", *details}};
 }
 
 void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const

@@ -1,5 +1,6 @@
 add_library(vrcsm_core STATIC
     Common.cpp
+    AuthStore.cpp
     PathProbe.cpp
     CacheScanner.cpp
     BundleSniff.cpp
@@ -38,6 +39,7 @@ if(MSVC)
     target_link_libraries(vrcsm_core PUBLIC
         Shlwapi
         Advapi32
+        Crypt32
         Ole32
         Shell32
         Version

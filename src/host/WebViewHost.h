@@ -15,6 +15,16 @@ public:
     void PostMessageToWeb(const std::string& json) const;
     HWND ParentHwnd() const noexcept { return m_parent; }
 
+    // The main WebView2 environment — shared with AuthLoginWindow so the
+    // login popup inherits the same user-data folder / cookie jar and any
+    // credentials the user enters persist back to the main WebView.
+    ICoreWebView2Environment* Environment() const noexcept { return m_environment.get(); }
+
+    // Erase every VRChat-related cookie from the shared profile. Called
+    // on explicit sign-out so a subsequent login popup starts from a
+    // clean state instead of silently reusing a stale session.
+    void ClearVrcCookies() const;
+
 private:
     std::filesystem::path GetLocalAppDataPath() const;
     std::filesystem::path GetExecutableDirectory() const;

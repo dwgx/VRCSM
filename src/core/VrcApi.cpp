@@ -1,5 +1,6 @@
 #include "VrcApi.h"
 
+#include "AuthStore.h"
 #include "Common.h"
 
 #include <chrono>
@@ -19,7 +20,7 @@
 #pragma comment(lib, "Winhttp.lib")
 
 // ─────────────────────────────────────────────────────────────────────────
-// VrcApi — anonymous read-only HTTP client against api.vrchat.cloud.
+// VrcApi — read-mostly HTTP client against api.vrchat.cloud.
 //
 // Two dumb things took longer to figure out than they should have:
 //
@@ -29,15 +30,11 @@
 //      when `dump_thumbnails` (a cold C++ harness) started getting 403s.
 //      Fix: always send our own UA on every request. See kUserAgentW below.
 //
-//   2. /api/1/avatars/{id} refuses all anonymous callers with 401 — not
-//      just private ones, *every* avatar. The public API key helps for
-//      worlds but does nothing for avatars. Both VRCX and vrchatapi-python
-//      require a real session cookie for avatar GETs, so we do too (read:
-//      we don't, yet — we short-circuit the avatar branch in performLookup
-//      and let the frontend fall back to a procedural cube).
-//
-// When v0.1.3 lands real auth, most of the `avatar-api-requires-auth`
-// guard rail below becomes dead code.
+//   2. /api/1/avatars/{id} refuses anonymous callers with 401 while worlds
+//      remain happily public. That means the thumbnail path has to be
+//      "best effort": still anonymous for worlds, but automatically carry
+//      the saved browser session once the user logs in so avatar lookups
+//      start working without the frontend doing anything clever.
 // ─────────────────────────────────────────────────────────────────────────
 
 namespace vrcsm::core
@@ -72,7 +69,7 @@ constexpr const char* kApiKey = "JlE5Jldo5Jibnk5O5hTx6XVqsJu4WJ26";
 // VRChat's API rejects requests without a properly formatted UA — the
 // format is `<tool>/<version> <contact>`. The contact segment just needs
 // to parse as email-ish; it's how VRChat can reach out if a tool misbehaves.
-constexpr const wchar_t* kUserAgentW = L"VRCSM/0.1.3 dwgx@vrcsm.local";
+constexpr const wchar_t* kUserAgentW = L"VRCSM/0.2.0 dwgx@vrcsm.local";
 
 constexpr const wchar_t* kApiHostW = L"api.vrchat.cloud";
 
@@ -202,9 +199,185 @@ struct HttpResponse
     long status{0};
     std::string body;
     std::optional<std::string> error;
+    std::vector<std::string> setCookies;
 };
 
-HttpResponse httpGet(const std::wstring& host, const std::wstring& pathAndQuery)
+std::string percentEncode(std::string_view input)
+{
+    constexpr char kHex[] = "0123456789ABCDEF";
+
+    std::string out;
+    out.reserve(input.size());
+    for (unsigned char ch : input)
+    {
+        if ((ch >= 'A' && ch <= 'Z')
+            || (ch >= 'a' && ch <= 'z')
+            || (ch >= '0' && ch <= '9')
+            || ch == '-'
+            || ch == '_'
+            || ch == '.'
+            || ch == '~')
+        {
+            out.push_back(static_cast<char>(ch));
+            continue;
+        }
+
+        out.push_back('%');
+        out.push_back(kHex[(ch >> 4) & 0x0F]);
+        out.push_back(kHex[ch & 0x0F]);
+    }
+    return out;
+}
+
+std::string base64Encode(std::string_view input)
+{
+    constexpr char kTable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    std::string out;
+    out.reserve(((input.size() + 2) / 3) * 4);
+
+    std::size_t index = 0;
+    while (index + 3 <= input.size())
+    {
+        const auto a = static_cast<unsigned char>(input[index++]);
+        const auto b = static_cast<unsigned char>(input[index++]);
+        const auto c = static_cast<unsigned char>(input[index++]);
+
+        out.push_back(kTable[(a >> 2) & 0x3F]);
+        out.push_back(kTable[((a & 0x03) << 4) | ((b >> 4) & 0x0F)]);
+        out.push_back(kTable[((b & 0x0F) << 2) | ((c >> 6) & 0x03)]);
+        out.push_back(kTable[c & 0x3F]);
+    }
+
+    const std::size_t remaining = input.size() - index;
+    if (remaining == 1)
+    {
+        const auto a = static_cast<unsigned char>(input[index]);
+        out.push_back(kTable[(a >> 2) & 0x3F]);
+        out.push_back(kTable[(a & 0x03) << 4]);
+        out.push_back('=');
+        out.push_back('=');
+    }
+    else if (remaining == 2)
+    {
+        const auto a = static_cast<unsigned char>(input[index]);
+        const auto b = static_cast<unsigned char>(input[index + 1]);
+        out.push_back(kTable[(a >> 2) & 0x3F]);
+        out.push_back(kTable[((a & 0x03) << 4) | ((b >> 4) & 0x0F)]);
+        out.push_back(kTable[(b & 0x0F) << 2]);
+        out.push_back('=');
+    }
+
+    return out;
+}
+
+std::string trimAscii(std::string value)
+{
+    const auto first = value.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos)
+    {
+        return {};
+    }
+
+    const auto last = value.find_last_not_of(" \t\r\n");
+    return value.substr(first, last - first + 1);
+}
+
+std::optional<std::string> extractCookieValue(
+    const std::vector<std::string>& setCookies,
+    std::string_view cookieName)
+{
+    for (const auto& rawCookie : setCookies)
+    {
+        const auto pairEnd = rawCookie.find(';');
+        const std::string pair = rawCookie.substr(0, pairEnd);
+        const auto equals = pair.find('=');
+        if (equals == std::string::npos)
+        {
+            continue;
+        }
+
+        if (trimAscii(pair.substr(0, equals)) != cookieName)
+        {
+            continue;
+        }
+
+        return pair.substr(equals + 1);
+    }
+
+    return std::nullopt;
+}
+
+std::optional<std::string> jsonStringField(const nlohmann::json& doc, const char* key)
+{
+    if (const auto it = doc.find(key); it != doc.end() && it->is_string())
+    {
+        return it->get<std::string>();
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> extractApiErrorMessage(const std::string& body)
+{
+    if (body.empty())
+    {
+        return std::nullopt;
+    }
+
+    try
+    {
+        const auto doc = nlohmann::json::parse(body);
+        if (const auto message = jsonStringField(doc, "message"); message.has_value())
+        {
+            return message;
+        }
+        if (const auto error = jsonStringField(doc, "error"); error.has_value())
+        {
+            return error;
+        }
+        if (const auto errorIt = doc.find("error");
+            errorIt != doc.end() && errorIt->is_object())
+        {
+            if (const auto message = jsonStringField(*errorIt, "message"); message.has_value())
+            {
+                return message;
+            }
+        }
+    }
+    catch (...)
+    {
+    }
+
+    return std::nullopt;
+}
+
+std::string describeHttpFailure(const HttpResponse& response, std::string_view label)
+{
+    if (response.error.has_value())
+    {
+        return *response.error;
+    }
+
+    if (const auto message = extractApiErrorMessage(response.body); message.has_value())
+    {
+        return *message;
+    }
+
+    if (response.status > 0)
+    {
+        return fmt::format("{} returned HTTP {}", label, response.status);
+    }
+
+    return std::string(label);
+}
+
+HttpResponse httpRequest(
+    const std::wstring& method,
+    const std::wstring& host,
+    const std::wstring& pathAndQuery,
+    const std::vector<std::pair<std::wstring, std::wstring>>& headers = {},
+    const std::string& bodyUtf8 = {},
+    bool captureSetCookie = false)
 {
     HttpResponse result;
 
@@ -233,7 +406,7 @@ HttpResponse httpGet(const std::wstring& host, const std::wstring& pathAndQuery)
 
     HINTERNET hRequest = WinHttpOpenRequest(
         hConnect,
-        L"GET",
+        method.c_str(),
         pathAndQuery.c_str(),
         nullptr,
         WINHTTP_NO_REFERER,
@@ -247,15 +420,30 @@ HttpResponse httpGet(const std::wstring& host, const std::wstring& pathAndQuery)
         return result;
     }
 
-    const std::wstring headers = L"Accept: application/json\r\n";
+    std::wstring headerBlock = L"Accept: application/json\r\n";
+    for (const auto& [name, value] : headers)
+    {
+        headerBlock += name;
+        headerBlock += L": ";
+        headerBlock += value;
+        headerBlock += L"\r\n";
+    }
+
+    LPVOID body = WINHTTP_NO_REQUEST_DATA;
+    DWORD bodySize = 0;
+    if (!bodyUtf8.empty())
+    {
+        body = const_cast<char*>(bodyUtf8.data());
+        bodySize = static_cast<DWORD>(bodyUtf8.size());
+    }
 
     BOOL ok = WinHttpSendRequest(
         hRequest,
-        headers.c_str(),
-        static_cast<DWORD>(headers.size()),
-        WINHTTP_NO_REQUEST_DATA,
-        0,
-        0,
+        headerBlock.c_str(),
+        static_cast<DWORD>(headerBlock.size()),
+        body,
+        bodySize,
+        bodySize,
         0);
     if (ok) ok = WinHttpReceiveResponse(hRequest, nullptr);
     if (!ok)
@@ -278,6 +466,59 @@ HttpResponse httpGet(const std::wstring& host, const std::wstring& pathAndQuery)
         WINHTTP_NO_HEADER_INDEX);
     result.status = static_cast<long>(status);
 
+    if (captureSetCookie)
+    {
+        for (DWORD index = 0;; ++index)
+        {
+            DWORD bufferSize = 0;
+            DWORD headerIndex = index;
+            if (!WinHttpQueryHeaders(
+                    hRequest,
+                    WINHTTP_QUERY_SET_COOKIE,
+                    WINHTTP_HEADER_NAME_BY_INDEX,
+                    WINHTTP_NO_OUTPUT_BUFFER,
+                    &bufferSize,
+                    &headerIndex))
+            {
+                const DWORD error = GetLastError();
+                if (error == ERROR_WINHTTP_HEADER_NOT_FOUND)
+                {
+                    break;
+                }
+                if (error != ERROR_INSUFFICIENT_BUFFER)
+                {
+                    result.error = fmt::format("WinHttpQueryHeaders(Set-Cookie) failed ({})", error);
+                    break;
+                }
+            }
+
+            std::wstring rawCookie(static_cast<std::size_t>(bufferSize / sizeof(wchar_t)), L'\0');
+            headerIndex = index;
+            if (!WinHttpQueryHeaders(
+                    hRequest,
+                    WINHTTP_QUERY_SET_COOKIE,
+                    WINHTTP_HEADER_NAME_BY_INDEX,
+                    rawCookie.data(),
+                    &bufferSize,
+                    &headerIndex))
+            {
+                const DWORD error = GetLastError();
+                if (error == ERROR_WINHTTP_HEADER_NOT_FOUND)
+                {
+                    break;
+                }
+                result.error = fmt::format("WinHttpQueryHeaders(Set-Cookie) failed ({})", error);
+                break;
+            }
+
+            if (!rawCookie.empty() && rawCookie.back() == L'\0')
+            {
+                rawCookie.pop_back();
+            }
+            result.setCookies.push_back(toUtf8(rawCookie));
+        }
+    }
+
     // Drain body regardless of status — useful for error messages.
     DWORD available = 0;
     while (WinHttpQueryDataAvailable(hRequest, &available) && available > 0)
@@ -296,6 +537,19 @@ HttpResponse httpGet(const std::wstring& host, const std::wstring& pathAndQuery)
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
     return result;
+}
+
+HttpResponse httpGet(
+    const std::wstring& host,
+    const std::wstring& pathAndQuery,
+    const std::optional<std::string>& cookieHeader = std::nullopt)
+{
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    if (cookieHeader.has_value() && !cookieHeader->empty())
+    {
+        headers.emplace_back(L"Cookie", toWide(*cookieHeader));
+    }
+    return httpRequest(L"GET", host, pathAndQuery, headers);
 }
 
 std::optional<std::string> extractThumbnailUrl(const std::string& jsonBody)
@@ -321,6 +575,21 @@ std::optional<std::string> extractThumbnailUrl(const std::string& jsonBody)
         // Not JSON, or not the shape we expected — treat as no-op.
     }
     return std::nullopt;
+}
+
+nlohmann::json parseJsonBody(const HttpResponse& response, std::string_view endpointLabel)
+{
+    try
+    {
+        return nlohmann::json::parse(response.body);
+    }
+    catch (const std::exception& ex)
+    {
+        throw std::runtime_error(fmt::format(
+            "{} returned invalid JSON: {}",
+            endpointLabel,
+            ex.what()));
+    }
 }
 
 enum class IdKind
@@ -364,25 +633,6 @@ ThumbnailResult performLookup(const std::string& id)
         return out;
     }
 
-    // VRChat's `/api/1/avatars/{id}` endpoint refuses all anonymous
-    // requests with HTTP 401 — even when given the public API key and even
-    // when the target avatar is public. This is documented-but-undocumented
-    // behaviour: the community API wrappers (VRCX, VRChatAPI-Wrapper)
-    // require a real user session for any avatar lookup. Worlds are the
-    // outlier — `/api/1/worlds/{id}` is genuinely anonymous.
-    //
-    // Rather than silently hammering the API on every page open and
-    // polluting the disk cache with useless not_found entries, we
-    // short-circuit the avatar branch here. The frontend knows to fall
-    // back to a procedural preview. If/when VRCSM grows a VRChat login
-    // flow, this guard comes out and `performLookup` learns to carry the
-    // session cookie.
-    if (kind == IdKind::Avatar)
-    {
-        out.error = "avatar-api-requires-auth";
-        return out;
-    }
-
     // Cache lookup first — under the network mutex so we also serialise
     // writes through `cacheState`.
     std::lock_guard<std::mutex> lock(networkMutex());
@@ -412,7 +662,11 @@ ThumbnailResult performLookup(const std::string& id)
 
     // Network fetch outside the cache-mutex.
     const std::wstring path = buildPath(kind, id);
-    HttpResponse resp = httpGet(kApiHostW, path);
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    HttpResponse resp = httpGet(
+        kApiHostW,
+        path,
+        cookieHeader.empty() ? std::nullopt : std::make_optional(cookieHeader));
 
     std::optional<std::string> url;
     bool notFound = false;
@@ -429,9 +683,17 @@ ThumbnailResult performLookup(const std::string& id)
             notFound = true; // 200 OK but no thumbnailImageUrl field
         }
     }
-    else if (resp.status == 404 || resp.status == 401)
+    else if (resp.status == 404)
     {
         notFound = true; // genuine "this is private / doesn't exist"
+    }
+    else if (resp.status == 401)
+    {
+        // A 401 no longer means "missing forever" once auth exists. Don't
+        // negative-cache it or a stale anonymous miss will keep hiding a
+        // perfectly valid avatar after login.
+        out.error = "unauthorized";
+        return out;
     }
     else
     {
@@ -468,6 +730,120 @@ std::vector<ThumbnailResult> VrcApi::fetchThumbnails(const std::vector<std::stri
     for (const auto& id : ids)
     {
         out.push_back(performLookup(id));
+    }
+    return out;
+}
+
+std::optional<nlohmann::json> VrcApi::fetchCurrentUser()
+{
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return std::nullopt;
+    }
+
+    // `/auth/user` is the cheapest "is this cookie still valid?" probe.
+    // Keep the contract narrow: 401 becomes nullopt so callers can sign
+    // out; everything else surfaces as an actual failure.
+    const auto response = httpGet(
+        kApiHostW,
+        L"/api/1/auth/user",
+        std::make_optional(cookieHeader));
+    if (response.error.has_value())
+    {
+        throw std::runtime_error(*response.error);
+    }
+    if (response.status == 401)
+    {
+        return std::nullopt;
+    }
+    if (response.status != 200)
+    {
+        throw std::runtime_error(fmt::format("/auth/user returned HTTP {}", response.status));
+    }
+
+    return parseJsonBody(response, "/auth/user");
+}
+
+std::optional<nlohmann::json> VrcApi::fetchAvatarDetails(const std::string& avatarId)
+{
+    if (avatarId.empty())
+    {
+        return std::nullopt;
+    }
+
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (cookieHeader.empty())
+    {
+        // Anonymous callers get 401 here; bail out early so we don't
+        // even touch the network.
+        return std::nullopt;
+    }
+
+    const std::wstring path = toWide(fmt::format("/api/1/avatars/{}", avatarId));
+    const auto response = httpGet(
+        kApiHostW,
+        path,
+        std::make_optional(cookieHeader));
+    if (response.error.has_value())
+    {
+        throw std::runtime_error(*response.error);
+    }
+    if (response.status == 401 || response.status == 404)
+    {
+        // 401 — cookie stale or avatar private to someone else.
+        // 404 — the avatar was deleted upstream. Both are
+        // "nothing to show", not "blow up the inspector".
+        return std::nullopt;
+    }
+    if (response.status != 200)
+    {
+        throw std::runtime_error(fmt::format("/avatars/{} returned HTTP {}", avatarId, response.status));
+    }
+
+    return parseJsonBody(response, "/avatars/{id}");
+}
+
+std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
+{
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return {};
+    }
+
+    // v0.2.0 keeps this intentionally boring: one page, 100 rows, enough
+    // for the first frontend slice without inventing pagination state.
+    const auto response = httpGet(
+        kApiHostW,
+        toWide(fmt::format(
+            "/api/1/auth/user/friends?offline={}&n=100",
+            offline ? "true" : "false")),
+        std::make_optional(cookieHeader));
+    if (response.error.has_value())
+    {
+        throw std::runtime_error(*response.error);
+    }
+    if (response.status == 401)
+    {
+        return {};
+    }
+    if (response.status != 200)
+    {
+        throw std::runtime_error(fmt::format("/auth/user/friends returned HTTP {}", response.status));
+    }
+
+    const auto doc = parseJsonBody(response, "/auth/user/friends");
+    if (!doc.is_array())
+    {
+        throw std::runtime_error("/auth/user/friends returned a non-array payload");
+    }
+
+    std::vector<nlohmann::json> out;
+    out.reserve(doc.size());
+    for (const auto& item : doc)
+    {
+        out.push_back(item);
     }
     return out;
 }
