@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Table,
@@ -23,36 +20,126 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { FileCode2, FolderTree, Search } from "lucide-react";
 import { ipc } from "@/lib/ipc";
-import { formatDate } from "@/lib/utils";
+import { useReport } from "@/lib/report-context";
+import { formatBytes, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
-import type { BundleEntry, BundlePreview, Report } from "@/lib/types";
+import type { BundleEntry, BundlePreview } from "@/lib/types";
+
+/**
+ * Parse the key=value lines VRChat stores inside `__info`. The file is
+ * a plain-text manifest (Unity's cache entry metadata), so a simple
+ * split handles it without pulling in a real parser.
+ */
+function parseInfoText(infoText: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const rawLine of infoText.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const eq = line.indexOf("=");
+    const colon = line.indexOf(":");
+    const sep =
+      eq >= 0 && (colon < 0 || eq < colon) ? eq : colon >= 0 ? colon : -1;
+    if (sep <= 0) continue;
+    const key = line.slice(0, sep).trim();
+    const value = line.slice(sep + 1).trim();
+    if (key && value) out[key] = value;
+  }
+  return out;
+}
+
+interface TreeNode {
+  name: string;
+  children: Map<string, TreeNode>;
+  isFile: boolean;
+}
+
+function buildTree(paths: string[]): TreeNode {
+  const root: TreeNode = {
+    name: "",
+    children: new Map(),
+    isFile: false,
+  };
+  for (const p of paths) {
+    const parts = p.split(/[\\/]/).filter(Boolean);
+    let cur = root;
+    parts.forEach((part, idx) => {
+      let child = cur.children.get(part);
+      if (!child) {
+        child = {
+          name: part,
+          children: new Map(),
+          isFile: idx === parts.length - 1,
+        };
+        cur.children.set(part, child);
+      }
+      cur = child;
+    });
+  }
+  return root;
+}
+
+function TreeView({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
+  const sorted = useMemo(
+    () =>
+      [...node.children.values()].sort((a, b) => {
+        if (a.isFile !== b.isFile) return a.isFile ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      }),
+    [node],
+  );
+  return (
+    <ul className="flex flex-col">
+      {sorted.map((child) => (
+        <li key={child.name} className="flex flex-col">
+          <div
+            className="flex items-center gap-1.5 py-0.5 text-[11px]"
+            style={{ paddingLeft: `${depth * 12 + 4}px` }}
+          >
+            {child.isFile ? (
+              <FileCode2 className="size-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+            ) : (
+              <FolderTree className="size-3 shrink-0 text-[hsl(var(--primary))]" />
+            )}
+            <span
+              className={
+                child.isFile
+                  ? "font-mono text-[hsl(var(--foreground))]"
+                  : "font-mono text-[hsl(var(--muted-foreground))]"
+              }
+            >
+              {child.name}
+            </span>
+          </div>
+          {child.children.size > 0 ? (
+            <TreeView node={child} depth={depth + 1} />
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Bundles() {
-  const [report, setReport] = useState<Report | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
+  const { report, loading, refresh } = useReport();
   const [filter, setFilter] = useState("");
-  const [preview, setPreview] = useState<{ entry: BundleEntry; data: BundlePreview } | null>(null);
+  const [preview, setPreview] = useState<{
+    entry: BundleEntry;
+    data: BundlePreview;
+  } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    ipc
-      .scan()
-      .then((r) => {
-        if (alive) setReport(r);
-      })
-      .catch((e: unknown) => {
-        const msg = e instanceof Error ? e.message : String(e);
-        toast.error(`Scan failed: ${msg}`);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  // "Delete" is a two-phase flow: dry-run resolves the real filesystem
+  // targets, we hand the target list to a confirm dialog, then the user
+  // explicitly ok's the destructive call. Keeping the plan in state lets
+  // the dialog show exactly what will be removed.
+  const [deleteTarget, setDeleteTarget] = useState<{
+    entry: BundleEntry;
+    targets: string[];
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const filtered = useMemo(() => {
     if (!report) return [];
@@ -63,137 +150,366 @@ function Bundles() {
     );
   }, [report, filter]);
 
+  const infoFields = useMemo(
+    () => (preview ? parseInfoText(preview.data.infoText) : {}),
+    [preview],
+  );
+  const infoFieldList = useMemo(
+    () => Object.entries(infoFields).slice(0, 24),
+    [infoFields],
+  );
+  const tree = useMemo(
+    () => (preview ? buildTree(preview.data.fileTree) : null),
+    [preview],
+  );
+
   const openPreview = async (entry: BundleEntry) => {
     setPreviewLoading(true);
     try {
-      const data = await ipc.call<{ entry: string }, BundlePreview>("bundle.preview", {
-        entry: entry.entry,
-      });
+      const data = await ipc.call<{ entry: string }, BundlePreview>(
+        "bundle.preview",
+        { entry: entry.path },
+      );
       setPreview({ entry, data });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(`Preview failed: ${msg}`);
+      toast.error(t("bundles.previewFailed", { error: msg }));
     } finally {
       setPreviewLoading(false);
     }
   };
 
-  const dryRunDelete = async (entry: BundleEntry) => {
+  // Step 1: user clicks Delete → we call delete.dryRun to find the real
+  // on-disk targets without touching anything yet, then open the confirm
+  // dialog. Dry-run failures are usually "preserved root file" type
+  // guardrails in SafeDelete.cpp, so surface them as a toast instead of
+  // opening an empty dialog.
+  const beginDelete = async (entry: BundleEntry) => {
     try {
       const res = await ipc.call<
         { category: string; entry: string },
         { targets: string[] }
-      >("delete.dryRun", { category: "cache_windows_player", entry: entry.entry });
-      toast.success(`Dry run: ${res.targets.length} target(s) would be removed`);
+      >("delete.dryRun", {
+        category: "cache_windows_player",
+        entry: entry.entry,
+      });
+      if (!res.targets.length) {
+        toast.error(t("bundles.deleteNothingToDo"));
+        return;
+      }
+      setDeleteTarget({ entry, targets: res.targets });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(`Dry run failed: ${msg}`);
+      toast.error(t("bundles.dryRunFailed", { error: msg }));
+    }
+  };
+
+  // Step 2: user confirms in the dialog → call delete.execute with the
+  // exact target list we showed them. We intentionally pass `targets`
+  // back rather than re-resolving via {category, entry} so there's no
+  // chance a race-modified directory silently adds files.
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await ipc.call<
+        { targets: string[] },
+        { deleted?: number; error?: { code: string; message: string } }
+      >("delete.execute", { targets: deleteTarget.targets });
+      if (res.error) {
+        throw new Error(`${res.error.code}: ${res.error.message}`);
+      }
+      toast.success(
+        t("bundles.deleteSucceeded", {
+          entry: deleteTarget.entry.entry.slice(0, 12),
+          count: res.deleted ?? 0,
+        }),
+      );
+      setDeleteTarget(null);
+      refresh();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(t("bundles.deleteFailed", { error: msg }));
+    } finally {
+      setDeleting(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Bundles</h1>
-        <p className="text-sm text-muted-foreground">
-          UnityFS asset bundles cached by VRChat.
-        </p>
+    <div className="flex flex-col gap-4 animate-fade-in">
+      <header className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[22px] font-semibold leading-none tracking-tight">
+            {t("bundles.title")}
+          </h1>
+          <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("bundles.subtitle")}
+          </p>
+        </div>
       </header>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
-          <div>
-            <CardTitle>Cache-WindowsPlayer</CardTitle>
-            <CardDescription>
-              {report ? `${report.cache_windows_player.entry_count} entries` : "Loading…"}
-            </CardDescription>
+      <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
+        <div className="unity-panel-header flex items-center justify-between gap-3">
+          <div className="flex items-baseline gap-2">
+            <span>{t("bundles.cardTitle")}</span>
+            <span className="font-mono text-[10px] normal-case tracking-normal">
+              {report
+                ? t("bundles.entryCount", {
+                    count: report.cache_windows_player.entry_count,
+                  })
+                : t("common.loading")}
+            </span>
           </div>
-          <input
-            type="text"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter by hash…"
-            className="h-9 w-64 rounded-md border border-border/60 bg-background/50 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </CardHeader>
-        <CardContent className="pt-0">
-          {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              Scanning cache…
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Entry hash</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Files</TableHead>
-                  <TableHead>Latest mtime</TableHead>
-                  <TableHead>Format</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+          <div className="relative w-64">
+            <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+            <Input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder={t("bundles.filterPlaceholder")}
+              className="h-7 pl-7 text-[12px] normal-case tracking-normal"
+            />
+          </div>
+        </div>
+
+        {loading && !report ? (
+          <div className="py-10 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("bundles.scanning")}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("bundles.colEntry")}</TableHead>
+                <TableHead>{t("bundles.colSize")}</TableHead>
+                <TableHead>{t("bundles.colFiles")}</TableHead>
+                <TableHead>{t("bundles.colMtime")}</TableHead>
+                <TableHead>{t("bundles.colFormat")}</TableHead>
+                <TableHead className="text-right">
+                  {t("bundles.colActions")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((entry) => (
+                <TableRow key={entry.entry}>
+                  <TableCell className="font-mono text-[11px]">
+                    {entry.entry.slice(0, 16)}…
+                  </TableCell>
+                  <TableCell className="text-[11px]">
+                    {entry.bytes_human}
+                  </TableCell>
+                  <TableCell className="text-[11px]">
+                    {entry.file_count}
+                  </TableCell>
+                  <TableCell className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
+                    {formatDate(entry.latest_mtime)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {entry.bundle_format || "unknown"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="space-x-1.5 text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openPreview(entry)}
+                      disabled={previewLoading}
+                    >
+                      {t("bundles.preview")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => beginDelete(entry)}
+                    >
+                      {t("bundles.delete")}
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((entry) => (
-                  <TableRow key={entry.entry}>
-                    <TableCell className="font-mono text-xs">{entry.entry}</TableCell>
-                    <TableCell>{entry.bytes_human}</TableCell>
-                    <TableCell>{entry.file_count}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDate(entry.latest_mtime)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{entry.bundle_format || "unknown"}</Badge>
-                    </TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openPreview(entry)}
-                        disabled={previewLoading}
-                      >
-                        Preview
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => dryRunDelete(entry)}
-                      >
-                        Delete (dry-run)
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                      No entries match the filter.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+              ))}
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="py-8 text-center text-[12px] text-[hsl(var(--muted-foreground))]"
+                  >
+                    {t("bundles.noMatch")}
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        )}
       </Card>
 
-      <Dialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
-        <DialogContent className="max-w-2xl">
+      <Dialog
+        open={preview !== null}
+        onOpenChange={(open) => !open && setPreview(null)}
+      >
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Bundle preview</DialogTitle>
-            <DialogDescription className="font-mono text-xs">
+            <DialogTitle>{t("bundles.previewTitle")}</DialogTitle>
+            <DialogDescription className="font-mono text-[11px]">
               {preview?.entry.entry}
             </DialogDescription>
           </DialogHeader>
           {preview ? (
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">magic: {preview.data.magic}</Badge>
-                <Badge variant="outline">{preview.entry.bundle_format}</Badge>
+              {/* Format badges — magic + sniffer classification */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="tonal">
+                  {preview.entry.bundle_format || "unknown"}
+                </Badge>
+                <Badge variant="outline">
+                  magic: {preview.data.magic || "—"}
+                </Badge>
+                <Badge variant="secondary">
+                  {formatBytes(preview.entry.bytes)}
+                </Badge>
+                <Badge variant="secondary">
+                  {preview.entry.file_count} files
+                </Badge>
+                {preview.entry.latest_mtime ? (
+                  <Badge variant="secondary">
+                    {formatDate(preview.entry.latest_mtime)}
+                  </Badge>
+                ) : null}
               </div>
-              <pre className="max-h-72 overflow-auto rounded-md border border-border/60 bg-background/40 p-3 text-xs">
-                {preview.data.infoText}
-              </pre>
+
+              {/* Structured __info fields */}
+              {infoFieldList.length > 0 ? (
+                <Card elevation="flat" className="p-0">
+                  <div className="unity-panel-header">
+                    {t("bundles.infoFields")}
+                  </div>
+                  <div className="grid gap-0 p-0 text-[11px]">
+                    {infoFieldList.map(([k, v], idx) => (
+                      <div
+                        key={k}
+                        className={
+                          "flex items-start gap-2 px-3 py-1 " +
+                          (idx % 2 === 0
+                            ? "bg-[hsl(var(--surface-raised))]"
+                            : "bg-[hsl(var(--surface))]")
+                        }
+                      >
+                        <span className="w-36 shrink-0 font-mono text-[hsl(var(--muted-foreground))]">
+                          {k}
+                        </span>
+                        <span className="break-all font-mono text-[hsl(var(--foreground))]">
+                          {v}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              ) : (
+                <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+                  {t("bundles.noInfoFields")}
+                </div>
+              )}
+
+              {/* File tree */}
+              <Card elevation="flat" className="p-0">
+                <div className="unity-panel-header flex items-center justify-between">
+                  <span>{t("bundles.fileTree")}</span>
+                  <span className="font-mono text-[10px] normal-case tracking-normal">
+                    {preview.data.fileTree.length}
+                  </span>
+                </div>
+                <div className="scrollbar-thin max-h-72 overflow-auto px-2 py-2">
+                  {tree && tree.children.size > 0 ? (
+                    <TreeView node={tree} />
+                  ) : (
+                    <div className="py-4 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
+                      {t("bundles.emptyTree")}
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Path footer */}
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 font-mono text-[10.5px]">
+                <span className="text-[hsl(var(--muted-foreground))]">
+                  path:{" "}
+                </span>
+                <span className="break-all text-[hsl(var(--foreground))]">
+                  {preview.entry.path}
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/*
+        Delete confirm dialog — shows the exact filesystem targets
+        returned by delete.dryRun so the user can see what's about to
+        vanish before they commit. No dry-run/execute toggle; this IS
+        the real delete, the dry-run is a pre-check, not a separate
+        mode.
+      */}
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{t("bundles.deleteConfirmTitle")}</DialogTitle>
+            <DialogDescription className="font-mono text-[11px]">
+              {deleteTarget?.entry.entry}
+            </DialogDescription>
+          </DialogHeader>
+          {deleteTarget ? (
+            <div className="flex flex-col gap-3">
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--destructive)/0.4)] bg-[hsl(var(--destructive)/0.08)] px-3 py-2 text-[12px] text-[hsl(var(--destructive))]">
+                {t("bundles.deleteConfirmWarning", {
+                  count: deleteTarget.targets.length,
+                  size: formatBytes(deleteTarget.entry.bytes),
+                })}
+              </div>
+              <Card elevation="flat" className="p-0">
+                <div className="unity-panel-header">
+                  {t("bundles.deleteTargets", {
+                    count: deleteTarget.targets.length,
+                  })}
+                </div>
+                <div className="scrollbar-thin max-h-60 overflow-auto px-3 py-2">
+                  <ul className="flex flex-col gap-1 font-mono text-[10.5px]">
+                    {deleteTarget.targets.map((p) => (
+                      <li
+                        key={p}
+                        className="break-all text-[hsl(var(--foreground))]"
+                      >
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Card>
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                >
+                  {deleting
+                    ? t("bundles.deleting")
+                    : t("bundles.deleteConfirmAction")}
+                </Button>
+              </div>
             </div>
           ) : null}
         </DialogContent>

@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -11,15 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { ipc } from "@/lib/ipc";
 import { formatBytes } from "@/lib/utils";
+import { useReport } from "@/lib/report-context";
 import type {
   CategorySummary,
   MigratePhase,
   MigratePlan,
   MigrateProgress,
-  Report,
 } from "@/lib/types";
 
 type Step = 1 | 2 | 3 | 4;
@@ -30,73 +34,63 @@ const DEFAULT_TARGETS: Record<string, string> = {
   texture_cache: "D:\\VRChatCache\\TextureCache-WindowsPlayer",
 };
 
-function phaseLabel(phase: MigratePhase): string {
-  switch (phase) {
-    case "preflight":
-      return "Preflight";
-    case "copy":
-      return "Copying files";
-    case "verify":
-      return "Verifying";
-    case "remove":
-      return "Removing source";
-    case "junction":
-      return "Creating junction";
-    case "done":
-      return "Done";
-    case "error":
-      return "Error";
-    default:
-      return "Idle";
-  }
-}
-
 function Migrate() {
-  const [report, setReport] = useState<Report | null>(null);
+  const { t } = useTranslation();
+  const { report } = useReport();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [step, setStep] = useState<Step>(1);
   const [categoryKey, setCategoryKey] = useState("cache_windows_player");
-  const [target, setTarget] = useState(DEFAULT_TARGETS.cache_windows_player ?? "");
+  const [target, setTarget] = useState(
+    DEFAULT_TARGETS.cache_windows_player ?? "",
+  );
   const [plan, setPlan] = useState<MigratePlan | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [progress, setProgress] = useState<MigrateProgress | null>(null);
   const [running, setRunning] = useState(false);
+  const prefilled = useRef(false);
 
-  useEffect(() => {
-    let alive = true;
-    ipc
-      .scan()
-      .then((r) => {
-        if (alive) setReport(r);
-      })
-      .catch((e: unknown) => {
-        const msg = e instanceof Error ? e.message : String(e);
-        toast.error(`Scan failed: ${msg}`);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const phaseLabel = (phase: MigratePhase): string => {
+    switch (phase) {
+      case "preflight":
+        return t("migrate.phase.preflight");
+      case "copy":
+        return t("migrate.phase.copy");
+      case "verify":
+        return t("migrate.phase.verify");
+      case "remove":
+        return t("migrate.phase.remove");
+      case "junction":
+        return t("migrate.phase.junction");
+      case "done":
+        return t("migrate.phase.done");
+      case "error":
+        return t("migrate.phase.error");
+      default:
+        return t("common.idle");
+    }
+  };
 
   useEffect(() => {
     const off = ipc.on<MigrateProgress>("migrate.progress", (data) => {
       setProgress(data);
       if (data.phase === "done") {
         setRunning(false);
-        toast.success(data.message ?? "Migration complete");
+        toast.success(data.message ?? t("migrate.complete"));
       } else if (data.phase === "error") {
         setRunning(false);
-        toast.error(data.message ?? "Migration failed");
+        toast.error(data.message ?? t("migrate.failed"));
       }
     });
     return off;
-  }, []);
+  }, [t]);
 
   const migratable = useMemo<CategorySummary[]>(() => {
     if (!report) return [];
-    return report.category_summaries.filter((c) =>
-      c.key === "cache_windows_player" ||
-      c.key === "http_cache" ||
-      c.key === "texture_cache",
+    return report.category_summaries.filter(
+      (c) =>
+        c.key === "cache_windows_player" ||
+        c.key === "http_cache" ||
+        c.key === "texture_cache",
     );
   }, [report]);
 
@@ -113,19 +107,58 @@ function Migrate() {
     setProgress(null);
   };
 
+  // Hydrate from ?category=... — routed here by Dashboard "Repair" button when
+  // a broken junction needs a fresh target path. Runs once report is ready so
+  // the category actually exists in `migratable`.
+  useEffect(() => {
+    if (prefilled.current) return;
+    if (!report) return;
+    const cat = searchParams.get("category");
+    if (!cat) {
+      prefilled.current = true;
+      return;
+    }
+    if (DEFAULT_TARGETS[cat]) {
+      onPickCategory(cat);
+      setStep(2);
+    }
+    prefilled.current = true;
+    // Strip the query param so a later rescan/navigation doesn't re-trigger.
+    const next = new URLSearchParams(searchParams);
+    next.delete("category");
+    setSearchParams(next, { replace: true });
+  }, [report, searchParams, setSearchParams]);
+
+  const browseTarget = async () => {
+    try {
+      const res = await ipc.pickFolder({
+        title: t("migrate.target"),
+        initialDir: target,
+      });
+      if (res.cancelled || !res.path) {
+        toast.info(t("migrate.browseCancelled"));
+        return;
+      }
+      setTarget(res.path);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`${t("migrate.browseError")}: ${msg}`);
+    }
+  };
+
   const runPreflight = async () => {
     if (!selected) return;
     setPlanLoading(true);
     try {
-      const res = await ipc.call<{ source: string; target: string }, MigratePlan>(
-        "migrate.preflight",
-        { source: selected.resolved_path, target },
-      );
+      const res = await ipc.call<
+        { source: string; target: string },
+        MigratePlan
+      >("migrate.preflight", { source: selected.resolved_path, target });
       setPlan(res);
       setStep(4);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(`Preflight failed: ${msg}`);
+      toast.error(t("migrate.preflightFailed", { error: msg }));
     } finally {
       setPlanLoading(false);
     }
@@ -149,31 +182,39 @@ function Migrate() {
     } catch (e: unknown) {
       setRunning(false);
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(`Execute failed: ${msg}`);
+      toast.error(t("migrate.executeFailed", { error: msg }));
     }
   };
 
-  const pct = progress && progress.bytesTotal > 0
-    ? Math.min(100, Math.round((progress.bytesDone / progress.bytesTotal) * 100))
-    : 0;
+  const pct =
+    progress && progress.bytesTotal > 0
+      ? Math.min(100, Math.round((progress.bytesDone / progress.bytesTotal) * 100))
+      : 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Migrate</h1>
-          <p className="text-sm text-muted-foreground">
-            Move a cache directory to another drive and replace it with a junction.
+    <div className="flex flex-col gap-4 animate-fade-in">
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-semibold tracking-tight">
+              {t("migrate.title")}
+            </span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+              wizard
+            </span>
+          </div>
+          <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+            {t("migrate.subtitle")}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
           {[1, 2, 3, 4].map((n) => (
             <Badge
               key={n}
-              variant={step === n ? "default" : "outline"}
-              className="rounded-full"
+              variant={step === n ? "default" : step > n ? "tonal" : "outline"}
+              className="min-w-12 justify-center text-[9px] uppercase tracking-wider"
             >
-              Step {n}
+              {t("migrate.step", { n })}
             </Badge>
           ))}
         </div>
@@ -182,33 +223,42 @@ function Migrate() {
       {step === 1 ? (
         <Card>
           <CardHeader>
-            <CardTitle>1. Pick a category</CardTitle>
-            <CardDescription>Select which VRChat cache to relocate.</CardDescription>
+            <CardTitle>{t("migrate.step1Title")}</CardTitle>
+            <CardDescription>{t("migrate.step1Desc")}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-2 pt-0 md:grid-cols-3">
-            {migratable.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => onPickCategory(c.key)}
-                className={
-                  "flex flex-col gap-1 rounded-md border p-4 text-left transition-colors " +
-                  (categoryKey === c.key
-                    ? "border-primary/70 bg-primary/10"
-                    : "border-border/50 hover:bg-accent/40")
-                }
-              >
-                <span className="font-medium">{c.name}</span>
-                <span className="text-xs text-muted-foreground">{c.bytes_human}</span>
-                <span className="text-xs text-muted-foreground">
-                  {c.exists ? "present" : c.lexists ? "junction (broken)" : "missing"}
-                </span>
-              </button>
-            ))}
+          <CardContent className="grid gap-3 pt-0 md:grid-cols-3">
+            {migratable.map((c) => {
+              const state = c.exists
+                ? t("migrate.present")
+                : c.lexists
+                  ? t("migrate.brokenJunction")
+                  : t("migrate.missing");
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => onPickCategory(c.key)}
+                  className={
+                    "m3-state-layer flex flex-col gap-1.5 rounded-[var(--radius-md)] border p-4 text-left transition-colors " +
+                    (categoryKey === c.key
+                      ? "border-[hsl(var(--primary)/0.6)] bg-[color-mix(in_srgb,hsl(var(--primary))_16%,transparent)] text-[hsl(var(--primary))]"
+                      : "border-[hsl(var(--border)/0.7)] bg-[hsl(var(--surface)/0.4)] hover:bg-[hsl(var(--surface-raised)/0.6)]")
+                  }
+                >
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                    {c.bytes_human}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                    {state}
+                  </span>
+                </button>
+              );
+            })}
           </CardContent>
           <CardFooter className="justify-end">
             <Button onClick={() => setStep(2)} disabled={!selected}>
-              Next
+              {t("common.next")}
             </Button>
           </CardFooter>
         </Card>
@@ -217,38 +267,51 @@ function Migrate() {
       {step === 2 ? (
         <Card>
           <CardHeader>
-            <CardTitle>2. Source and target</CardTitle>
-            <CardDescription>
-              Source is read-only. Pick a target directory on another drive.
-            </CardDescription>
+            <CardTitle>{t("migrate.step2Title")}</CardTitle>
+            <CardDescription>{t("migrate.step2Desc")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 pt-0">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Source</label>
-              <input
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                {t("migrate.source")}
+              </label>
+              <Input
                 type="text"
                 value={selected?.resolved_path ?? ""}
                 readOnly
-                className="h-9 rounded-md border border-border/50 bg-background/30 px-3 font-mono text-xs text-muted-foreground"
+                className="font-mono text-xs text-[hsl(var(--muted-foreground))]"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Target</label>
-              <input
-                type="text"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                className="h-9 rounded-md border border-border/60 bg-background/40 px-3 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="D:\VRChatCache\..."
-              />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                {t("migrate.target")}
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  className="font-mono text-xs"
+                  placeholder={t("migrate.targetPlaceholder")}
+                />
+                <Button
+                  type="button"
+                  variant="tonal"
+                  onClick={browseTarget}
+                  className="shrink-0"
+                >
+                  <FolderOpen className="size-[18px]" />
+                  {t("common.browse")}
+                </Button>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="justify-between">
             <Button variant="outline" onClick={() => setStep(1)}>
-              Back
+              {t("common.back")}
             </Button>
             <Button onClick={() => setStep(3)} disabled={!target.trim()}>
-              Next
+              {t("common.next")}
             </Button>
           </CardFooter>
         </Card>
@@ -257,23 +320,31 @@ function Migrate() {
       {step === 3 ? (
         <Card>
           <CardHeader>
-            <CardTitle>3. Preflight</CardTitle>
-            <CardDescription>
-              Check disk space, junction state, and whether VRChat is running.
-            </CardDescription>
+            <CardTitle>{t("migrate.step3Title")}</CardTitle>
+            <CardDescription>{t("migrate.step3Desc")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 pt-0 text-sm">
-            <div className="rounded-md border border-border/40 bg-background/30 p-3 font-mono text-xs">
-              <div>source: {selected?.resolved_path}</div>
-              <div>target: {target}</div>
+            <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border)/0.6)] bg-[hsl(var(--canvas)/0.6)] p-4 font-mono text-[11px] leading-relaxed">
+              <div>
+                <span className="text-[hsl(var(--muted-foreground))]">
+                  source:{" "}
+                </span>
+                {selected?.resolved_path}
+              </div>
+              <div>
+                <span className="text-[hsl(var(--muted-foreground))]">
+                  target:{" "}
+                </span>
+                {target}
+              </div>
             </div>
           </CardContent>
           <CardFooter className="justify-between">
             <Button variant="outline" onClick={() => setStep(2)}>
-              Back
+              {t("common.back")}
             </Button>
             <Button onClick={runPreflight} disabled={planLoading}>
-              {planLoading ? "Checking…" : "Run preflight"}
+              {planLoading ? t("migrate.checking") : t("migrate.runPreflight")}
             </Button>
           </CardFooter>
         </Card>
@@ -282,20 +353,26 @@ function Migrate() {
       {step === 4 && plan ? (
         <Card>
           <CardHeader>
-            <CardTitle>4. Execute</CardTitle>
-            <CardDescription>
-              Copy → verify → remove source → create junction.
-            </CardDescription>
+            <CardTitle>{t("migrate.step4Title")}</CardTitle>
+            <CardDescription>{t("migrate.step4Desc")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 pt-0">
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-md border border-border/40 bg-background/30 p-3 text-xs">
-                <div className="text-muted-foreground">source size</div>
-                <div className="font-mono text-sm">{formatBytes(plan.sourceBytes)}</div>
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border)/0.6)] bg-[hsl(var(--canvas)/0.5)] p-4 text-xs">
+                <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                  {t("migrate.sourceBytes")}
+                </div>
+                <div className="mt-1 font-mono text-[15px] text-[hsl(var(--foreground))]">
+                  {formatBytes(plan.sourceBytes)}
+                </div>
               </div>
-              <div className="rounded-md border border-border/40 bg-background/30 p-3 text-xs">
-                <div className="text-muted-foreground">target free</div>
-                <div className="font-mono text-sm">{formatBytes(plan.targetFreeBytes)}</div>
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border)/0.6)] bg-[hsl(var(--canvas)/0.5)] p-4 text-xs">
+                <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                  {t("migrate.targetFree")}
+                </div>
+                <div className="mt-1 font-mono text-[15px] text-[hsl(var(--foreground))]">
+                  {formatBytes(plan.targetFreeBytes)}
+                </div>
               </div>
             </div>
 
@@ -308,23 +385,25 @@ function Migrate() {
                 ))}
               </div>
             ) : (
-              <Badge variant="success">no blockers</Badge>
+              <Badge variant="success">{t("migrate.noBlockers")}</Badge>
             )}
 
             <Separator />
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{progress ? phaseLabel(progress.phase) : "Idle"}</span>
-                <span>
+              <div className="flex items-center justify-between text-xs text-[hsl(var(--muted-foreground))]">
+                <span>{progress ? phaseLabel(progress.phase) : t("common.idle")}</span>
+                <span className="font-mono">
                   {progress
                     ? `${formatBytes(progress.bytesDone)} / ${formatBytes(progress.bytesTotal)}`
                     : ""}
                 </span>
               </div>
               <Progress value={pct} />
-              <div className="text-xs text-muted-foreground">
-                {progress ? `${progress.filesDone} files processed` : ""}
+              <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                {progress
+                  ? t("migrate.filesProcessed", { count: progress.filesDone })
+                  : ""}
               </div>
             </div>
           </CardContent>
@@ -338,13 +417,10 @@ function Migrate() {
               }}
               disabled={running}
             >
-              Back
+              {t("common.back")}
             </Button>
-            <Button
-              onClick={execute}
-              disabled={running || plan.blockers.length > 0}
-            >
-              {running ? "Running…" : "Execute migration"}
+            <Button onClick={execute} disabled={running || plan.blockers.length > 0}>
+              {running ? t("migrate.running") : t("migrate.execute")}
             </Button>
           </CardFooter>
         </Card>
