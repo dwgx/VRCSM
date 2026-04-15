@@ -13,6 +13,7 @@ public:
     HRESULT Initialize(HWND parent);
     void Resize(RECT bounds) const;
     void PostMessageToWeb(const std::string& json) const;
+    HWND ParentHwnd() const noexcept { return m_parent; }
 
 private:
     std::filesystem::path GetLocalAppDataPath() const;
