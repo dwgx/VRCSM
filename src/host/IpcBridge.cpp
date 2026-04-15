@@ -152,6 +152,14 @@ void IpcBridge::RegisterHandlers()
     {
         return HandleThumbnailsFetch(params, id);
     });
+    m_handlers.emplace("logs.stream.start", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleLogsStreamStart(params, id);
+    });
+    m_handlers.emplace("logs.stream.stop", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleLogsStreamStop(params, id);
+    });
 }
 
 nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::optional<std::string>&)
@@ -404,6 +412,61 @@ nlohmann::json IpcBridge::HandleShellOpenUrl(const nlohmann::json& params, const
     }
 
     return nlohmann::json{{"ok", true}};
+}
+
+nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std::optional<std::string>&)
+{
+    // Idempotent — React StrictMode double-effects and two docks mounting
+    // in quick succession must not spawn two tailers (which would
+    // double-fire every line).
+    if (m_logTailer)
+    {
+        return nlohmann::json{{"running", true}};
+    }
+
+    const auto probe = vrcsm::core::PathProbe::Probe();
+    if (!probe.baseDirExists)
+    {
+        throw std::runtime_error("logs.stream.start: VRChat log directory not found");
+    }
+
+    m_logTailer = std::make_unique<vrcsm::core::LogTailer>(
+        probe.baseDir,
+        [this](const vrcsm::core::LogTailLine& line)
+        {
+            // The frontend's `LogStreamChunk` type accepts any of
+            // `line` / `message` / `text`; we pick `line` to match the
+            // VRCX-style semantics (one tail line = one event).
+            nlohmann::json data{
+                {"line", line.line},
+                {"level", line.level},
+                {"source", line.source},
+            };
+            if (!line.iso_time.empty())
+            {
+                data["timestamp"] = line.iso_time;
+            }
+            m_host.PostMessageToWeb(nlohmann::json{
+                {"event", "logs.stream"},
+                {"data", std::move(data)}
+            }.dump());
+        });
+    m_logTailer->Start();
+
+    return nlohmann::json{{"running", true}};
+}
+
+nlohmann::json IpcBridge::HandleLogsStreamStop(const nlohmann::json&, const std::optional<std::string>&)
+{
+    if (m_logTailer)
+    {
+        // LogTailer::Stop() joins the worker thread, so by the time reset()
+        // destroys the object no callback is in flight — it's safe to
+        // discard the std::function that captured `this`.
+        m_logTailer->Stop();
+        m_logTailer.reset();
+    }
+    return nlohmann::json{{"running", false}};
 }
 
 nlohmann::json IpcBridge::HandleThumbnailsFetch(const nlohmann::json& params, const std::optional<std::string>&)

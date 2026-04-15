@@ -2,6 +2,8 @@
 
 #include "../pch.h"
 
+#include "../core/LogTailer.h"
+
 class WebViewHost;
 
 class IpcBridge
@@ -31,10 +33,13 @@ private:
     nlohmann::json HandleShellPickFolder(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleShellOpenUrl(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleThumbnailsFetch(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleLogsStreamStart(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleLogsStreamStop(const nlohmann::json& params, const std::optional<std::string>& id);
 
     void PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const;
     void PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message) const;
 
     WebViewHost& m_host;
     std::unordered_map<std::string, Handler> m_handlers;
+    std::unique_ptr<vrcsm::core::LogTailer> m_logTailer;
 };
