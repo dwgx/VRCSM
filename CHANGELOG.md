@@ -6,6 +6,65 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [0.1.2] — 2026-04-15
+
+Event-stream cut. v0.1.1 made the app feel like a native tool; v0.1.2 pushes
+the LogParser past VRCX-parity and wires three new timeline surfaces into
+the Logs page so you can actually see who joined, which avatars people
+switched to, and where the camera dumps screenshots — all derived from
+`output_log_*.txt` without hitting the VRChat API.
+
+### Added
+
+- **LogParser event streams.** Three new regex-driven streams collected
+  during the normal per-line pass, each capped at 500 entries so the IPC
+  payload stays under WebView2's comfort zone on sessions with hundreds
+  of log files: `player_events` (`[Behaviour] OnPlayerJoined` /
+  `OnPlayerLeft`, with optional `usr_…` id on newer client builds),
+  `avatar_switches` (every `[Behaviour] Switching <actor> to avatar
+  <name>` regardless of whether the actor is local or remote), and
+  `screenshots` (`[VRC Camera] Took screenshot to: <absolute path>`).
+  Each event carries a sticky ISO timestamp derived from the nearest
+  preceding `YYYY.MM.DD HH:MM:SS` block header — the same trick VRChat
+  itself uses to anchor lines without per-entry dates. Reference install
+  currently emits 93 / 83 / 3 events respectively.
+- **Logs page 3-panel timeline.** The Logs route gained a responsive
+  `lg:grid-cols-3` row that renders the three new streams as
+  independently-filterable panels: player events with join/leave icons
+  and usr_id hover, avatar switches grouped by actor line, and
+  screenshots shown as filename + timestamp with the absolute path on
+  hover. Each panel has its own scroll container capped at `max-h-72`
+  (player/switch) or `max-h-80` (screenshots) so the three never fight
+  for layout space, and panels are shown most-recent-first since that's
+  what the user is actually looking for. Full i18n pass in `en.json` and
+  `zh-CN.json` for every new string.
+
+### Changed
+
+- **Settings page write path end-to-end.** The write scaffolding landed
+  during v0.1.1's VrcSettings module, but the editor row wasn't wired
+  into every value type — it now is. `EntryEditor` renders a 2-button
+  OFF/ON toggle for `bool`, a numeric Input for `int` and `float`, a
+  text Input for `string`, and a read-only hex sample for `raw`. Dirty
+  rows get a primary-color key label + Apply/Revert buttons, and the
+  whole thing disables itself when `ProcessGuard::IsVRChatRunning()`
+  reports true so VRChat's own `PlayerPrefs.Save()` on exit can't
+  clobber a pending write.
+- **Version strings unified.** Every user-visible version string is now
+  `0.1.2`: `installer/vrcsm.wxs` ProductVersion, `scripts/build-msi.bat`
+  output filename, `scripts/install-msi.ps1` default param,
+  `src/core/VrcApi.cpp` User-Agent (sent to `api.vrchat.cloud`),
+  `web/src/App.tsx` `shellVersion`, `web/src/components/Sidebar.tsx`
+  footer, and the dev-mode fallbacks in `AboutDialog.tsx` +
+  `Settings.tsx`. `IpcBridge::HandleAppVersion` was already emitting
+  `0.1.2` after the v0.1.1→v0.1.2 bump commit.
+
+### Fixed
+
+- **`recharts` dead dependency.** Removed from `web/package.json` —
+  v0.1.1's Dashboard viz rewrite deleted every `recharts` import but
+  left the dependency behind, bloating the node_modules tree.
+
 ## [0.1.1] — 2026-04-14
 
 Second cut. v0.1.0 was the baseline rewrite — the goal for 0.1.1 was to
