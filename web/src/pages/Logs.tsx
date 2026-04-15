@@ -12,10 +12,20 @@ import { Input } from "@/components/ui/input";
 import { useReport } from "@/lib/report-context";
 import type {
   AvatarNameInfo,
+  AvatarSwitchEvent,
   LogEnvironment,
   LogSettingsSection,
+  PlayerEvent,
+  ScreenshotEvent,
 } from "@/lib/types";
-import { Search, UserRound } from "lucide-react";
+import {
+  Camera,
+  LogIn,
+  LogOut,
+  Search,
+  Shirt,
+  UserRound,
+} from "lucide-react";
 
 const ENV_ORDER: Array<{ key: keyof LogEnvironment; label: string }> = [
   { key: "vrchat_build", label: "VRChat Build" },
@@ -37,11 +47,36 @@ function shortId(id: string): string {
   return `${clean.slice(0, 8)}…${clean.slice(-4)}`;
 }
 
+/**
+ * Take a sticky `YYYY.MM.DD HH:MM:SS` timestamp from the backend and render
+ * it compact (`MM-DD HH:MM:SS`). Returns `—` for null so we don't leave the
+ * column empty on older-build lines. Unknown shapes fall back to the raw
+ * value so we never silently hide data.
+ */
+function formatIsoTime(iso: string | null): string {
+  if (!iso) return "—";
+  const m = iso.match(/^(\d{4})\.(\d{2})\.(\d{2}) (\d{2}:\d{2}:\d{2})$/);
+  if (!m) return iso;
+  return `${m[2]}-${m[3]} ${m[4]}`;
+}
+
+/**
+ * Pull the file leaf off a Windows path without touching `path/posix` (we
+ * keep this file dependency-free). Log paths look like
+ * `C:\Users\x\Pictures\VRChat\2026-04\VRChat_2026-04-15_02-18-44.439_1920x1080.png`.
+ */
+function basename(p: string): string {
+  const i = Math.max(p.lastIndexOf("\\"), p.lastIndexOf("/"));
+  return i >= 0 ? p.slice(i + 1) : p;
+}
+
 function Logs() {
   const { t } = useTranslation();
   const { report, loading, error } = useReport();
   const logs = report?.logs ?? null;
   const [settingsFilter, setSettingsFilter] = useState("");
+  const [playerFilter, setPlayerFilter] = useState("");
+  const [avatarFilter, setAvatarFilter] = useState("");
 
   const filteredSections = useMemo<LogSettingsSection[]>(() => {
     if (!logs) return [];
@@ -61,6 +96,40 @@ function Logs() {
   const hasEnvironment = useMemo(() => {
     if (!logs) return false;
     return ENV_ORDER.some(({ key }) => logs.environment[key] !== null);
+  }, [logs]);
+
+  // VRCX-parity event streams. Backend hands us these already in file-order;
+  // we show most-recent first since the user is usually looking for "who
+  // joined last session" — which is always at the tail of the array.
+  const filteredPlayerEvents = useMemo<PlayerEvent[]>(() => {
+    if (!logs) return [];
+    const q = playerFilter.trim().toLowerCase();
+    const base = q
+      ? logs.player_events.filter(
+          (e) =>
+            e.display_name.toLowerCase().includes(q) ||
+            (e.user_id?.toLowerCase().includes(q) ?? false),
+        )
+      : logs.player_events;
+    return [...base].reverse();
+  }, [logs, playerFilter]);
+
+  const filteredAvatarSwitches = useMemo<AvatarSwitchEvent[]>(() => {
+    if (!logs) return [];
+    const q = avatarFilter.trim().toLowerCase();
+    const base = q
+      ? logs.avatar_switches.filter(
+          (e) =>
+            e.actor.toLowerCase().includes(q) ||
+            e.avatar_name.toLowerCase().includes(q),
+        )
+      : logs.avatar_switches;
+    return [...base].reverse();
+  }, [logs, avatarFilter]);
+
+  const screenshotsDesc = useMemo<ScreenshotEvent[]>(() => {
+    if (!logs) return [];
+    return [...logs.screenshots].reverse();
   }, [logs]);
 
   if (loading && !logs) {
@@ -199,6 +268,161 @@ function Logs() {
                   {info?.name ?? shortId(id)}
                 </Badge>
               ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <CardTitle>{t("logs.playerEvents")}</CardTitle>
+                <CardDescription className="truncate">
+                  {t("logs.playerEventsDesc")}
+                </CardDescription>
+              </div>
+              <Badge variant="muted" className="font-mono">
+                {logs.player_events.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 pt-0">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+              <Input
+                value={playerFilter}
+                onChange={(e) => setPlayerFilter(e.target.value)}
+                placeholder={t("logs.filterEvents")}
+                className="h-7 pl-7 text-[12px]"
+              />
+            </div>
+            {filteredPlayerEvents.length === 0 ? (
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-4 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("logs.noPlayerEvents")}
+              </div>
+            ) : (
+              <ul className="scrollbar-thin max-h-72 space-y-0.5 overflow-auto pr-1">
+                {filteredPlayerEvents.map((ev, i) => (
+                  <li
+                    key={`${ev.kind}-${i}-${ev.display_name}-${ev.iso_time ?? ""}`}
+                    className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1 hover:bg-[hsl(var(--surface-raised))]"
+                  >
+                    {ev.kind === "joined" ? (
+                      <LogIn className="size-3 text-[hsl(var(--primary))]" />
+                    ) : (
+                      <LogOut className="size-3 text-[hsl(var(--muted-foreground))]" />
+                    )}
+                    <span
+                      className="truncate text-[12px] text-[hsl(var(--foreground))]"
+                      title={ev.user_id ?? undefined}
+                    >
+                      {ev.display_name}
+                    </span>
+                    <span className="font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {formatIsoTime(ev.iso_time)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <CardTitle>{t("logs.avatarSwitches")}</CardTitle>
+                <CardDescription className="truncate">
+                  {t("logs.avatarSwitchesDesc")}
+                </CardDescription>
+              </div>
+              <Badge variant="muted" className="font-mono">
+                {logs.avatar_switches.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 pt-0">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+              <Input
+                value={avatarFilter}
+                onChange={(e) => setAvatarFilter(e.target.value)}
+                placeholder={t("logs.filterEvents")}
+                className="h-7 pl-7 text-[12px]"
+              />
+            </div>
+            {filteredAvatarSwitches.length === 0 ? (
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-4 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("logs.noAvatarSwitches")}
+              </div>
+            ) : (
+              <ul className="scrollbar-thin max-h-72 space-y-0.5 overflow-auto pr-1">
+                {filteredAvatarSwitches.map((ev, i) => (
+                  <li
+                    key={`${i}-${ev.actor}-${ev.avatar_name}-${ev.iso_time ?? ""}`}
+                    className="flex flex-col gap-0.5 rounded-[var(--radius-sm)] px-2 py-1 hover:bg-[hsl(var(--surface-raised))]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Shirt className="size-3 shrink-0 text-[hsl(var(--primary))]" />
+                      <span className="truncate text-[12px] text-[hsl(var(--foreground))]">
+                        {ev.avatar_name}
+                      </span>
+                      <span className="ml-auto shrink-0 font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                        {formatIsoTime(ev.iso_time)}
+                      </span>
+                    </div>
+                    <span className="ml-5 truncate text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {ev.actor}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <CardTitle>{t("logs.screenshotsHeader")}</CardTitle>
+                <CardDescription className="truncate">
+                  {t("logs.screenshotsDesc")}
+                </CardDescription>
+              </div>
+              <Badge variant="muted" className="font-mono">
+                {logs.screenshots.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {screenshotsDesc.length === 0 ? (
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-4 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("logs.noScreenshots")}
+              </div>
+            ) : (
+              <ul className="scrollbar-thin max-h-80 space-y-0.5 overflow-auto pr-1">
+                {screenshotsDesc.map((ev, i) => (
+                  <li
+                    key={`${i}-${ev.path}`}
+                    className="flex flex-col gap-0.5 rounded-[var(--radius-sm)] px-2 py-1 hover:bg-[hsl(var(--surface-raised))]"
+                    title={ev.path}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Camera className="size-3 shrink-0 text-[hsl(var(--primary))]" />
+                      <span className="truncate font-mono text-[11px] text-[hsl(var(--foreground))]">
+                        {basename(ev.path)}
+                      </span>
+                      <span className="ml-auto shrink-0 font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                        {formatIsoTime(ev.iso_time)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </CardContent>
         </Card>
