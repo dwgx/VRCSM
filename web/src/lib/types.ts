@@ -77,6 +77,28 @@ export interface AvatarNameInfo {
   author: string | null;
 }
 
+/** `[Behaviour] OnPlayerJoined` / `OnPlayerLeft` — one row per line. */
+export interface PlayerEvent {
+  kind: "joined" | "left";
+  iso_time: string | null;
+  display_name: string;
+  /** Only present on newer client builds; older ones omit the `(usr_…)`. */
+  user_id: string | null;
+}
+
+/** `[Behaviour] Switching <actor> to avatar <name>` — local or remote. */
+export interface AvatarSwitchEvent {
+  iso_time: string | null;
+  actor: string;
+  avatar_name: string;
+}
+
+/** `[VRC Camera] Took screenshot to:` — absolute path, unmodified. */
+export interface ScreenshotEvent {
+  iso_time: string | null;
+  path: string;
+}
+
 export interface LogReport {
   log_files: string[];
   log_count: number;
@@ -95,6 +117,10 @@ export interface LogReport {
   avatar_names: Record<string, AvatarNameInfo>;
   world_event_count: number;
   avatar_event_count: number;
+  /** VRCX-parity event streams, capped at 500 each to keep IPC sane. */
+  player_events: PlayerEvent[];
+  avatar_switches: AvatarSwitchEvent[];
+  screenshots: ScreenshotEvent[];
 }
 
 export interface BrokenLink {
