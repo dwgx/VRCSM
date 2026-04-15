@@ -174,7 +174,7 @@ export function Sidebar() {
       <div className="flex flex-col gap-1 border-t border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1.5 py-2">
         <LanguageMenu />
         <div className="px-2.5 pt-0.5 text-[10px] font-mono tracking-tight text-[hsl(var(--muted-foreground))]">
-          v0.1.2 · dwgx
+          v0.1.3 · dwgx
         </div>
       </div>
     </aside>

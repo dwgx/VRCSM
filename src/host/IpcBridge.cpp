@@ -169,7 +169,7 @@ nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::opt
     // web/package.json — the About dialog reads this, so leaving it stale
     // lies to the user.
     return nlohmann::json{
-        {"version", "0.1.2"},
+        {"version", "0.1.3"},
         {"build", std::string(__DATE__) + " " + std::string(__TIME__)}
     };
 }
