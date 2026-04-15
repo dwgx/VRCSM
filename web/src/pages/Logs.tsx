@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import {
   Card,
   CardContent,
@@ -89,6 +90,9 @@ function Logs() {
   const [settingsFilter, setSettingsFilter] = useState("");
   const [playerFilter, setPlayerFilter] = useState("");
   const [avatarFilter, setAvatarFilter] = useState("");
+  const debouncedSettingsFilter = useDebouncedValue(settingsFilter, 150);
+  const debouncedPlayerFilter = useDebouncedValue(playerFilter, 150);
+  const debouncedAvatarFilter = useDebouncedValue(avatarFilter, 150);
 
   // Live deltas on top of the batch-parsed baseline. Populated by the
   // `logs.stream.event` subscription below — LogTailer seeks to EOF when
@@ -99,6 +103,50 @@ function Logs() {
   const [liveSwitch, setLiveSwitch] = useState<AvatarSwitchEvent[]>([]);
   const [liveScreenshot, setLiveScreenshot] = useState<ScreenshotEvent[]>([]);
 
+  // Buffer incoming stream events and flush at most every 100 ms so a burst
+  // of joins/screenshots coalesces into a single React update instead of N.
+  const pendingRef = useRef<{
+    player: PlayerEvent[];
+    switches: AvatarSwitchEvent[];
+    screenshots: ScreenshotEvent[];
+  }>({ player: [], switches: [], screenshots: [] });
+  const flushTimerRef = useRef<number | null>(null);
+
+  const flushPending = useCallback(() => {
+    flushTimerRef.current = null;
+    const buf = pendingRef.current;
+    if (buf.player.length > 0) {
+      const incoming = buf.player;
+      buf.player = [];
+      setLivePlayer((prev) => {
+        const merged = prev.concat(incoming);
+        return merged.length > LIVE_DELTA_CAP
+          ? merged.slice(merged.length - LIVE_DELTA_CAP)
+          : merged;
+      });
+    }
+    if (buf.switches.length > 0) {
+      const incoming = buf.switches;
+      buf.switches = [];
+      setLiveSwitch((prev) => {
+        const merged = prev.concat(incoming);
+        return merged.length > LIVE_DELTA_CAP
+          ? merged.slice(merged.length - LIVE_DELTA_CAP)
+          : merged;
+      });
+    }
+    if (buf.screenshots.length > 0) {
+      const incoming = buf.screenshots;
+      buf.screenshots = [];
+      setLiveScreenshot((prev) => {
+        const merged = prev.concat(incoming);
+        return merged.length > LIVE_DELTA_CAP
+          ? merged.slice(merged.length - LIVE_DELTA_CAP)
+          : merged;
+      });
+    }
+  }, []);
+
   useEffect(() => {
     // The stream is owned by BottomDock (always mounted in the main shell)
     // but calling `start` here as well is idempotent on the C++ side and
@@ -106,39 +154,37 @@ function Logs() {
     // might be collapsed or hidden.
     void ipc.call("logs.stream.start").catch(() => undefined);
 
+    const scheduleFlush = () => {
+      if (flushTimerRef.current !== null) return;
+      flushTimerRef.current = window.setTimeout(flushPending, 100);
+    };
+
     const off = ipc.on<ClassifiedStreamPayload>("logs.stream.event", (payload) => {
       if (!payload || typeof payload !== "object") return;
+      const buf = pendingRef.current;
       if (payload.kind === "player") {
-        setLivePlayer((prev) => {
-          const next = [...prev, payload.data as PlayerEvent];
-          return next.length > LIVE_DELTA_CAP
-            ? next.slice(next.length - LIVE_DELTA_CAP)
-            : next;
-        });
+        buf.player.push(payload.data as PlayerEvent);
       } else if (payload.kind === "avatarSwitch") {
-        setLiveSwitch((prev) => {
-          const next = [...prev, payload.data as AvatarSwitchEvent];
-          return next.length > LIVE_DELTA_CAP
-            ? next.slice(next.length - LIVE_DELTA_CAP)
-            : next;
-        });
+        buf.switches.push(payload.data as AvatarSwitchEvent);
       } else if (payload.kind === "screenshot") {
-        setLiveScreenshot((prev) => {
-          const next = [...prev, payload.data as ScreenshotEvent];
-          return next.length > LIVE_DELTA_CAP
-            ? next.slice(next.length - LIVE_DELTA_CAP)
-            : next;
-        });
+        buf.screenshots.push(payload.data as ScreenshotEvent);
+      } else {
+        return;
       }
+      scheduleFlush();
     });
     return () => {
       off();
+      if (flushTimerRef.current !== null) {
+        window.clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
     };
-  }, []);
+  }, [flushPending]);
 
   const filteredSections = useMemo<LogSettingsSection[]>(() => {
     if (!logs) return [];
-    const q = settingsFilter.trim().toLowerCase();
+    const q = debouncedSettingsFilter.trim().toLowerCase();
     if (!q) return logs.settings_sections;
     return logs.settings_sections
       .map((sec) => ({
@@ -149,7 +195,7 @@ function Logs() {
         ),
       }))
       .filter((sec) => sec.entries.length > 0);
-  }, [logs, settingsFilter]);
+  }, [logs, debouncedSettingsFilter]);
 
   const hasEnvironment = useMemo(() => {
     if (!logs) return false;
@@ -162,8 +208,8 @@ function Logs() {
   // then reverse for display so the newest event is at the top.
   const filteredPlayerEvents = useMemo<PlayerEvent[]>(() => {
     if (!logs) return [];
-    const merged = [...logs.player_events, ...livePlayer];
-    const q = playerFilter.trim().toLowerCase();
+    const merged = logs.player_events.concat(livePlayer);
+    const q = debouncedPlayerFilter.trim().toLowerCase();
     const base = q
       ? merged.filter(
           (e) =>
@@ -171,13 +217,15 @@ function Logs() {
             (e.user_id?.toLowerCase().includes(q) ?? false),
         )
       : merged;
-    return [...base].reverse();
-  }, [logs, livePlayer, playerFilter]);
+    const out = base.slice();
+    out.reverse();
+    return out;
+  }, [logs, livePlayer, debouncedPlayerFilter]);
 
   const filteredAvatarSwitches = useMemo<AvatarSwitchEvent[]>(() => {
     if (!logs) return [];
-    const merged = [...logs.avatar_switches, ...liveSwitch];
-    const q = avatarFilter.trim().toLowerCase();
+    const merged = logs.avatar_switches.concat(liveSwitch);
+    const q = debouncedAvatarFilter.trim().toLowerCase();
     const base = q
       ? merged.filter(
           (e) =>
@@ -185,12 +233,16 @@ function Logs() {
             e.avatar_name.toLowerCase().includes(q),
         )
       : merged;
-    return [...base].reverse();
-  }, [logs, liveSwitch, avatarFilter]);
+    const out = base.slice();
+    out.reverse();
+    return out;
+  }, [logs, liveSwitch, debouncedAvatarFilter]);
 
   const screenshotsDesc = useMemo<ScreenshotEvent[]>(() => {
     if (!logs) return [];
-    return [...logs.screenshots, ...liveScreenshot].reverse();
+    const merged = logs.screenshots.concat(liveScreenshot);
+    merged.reverse();
+    return merged;
   }, [logs, liveScreenshot]);
 
   if (loading && !logs) {

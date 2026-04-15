@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/card";
 import { useRightDock, type RightDockDescriptor } from "@/components/RightDock";
 import { cn } from "@/lib/utils";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { ipc } from "@/lib/ipc";
 import type {
   AppVersion,
@@ -157,6 +158,7 @@ function Settings() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const debouncedFilter = useDebouncedValue(filter, 150);
   const [drafts, setDrafts] = useState<Draft>({});
   const [writing, setWriting] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -265,7 +267,7 @@ function Settings() {
 
   const matches = useCallback(
     (idx: number) => {
-      const trimmed = filter.trim().toLowerCase();
+      const trimmed = debouncedFilter.trim().toLowerCase();
       if (!trimmed) return true;
       const e = report?.entries[idx];
       if (!e) return false;
@@ -274,14 +276,14 @@ function Settings() {
       if (displayForEntry(e).toLowerCase().includes(trimmed)) return true;
       return false;
     },
-    [filter, report],
+    [debouncedFilter, report],
   );
 
   // When the user types into the global search, force the "All" tab
   // so matches from every group are visible at once, then collapse on
   // tab switch. Never block entry visibility in an unrelated tab.
   const effectiveTab: TabKey =
-    filter.trim().length > 0 ? "all" : activeTab;
+    debouncedFilter.trim().length > 0 ? "all" : activeTab;
 
   const activeIndices = useMemo(() => {
     if (!report) return [] as number[];
