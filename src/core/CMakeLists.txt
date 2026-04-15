@@ -5,6 +5,7 @@ add_library(vrcsm_core STATIC
     BundleSniff.cpp
     LogParser.cpp
     LogTailer.cpp
+    LogEventClassifier.cpp
     AvatarData.cpp
     JunctionUtil.cpp
     ProcessGuard.cpp
