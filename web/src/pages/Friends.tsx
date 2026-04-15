@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import {
   Card,
   CardContent,
@@ -101,7 +102,7 @@ async function copyValue(value: string, label: string): Promise<void> {
   }
 }
 
-function FriendRow({ friend }: { friend: Friend }) {
+const FriendRow = memo(function FriendRow({ friend }: { friend: Friend }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
@@ -279,7 +280,7 @@ function FriendRow({ friend }: { friend: Friend }) {
       ) : null}
     </div>
   );
-}
+});
 
 export default function Friends() {
   const { t } = useTranslation();
@@ -288,6 +289,7 @@ export default function Friends() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const debouncedFilter = useDebouncedValue(filter, 150);
   const [showOffline, setShowOffline] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [collapsedBuckets, setCollapsedBuckets] = useState<Set<StatusBucket>>(
@@ -339,7 +341,7 @@ export default function Friends() {
   // on the header which expects the filtered view.
   const filtered = useMemo(() => {
     if (!data) return [];
-    const q = filter.trim().toLowerCase();
+    const q = debouncedFilter.trim().toLowerCase();
     if (!q) return data.friends;
     return data.friends.filter(
       (f) =>
@@ -347,7 +349,7 @@ export default function Friends() {
         (f.statusDescription?.toLowerCase().includes(q) ?? false) ||
         (f.bio?.toLowerCase().includes(q) ?? false),
     );
-  }, [data, filter]);
+  }, [data, debouncedFilter]);
 
   // Group filtered friends into status buckets. Sort within each bucket by
   // display name so the order stays stable across refreshes (VRChat's list
