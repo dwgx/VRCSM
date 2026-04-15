@@ -8,6 +8,7 @@
 #include "../core/BundleSniff.h"
 #include "../core/CacheScanner.h"
 #include "../core/JunctionUtil.h"
+#include "../core/LogEventClassifier.h"
 #include "../core/Migrator.h"
 #include "../core/PathProbe.h"
 #include "../core/ProcessGuard.h"
@@ -434,22 +435,37 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
         probe.baseDir,
         [this](const vrcsm::core::LogTailLine& line)
         {
-            // The frontend's `LogStreamChunk` type accepts any of
-            // `line` / `message` / `text`; we pick `line` to match the
-            // VRCX-style semantics (one tail line = one event).
-            nlohmann::json data{
-                {"line", line.line},
-                {"level", line.level},
-                {"source", line.source},
-            };
-            if (!line.iso_time.empty())
+            // 1) Raw line → `logs.stream` for the Console dock. The
+            // frontend's `LogStreamChunk` type accepts any of `line` /
+            // `message` / `text`; we pick `line` to match the VRCX-style
+            // semantics (one tail line = one event).
             {
-                data["timestamp"] = line.iso_time;
+                nlohmann::json data{
+                    {"line", line.line},
+                    {"level", line.level},
+                    {"source", line.source},
+                };
+                if (!line.iso_time.empty())
+                {
+                    data["timestamp"] = line.iso_time;
+                }
+                m_host.PostMessageToWeb(nlohmann::json{
+                    {"event", "logs.stream"},
+                    {"data", std::move(data)}
+                }.dump());
             }
-            m_host.PostMessageToWeb(nlohmann::json{
-                {"event", "logs.stream"},
-                {"data", std::move(data)}
-            }.dump());
+
+            // 2) Classified event (if any) → `logs.stream.event` for the
+            // Logs page live panels. Most lines classify to null (plain
+            // noise, Udon chatter, etc.) and produce zero extra traffic.
+            nlohmann::json classified = vrcsm::core::ClassifyStreamLine(line);
+            if (!classified.is_null())
+            {
+                m_host.PostMessageToWeb(nlohmann::json{
+                    {"event", "logs.stream.event"},
+                    {"data", std::move(classified)}
+                }.dump());
+            }
         });
     m_logTailer->Start();
 
