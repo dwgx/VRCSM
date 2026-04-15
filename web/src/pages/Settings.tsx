@@ -3,20 +3,31 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactElement,
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   Check,
   ChevronLeft,
   ChevronRight,
   Download,
   Lock,
   RefreshCw,
+  Trash2,
   Undo2,
   Unlock,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +49,7 @@ import type {
   VrcSettingType,
   VrcSettingValueSnapshot,
 } from "@/lib/types";
+import { getSemantic, type SemanticEditor } from "@/lib/vrcSettingsSemantics";
 import { SUPPORTED_LANGUAGES, changeLanguage } from "@/i18n";
 
 type Draft = Record<string, VrcSettingValueSnapshot>;
@@ -121,6 +133,8 @@ function Settings() {
 
   // ─── VRCSM app section ───────────────────────────────────────────────
   const [version, setVersion] = useState<AppVersion | null>(null);
+  const [factoryResetOpen, setFactoryResetOpen] = useState(false);
+  const [factoryResetting, setFactoryResetting] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -131,7 +145,7 @@ function Settings() {
       })
       .catch(() => {
         // Dev-server fallback only — prod reads IpcBridge::HandleAppVersion.
-        if (alive) setVersion({ version: "0.1.3", build: "dev" });
+        if (alive) setVersion({ version: "0.3.0", build: "dev" });
       });
     return () => {
       alive = false;
@@ -179,22 +193,28 @@ function Settings() {
   useEffect(() => {
     let alive = true;
 
-    const poll = () => {
-      ipc
-        .call<undefined, ProcessStatus>("process.vrcRunning")
-        .then((status) => {
-          if (alive) setVrcRunning(status.running);
-        })
-        .catch(() => {
-          if (alive) setVrcRunning(false);
-        });
-    };
+    // Initial fetch seeds the "VRChat running — writes disabled" warning
+    // at the top of Settings. After mount, the host pushes transitions
+    // via `process.vrcStatusChanged`, matching the sidebar dot in App.tsx.
+    ipc
+      .call<undefined, ProcessStatus>("process.vrcRunning")
+      .then((status) => {
+        if (alive) setVrcRunning(status.running);
+      })
+      .catch(() => {
+        if (alive) setVrcRunning(false);
+      });
 
-    poll();
-    const timer = window.setInterval(poll, 5000);
+    const unsubscribe = ipc.on<ProcessStatus>(
+      "process.vrcStatusChanged",
+      (status) => {
+        if (alive) setVrcRunning(status.running);
+      },
+    );
+
     return () => {
       alive = false;
-      window.clearInterval(timer);
+      unsubscribe();
     };
   }, []);
 
@@ -365,6 +385,48 @@ function Settings() {
     }
   }, [t]);
 
+  const runFactoryReset = useCallback(async () => {
+    setFactoryResetting(true);
+    try {
+      // The host handler is idempotent and returns {ok, removed, skipped}.
+      // We surface `removed.length` so the toast can tell the user how
+      // many state files were wiped in a single sentence without leaking
+      // the raw file names (they're mostly opaque, e.g. session.dat).
+      const result = await ipc.call<
+        undefined,
+        { ok: boolean; removed: string[]; skipped: string[] }
+      >("app.factoryReset");
+      if (result.ok) {
+        toast.success(
+          t("settings.app.factoryResetOk", {
+            count: result.removed.length,
+            defaultValue: "Factory reset complete ({{count}} files wiped)",
+          }),
+        );
+        // After a reset the thumbnail cache is gone — force a reload of
+        // the settings report so any stale draft state doesn't linger.
+        reload();
+      } else {
+        toast.error(
+          t("settings.app.factoryResetFailed", {
+            defaultValue: "Factory reset failed",
+          }),
+        );
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(
+        t("settings.app.factoryResetFailed", {
+          error: msg,
+          defaultValue: "Factory reset failed: {{error}}",
+        }),
+      );
+    } finally {
+      setFactoryResetting(false);
+      setFactoryResetOpen(false);
+    }
+  }, [t, reload]);
+
   // ─── Right dock inspector ────────────────────────────────────────────
   const selectedEntry = useMemo(() => {
     if (!report || !selectedKey) return null;
@@ -433,11 +495,24 @@ function Settings() {
               </div>
             </div>
           ) : null}
-          {selectedEntry.description ? (
-            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-2 text-[11px] leading-snug text-[hsl(var(--muted-foreground))]">
-              {selectedEntry.description}
-            </div>
-          ) : null}
+          {(() => {
+            // Per-key i18n lookup with graceful fallback. The C++ side
+            // owns the canonical English description in
+            // VrcSettingsKnownKeys.inc; if a locale hasn't translated
+            // this key yet, i18next returns that English string
+            // verbatim via `defaultValue` so the user never sees a raw
+            // translation key. Evaluated in an IIFE so we can hoist
+            // the final string above the conditional render.
+            const localized = t(
+              `settings.vrc.keys.${selectedEntry.key}.description`,
+              { defaultValue: selectedEntry.description ?? "" },
+            );
+            return localized ? (
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-2 text-[11px] leading-snug text-[hsl(var(--muted-foreground))]">
+                {localized}
+              </div>
+            ) : null;
+          })()}
         </div>
       ),
     };
@@ -503,6 +578,27 @@ function Settings() {
           </SettingRow>
           <SettingRow label={t("settings.appTheme")} hint={t("settings.appThemeHint")}>
             <Badge variant="muted">{t("settings.dark")}</Badge>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.app.factoryResetLabel", {
+              defaultValue: "Factory reset",
+            })}
+            hint={t("settings.app.factoryResetHint", {
+              defaultValue:
+                "Wipe VRCSM's saved session, thumbnail cache and logs. Does NOT touch VRChat's own data.",
+            })}
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setFactoryResetOpen(true)}
+              className="border-[hsl(var(--destructive)/0.55)] text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.12)]"
+            >
+              <Trash2 className="size-3" />
+              {t("settings.app.factoryResetLabel", {
+                defaultValue: "Factory reset",
+              })}
+            </Button>
           </SettingRow>
         </CardContent>
       </Card>
@@ -716,6 +812,55 @@ function Settings() {
           ) : null}
         </CardContent>
       </Card>
+
+      {/* Factory reset confirmation — destructive action, explicit opt-in. */}
+      <Dialog
+        open={factoryResetOpen}
+        onOpenChange={(open) => {
+          if (factoryResetting) return;
+          setFactoryResetOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-[hsl(var(--destructive))]" />
+              {t("settings.app.factoryResetConfirmTitle", {
+                defaultValue: "Factory reset VRCSM?",
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("settings.app.factoryResetConfirmBody", {
+                defaultValue:
+                  "This wipes VRCSM's saved VRChat session, thumbnail cache and logs under %LocalAppData%\\VRCSM. VRChat's own avatars, cache and registry settings are NOT affected. This action cannot be undone.",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setFactoryResetOpen(false)}
+              disabled={factoryResetting}
+            >
+              {t("common.cancel", { defaultValue: "Cancel" })}
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => void runFactoryReset()}
+              disabled={factoryResetting}
+              className="bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] hover:bg-[hsl(var(--destructive)/0.9)]"
+            >
+              {factoryResetting
+                ? t("settings.app.factoryResetting", {
+                    defaultValue: "Wiping…",
+                  })
+                : t("settings.app.factoryResetConfirm", {
+                    defaultValue: "Wipe VRCSM data",
+                  })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -804,6 +949,14 @@ function SettingEntryRow({
   onApply,
   onRevert,
 }: SettingEntryRowProps) {
+  const { t } = useTranslation();
+  // Same per-key i18n lookup as the right dock. Looked up once per row
+  // rather than for every render of the row's inner subtree — cheap,
+  // but it also keeps the defaultValue fallback in one place.
+  const localizedDescription = t(
+    `settings.vrc.keys.${entry.key}.description`,
+    { defaultValue: entry.description ?? "" },
+  );
   return (
     <div
       onClick={onSelect}
@@ -833,9 +986,9 @@ function SettingEntryRow({
             </Badge>
           ) : null}
         </div>
-        {entry.description ? (
+        {localizedDescription ? (
           <div className="mt-0.5 truncate text-[11px] text-[hsl(var(--muted-foreground))]">
-            {entry.description}
+            {localizedDescription}
           </div>
         ) : null}
       </div>
@@ -890,7 +1043,155 @@ interface EntryEditorProps {
   onEdit: (patch: Partial<VrcSettingValueSnapshot>) => void;
 }
 
+/**
+ * Build the curated editor widget for a key that appears in
+ * `VRC_SETTINGS_SEMANTICS`. Returns `null` when the semantic kind
+ * doesn't match the entry's underlying type — the caller then falls
+ * back to the raw Number/Text/Toggle editor.
+ *
+ * The goal of this function is to stay purely presentational: every
+ * write still flows through the same `onEdit` patch callback and hits
+ * the same IPC path as the raw editor, so the semantic layer can be
+ * disabled by deleting the key from the semantics map without any
+ * cleanup elsewhere.
+ */
+function renderSemanticEditor(
+  editor: SemanticEditor,
+  entryType: VrcSettingType,
+  value: VrcSettingValueSnapshot,
+  disabled: boolean,
+  onEdit: (patch: Partial<VrcSettingValueSnapshot>) => void,
+): ReactElement | null {
+  const baseCls =
+    "h-7 font-mono text-[12px]" + (disabled ? " opacity-60" : "");
+
+  // ── float slider ─────────────────────────────────────────────────
+  if (editor.kind === "slider-float") {
+    if (entryType !== "float") return null;
+    const current = value.floatValue ?? editor.min;
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="range"
+          disabled={disabled}
+          min={editor.min}
+          max={editor.max}
+          step={editor.step}
+          value={current}
+          onChange={(e) =>
+            onEdit({
+              type: "float",
+              floatValue: Number.parseFloat(e.target.value),
+            })
+          }
+          className="h-2 w-[160px] cursor-pointer accent-[hsl(var(--primary))]"
+        />
+        <span className="w-[70px] text-right font-mono text-[11px] text-[hsl(var(--foreground))]">
+          {current.toFixed(editor.step < 0.1 ? 2 : 1)}
+          {editor.unit ? ` ${editor.unit}` : ""}
+        </span>
+      </div>
+    );
+  }
+
+  // ── integer slider ──────────────────────────────────────────────
+  if (editor.kind === "slider-int") {
+    if (entryType !== "int") return null;
+    const current = value.intValue ?? editor.min;
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="range"
+          disabled={disabled}
+          min={editor.min}
+          max={editor.max}
+          step={editor.step ?? 1}
+          value={current}
+          onChange={(e) =>
+            onEdit({
+              type: "int",
+              intValue: Number.parseInt(e.target.value, 10),
+            })
+          }
+          className="h-2 w-[160px] cursor-pointer accent-[hsl(var(--primary))]"
+        />
+        <span className="w-[70px] text-right font-mono text-[11px] text-[hsl(var(--foreground))]">
+          {current}
+          {editor.unit ? ` ${editor.unit}` : ""}
+        </span>
+      </div>
+    );
+  }
+
+  // ── int dropdown ────────────────────────────────────────────────
+  if (editor.kind === "dropdown-int") {
+    if (entryType !== "int") return null;
+    const current = value.intValue ?? editor.options[0]?.value ?? 0;
+    return (
+      <select
+        disabled={disabled}
+        value={current}
+        onChange={(e) =>
+          onEdit({
+            type: "int",
+            intValue: Number.parseInt(e.target.value, 10),
+          })
+        }
+        className={`${baseCls} w-[220px] rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-2 text-[hsl(var(--foreground))]`}
+      >
+        {editor.options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label} ({opt.value})
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  // ── string dropdown ─────────────────────────────────────────────
+  if (editor.kind === "dropdown-string") {
+    if (entryType !== "string") return null;
+    const current = value.stringValue ?? editor.options[0]?.value ?? "";
+    return (
+      <select
+        disabled={disabled}
+        value={current}
+        onChange={(e) =>
+          onEdit({ type: "string", stringValue: e.target.value })
+        }
+        className={`${baseCls} w-[220px] rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-2 text-[hsl(var(--foreground))]`}
+      >
+        {editor.options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  return null;
+}
+
 function EntryEditor({ entry, value, disabled, onEdit }: EntryEditorProps) {
+  // Before falling through to the raw editor, check for a curated
+  // semantic in `vrcSettingsSemantics.ts`. We only honour the semantic
+  // when its `kind` matches the entry's underlying storage type — a
+  // mismatch (e.g. someone listed an int key with a float slider)
+  // quietly falls back to the raw editor rather than writing the wrong
+  // numeric type to the registry.
+  const semantic = getSemantic(entry.key);
+  if (semantic) {
+    const widget = renderSemanticEditor(
+      semantic.editor,
+      entry.type,
+      value,
+      disabled,
+      onEdit,
+    );
+    if (widget) return widget;
+  }
+
   if (entry.type === "bool") {
     const on = value.boolValue ?? false;
     return (

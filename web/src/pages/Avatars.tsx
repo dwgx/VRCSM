@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Card,
@@ -10,14 +10,105 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useReport } from "@/lib/report-context";
+import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { formatDate } from "@/lib/utils";
+import { ipc } from "@/lib/ipc";
+import { useAuth } from "@/lib/auth-context";
 import type { LocalAvatarItem } from "@/lib/types";
-import { Eye, Sliders, Search, User, Info, Lock } from "lucide-react";
+import { Eye, Sliders, Search, User, Info, Lock, Box } from "lucide-react";
 
 type AugmentedAvatar = LocalAvatarItem & {
   display_name?: string;
   author?: string;
 };
+
+// Raw JSON from /api/1/avatars/{id}. VRChat's payload shape is loose and
+// evolves over time, so we type the fields we actually render as
+// optional and let anything else ride along as `unknown`.
+interface AvatarDetailsPayload {
+  name?: string;
+  description?: string;
+  authorName?: string;
+  authorId?: string;
+  releaseStatus?: string;
+  version?: number;
+  thumbnailImageUrl?: string;
+  imageUrl?: string;
+  tags?: string[];
+  unityPackages?: Array<{
+    platform?: string;
+    unityVersion?: string;
+    assetVersion?: number;
+  }>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface AvatarDetailsResponse {
+  details: AvatarDetailsPayload | null;
+}
+
+// Tiny in-process memo so switching back and forth in the list pane
+// doesn't re-issue the same IPC. Keyed by avatar id. `null` means "we
+// asked and there's nothing" (anon, 401, 404) — don't retry.
+const detailsMemo = new Map<string, AvatarDetailsPayload | null>();
+
+function useAvatarDetails(
+  avatarId: string | null,
+): {
+  details: AvatarDetailsPayload | null;
+  loading: boolean;
+} {
+  const { status } = useAuth();
+  const [details, setDetails] = useState<AvatarDetailsPayload | null>(() => {
+    if (!avatarId) return null;
+    return detailsMemo.get(avatarId) ?? null;
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!avatarId || !status.authed) {
+      setDetails(null);
+      setLoading(false);
+      return;
+    }
+
+    if (detailsMemo.has(avatarId)) {
+      setDetails(detailsMemo.get(avatarId) ?? null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    ipc
+      .call<{ id: string }, AvatarDetailsResponse>("avatar.details", {
+        id: avatarId,
+      })
+      .then((resp) => {
+        if (cancelled) return;
+        const payload = resp.details ?? null;
+        detailsMemo.set(avatarId, payload);
+        setDetails(payload);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // On network / handler failure, cache null so we don't retry
+        // storm. The user can clear state by signing out + back in.
+        detailsMemo.set(avatarId, null);
+        setDetails(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [avatarId, status.authed]);
+
+  return { details, loading };
+}
 
 /**
  * Stable 32-bit string hash (FNV-1a ish) used to seed the 3D preview
@@ -44,12 +135,12 @@ function shortenId(id: string, head = 8, tail = 4): string {
 }
 
 /**
- * Inspector preview. VRChat's public avatar API refuses all anonymous
- * requests with HTTP 401 — see the note in `web/src/lib/thumbnails.ts`
- * and `src/core/VrcApi.cpp` — so we render a procedural CSS 3D cube
- * keyed off the avatar id. Each avatar gets a stable distinct palette
- * via the hash seed, which at least gives the inspector something more
- * visually distinctive than a blank panel.
+ * Inspector preview. When VRCSM is logged into VRChat (v0.2.0+) we fetch
+ * the real avatar thumbnail from the CDN; if the call returns null — user
+ * not authed, or avatar is private even for the current session — we
+ * render a procedural CSS 3D cube keyed off the avatar id instead so the
+ * inspector still looks alive. Both paths come from the same
+ * `useThumbnail` hook which handles caching + dedup.
  */
 function AvatarPreview({
   avatarId,
@@ -58,26 +149,53 @@ function AvatarPreview({
   avatarId: string;
   size?: number;
 }) {
+  const { url } = useThumbnail(avatarId);
   return (
     <div
       className="relative flex items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
       style={{ width: size, height: size }}
     >
-      <Avatar3DPreview seed={avatarId} size={Math.round(size * 0.62)} />
+      {url ? (
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover animate-fade-in"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
+      ) : (
+        <Avatar3DPreview seed={avatarId} size={Math.round(size * 0.62)} />
+      )}
     </div>
   );
 }
 
 /**
- * Row thumbnail — same procedural cube at a smaller size so the list
- * pane reads like a Unity hierarchy with icons rather than a wall of
- * text. Uses the same seed as the inspector preview so the colours
- * stay stable when switching selection.
+ * Row thumbnail — real CDN image when available, else the procedural
+ * cube at a smaller size so the list pane reads like a Unity hierarchy
+ * with icons rather than a wall of text.
  */
 function AvatarRowThumb({ avatarId }: { avatarId: string }) {
+  const { url } = useThumbnail(avatarId);
   return (
     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
-      <Avatar3DPreview seed={avatarId} size={22} />
+      {url ? (
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
+      ) : (
+        <Avatar3DPreview seed={avatarId} size={22} />
+      )}
     </div>
   );
 }
@@ -128,6 +246,220 @@ function Avatar3DPreview({ seed, size = 96 }: { seed: string; size?: number }) {
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * Inspector pane — merges local cache data with /api/1/avatars/{id} when
+ * the user is signed in. Local-only fields (eye_height, parameter_count,
+ * path, modified_at) always show. API fields (description, tags, release
+ * status, version, author, unity packages) appear as soon as they
+ * resolve and silently stay empty when anonymous or the avatar is
+ * private/deleted. No "loading spinner everywhere" — local data renders
+ * instantly and API data fills in as it arrives.
+ */
+function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
+  const { t } = useTranslation();
+  const { status: authStatus } = useAuth();
+  const { details, loading: detailsLoading } = useAvatarDetails(
+    selected.avatar_id,
+  );
+
+  // API-sourced display name beats logs beats "unknown".
+  const displayName =
+    details?.name ?? selected.display_name ?? t("avatars.unknownName");
+  const authorName = details?.authorName ?? selected.author;
+  const tags = details?.tags ?? [];
+  // VRChat tags look like `author_tag_nsfw` / `content_horror` —
+  // strip the prefix for display.
+  const prettyTags = tags
+    .map((tag) => tag.replace(/^(author_tag_|content_|system_)/, ""))
+    .filter((tag) => tag.length > 0);
+
+  return (
+    <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
+      <div className="unity-panel-header">
+        {t("avatars.inspectorPaneTitle")}
+      </div>
+      <div className="grid gap-4 p-5 md:grid-cols-[160px_1fr]">
+        <div className="flex flex-col items-center gap-2">
+          <AvatarPreview avatarId={selected.avatar_id} size={140} />
+          <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+            {t("avatars.previewLabel")}
+          </span>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-3">
+          {/* Name + author */}
+          <div className="flex flex-col gap-1">
+            <div className="text-[18px] font-semibold leading-tight text-[hsl(var(--foreground))]">
+              {displayName}
+            </div>
+            {authorName ? (
+              <div className="text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("avatars.byAuthor", { author: authorName })}
+              </div>
+            ) : detailsLoading ? (
+              <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                {t("avatars.loadingDetails", {
+                  defaultValue: "Loading details…",
+                })}
+              </div>
+            ) : (
+              <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                {authStatus.authed
+                  ? t("avatars.nameFromLogOnly")
+                  : t("avatars.signInForDetails", {
+                      defaultValue: "Sign in for full metadata",
+                    })}
+              </div>
+            )}
+          </div>
+
+          {/* Local + API-derived badges */}
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="tonal">
+              <Eye className="size-3" />
+              {t("avatars.eyeHeight", {
+                value: selected.eye_height?.toFixed(2) ?? "—",
+              })}
+            </Badge>
+            <Badge variant="outline">
+              <Sliders className="size-3" />
+              {t("avatars.params", { count: selected.parameter_count })}
+            </Badge>
+            {details?.releaseStatus ? (
+              <Badge
+                variant={details.releaseStatus === "public" ? "success" : "secondary"}
+              >
+                {details.releaseStatus}
+              </Badge>
+            ) : null}
+            {typeof details?.version === "number" ? (
+              <Badge variant="outline">v{details.version}</Badge>
+            ) : null}
+            {selected.modified_at ? (
+              <Badge variant="secondary">
+                {t("avatars.modified", {
+                  date: formatDate(selected.modified_at),
+                })}
+              </Badge>
+            ) : null}
+          </div>
+
+          {/* Description — API only, hides cleanly when absent */}
+          {details?.description ? (
+            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[12px] leading-relaxed text-[hsl(var(--foreground))]">
+              {details.description}
+            </div>
+          ) : null}
+
+          {/* Tags */}
+          {prettyTags.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {prettyTags.slice(0, 12).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1.5 py-0.5 text-[10px] font-mono text-[hsl(var(--muted-foreground))]"
+                >
+                  {tag}
+                </span>
+              ))}
+              {prettyTags.length > 12 ? (
+                <span className="px-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                  +{prettyTags.length - 12}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Unity packages — platform + unity version summary */}
+          {details?.unityPackages && details.unityPackages.length > 0 ? (
+            <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[11px]">
+              <div className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
+                <Box className="size-3" />
+                <span>
+                  {t("avatars.unityPackages", {
+                    count: details.unityPackages.length,
+                    defaultValue: "{{count}} platform variants",
+                  })}
+                </span>
+              </div>
+              {details.unityPackages.slice(0, 4).map((pkg, i) => (
+                <div
+                  key={`${pkg.platform ?? "?"}-${i}`}
+                  className="flex items-center justify-between gap-2 text-[10.5px] text-[hsl(var(--foreground))]"
+                >
+                  <span className="font-mono">{pkg.platform ?? "—"}</span>
+                  <span className="font-mono text-[hsl(var(--muted-foreground))]">
+                    {pkg.unityVersion ?? ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {/* Raw ids + cache path — always visible, cheap to show */}
+          <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[11px]">
+            <div>
+              <span className="text-[hsl(var(--muted-foreground))]">id: </span>
+              <span className="font-mono text-[hsl(var(--foreground))]">
+                {selected.avatar_id}
+              </span>
+            </div>
+            <div>
+              <span className="text-[hsl(var(--muted-foreground))]">
+                user:{" "}
+              </span>
+              <span className="font-mono text-[hsl(var(--foreground))]">
+                {details?.authorId ?? selected.user_id}
+              </span>
+            </div>
+            <div className="flex items-start gap-1.5">
+              <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
+                path:{" "}
+              </span>
+              <span className="break-all font-mono text-[10.5px] text-[hsl(var(--foreground))]">
+                {selected.path}
+              </span>
+            </div>
+            {details?.created_at ? (
+              <div>
+                <span className="text-[hsl(var(--muted-foreground))]">
+                  created:{" "}
+                </span>
+                <span className="font-mono text-[hsl(var(--foreground))]">
+                  {formatDate(details.created_at)}
+                </span>
+              </div>
+            ) : null}
+            {details?.updated_at ? (
+              <div>
+                <span className="text-[hsl(var(--muted-foreground))]">
+                  updated:{" "}
+                </span>
+                <span className="font-mono text-[hsl(var(--foreground))]">
+                  {formatDate(details.updated_at)}
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          {!authStatus.authed ? (
+            <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
+              <Lock className="mt-px size-3 shrink-0" />
+              <span>{t("avatars.thumbnailNote")}</span>
+            </div>
+          ) : null}
+          {!selected.display_name && !details?.name ? (
+            <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
+              <Info className="mt-px size-3 shrink-0" />
+              <span>{t("avatars.nameNote")}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -211,6 +543,15 @@ function Avatars() {
         (it.author?.toLowerCase().includes(q) ?? false),
     );
   }, [items, filter]);
+
+  // Warm the thumbnail cache as soon as the avatar list lands so the
+  // row icons + inspector preview don't each trigger individual fetches
+  // as the user scrolls. One batched IPC → WinHTTP → CDN.
+  useEffect(() => {
+    if (items.length > 0) {
+      prefetchThumbnails(items.map((it) => it.avatar_id));
+    }
+  }, [items]);
 
   const selected = useMemo(() => {
     if (!filtered.length) return null;
@@ -296,100 +637,7 @@ function Avatars() {
 
           {/* Inspector pane — 3D preview + metadata */}
           {selected ? (
-            <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
-              <div className="unity-panel-header">
-                {t("avatars.inspectorPaneTitle")}
-              </div>
-              <div className="grid gap-4 p-5 md:grid-cols-[160px_1fr]">
-                {/* Procedural preview. VRChat's public avatar API requires
-                    a logged-in session — see VrcApi.cpp — so we intentionally
-                    do not attempt a real thumbnail here. */}
-                <div className="flex flex-col items-center gap-2">
-                  <AvatarPreview avatarId={selected.avatar_id} size={140} />
-                  <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                    {t("avatars.previewLabel")}
-                  </span>
-                </div>
-
-                {/* Metadata panel */}
-                <div className="flex min-w-0 flex-col gap-3">
-                  <div className="flex flex-col gap-1">
-                    <div className="text-[18px] font-semibold leading-tight text-[hsl(var(--foreground))]">
-                      {selected.display_name ?? t("avatars.unknownName")}
-                    </div>
-                    {selected.author ? (
-                      <div className="text-[12px] text-[hsl(var(--muted-foreground))]">
-                        {t("avatars.byAuthor", { author: selected.author })}
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                        {t("avatars.nameFromLogOnly")}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    <Badge variant="tonal">
-                      <Eye className="size-3" />
-                      {t("avatars.eyeHeight", {
-                        value: selected.eye_height?.toFixed(2) ?? "—",
-                      })}
-                    </Badge>
-                    <Badge variant="outline">
-                      <Sliders className="size-3" />
-                      {t("avatars.params", {
-                        count: selected.parameter_count,
-                      })}
-                    </Badge>
-                    {selected.modified_at ? (
-                      <Badge variant="secondary">
-                        {t("avatars.modified", {
-                          date: formatDate(selected.modified_at),
-                        })}
-                      </Badge>
-                    ) : null}
-                  </div>
-
-                  <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[11px]">
-                    <div>
-                      <span className="text-[hsl(var(--muted-foreground))]">
-                        id:{" "}
-                      </span>
-                      <span className="font-mono text-[hsl(var(--foreground))]">
-                        {selected.avatar_id}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[hsl(var(--muted-foreground))]">
-                        user:{" "}
-                      </span>
-                      <span className="font-mono text-[hsl(var(--foreground))]">
-                        {selected.user_id}
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                      <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
-                        path:{" "}
-                      </span>
-                      <span className="break-all font-mono text-[10.5px] text-[hsl(var(--foreground))]">
-                        {selected.path}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
-                    <Lock className="mt-px size-3 shrink-0" />
-                    <span>{t("avatars.thumbnailNote")}</span>
-                  </div>
-                  {!selected.display_name ? (
-                    <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
-                      <Info className="mt-px size-3 shrink-0" />
-                      <span>{t("avatars.nameNote")}</span>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </Card>
+            <AvatarInspector selected={selected} />
           ) : (
             <Card elevation="flat" className="flex items-center justify-center p-0">
               <div className="flex flex-col items-center gap-2 py-10 text-[12px] text-[hsl(var(--muted-foreground))]">

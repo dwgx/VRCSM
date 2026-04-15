@@ -6,6 +6,7 @@
   },
   "nav": {
     "dashboard": "概览",
+    "friends": "好友",
     "bundles": "资源包",
     "avatars": "模型",
     "worlds": "地图",
@@ -13,6 +14,69 @@
     "migrate": "迁移",
     "settings": "设置",
     "language": "语言"
+  },
+  "auth": {
+    "signIn": "登录 VRChat",
+    "signInWithVrchat": "用 VRChat 账号登录",
+    "opening": "正在打开…",
+    "signOut": "退出登录",
+    "signedIn": "已登录",
+    "signedOut": "已退出",
+    "checking": "验证中…",
+    "loginSuccess": "已登录 VRChat",
+    "loginWindowHint": "VRCSM 会打开一个安全的登录窗口,让 VRChat 官方页面处理密码、两步验证、Steam 登录和验证码。你的密码不会经过 VRCSM。",
+    "loginWindowFailed": "打开登录窗口失败:{{error}}"
+  },
+  "friends": {
+    "title": "好友",
+    "subtitle": "VRChat 实时好友列表 —— 需要登录。",
+    "listPaneTitle": "好友",
+    "filterPlaceholder": "按名称或状态筛选…",
+    "totalCount_one": "{{count}} 位好友",
+    "totalCount_other": "{{count}} 位好友",
+    "showOffline": "显示离线",
+    "hideOffline": "隐藏离线",
+    "empty": "没有匹配的好友。",
+    "loading": "正在加载好友…",
+    "loadFailed": "加载失败:{{error}}",
+    "signInRequired": "登录 VRChat",
+    "signInRequiredBody": "好友列表、在线状态、当前所在世界这些全部来自 VRChat 官方 API。VRCSM 会打开一个安全浏览器窗口让你登录 VRChat 官网,只把返回的会话 cookie 用 DPAPI 加密存在本地,绝不经手你的密码。",
+    "location": {
+      "offline": "离线",
+      "private": "私密",
+      "traveling": "加入中",
+      "world": "在世界中",
+      "unknown": "未知"
+    },
+    "bucket": {
+      "joinMe": "加入我",
+      "active": "活跃",
+      "askMe": "询问",
+      "busy": "勿扰",
+      "offline": "离线"
+    },
+    "trust": {
+      "troll": "已标记",
+      "veteran": "信任玩家",
+      "trusted": "老玩家",
+      "known": "普通玩家",
+      "user": "新玩家",
+      "new": "访客",
+      "visitor": "访客"
+    },
+    "badges": {
+      "moderator": "VRChat 管理员"
+    },
+    "fields": {
+      "userId": "用户 ID",
+      "trust": "信任等级",
+      "developer": "开发者",
+      "world": "世界",
+      "instance": "实例",
+      "location": "位置",
+      "lastSeen": "最后活跃",
+      "bio": "个人简介"
+    }
   },
   "menu": {
     "file": "文件",
@@ -32,6 +96,7 @@
     "loading": "加载中…",
     "retry": "重试",
     "rescan": "重新扫描",
+    "refresh": "刷新",
     "back": "上一步",
     "next": "下一步",
     "cancel": "取消",
@@ -47,7 +112,8 @@
     "yes": "是",
     "no": "否",
     "browse": "浏览…",
-    "repair": "修复"
+    "repair": "修复",
+    "copy": "复制"
   },
   "about": {
     "title": "关于 VRCSM",
@@ -152,6 +218,10 @@
     "unknownName": "未知模型",
     "byAuthor": "作者:{{author}}",
     "nameFromLogOnly": "名字来自日志匹配",
+    "loadingDetails": "正在加载详情…",
+    "signInForDetails": "登录后可查看完整元数据",
+    "unityPackages_one": "{{count}} 个平台变体",
+    "unityPackages_other": "{{count}} 个平台变体",
     "pickOne": "选择一个模型",
     "noMatch": "没有匹配的模型。",
     "nameNote": "模型名字是从 VRChat 输出日志中提取的。只有在本机至少加载过一次的模型才会显示名字。"
@@ -332,6 +402,1799 @@
         "next": "下一页",
         "page": "第 {{page}} / {{total}} 页",
         "range": "第 {{from}}–{{to}} 条 / 共 {{total}} 条"
+      },
+      "keys": {
+        "AUDIO_GAME_AVATARS_ENABLED": {
+          "description": "模型音频静音开关"
+        },
+        "AUDIO_GAME_AVATARS_STEAMAUDIO": {
+          "description": "模型音频音量"
+        },
+        "AUDIO_GAME_PROPS_ENABLED": {
+          "description": "物件音频静音开关"
+        },
+        "AUDIO_GAME_PROPS_STEAMAUDIO": {
+          "description": "物件音频音量"
+        },
+        "AUDIO_GAME_SFX_ENABLED": {
+          "description": "地图音效静音开关"
+        },
+        "AUDIO_GAME_SFX_STEAMAUDIO": {
+          "description": "地图音效音量"
+        },
+        "AUDIO_GAME_VOICE_ENABLED": {
+          "description": "语音聊天静音开关"
+        },
+        "AUDIO_GAME_VOICE_STEAMAUDIO": {
+          "description": "语音聊天音量"
+        },
+        "AUDIO_MASTER_ENABLED": {
+          "description": "总音频静音开关"
+        },
+        "AUDIO_MASTER_STEAMAUDIO": {
+          "description": "总输出音量"
+        },
+        "AUDIO_UI_ENABLED": {
+          "description": "UI 音效静音开关"
+        },
+        "AUDIO_UI_STEAMAUDIO": {
+          "description": "UI 音效音量"
+        },
+        "VRC_ANDROID_MIC_MODE": {
+          "description": "安卓麦克风模式"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_ENABLED": {
+          "description": "启用聊天气泡音频"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_VOLUME": {
+          "description": "聊天气泡音频音量"
+        },
+        "VRC_EARMUFF_MODE": {
+          "description": "耳罩模式"
+        },
+        "VRC_EARMUFF_MODE_AVATARS": {
+          "description": "耳罩模式模型"
+        },
+        "VRC_EARMUFF_MODE_CONE_VALUE": {
+          "description": "耳罩模式锥形值"
+        },
+        "VRC_EARMUFF_MODE_FALLOFF": {
+          "description": "耳罩模式衰减"
+        },
+        "VRC_EARMUFF_MODE_FOLLOW_HEAD": {
+          "description": "耳罩模式跟随头部"
+        },
+        "VRC_EARMUFF_MODE_LOCK_ROTATION": {
+          "description": "耳罩模式锁定旋转"
+        },
+        "VRC_EARMUFF_MODE_OFFSET_VALUE": {
+          "description": "耳罩模式偏移"
+        },
+        "VRC_EARMUFF_MODE_RADIUS": {
+          "description": "耳罩模式半径"
+        },
+        "VRC_EARMUFF_MODE_REDUCED_VOLUME": {
+          "description": "耳罩降低音量"
+        },
+        "VRC_EARMUFF_MODE_SHOW_ICON_IN_NAMEPLATE": {
+          "description": "名牌显示耳罩图标"
+        },
+        "VRC_EARMUFF_MODE_VISUAL_AIDE": {
+          "description": "耳罩视觉辅助"
+        },
+        "VRC_HUD_MIC_OPACITY": {
+          "description": "麦克风 HUD 不透明度"
+        },
+        "VRC_INPUT_DISABLE_MIC_BUTTON": {
+          "description": "禁用游戏内麦克风按钮"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_Desktop": {
+          "description": "桌面麦克风设备名"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_VR": {
+          "description": "VR 麦克风设备名"
+        },
+        "VRC_INPUT_MIC_ENABLED": {
+          "description": "麦克风总开关"
+        },
+        "VRC_INPUT_MIC_LEVEL_DESK": {
+          "description": "桌面麦克风输入增益"
+        },
+        "VRC_INPUT_MIC_LEVEL_VR": {
+          "description": "VR 麦克风输入等级"
+        },
+        "VRC_INPUT_MIC_MODE": {
+          "description": "麦克风输入模式"
+        },
+        "VRC_INPUT_MIC_NOISE_GATE": {
+          "description": "麦克风噪声门阈值"
+        },
+        "VRC_INPUT_MIC_NOISE_SUPPRESSION": {
+          "description": "麦克风降噪"
+        },
+        "VRC_INPUT_MIC_ON_JOIN": {
+          "description": "加入时开启麦克风"
+        },
+        "VRC_INPUT_TALK_DEFAULT_ON": {
+          "description": "进入会话时默认麦克风"
+        },
+        "VRC_INPUT_TALK_TOGGLE": {
+          "description": "按住说话或切换说话"
+        },
+        "VRC_MIC_ICON_VISIBILITY": {
+          "description": "麦克风图标可见性"
+        },
+        "VRC_MIC_TOGGLE_VOLUME": {
+          "description": "麦克风切换音量"
+        },
+        "VRC_USE_OUTLINE_MIC_ICON": {
+          "description": "描边麦克风图标"
+        },
+        "COLOR_PALETTES_CURRENT_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "当前用户调色板"
+        },
+        "FIELD_OF_VIEW": {
+          "description": "桌面 FOV 设置"
+        },
+        "FPSCapType": {
+          "description": "帧率上限模式"
+        },
+        "FPSType": {
+          "description": "FPS 显示模式"
+        },
+        "FPS_LIMIT": {
+          "description": "自定义帧率上限"
+        },
+        "FaceMirrorOwner": {
+          "description": "面镜所有者"
+        },
+        "LOD_QUALITY": {
+          "description": "细节层级画质预设"
+        },
+        "PARTICLE_PHYSICS_QUALITY": {
+          "description": "粒子物理画质预设"
+        },
+        "PIXEL_LIGHT_COUNT": {
+          "description": "最大实时像素灯光数"
+        },
+        "PersonalMirror.FaceMirrorOpacity": {
+          "description": "VR 面镜不透明度"
+        },
+        "PersonalMirror.FaceMirrorOpacityDesktop": {
+          "description": "桌面面镜不透明度"
+        },
+        "PersonalMirror.FaceMirrorPosX": {
+          "description": "VR 面镜 X 偏移"
+        },
+        "PersonalMirror.FaceMirrorPosXDesktop": {
+          "description": "桌面面镜 X 偏移"
+        },
+        "PersonalMirror.FaceMirrorPosY": {
+          "description": "VR 面镜 Y 偏移"
+        },
+        "PersonalMirror.FaceMirrorPosYDesktop": {
+          "description": "桌面面镜 Y 偏移"
+        },
+        "PersonalMirror.FaceMirrorScale": {
+          "description": "VR 面镜缩放"
+        },
+        "PersonalMirror.FaceMirrorScaleDesktop": {
+          "description": "桌面面镜缩放"
+        },
+        "PersonalMirror.FaceMirrorSpoutEnabled": {
+          "description": "启用个人面镜串流"
+        },
+        "PersonalMirror.FaceMirrorZoom": {
+          "description": "VR 面镜缩放倍率"
+        },
+        "PersonalMirror.FaceMirrorZoomDesktop": {
+          "description": "桌面面镜缩放倍率"
+        },
+        "PersonalMirror.Grabbable": {
+          "description": "镜子可抓取"
+        },
+        "PersonalMirror.ImmersiveMove": {
+          "description": "镜子沉浸移动模式"
+        },
+        "PersonalMirror.MirrorOpacity": {
+          "description": "个人镜子不透明度"
+        },
+        "PersonalMirror.MirrorScaleX": {
+          "description": "个人镜子 X 缩放"
+        },
+        "PersonalMirror.MirrorScaleY": {
+          "description": "个人镜子 Y 缩放"
+        },
+        "PersonalMirror.MirrorSnapping": {
+          "description": "镜子吸附行为"
+        },
+        "PersonalMirror.MovementMode": {
+          "description": "个人镜子移动模式"
+        },
+        "PersonalMirror.ShowBorder": {
+          "description": "显示个人镜子边框"
+        },
+        "PersonalMirror.ShowCalibrationMirror": {
+          "description": "显示校准镜"
+        },
+        "PersonalMirror.ShowEnvironmentInMirror": {
+          "description": "镜中显示环境"
+        },
+        "PersonalMirror.ShowFaceMirror": {
+          "description": "VR 显示个人面镜"
+        },
+        "PersonalMirror.ShowFaceMirrorDesktop": {
+          "description": "桌面显示个人面镜"
+        },
+        "PersonalMirror.ShowRemotePlayerInMirror": {
+          "description": "镜中显示其他玩家"
+        },
+        "PersonalMirror.ShowUIInMirror": {
+          "description": "镜中显示 UI"
+        },
+        "SHADOW_QUALITY": {
+          "description": "阴影画质预设"
+        },
+        "USER_CAMERA_RESOLUTION": {
+          "description": "用户相机分辨率"
+        },
+        "USER_CAMERA_ROLL_WHILE_FLYING": {
+          "description": "飞行时相机滚转"
+        },
+        "USER_CAMERA_SAVE_METADATA": {
+          "description": "保存相机元数据"
+        },
+        "USER_CAMERA_STREAM_RESOLUTION": {
+          "description": "相机串流分辨率"
+        },
+        "USER_CAMERA_TRIGGER_TAKES_PHOTOS": {
+          "description": "扳机拍照"
+        },
+        "UnityGraphicsQuality": {
+          "description": "预设画质等级"
+        },
+        "UnitySelectMonitor": {
+          "description": "Unity 选择显示器"
+        },
+        "VRC_ADVANCED_GRAPHICS_ANTIALIASING": {
+          "description": "抗锯齿采样数"
+        },
+        "VRC_ADVANCED_GRAPHICS_QUALITY": {
+          "description": "高级画质预设"
+        },
+        "VRC_BLOOM_INTENSITY": {
+          "description": "泛光强度覆盖"
+        },
+        "VRC_CAMERA_NEAR_CLIP_OVERRIDE_MODE": {
+          "description": "相机近裁剪覆盖模式"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW": {
+          "description": "相机第三人称视角"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW_DISTANCE": {
+          "description": "第三人称视角距离"
+        },
+        "VRC_COLOR_BLINDNESS_SIMULATE": {
+          "description": "模拟色盲配置"
+        },
+        "VRC_DEFAULT_DRONE_SKIN_PALETTE": {
+          "description": "默认无人机配色"
+        },
+        "VRC_LANDSCAPE_FOV": {
+          "description": "移动端横屏 FOV"
+        },
+        "VRC_MIRROR_RESOLUTION": {
+          "description": "镜子分辨率"
+        },
+        "VRC_PORTRAIT_FOV": {
+          "description": "移动端竖屏 FOV"
+        },
+        "VRC_RANDOMIZE_DRONE": {
+          "description": "随机无人机"
+        },
+        "VRC_RANDOMIZE_LOADING_SCREEN": {
+          "description": "随机加载画面"
+        },
+        "VRC_RANDOMIZE_WARP_EFFECT": {
+          "description": "随机传送效果"
+        },
+        "VRC_SCREEN_BRIGHTNESS": {
+          "description": "屏幕亮度调整"
+        },
+        "VRC_SCREEN_CONTRAST": {
+          "description": "屏幕对比度调整"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING_AUTO_QUALITY": {
+          "description": "自拍面部追踪自动画质"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_QUALITY_LEVEL": {
+          "description": "自拍面部追踪画质"
+        },
+        "BestRegionCache": {
+          "description": "缓存最佳区域选择"
+        },
+        "LocationContext": {
+          "description": "位置上下文"
+        },
+        "LocationContext_World": {
+          "description": "位置上下文地图"
+        },
+        "VRC_ASK_TO_PORTAL": {
+          "description": "传送门前先询问"
+        },
+        "VRC_COMFORT_MODE_PRE_HOLOPORT": {
+          "description": "传送前舒适模式"
+        },
+        "VRC_HOME_REGION": {
+          "description": "主页地图区域"
+        },
+        "VRC_ONLY_SHOW_FRIEND_JOIN_LEAVE_PORTAL_NOTIFICATIONS": {
+          "description": "仅好友加入离开传送提醒"
+        },
+        "VRC_PORTAL_MODE_V2": {
+          "description": "传送门模式 v2"
+        },
+        "VRC_RANDOMIZE_PORTAL": {
+          "description": "随机传送门"
+        },
+        "VRC_SELECTED_NETWORK_REGION": {
+          "description": "首选 Photon 区域"
+        },
+        "VRC_SHOW_PORTAL_NOTIFICATIONS": {
+          "description": "显示传送门通知"
+        },
+        "AVATAR_WORN_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "用户穿过的模型历史"
+        },
+        "SortSelection_UGCAvatars": {
+          "description": "列表排序选项"
+        },
+        "VRC_ALLOW_AVATAR_COPYING": {
+          "description": "允许复制模型"
+        },
+        "VRC_AVATAR_FALLBACK_HIDDEN": {
+          "description": "隐藏备用模型"
+        },
+        "VRC_AVATAR_HAPTICS_ENABLED": {
+          "description": "模型显示下载设置"
+        },
+        "VRC_AVATAR_MAXIMUM_DOWNLOAD_SIZE": {
+          "description": "模型最大压缩下载大小"
+        },
+        "VRC_AVATAR_MAXIMUM_UNCOMPRESSED_SIZE": {
+          "description": "模型最大未压缩大小"
+        },
+        "VRC_AVATAR_PERFORMANCE_RATING_MINIMUM_TO_DISPLAY": {
+          "description": "显示模型最低性能评级"
+        },
+        "VRC_AV_INTERACT_LEVEL": {
+          "description": "模型互动等级"
+        },
+        "VRC_AV_INTERACT_SELF": {
+          "description": "自己的模型互动"
+        },
+        "VRC_DISABLE_AVATAR_CLONING_ON_ENTER_WORLD": {
+          "description": "进地图禁用模型克隆"
+        },
+        "VRC_FINGERTRACKING_AVATARS_USE": {
+          "description": "手指追踪模型使用"
+        },
+        "VRC_GESTURE_BAR_ENABLED": {
+          "description": "启用手势条"
+        },
+        "VRC_IK_AVATAR_MEASUREMENT_TYPE": {
+          "description": "IK 模型测量类型"
+        },
+        "VRC_IK_PER_AVATAR_CALIBRATION_ADJUSTMENT": {
+          "description": "按模型校准调整"
+        },
+        "VRC_IMPOSTOR_WHEN_AVAILABLE": {
+          "description": "可用时使用替身"
+        },
+        "VRC_INPUT_SELECTED_SAFETY_RANK": {
+          "description": "输入安全等级"
+        },
+        "VRC_PLAYER_GESTURE_TOGGLE": {
+          "description": "玩家手势开关"
+        },
+        "VRC_SAFETY_LEVEL": {
+          "description": "全局模型安全预设"
+        },
+        "VRC_SHOW_SOCIAL_RANK": {
+          "description": "显示社交等级"
+        },
+        "Wing_Right_Avatars_Category": {
+          "description": "Wing UI 选择状态"
+        },
+        "Wing_Right_Avatars_SortBy": {
+          "description": "Wing UI 选择状态"
+        },
+        "avatarProxyAlwaysShowExplicit": {
+          "description": "模型显示下载设置"
+        },
+        "avatarProxyAlwaysShowFriends": {
+          "description": "模型显示下载设置"
+        },
+        "avatarProxyShowAtRange": {
+          "description": "模型显示下载设置"
+        },
+        "avatarProxyShowAtRangeToggle": {
+          "description": "模型显示下载设置"
+        },
+        "avatarProxyShowMaxNumber": {
+          "description": "模型显示下载设置"
+        },
+        "currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "启用模型显示数量上限"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRange": {
+          "description": "用户代理模型显示距离"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRangeToggle": {
+          "description": "用户代理模型距离开关"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowMaxNumber": {
+          "description": "用户代理模型最大数量"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "用户模型数量上限开关"
+        },
+        "VRC_ACTION_MENU_FLICK_SELECT": {
+          "description": "动作菜单轻扫选择"
+        },
+        "VRC_ACTION_MENU_ONE_HAND_MOVE": {
+          "description": "动作菜单单手移动"
+        },
+        "VRC_DOUBLE_TAP_MAIN_MENU_STEAMVR2": {
+          "description": "双击主菜单 SteamVR2"
+        },
+        "VRC_FINGER_GRAB_SETTING": {
+          "description": "手指抓取设置"
+        },
+        "VRC_FINGER_HAPTIC_SENSITIVITY": {
+          "description": "手指触觉灵敏度"
+        },
+        "VRC_FINGER_HAPTIC_STRENGTH": {
+          "description": "手指触觉强度"
+        },
+        "VRC_FINGER_JUMP_ENABLED": {
+          "description": "启用手指跳跃"
+        },
+        "VRC_FINGER_WALK_SETTING": {
+          "description": "手指行走设置"
+        },
+        "VRC_HANDS_MENU_OPEN_MODE": {
+          "description": "手部菜单开启模式"
+        },
+        "VRC_INPUT_DAYDREAM": {
+          "description": "Daydream 输入"
+        },
+        "VRC_INPUT_EMBODIED": {
+          "description": "Embodied 输入"
+        },
+        "VRC_INPUT_GAZE": {
+          "description": "视线输入"
+        },
+        "VRC_INPUT_GENERIC": {
+          "description": "通用输入"
+        },
+        "VRC_INPUT_HPMOTION": {
+          "description": "HPMotion 输入"
+        },
+        "VRC_INPUT_MOBILE_INTERACTION_MODE": {
+          "description": "移动端交互模式"
+        },
+        "VRC_INPUT_OPENXR": {
+          "description": "OpenXR 输入"
+        },
+        "VRC_INPUT_PERSONAL_SPACE": {
+          "description": "输入个人空间"
+        },
+        "VRC_INPUT_QUEST_HANDS": {
+          "description": "Quest 手部输入"
+        },
+        "VRC_INPUT_SHOW_TOOLTIPS": {
+          "description": "显示输入提示"
+        },
+        "VRC_INPUT_STEAMVR2": {
+          "description": "SteamVR2 输入"
+        },
+        "VRC_INPUT_THIRD_PERSON_ROTATION": {
+          "description": "输入第三人称旋转"
+        },
+        "VRC_INPUT_TOUCH": {
+          "description": "Touch 输入"
+        },
+        "VRC_INPUT_VALVE_INDEX": {
+          "description": "Valve Index 输入"
+        },
+        "VRC_INPUT_VIVE": {
+          "description": "Vive 输入"
+        },
+        "VRC_INPUT_VIVE_ADVANCED": {
+          "description": "Vive 高级输入"
+        },
+        "VRC_INPUT_WAVE": {
+          "description": "Wave 输入"
+        },
+        "VRC_INTERACT_HAPTICS_ENABLED": {
+          "description": "启用互动触觉反馈"
+        },
+        "VRC_INVERTED_MOUSE": {
+          "description": "鼠标反转"
+        },
+        "VRC_INVERT_CONTROLLER_VERTICAL_LOOK": {
+          "description": "反转手柄垂直视角"
+        },
+        "VRC_IS_BOOPING_ENABLED": {
+          "description": "启用 Boop"
+        },
+        "VRC_MOBILE_QUICK_SELECT_ENABLED": {
+          "description": "启用移动端快捷选择"
+        },
+        "VRC_MOUSE_SENSITIVITY": {
+          "description": "鼠标灵敏度"
+        },
+        "VRC_SHOW_FRIEND_REQUESTS": {
+          "description": "显示好友请求通知"
+        },
+        "VRC_TOUCH_AUTO_ROTATE_SPEED": {
+          "description": "Touch 自动转向速度"
+        },
+        "VRC_TOUCH_SENSITIVITY": {
+          "description": "Touch 灵敏度"
+        },
+        "VRC_UI_HAPTICS_ENABLED": {
+          "description": "启用 UI 触觉反馈"
+        },
+        "VRC_USE_GENERIC_INSTANCE_NAMES": {
+          "description": "使用通用实例名称"
+        },
+        "VRC_WEBCAM_DEVICE_NAME": {
+          "description": "摄像头设备名"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneControllerSettings": {
+          "description": "用户无人机手柄设置"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneFlightPresetValues": {
+          "description": "用户无人机飞行预设"
+        },
+        "UI.Settings.Osc": {
+          "description": "OSC 设置状态"
+        },
+        "VRC_INPUT_OSC": {
+          "description": "启用 OSC 输入输出"
+        },
+        "PREF_HAND_TRACKING_TUTORIAL_COMPLETED": {
+          "description": "手部追踪教程已完成"
+        },
+        "PlayerHeight": {
+          "description": "玩家身高"
+        },
+        "SeatedPlayEnabled": {
+          "description": "启用坐姿游玩"
+        },
+        "VRC_COMFORT_MODE": {
+          "description": "舒适模式"
+        },
+        "VRC_FINGERTRACKING_SHOW_PINCHUI": {
+          "description": "手指追踪显示 Pinch UI"
+        },
+        "VRC_FINGERTRACKING_USE_EXCLUSIVE": {
+          "description": "手指追踪独占模式"
+        },
+        "VRC_FINGERTRACKING_USE_GHOSTHAND": {
+          "description": "手指追踪幽灵手"
+        },
+        "VRC_IK_CALIBRATION_RANGE": {
+          "description": "IK 校准范围"
+        },
+        "VRC_IK_CALIBRATION_VIS": {
+          "description": "IK 校准可视化"
+        },
+        "VRC_IK_DEBUG_LOGGING": {
+          "description": "IK 调试日志"
+        },
+        "VRC_IK_DISABLE_SHOULDER_TRACKING": {
+          "description": "禁用肩部追踪贡献"
+        },
+        "VRC_IK_FBT_CONFIRM_CALIBRATE": {
+          "description": "确认 FBT 校准"
+        },
+        "VRC_IK_FBT_LOCOMOTION": {
+          "description": "全身追踪移动开关"
+        },
+        "VRC_IK_FBT_SPINE_MODE": {
+          "description": "FBT 脊柱模式"
+        },
+        "VRC_IK_FREEZE_TRACKING_ON_DISCONNECT": {
+          "description": "追踪器断开时冻结 FBT 姿态"
+        },
+        "VRC_IK_HEIGHT_RATIO": {
+          "description": "IK 身高比例"
+        },
+        "VRC_IK_KNEE_ANGLE": {
+          "description": "IK 膝盖角度"
+        },
+        "VRC_IK_LEGACY": {
+          "description": "传统 IK"
+        },
+        "VRC_IK_LEGACY_CALIBRATION": {
+          "description": "传统全身校准流程"
+        },
+        "VRC_IK_ONE_HANDED_CALIBRATION": {
+          "description": "单手校准流程开关"
+        },
+        "VRC_IK_SHOULDER_WIDTH_COMPENSATION": {
+          "description": "肩宽补偿开关"
+        },
+        "VRC_IK_TRACKER_MODEL": {
+          "description": "IK 追踪器模型"
+        },
+        "VRC_IK_USE_METRIC_HEIGHT": {
+          "description": "校准身高用公制单位"
+        },
+        "VRC_IK_WRIST_ANGLE": {
+          "description": "IK 手腕角度"
+        },
+        "VRC_INPUT_COMFORT_TURNING": {
+          "description": "舒适转向"
+        },
+        "VRC_INPUT_LOCOMOTION_METHOD": {
+          "description": "移动方式"
+        },
+        "VRC_MAIN_MENU_MOVEMENT_LOCKED": {
+          "description": "主菜单锁定移动"
+        },
+        "VRC_MOBILE_AUTO_HOLD_ENABLED": {
+          "description": "启用移动端自动持握"
+        },
+        "VRC_MOBILE_AUTO_WALK_ENABLED": {
+          "description": "启用移动端自动行走"
+        },
+        "VRC_TRACKING_CAN_SHOW_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "可显示自拍面追踪弹窗"
+        },
+        "VRC_TRACKING_CAN_SHOW_TRY_WEBCAM_FACE_TRACKING_BUTTON": {
+          "description": "可显示摄像头面追踪按钮"
+        },
+        "VRC_TRACKING_DISABLE_EYELIDTRACKING": {
+          "description": "禁用眼睑追踪"
+        },
+        "VRC_TRACKING_DISABLE_EYELOOKTRACKING": {
+          "description": "禁用眼神追踪"
+        },
+        "VRC_TRACKING_DISABLE_EYETRACKING_ON_MUTE": {
+          "description": "静音时禁用眼动追踪"
+        },
+        "VRC_TRACKING_DISPLAY_EYETRACKING_DEBUG": {
+          "description": "显示眼动追踪调试"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING": {
+          "description": "启用自拍面部追踪"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_HAND_TRACKING": {
+          "description": "启用自拍手部追踪"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST": {
+          "description": "强制眼动追踪射线"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST_DESKTOP2": {
+          "description": "桌面强制眼动追踪射线"
+        },
+        "VRC_TRACKING_GRACEFUL_QUIT": {
+          "description": "追踪平滑退出"
+        },
+        "VRC_TRACKING_NUM_TIMES_DISABLED_SELFIE_FACE_TRACKING": {
+          "description": "关闭自拍面追踪次数"
+        },
+        "VRC_TRACKING_NUM_TIMES_ENABLED_SELFIE_FACE_TRACKING": {
+          "description": "开启自拍面追踪次数"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "拒绝自拍面追踪弹窗次数"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS": {
+          "description": "拒绝 VRC+ 自拍面追踪弹窗次数"
+        },
+        "VRC_TRACKING_NUM_TIMES_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS_CLICKED": {
+          "description": "VRC+ 自拍面追踪点击次数"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_RECENTER_SPEED": {
+          "description": "自拍面追踪居中速度"
+        },
+        "VRC_TRACKING_SEND_VR_SYSTEM_HEAD_AND_WRIST_OSC_DATA": {
+          "description": "通过 OSC 发送头显手腕追踪"
+        },
+        "VRC_TRACKING_SHOULD_SHOW_OSC_TRACKING_DATA_REMINDER": {
+          "description": "显示 OSC 追踪提醒"
+        },
+        "VRC_TRACKING_TRACKER_PREDICTION": {
+          "description": "追踪器预测"
+        },
+        "BACKGROUND_MATERIAL_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "用户背景材质"
+        },
+        "CosmeticsSectionRedirect_Settings": {
+          "description": "外观分区跳转设置"
+        },
+        "FOLDOUT_STATES": {
+          "description": "折叠状态"
+        },
+        "FRIEND_LAST_VISIT_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "用户好友最近访问历史"
+        },
+        "HasSeenCameraDollyUserCameraCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "已看过相机滑轨提示"
+        },
+        "HasSeenHolidayEvent2025QMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "已看过 2025 节日活动提示"
+        },
+        "HasSeenShopRabbidsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "已看过 Rabbids 商店提示"
+        },
+        "HasSeenVRCPlusExclusiveItemsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "已看过 VRC+ 专属物品提示"
+        },
+        "InQueueWidgetInfoShowcaseID": {
+          "description": "排队组件展示 ID"
+        },
+        "RECENTLY_VISITED_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "用户最近访问历史"
+        },
+        "SavedWorldSearchesusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "已保存地图搜索"
+        },
+        "SortSelection_AllFriends": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_Authored": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_Favorites0": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_FriendLocations": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_GroupActivity": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_InRoom": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_Recent": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_Sdk": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_UGCPlaylist1": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_UGCWorlds": {
+          "description": "列表排序选项"
+        },
+        "SortSelection_WorldInstances": {
+          "description": "列表排序选项"
+        },
+        "UI.Emojis.CustomGroup0": {
+          "description": "自定义表情贴纸分组"
+        },
+        "UI.Emojis.CustomGroup1": {
+          "description": "自定义表情贴纸分组"
+        },
+        "UI.Emojis.CustomGroup2": {
+          "description": "自定义表情贴纸分组"
+        },
+        "UI.MenuPlacementZDepthVR": {
+          "description": "UI 状态偏好"
+        },
+        "UI.MotionSmoothingEnabled": {
+          "description": "UI 状态偏好"
+        },
+        "UI.Props.CustomGroup0": {
+          "description": "自定义表情贴纸分组"
+        },
+        "UI.Stickers.CustomGroup0": {
+          "description": "自定义表情贴纸分组"
+        },
+        "UI.Stickers.CustomGroup1": {
+          "description": "自定义表情贴纸分组"
+        },
+        "UI.Stickers.CustomGroup2": {
+          "description": "自定义表情贴纸分组"
+        },
+        "UI.usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726.WingState": {
+          "description": "UI 状态偏好"
+        },
+        "VRC.UI.QuickMenu.ShowQMDebugInfo": {
+          "description": "快捷菜单显示调试信息"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_X": {
+          "description": "左动作菜单 HUD X 角度"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_Y": {
+          "description": "左动作菜单 HUD Y 角度"
+        },
+        "VRC_ACTION_MENU_L_MENU_OPACITY": {
+          "description": "左动作菜单不透明度"
+        },
+        "VRC_ACTION_MENU_L_MENU_SIZE_PERCENTAGE": {
+          "description": "左动作菜单大小比例"
+        },
+        "VRC_ACTION_MENU_L_SHOW_ON_HUD": {
+          "description": "HUD 显示左动作菜单"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_X": {
+          "description": "右动作菜单 HUD X 角度"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_Y": {
+          "description": "右动作菜单 HUD Y 角度"
+        },
+        "VRC_ACTION_MENU_R_MENU_OPACITY": {
+          "description": "右动作菜单不透明度"
+        },
+        "VRC_ACTION_MENU_R_MENU_SIZE_PERCENTAGE": {
+          "description": "右动作菜单大小比例"
+        },
+        "VRC_ACTION_MENU_R_SHOW_ON_HUD": {
+          "description": "HUD 显示右动作菜单"
+        },
+        "VRC_BOOP_EMOJI_EFFECT_ENABLED": {
+          "description": "启用 Boop 表情效果"
+        },
+        "VRC_CHAT_BUBBLE_ABOVE_HEAD_V2": {
+          "description": "头顶聊天气泡 v2"
+        },
+        "VRC_CHAT_BUBBLE_AUTO_SEND": {
+          "description": "聊天气泡自动发送"
+        },
+        "VRC_CHAT_BUBBLE_OPACITY": {
+          "description": "聊天气泡不透明度"
+        },
+        "VRC_CHAT_BUBBLE_POS_HEIGHT": {
+          "description": "聊天气泡高度"
+        },
+        "VRC_CHAT_BUBBLE_PROFANITY_FILTER": {
+          "description": "聊天气泡脏话过滤"
+        },
+        "VRC_CHAT_BUBBLE_SCALE": {
+          "description": "聊天气泡缩放"
+        },
+        "VRC_CHAT_BUBBLE_SHOW_OWN": {
+          "description": "显示自己的聊天气泡"
+        },
+        "VRC_CHAT_BUBBLE_TIMEOUT": {
+          "description": "聊天气泡超时"
+        },
+        "VRC_CHAT_BUBBLE_VISIBILITY": {
+          "description": "聊天气泡可见性"
+        },
+        "VRC_CLOCK_VARIANT": {
+          "description": "时钟样式"
+        },
+        "VRC_COLOR_FILTER_INTENSITY": {
+          "description": "色彩滤镜强度"
+        },
+        "VRC_COLOR_FILTER_SELECTION": {
+          "description": "色彩滤镜预设"
+        },
+        "VRC_COLOR_FILTER_TO_WORLD": {
+          "description": "滤镜应用到地图渲染"
+        },
+        "VRC_CURRENT_LANGUAGE": {
+          "description": "语言代码"
+        },
+        "VRC_DESKTOP_RETICLE": {
+          "description": "桌面准星"
+        },
+        "VRC_ENABLE_GROUP_INTEREST_AUTO_NOTIFICATIONS": {
+          "description": "启用群组兴趣自动通知"
+        },
+        "VRC_GROUP_ON_NAMEPLATE": {
+          "description": "名牌显示群组"
+        },
+        "VRC_GROUP_ORDER_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "用户群组顺序"
+        },
+        "VRC_HIDE_NOTIFICATION_PHOTOS": {
+          "description": "隐藏通知图片预览"
+        },
+        "VRC_HUD_ANCHOR": {
+          "description": "HUD 锚点位置"
+        },
+        "VRC_HUD_MODE": {
+          "description": "HUD 布局模式"
+        },
+        "VRC_HUD_OPACITY": {
+          "description": "HUD 不透明度"
+        },
+        "VRC_HUD_SMOOTHING_Desktop": {
+          "description": "HUD 位置显示设置"
+        },
+        "VRC_HUD_SMOOTHING_VR": {
+          "description": "HUD 位置显示设置"
+        },
+        "VRC_MM_FREE_PLACEMENT_ENABLED": {
+          "description": "启用主菜单自由放置"
+        },
+        "VRC_MOBILE_DPI_SCALING": {
+          "description": "移动端 DPI 缩放"
+        },
+        "VRC_MOBILE_NOTIFICATIONS_SERVICE_ENABLED": {
+          "description": "启用移动端通知服务"
+        },
+        "VRC_MOBILE_PERFORMANCE_SECONDARY_UI_ENABLED": {
+          "description": "启用移动端次级性能 UI"
+        },
+        "VRC_NAMEPLATE_FALLBACK_ICON_VISIBLE": {
+          "description": "名牌显示设置"
+        },
+        "VRC_NAMEPLATE_MODE": {
+          "description": "主名牌显示模式"
+        },
+        "VRC_NAMEPLATE_OPACITY": {
+          "description": "名牌不透明度"
+        },
+        "VRC_NAMEPLATE_QUICK_MENU_INFO": {
+          "description": "名牌显示设置"
+        },
+        "VRC_NAMEPLATE_SCALE_V2": {
+          "description": "名牌缩放倍率"
+        },
+        "VRC_NAMEPLATE_STATUS_MODE": {
+          "description": "名牌附加状态内容"
+        },
+        "VRC_PLAY_NOTIFICATION_AUDIO": {
+          "description": "播放通知音效"
+        },
+        "VRC_REDUCE_ANIMATIONS": {
+          "description": "减少非必要动画"
+        },
+        "VRC_SHOW_COMMUNITY_LABS": {
+          "description": "显示社区实验室"
+        },
+        "VRC_SHOW_COMMUNITY_LAB_WORLDS_IN_SEARCH": {
+          "description": "搜索显示实验室地图"
+        },
+        "VRC_SHOW_GO_BUTTON_IN_LOAD": {
+          "description": "加载时显示前往按钮"
+        },
+        "VRC_SHOW_GROUP_BADGES": {
+          "description": "显示群组徽章"
+        },
+        "VRC_SHOW_INVITES_NOTIFICATION": {
+          "description": "显示邀请通知"
+        },
+        "VRC_SHOW_JOIN_NOTIFICATIONS": {
+          "description": "显示好友加入通知"
+        },
+        "VRC_SHOW_LEAVE_NOTIFICATIONS": {
+          "description": "显示好友离开通知"
+        },
+        "VRC_SLIDER_SNAPPING": {
+          "description": "滑块吸附"
+        },
+        "VRC_STORE_LAST_SEEN_SHELF_UPDATE": {
+          "description": "记录上次货架更新"
+        },
+        "VRC_TIME_FORMAT_MODE": {
+          "description": "时间格式模式"
+        },
+        "VRC_UI_HEADER_CLICK_SCROLL_RESET_ENABLED": {
+          "description": "启用标题点击重置滚动"
+        },
+        "VRC_USE_COLOR_FILTER": {
+          "description": "启用色彩滤镜辅助"
+        },
+        "VRC_USE_PIXEL_SHIFTING_HUD": {
+          "description": "使用像素偏移 HUD"
+        },
+        "VRC_WING_PERSISTENCE_ENABLED": {
+          "description": "启用 Wing 持久化"
+        },
+        "VRC_WORLD_TOOLTIP_MODE": {
+          "description": "地图提示模式"
+        },
+        "has_opened_live_now_page": {
+          "description": "已打开正在直播页面"
+        },
+        "has_seen_avm-explore-to-cm-migration": {
+          "description": "已看过 AVM 迁移提示"
+        },
+        "has_seen_event_discovery_in_beta": {
+          "description": "已看过测试版活动发现"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenMenuHelpShownCount": {
+          "description": "用户开菜单帮助次数"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenedQuickMenu": {
+          "description": "用户已打开快捷菜单"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Emojis.CustomGroup0": {
+          "description": "自定义表情贴纸分组"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Props.CustomGroup0": {
+          "description": "自定义表情贴纸分组"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedEmojis": {
+          "description": "用户最近使用表情"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedStickers": {
+          "description": "用户最近使用贴纸"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Stickers.CustomGroup0": {
+          "description": "自定义表情贴纸分组"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_has_opened_live_now_page": {
+          "description": "用户已打开正在直播页面"
+        },
+        "BACKGROUND_DEBUG_LOG_COLLECTION": {
+          "description": "后台调试日志收集开关"
+        },
+        "VRC_ALLOW_DIRECT_SHARES": {
+          "description": "允许直接分享"
+        },
+        "VRC_ALLOW_DISCORD_FRIENDS": {
+          "description": "允许 Discord 好友集成"
+        },
+        "VRC_ALLOW_FOCUS_VIEW": {
+          "description": "允许专注视图"
+        },
+        "VRC_ALLOW_PEDESTAL_SHARES": {
+          "description": "允许展示台分享"
+        },
+        "VRC_ALLOW_PRINTS": {
+          "description": "允许打印分享"
+        },
+        "VRC_ALLOW_SHARED_CONNECTIONS": {
+          "description": "允许共享连接"
+        },
+        "VRC_ALLOW_UNTRUSTED_URL": {
+          "description": "允许打开不受信任 URL"
+        },
+        "VRC_DIRECT_SHARING_VISIBILITY": {
+          "description": "直接分享可见性"
+        },
+        "VRC_HOME_ACCESS_TYPE": {
+          "description": "主页地图隐私预设"
+        },
+        "VRC_PEDESTAL_SHARING_VISIBILITY": {
+          "description": "展示台分享可见性"
+        },
+        "VRC_PRINT_VISIBILITY": {
+          "description": "打印分享可见性"
+        },
+        "VRC_SHOW_GROUP_BADGE_TO_OTHERS": {
+          "description": "向他人显示群组徽章"
+        },
+        "VRC_STREAMER_MODE_ENABLED": {
+          "description": "启用主播模式"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanSpeak": {
+          "description": "中高级1可语音聊天"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "中高级1可用动态表情"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAvatarAudio": {
+          "description": "中高级1可用模型音频"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAnimations": {
+          "description": "中高级1可用自定义动画"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAvatar": {
+          "description": "中高级1可用自定义模型"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomShaders": {
+          "description": "中高级1可用自定义着色器"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseDrone": {
+          "description": "中高级1可用无人机"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "中高级1可用表情贴纸共享"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseParticleSystems": {
+          "description": "中高级1可用粒子"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseTriggers": {
+          "description": "中高级1可用触发器"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseUserIcons": {
+          "description": "中高级1可用用户图标"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanSpeak": {
+          "description": "中高级2可语音聊天"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "中高级2可用动态表情"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAvatarAudio": {
+          "description": "中高级2可用模型音频"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAnimations": {
+          "description": "中高级2可用自定义动画"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAvatar": {
+          "description": "中高级2可用自定义模型"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomShaders": {
+          "description": "中高级2可用自定义着色器"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseDrone": {
+          "description": "中高级2可用无人机"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "中高级2可用表情贴纸共享"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseParticleSystems": {
+          "description": "中高级2可用粒子"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseTriggers": {
+          "description": "中高级2可用触发器"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseUserIcons": {
+          "description": "中高级2可用用户图标"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanSpeak": {
+          "description": "基础可语音聊天"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "基础可用动态表情"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAvatarAudio": {
+          "description": "基础可用模型音频"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAnimations": {
+          "description": "基础可用自定义动画"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAvatar": {
+          "description": "基础可用自定义模型"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomShaders": {
+          "description": "基础可用自定义着色器"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseDrone": {
+          "description": "基础可用无人机"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "基础可用表情贴纸共享"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseParticleSystems": {
+          "description": "基础可用粒子"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseTriggers": {
+          "description": "基础可用触发器"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseUserIcons": {
+          "description": "基础可用用户图标"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanSpeak": {
+          "description": "基础可语音聊天"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAnimatedEmoji": {
+          "description": "基础可用动态表情"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAvatarAudio": {
+          "description": "基础可用模型音频"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAnimations": {
+          "description": "基础可用自定义动画"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAvatar": {
+          "description": "基础可用自定义模型"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomShaders": {
+          "description": "基础可用自定义着色器"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseDrone": {
+          "description": "基础可用无人机"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "基础可用表情贴纸共享"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseParticleSystems": {
+          "description": "基础可用粒子"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseTriggers": {
+          "description": "基础可用触发器"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseUserIcons": {
+          "description": "基础可用用户图标"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanSpeak": {
+          "description": "开发者可语音聊天"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAnimatedEmoji": {
+          "description": "开发者可用动态表情"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAvatarAudio": {
+          "description": "开发者可用模型音频"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAnimations": {
+          "description": "开发者可用自定义动画"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAvatar": {
+          "description": "开发者可用自定义模型"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomShaders": {
+          "description": "开发者可用自定义着色器"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseDrone": {
+          "description": "开发者可用无人机"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "开发者可用表情贴纸共享"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseParticleSystems": {
+          "description": "开发者可用粒子"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseTriggers": {
+          "description": "开发者可用触发器"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseUserIcons": {
+          "description": "开发者可用用户图标"
+        },
+        "CustomTrustLevel_Friend_CanSpeak": {
+          "description": "好友可语音聊天"
+        },
+        "CustomTrustLevel_Friend_CanUseAnimatedEmoji": {
+          "description": "好友可用动态表情"
+        },
+        "CustomTrustLevel_Friend_CanUseAvatarAudio": {
+          "description": "好友可用模型音频"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAnimations": {
+          "description": "好友可用自定义动画"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAvatar": {
+          "description": "好友可用自定义模型"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomShaders": {
+          "description": "好友可用自定义着色器"
+        },
+        "CustomTrustLevel_Friend_CanUseDrone": {
+          "description": "好友可用无人机"
+        },
+        "CustomTrustLevel_Friend_CanUseEmojiStickersSharing": {
+          "description": "好友可用表情贴纸共享"
+        },
+        "CustomTrustLevel_Friend_CanUseParticleSystems": {
+          "description": "好友可用粒子"
+        },
+        "CustomTrustLevel_Friend_CanUseTriggers": {
+          "description": "好友可用触发器"
+        },
+        "CustomTrustLevel_Friend_CanUseUserIcons": {
+          "description": "好友可用用户图标"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanSpeak": {
+          "description": "中级1可语音聊天"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "中级1可用动态表情"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAvatarAudio": {
+          "description": "中级1可用模型音频"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAnimations": {
+          "description": "中级1可用自定义动画"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAvatar": {
+          "description": "中级1可用自定义模型"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomShaders": {
+          "description": "中级1可用自定义着色器"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseDrone": {
+          "description": "中级1可用无人机"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "中级1可用表情贴纸共享"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseParticleSystems": {
+          "description": "中级1可用粒子"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseTriggers": {
+          "description": "中级1可用触发器"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseUserIcons": {
+          "description": "中级1可用用户图标"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanSpeak": {
+          "description": "中级2可语音聊天"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "中级2可用动态表情"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAvatarAudio": {
+          "description": "中级2可用模型音频"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAnimations": {
+          "description": "中级2可用自定义动画"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAvatar": {
+          "description": "中级2可用自定义模型"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomShaders": {
+          "description": "中级2可用自定义着色器"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseDrone": {
+          "description": "中级2可用无人机"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "中级2可用表情贴纸共享"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseParticleSystems": {
+          "description": "中级2可用粒子"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseTriggers": {
+          "description": "中级2可用触发器"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseUserIcons": {
+          "description": "中级2可用用户图标"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanSpeak": {
+          "description": "认识的可语音聊天"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAnimatedEmoji": {
+          "description": "认识的可用动态表情"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAvatarAudio": {
+          "description": "认识的可用模型音频"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAnimations": {
+          "description": "认识的可用自定义动画"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAvatar": {
+          "description": "认识的可用自定义模型"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomShaders": {
+          "description": "认识的可用自定义着色器"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseDrone": {
+          "description": "认识的可用无人机"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "认识的可用表情贴纸共享"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseParticleSystems": {
+          "description": "认识的可用粒子"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseTriggers": {
+          "description": "认识的可用触发器"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseUserIcons": {
+          "description": "认识的可用用户图标"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanSpeak": {
+          "description": "传奇可语音聊天"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAnimatedEmoji": {
+          "description": "传奇可用动态表情"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAvatarAudio": {
+          "description": "传奇可用模型音频"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAnimations": {
+          "description": "传奇可用自定义动画"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAvatar": {
+          "description": "传奇可用自定义模型"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomShaders": {
+          "description": "传奇可用自定义着色器"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseDrone": {
+          "description": "传奇可用无人机"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "传奇可用表情贴纸共享"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseParticleSystems": {
+          "description": "传奇可用粒子"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseTriggers": {
+          "description": "传奇可用触发器"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseUserIcons": {
+          "description": "传奇可用用户图标"
+        },
+        "CustomTrustLevel_LocalPlayer_CanSpeak": {
+          "description": "自己可语音聊天"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAnimatedEmoji": {
+          "description": "自己可用动态表情"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAvatarAudio": {
+          "description": "自己可用模型音频"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAnimations": {
+          "description": "自己可用自定义动画"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAvatar": {
+          "description": "自己可用自定义模型"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomShaders": {
+          "description": "自己可用自定义着色器"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseDrone": {
+          "description": "自己可用无人机"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseEmojiStickersSharing": {
+          "description": "自己可用表情贴纸共享"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseParticleSystems": {
+          "description": "自己可用粒子"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseTriggers": {
+          "description": "自己可用触发器"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseUserIcons": {
+          "description": "自己可用用户图标"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanSpeak": {
+          "description": "负面可语音聊天"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "负面可用动态表情"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAvatarAudio": {
+          "description": "负面可用模型音频"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAnimations": {
+          "description": "负面可用自定义动画"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAvatar": {
+          "description": "负面可用自定义模型"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomShaders": {
+          "description": "负面可用自定义着色器"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseDrone": {
+          "description": "负面可用无人机"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "负面可用表情贴纸共享"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseParticleSystems": {
+          "description": "负面可用粒子"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseTriggers": {
+          "description": "负面可用触发器"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseUserIcons": {
+          "description": "负面可用用户图标"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanSpeak": {
+          "description": "负面可语音聊天"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "负面可用动态表情"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAvatarAudio": {
+          "description": "负面可用模型音频"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAnimations": {
+          "description": "负面可用自定义动画"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAvatar": {
+          "description": "负面可用自定义模型"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomShaders": {
+          "description": "负面可用自定义着色器"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseDrone": {
+          "description": "负面可用无人机"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "负面可用表情贴纸共享"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseParticleSystems": {
+          "description": "负面可用粒子"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseTriggers": {
+          "description": "负面可用触发器"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseUserIcons": {
+          "description": "负面可用用户图标"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanSpeak": {
+          "description": "负面可语音聊天"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "负面可用动态表情"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "负面可用模型音频"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "负面可用自定义动画"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "负面可用自定义模型"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomShaders": {
+          "description": "负面可用自定义着色器"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseDrone": {
+          "description": "负面可用无人机"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "负面可用表情贴纸共享"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseParticleSystems": {
+          "description": "负面可用粒子"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseTriggers": {
+          "description": "负面可用触发器"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseUserIcons": {
+          "description": "负面可用用户图标"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanSpeak": {
+          "description": "可信任可语音聊天"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAnimatedEmoji": {
+          "description": "可信任可用动态表情"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAvatarAudio": {
+          "description": "可信任可用模型音频"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAnimations": {
+          "description": "可信任可用自定义动画"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAvatar": {
+          "description": "可信任可用自定义模型"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomShaders": {
+          "description": "可信任可用自定义着色器"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseDrone": {
+          "description": "可信任可用无人机"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "可信任可用表情贴纸共享"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseParticleSystems": {
+          "description": "可信任可用粒子"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseTriggers": {
+          "description": "可信任可用触发器"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseUserIcons": {
+          "description": "可信任可用用户图标"
+        },
+        "CustomTrustLevel_Untrusted_CanSpeak": {
+          "description": "访客可语音聊天"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAnimatedEmoji": {
+          "description": "访客可用动态表情"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAvatarAudio": {
+          "description": "访客可用模型音频"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAnimations": {
+          "description": "访客可用自定义动画"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAvatar": {
+          "description": "访客可用自定义模型"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomShaders": {
+          "description": "访客可用自定义着色器"
+        },
+        "CustomTrustLevel_Untrusted_CanUseDrone": {
+          "description": "访客可用无人机"
+        },
+        "CustomTrustLevel_Untrusted_CanUseEmojiStickersSharing": {
+          "description": "访客可用表情贴纸共享"
+        },
+        "CustomTrustLevel_Untrusted_CanUseParticleSystems": {
+          "description": "访客可用粒子"
+        },
+        "CustomTrustLevel_Untrusted_CanUseTriggers": {
+          "description": "访客可用触发器"
+        },
+        "CustomTrustLevel_Untrusted_CanUseUserIcons": {
+          "description": "访客可用用户图标"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanSpeak": {
+          "description": "负面可语音聊天"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "负面可用动态表情"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "负面可用模型音频"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "负面可用自定义动画"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "负面可用自定义模型"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomShaders": {
+          "description": "负面可用自定义着色器"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseDrone": {
+          "description": "负面可用无人机"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "负面可用表情贴纸共享"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseParticleSystems": {
+          "description": "负面可用粒子"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseTriggers": {
+          "description": "负面可用触发器"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseUserIcons": {
+          "description": "负面可用用户图标"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanSpeak": {
+          "description": "老用户可语音聊天"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAnimatedEmoji": {
+          "description": "老用户可用动态表情"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAvatarAudio": {
+          "description": "老用户可用模型音频"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAnimations": {
+          "description": "老用户可用自定义动画"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAvatar": {
+          "description": "老用户可用自定义模型"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomShaders": {
+          "description": "老用户可用自定义着色器"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseDrone": {
+          "description": "老用户可用无人机"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "老用户可用表情贴纸共享"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseParticleSystems": {
+          "description": "老用户可用粒子"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseTriggers": {
+          "description": "老用户可用触发器"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseUserIcons": {
+          "description": "老用户可用用户图标"
+        },
+        "VRC_LIMIT_PARTICLE_SYSTEMS": {
+          "description": "限制粒子系统"
+        },
+        "14C4B06B824EC593239362517F538B29": {
+          "description": "认证或安装令牌"
+        },
+        "5F4DCC3B5AA765D61D8327DEB882CF99": {
+          "description": "认证或安装令牌"
+        },
+        "785C2BDD2C43070A10BC35E5E687A467": {
+          "description": "认证或安装令牌"
+        },
+        "93D3AE97F80BEDA8E396065DC4770A93": {
+          "description": "认证或安装令牌"
+        },
+        "BCD9D91ED8D8F1926B20D3D620647C8E": {
+          "description": "认证或安装令牌"
+        },
+        "BD2E932A03A19217AB5A1DFB5AA93340": {
+          "description": "认证或安装令牌"
+        },
+        "E1F946CE2FD302B954E26AD92C0B30BF": {
+          "description": "认证或安装令牌"
+        },
+        "ForceSettings_AutoWalk": {
+          "description": "设置迁移标记"
+        },
+        "ForceSettings_ClearFoldoutPrefKeys": {
+          "description": "设置迁移标记"
+        },
+        "ForceSettings_MicToggle": {
+          "description": "设置迁移标记"
+        },
+        "ForceSettings_MigrateMicSettings": {
+          "description": "设置迁移标记"
+        },
+        "ForceSettings_Mixer": {
+          "description": "设置迁移标记"
+        },
+        "ForceSettings_PedestalSharing": {
+          "description": "设置迁移标记"
+        },
+        "ForceSettings_SteamAudioSliderRemap": {
+          "description": "设置迁移标记"
+        },
+        "ForceSettings_WorldTooltipMode": {
+          "description": "设置迁移标记"
+        },
+        "LOGGING_ENABLED": {
+          "description": "启用日志"
+        },
+        "Screenmanager Fullscreen mode": {
+          "description": "全屏模式"
+        },
+        "Screenmanager Fullscreen mode Default": {
+          "description": "默认全屏模式"
+        },
+        "Screenmanager Resolution Height": {
+          "description": "分辨率高度"
+        },
+        "Screenmanager Resolution Height Default": {
+          "description": "默认分辨率高度"
+        },
+        "Screenmanager Resolution Use Native": {
+          "description": "使用原生分辨率"
+        },
+        "Screenmanager Resolution Use Native Default": {
+          "description": "默认原生分辨率"
+        },
+        "Screenmanager Resolution Width": {
+          "description": "分辨率宽度"
+        },
+        "Screenmanager Resolution Width Default": {
+          "description": "默认分辨率宽度"
+        },
+        "Screenmanager Resolution Window Height": {
+          "description": "窗口高度"
+        },
+        "Screenmanager Resolution Window Width": {
+          "description": "窗口宽度"
+        },
+        "Screenmanager Stereo 3D": {
+          "description": "立体 3D"
+        },
+        "Screenmanager Window Position X": {
+          "description": "窗口 X 位置"
+        },
+        "Screenmanager Window Position Y": {
+          "description": "窗口 Y 位置"
+        },
+        "UserId": {
+          "description": "用户 ID"
+        },
+        "VRC_CLEAR_CACHE_ON_START": {
+          "description": "启动时清除内容缓存"
+        },
+        "VRC_SHOW_COMPATIBILITY_WARNINGS": {
+          "description": "显示兼容性警告"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideAvatar": {
+          "description": "隐藏模型迁移标记"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideDrone": {
+          "description": "隐藏无人机迁移标记"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowAvatar": {
+          "description": "显示模型迁移标记"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowDrone": {
+          "description": "显示无人机迁移标记"
+        },
+        "unity.cloud_userid": {
+          "description": "Unity 云用户 ID"
+        },
+        "unity.player_session_count": {
+          "description": "Unity 会话遥测"
+        },
+        "unity.player_sessionid": {
+          "description": "Unity 会话遥测"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_LastExpiredSubscription": {
+          "description": "用户上次过期订阅"
+        },
+        "VRC_AFK_ENABLED": {
+          "description": "启用 AFK"
+        },
+        "VRC_PREFERRED_TIMEZONE_2": {
+          "description": "首选时区 2"
+        }
       }
     }
   }
