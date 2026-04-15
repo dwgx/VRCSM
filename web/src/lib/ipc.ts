@@ -213,6 +213,16 @@ function buildMockReport(): Report {
       },
       world_event_count: 12,
       avatar_event_count: 5,
+      player_events: [
+        { kind: "joined", iso_time: "2026.04.15 00:42:02", display_name: "mock_user", user_id: "usr_mock-1234-5678" },
+        { kind: "left", iso_time: "2026.04.15 00:58:11", display_name: "mock_user", user_id: "usr_mock-1234-5678" },
+      ],
+      avatar_switches: [
+        { iso_time: "2026.04.15 00:42:01", actor: "mock_user", avatar_name: "Mock Avatar" },
+      ],
+      screenshots: [
+        { iso_time: "2026.04.15 02:18:44", path: "C:\\Users\\mock\\Pictures\\VRChat\\2026-04\\VRChat_2026-04-15_02-18-44.439_1920x1080.png" },
+      ],
     },
   };
 }
