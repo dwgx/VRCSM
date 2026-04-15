@@ -64,6 +64,44 @@ struct AvatarNameInfo
 
 void to_json(nlohmann::json& j, const AvatarNameInfo& a);
 
+/// `OnPlayerJoined` / `OnPlayerLeft` — every other player the local user saw
+/// enter or leave an instance. Display name is always present; the `usr_` id
+/// is only on joined lines and only when VRChat feels like including it
+/// (older client builds omit the id entirely, newer ones put it in parens).
+struct PlayerEvent
+{
+    std::string kind;           // "joined" | "left"
+    std::optional<std::string> iso_time;
+    std::string display_name;
+    std::optional<std::string> user_id;
+};
+
+void to_json(nlohmann::json& j, const PlayerEvent& e);
+
+/// `[Behaviour] Switching <actor> to avatar <name>` — every time any player
+/// (local or remote) swaps avatars. Useful both as a "who was I hanging out
+/// with" record and as the audit trail behind an avatar id showing up in
+/// `recent_avatar_ids` (so the UI can say "you saw this on Bob" instead of
+/// just "this appeared once somewhere").
+struct AvatarSwitchEvent
+{
+    std::optional<std::string> iso_time;
+    std::string actor;
+    std::string avatar_name;
+};
+
+void to_json(nlohmann::json& j, const AvatarSwitchEvent& e);
+
+/// `[VRC Camera] Took screenshot to: <path>` — absolute path as VRChat wrote
+/// it, not normalised. The UI can open the containing folder.
+struct ScreenshotEvent
+{
+    std::optional<std::string> iso_time;
+    std::string path;
+};
+
+void to_json(nlohmann::json& j, const ScreenshotEvent& e);
+
 struct LogReport
 {
     std::vector<std::string> log_files;
@@ -95,6 +133,13 @@ struct LogReport
     // incidental wrld_/avtr_ substring match.
     std::size_t world_event_count = 0;
     std::size_t avatar_event_count = 0;
+
+    // VRCX-parity event streams. Capped per-report so an 8-hour log with
+    // thousands of joins doesn't balloon the IPC payload. Chronological order
+    // is preserved across files (oldest file first). See kMaxEventsPerKind.
+    std::vector<PlayerEvent> player_events;
+    std::vector<AvatarSwitchEvent> avatar_switches;
+    std::vector<ScreenshotEvent> screenshots;
 };
 
 void to_json(nlohmann::json& j, const LogReport& r);
