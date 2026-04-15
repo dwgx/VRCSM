@@ -25,4 +25,11 @@ find_package(spdlog CONFIG REQUIRED)
 
 add_subdirectory(src)
 
+option(VRCSM_BUILD_TOOLS "Build auxiliary diagnostic tools" ON)
+if(VRCSM_BUILD_TOOLS)
+    add_subdirectory(tools/dump_settings)
+    add_subdirectory(tools/dump_thumbnails)
+    add_subdirectory(tools/dump_logs)
+endif()
+
 # tests/ will be added to the build later.

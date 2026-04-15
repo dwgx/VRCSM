@@ -18,3 +18,5 @@ Thumbs.db
 .vrcsm-context.md
 logs/
 *.log
+__pycache__/
+*.pyc
