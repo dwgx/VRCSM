@@ -38,4 +38,18 @@ set_target_properties(vrcsm PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+# Post-build: sync web/dist → $<TARGET_FILE_DIR:vrcsm>/web so that running
+# the dev build from the build directory picks up the latest React
+# bundle without a manual `cp -r web/dist …` step. The indirection
+# through sync-web-dist.cmake lets the copy gracefully no-op when
+# web/dist does not yet exist on a fresh checkout.
+add_custom_command(TARGET vrcsm POST_BUILD
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE=${CMAKE_SOURCE_DIR}/web/dist
+        -DDEST=$<TARGET_FILE_DIR:vrcsm>/web
+        -P ${CMAKE_SOURCE_DIR}/cmake/sync-web-dist.cmake
+    COMMENT "Syncing web/dist to $<TARGET_FILE_DIR:vrcsm>/web"
+    VERBATIM
+)
+
 install(TARGETS vrcsm RUNTIME DESTINATION .)
