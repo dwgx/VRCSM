@@ -10,6 +10,8 @@ add_library(vrcsm_core STATIC
     SafeDelete.cpp
     Migrator.cpp
     VrcConfig.cpp
+    VrcSettings.cpp
+    VrcApi.cpp
     Report.cpp
 )
 
@@ -37,6 +39,7 @@ if(MSVC)
         Ole32
         Shell32
         Version
+        Winhttp
     )
 endif()
 

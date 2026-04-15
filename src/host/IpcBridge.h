@@ -22,9 +22,15 @@ private:
     nlohmann::json HandleDeleteDryRun(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDeleteExecute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleProcessVrcRunning(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSettingsReadAll(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSettingsWriteOne(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSettingsExportReg(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleMigratePreflight(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleMigrateExecute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleJunctionRepair(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleShellPickFolder(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleShellOpenUrl(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleThumbnailsFetch(const nlohmann::json& params, const std::optional<std::string>& id);
 
     void PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const;
     void PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message) const;

@@ -39,13 +39,21 @@ void MainWindow::Create(HINSTANCE hInstance, int nShowCmd)
 
 void MainWindow::RegisterWindowClass(HINSTANCE hInstance)
 {
+    // Must match IDI_APP_ICON in resources/app.rc.
+    constexpr WORD kAppIconId = 101;
+    HICON appIcon = LoadIconW(hInstance, MAKEINTRESOURCEW(kAppIconId));
+    if (appIcon == nullptr)
+    {
+        appIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    }
+
     WNDCLASSEXW wc{};
     wc.cbSize = sizeof(wc);
     wc.lpfnWndProc = &MainWindow::WndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wc.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
-    wc.hIconSm = LoadIconW(nullptr, IDI_APPLICATION);
+    wc.hIcon = appIcon;
+    wc.hIconSm = appIcon;
     wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     wc.lpszClassName = kWindowClassName;
 
