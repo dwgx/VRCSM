@@ -3,6 +3,7 @@
 #include "Common.h"
 
 #include <algorithm>
+#include <future>
 #include <system_error>
 
 namespace vrcsm::core
@@ -89,7 +90,7 @@ void scanDirectory(const std::filesystem::path& dir, DirectoryStats& stats)
 }
 } // namespace
 
-CategorySummary scanCategory(const std::filesystem::path& baseDir, const CategoryDef& def)
+CategorySummary statCategory(const std::filesystem::path& baseDir, const CategoryDef& def)
 {
     CategorySummary s;
     s.key = std::string(def.key);
@@ -113,6 +114,15 @@ CategorySummary scanCategory(const std::filesystem::path& baseDir, const Categor
     if (!ec) resolved = canonical;
     s.resolved_path = toUtf8(resolved.wstring());
 
+    s.bytes_human = formatBytesHuman(s.bytes);
+    return s;
+}
+
+CategorySummary scanCategory(const std::filesystem::path& baseDir, const CategoryDef& def)
+{
+    CategorySummary s = statCategory(baseDir, def);
+    const std::filesystem::path target = baseDir / std::filesystem::path(toWide(def.rel_path));
+
     if (s.is_dir)
     {
         DirectoryStats stats;
@@ -124,6 +134,7 @@ CategorySummary scanCategory(const std::filesystem::path& baseDir, const Categor
     }
     else if (s.is_file)
     {
+        std::error_code ec;
         const auto sz = std::filesystem::file_size(target, ec);
         if (!ec)
         {
@@ -143,11 +154,37 @@ CategorySummary scanCategory(const std::filesystem::path& baseDir, const Categor
 
 std::vector<CategorySummary> CacheScanner::scanAll(const std::filesystem::path& baseDir)
 {
-    std::vector<CategorySummary> out;
-    out.reserve(categoryDefs().size());
-    for (const auto& def : categoryDefs())
+    // Fan out one std::async per category so the giant dirs
+    // (HTTPCache-WindowsPlayer, TextureCache-WindowsPlayer) don't
+    // block each other. `cache_windows_player` is the one exception:
+    // BundleSniff already walks it per hash dir for the bundle
+    // breakdown, so here we only stat it — Report.cpp folds the size
+    // and mtime ranges in from the BundleSniff aggregate. This cuts
+    // one full walk of the largest directory on disk out of the scan.
+    const auto& defs = categoryDefs();
+    std::vector<std::future<CategorySummary>> futures;
+    futures.reserve(defs.size());
+    for (const auto& def : defs)
     {
-        out.push_back(scanCategory(baseDir, def));
+        if (def.key == std::string_view("cache_windows_player"))
+        {
+            futures.push_back(std::async(std::launch::async, [&baseDir, &def]() {
+                return statCategory(baseDir, def);
+            }));
+        }
+        else
+        {
+            futures.push_back(std::async(std::launch::async, [&baseDir, &def]() {
+                return scanCategory(baseDir, def);
+            }));
+        }
+    }
+
+    std::vector<CategorySummary> out;
+    out.reserve(defs.size());
+    for (auto& f : futures)
+    {
+        out.push_back(f.get());
     }
     return out;
 }

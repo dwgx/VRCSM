@@ -46,6 +46,11 @@ const std::array<CategoryDef, 12>& categoryDefs();
 
 CategorySummary scanCategory(const std::filesystem::path& baseDir, const CategoryDef& def);
 
+// Only stat the target (exists/is_dir/resolved_path) — skip the
+// recursive byte/file walk. Used to cheap out on Cache-WindowsPlayer,
+// whose per-file stats we already get from BundleSniff.
+CategorySummary statCategory(const std::filesystem::path& baseDir, const CategoryDef& def);
+
 class CacheScanner
 {
 public:
