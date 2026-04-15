@@ -4,8 +4,11 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <fstream>
+#include <future>
 #include <system_error>
+#include <thread>
 
 namespace vrcsm::core
 {
@@ -129,40 +132,97 @@ std::vector<BundleEntry> BundleSniff::scanCacheWindowsPlayer(const std::filesyst
     std::error_code ec;
     if (!std::filesystem::exists(cwpDir, ec) || ec) return out;
 
+    // Enumerate top-level hash dirs up front, then fan out the
+    // per-hash aggregation onto a thread pool. On a 9.9 GB cache with
+    // thousands of hash dirs this is the single dominant cost of the
+    // whole scan, and it's embarrassingly parallel — each aggregate()
+    // only touches one subtree. We cap parallelism at hardware
+    // concurrency so we don't launch 10k threads.
+    std::vector<std::filesystem::path> pending;
+    pending.reserve(256);
     for (const auto& entry : std::filesystem::directory_iterator(cwpDir, ec))
     {
         if (ec) break;
         if (isReserved(entry.path())) continue;
         if (!entry.is_directory()) continue;
-
-        BundleEntry be;
-        be.entry = entry.path().filename().string();
-        be.path = toUtf8(entry.path().wstring());
-
-        EntryStats stats;
-        aggregate(entry.path(), stats);
-        be.bytes = stats.bytes;
-        be.file_count = stats.fileCount;
-        be.bytes_human = formatBytesHuman(stats.bytes);
-        if (stats.latest) be.latest_mtime = isoTimestamp(*stats.latest);
-        if (stats.oldest) be.oldest_mtime = isoTimestamp(*stats.oldest);
-
-        if (stats.dataFile)
-        {
-            const auto magic = readMagic(*stats.dataFile);
-            be.bundle_format = classifyMagic(magic);
-        }
-        else
-        {
-            be.bundle_format = "unknown";
-        }
-
-        out.push_back(std::move(be));
+        pending.push_back(entry.path());
     }
 
-    std::sort(out.begin(), out.end(), [](const BundleEntry& a, const BundleEntry& b) {
-        return a.bytes > b.bytes;
+    struct AggRow
+    {
+        BundleEntry be;
+        std::optional<std::filesystem::path> dataFile;
+    };
+
+    const std::size_t poolSize = std::max<std::size_t>(
+        1, std::min<std::size_t>(pending.size(), std::thread::hardware_concurrency()));
+    std::vector<AggRow> rows(pending.size());
+    std::atomic<std::size_t> next{0};
+
+    auto worker = [&]() {
+        for (;;)
+        {
+            const std::size_t idx = next.fetch_add(1, std::memory_order_relaxed);
+            if (idx >= pending.size()) return;
+            const auto& dir = pending[idx];
+
+            AggRow row;
+            row.be.entry = dir.filename().string();
+            row.be.path = toUtf8(dir.wstring());
+
+            EntryStats stats;
+            aggregate(dir, stats);
+            row.be.bytes = stats.bytes;
+            row.be.file_count = stats.fileCount;
+            row.be.bytes_human = formatBytesHuman(stats.bytes);
+            if (stats.latest) row.be.latest_mtime = isoTimestamp(*stats.latest);
+            if (stats.oldest) row.be.oldest_mtime = isoTimestamp(*stats.oldest);
+
+            // Leave bundle_format unknown here. readMagic opens a file
+            // per bundle; with thousands of bundles that used to be
+            // thousands of pointless syscalls, and the frontend only
+            // surfaces `bundle_format` via the UnityFS badge on
+            // largest_entries. We back-fill the format for the top-N
+            // after sorting.
+            row.be.bundle_format = "unknown";
+            row.dataFile = stats.dataFile;
+
+            rows[idx] = std::move(row);
+        }
+    };
+
+    std::vector<std::thread> threads;
+    threads.reserve(poolSize);
+    for (std::size_t i = 0; i < poolSize; ++i)
+    {
+        threads.emplace_back(worker);
+    }
+    for (auto& t : threads) t.join();
+
+    std::sort(rows.begin(), rows.end(), [](const AggRow& a, const AggRow& b) {
+        return a.be.bytes > b.be.bytes;
     });
+
+    // Back-fill UnityFS classification for just the largest entries —
+    // Report.cpp caps displayed rows at 10 and the frontend only
+    // colours the badge on those, so reading magic for the rest is
+    // pure waste.
+    constexpr std::size_t kMagicLimit = 16;
+    const std::size_t magicCount = std::min<std::size_t>(rows.size(), kMagicLimit);
+    for (std::size_t i = 0; i < magicCount; ++i)
+    {
+        if (rows[i].dataFile)
+        {
+            const auto magic = readMagic(*rows[i].dataFile);
+            rows[i].be.bundle_format = classifyMagic(magic);
+        }
+    }
+
+    out.reserve(rows.size());
+    for (auto& row : rows)
+    {
+        out.push_back(std::move(row.be));
+    }
     return out;
 }
 

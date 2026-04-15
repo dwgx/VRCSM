@@ -8,6 +8,7 @@
 #include "LogParser.h"
 
 #include <algorithm>
+#include <future>
 #include <system_error>
 
 namespace vrcsm::core
@@ -24,7 +25,62 @@ nlohmann::json BuildFullReport(const std::filesystem::path& baseDir)
     report["generated_at"] = nowIso();
     report["base_dir"] = toUtf8(baseDir.wstring());
 
-    const auto summaries = CacheScanner::scanAll(baseDir);
+    // Kick all four heavy walkers off in parallel. Previously they
+    // ran strictly sequentially: scanAll → scanCacheWindowsPlayer →
+    // AvatarData::scan → LogParser::parse. scanAll itself already
+    // fans out per category (see CacheScanner.cpp), and
+    // scanCacheWindowsPlayer fans out per hash dir (see
+    // BundleSniff.cpp) — running them concurrently means the big
+    // walks overlap instead of stacking.
+    const auto cwpDir = baseDir / L"Cache-WindowsPlayer";
+    auto summariesFut = std::async(std::launch::async, [&baseDir]() {
+        return CacheScanner::scanAll(baseDir);
+    });
+    auto cwpEntriesFut = std::async(std::launch::async, [&cwpDir]() {
+        return BundleSniff::scanCacheWindowsPlayer(cwpDir);
+    });
+    auto avatarDataFut = std::async(std::launch::async, [&baseDir]() {
+        return AvatarData::scan(baseDir);
+    });
+    auto logsFut = std::async(std::launch::async, [&baseDir]() {
+        return LogParser::parse(baseDir);
+    });
+
+    auto summaries = summariesFut.get();
+    auto cwpEntries = cwpEntriesFut.get();
+
+    // CacheScanner::scanAll skipped the full walk of
+    // cache_windows_player. Fold bytes, file_count and mtime ranges
+    // in from the BundleSniff aggregate so the category row stays
+    // accurate without the duplicate walk.
+    for (auto& s : summaries)
+    {
+        if (s.key != "cache_windows_player") continue;
+        std::uint64_t bytes = 0;
+        std::uint64_t fileCount = 0;
+        std::optional<std::string> latest;
+        std::optional<std::string> oldest;
+        for (const auto& be : cwpEntries)
+        {
+            bytes += be.bytes;
+            fileCount += be.file_count;
+            if (be.latest_mtime && (!latest || *be.latest_mtime > *latest))
+            {
+                latest = be.latest_mtime;
+            }
+            if (be.oldest_mtime && (!oldest || *be.oldest_mtime < *oldest))
+            {
+                oldest = be.oldest_mtime;
+            }
+        }
+        s.bytes = bytes;
+        s.file_count = fileCount;
+        s.bytes_human = formatBytesHuman(bytes);
+        s.latest_mtime = latest;
+        s.oldest_mtime = oldest;
+        break;
+    }
+
     report["category_summaries"] = summaries;
 
     std::uint64_t totalBytes = 0;
@@ -64,27 +120,23 @@ nlohmann::json BuildFullReport(const std::filesystem::path& baseDir)
     }
     report["broken_links"] = brokenLinks;
 
-    const auto cwpDir = baseDir / L"Cache-WindowsPlayer";
-    auto cwpEntries = BundleSniff::scanCacheWindowsPlayer(cwpDir);
-
     nlohmann::json cwpJson;
     cwpJson["entry_count"] = cwpEntries.size();
     cwpJson["entries"] = cwpEntries;
 
-    auto largest = cwpEntries;
-    std::sort(largest.begin(), largest.end(), [](const BundleEntry& a, const BundleEntry& b) {
-        return a.bytes > b.bytes;
-    });
-    if (largest.size() > kLargestEntriesLimit)
+    // cwpEntries is already sorted by bytes desc inside
+    // scanCacheWindowsPlayer, so largest_entries is just a prefix.
+    nlohmann::json largest = nlohmann::json::array();
+    for (std::size_t i = 0; i < cwpEntries.size() && i < kLargestEntriesLimit; ++i)
     {
-        largest.resize(kLargestEntriesLimit);
+        largest.push_back(cwpEntries[i]);
     }
-    cwpJson["largest_entries"] = largest;
+    cwpJson["largest_entries"] = std::move(largest);
 
     report["cache_windows_player"] = cwpJson;
 
-    report["local_avatar_data"] = AvatarData::scan(baseDir);
-    report["logs"] = LogParser::parse(baseDir);
+    report["local_avatar_data"] = avatarDataFut.get();
+    report["logs"] = logsFut.get();
 
     return report;
 }
