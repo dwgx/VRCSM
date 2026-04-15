@@ -19,6 +19,7 @@
 #include <thread>
 #include <vector>
 
+#include "core/LogEventClassifier.h"
 #include "core/LogTailer.h"
 
 namespace fs = std::filesystem;
@@ -176,6 +177,72 @@ int main()
     if (collector.snapshot().size() != afterStop)
     {
         failures += fail("tailer still emitting after Stop()");
+    }
+
+    // Case 6 — classifier smoke tests. These are independent of LogTailer
+    // but we run them from the same harness so one binary covers the full
+    // live-tail chain. Each case constructs a `LogTailLine` by hand with
+    // the prefix already stripped (that's what LogTailer hands the
+    // classifier in production) and asserts the classified JSON carries
+    // the right `kind` + `data` fields.
+    {
+        using vrcsm::core::LogTailLine;
+        using vrcsm::core::ClassifyStreamLine;
+
+        auto lineOf = [](std::string body, std::string iso) {
+            LogTailLine l;
+            l.line = std::move(body);
+            l.level = "info";
+            l.iso_time = std::move(iso);
+            l.source = "synthetic.txt";
+            return l;
+        };
+
+        auto joined = ClassifyStreamLine(lineOf(
+            "[Behaviour] OnPlayerJoined Alice (usr_11111111-2222-3333-4444-555555555555)",
+            "2026.04.15 12:00:01"));
+        if (joined.is_null() || joined.value("kind", "") != "player"
+            || joined["data"].value("kind", "") != "joined"
+            || joined["data"].value("display_name", "") != "Alice"
+            || joined["data"].value("user_id", "") != "usr_11111111-2222-3333-4444-555555555555")
+        {
+            failures += fail("classifier: OnPlayerJoined mismatch: " + joined.dump());
+        }
+
+        auto left = ClassifyStreamLine(lineOf(
+            "[Behaviour] OnPlayerLeft Bob", "2026.04.15 12:00:02"));
+        if (left.is_null() || left.value("kind", "") != "player"
+            || left["data"].value("kind", "") != "left"
+            || left["data"].value("display_name", "") != "Bob")
+        {
+            failures += fail("classifier: OnPlayerLeft mismatch: " + left.dump());
+        }
+
+        auto swap = ClassifyStreamLine(lineOf(
+            "[Behaviour] Switching Alice to avatar CoolRobot",
+            "2026.04.15 12:00:03"));
+        if (swap.is_null() || swap.value("kind", "") != "avatarSwitch"
+            || swap["data"].value("actor", "") != "Alice"
+            || swap["data"].value("avatar_name", "") != "CoolRobot")
+        {
+            failures += fail("classifier: Switching mismatch: " + swap.dump());
+        }
+
+        auto shot = ClassifyStreamLine(lineOf(
+            "[VRC Camera] Took screenshot to: C:\\Users\\x\\Pictures\\VRChat\\2026-04\\pic.png",
+            "2026.04.15 12:00:04"));
+        if (shot.is_null() || shot.value("kind", "") != "screenshot"
+            || shot["data"].value("path", "").find("pic.png") == std::string::npos)
+        {
+            failures += fail("classifier: screenshot mismatch: " + shot.dump());
+        }
+
+        auto noise = ClassifyStreamLine(lineOf(
+            "[UIManager] some Udon chatter", "2026.04.15 12:00:05"));
+        if (!noise.is_null())
+        {
+            failures += fail("classifier: noise line misclassified: " + noise.dump());
+        }
     }
 
     // Human summary
