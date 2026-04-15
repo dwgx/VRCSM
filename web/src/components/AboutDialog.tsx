@@ -31,7 +31,10 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
         if (alive) setVersion(v);
       })
       .catch(() => {
-        if (alive) setVersion({ version: "0.1.1", build: "dev" });
+        // Fallback used only when the IPC bridge itself fails — e.g. running
+        // the Vite dev server outside the host shell. Keep in lockstep with
+        // package.json / IpcBridge.cpp `app.version` / installer/vrcsm.wxs.
+        if (alive) setVersion({ version: "0.1.2", build: "dev" });
       });
     return () => {
       alive = false;
