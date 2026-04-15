@@ -4,6 +4,12 @@
 
 class IpcBridge;
 
+// Custom Win32 message used to marshal PostWebMessageAsString calls
+// from worker threads onto the UI thread. WParam is unused, LParam
+// is a heap-allocated std::string* that the MainWindow handler owns
+// after dispatch. Must be ≤ WM_APP + 0x3FFF.
+inline constexpr UINT WM_APP_POST_WEB_MESSAGE = WM_APP + 1;
+
 class WebViewHost
 {
 public:
@@ -12,7 +18,21 @@ public:
 
     HRESULT Initialize(HWND parent);
     void Resize(RECT bounds) const;
+
+    // Post a JSON string to the WebView2 renderer. Safe to call from
+    // any thread — if the caller is not on the UI thread, the payload
+    // is queued via PostMessage onto the main window's message loop
+    // and DeliverWebMessage fires it for real. This matters because
+    // PostWebMessageAsString is only valid on the WebView2 UI thread;
+    // calling it from a detached worker silently no-ops (or worse, on
+    // some Windows builds, blocks forever), which is why the IPC
+    // async-dispatch path used to look like a "hung" scan.
     void PostMessageToWeb(const std::string& json) const;
+
+    // UI-thread callback from MainWindow::WndProc when a WM_APP_POST_
+    // WEB_MESSAGE arrives. Owns the incoming heap string.
+    void DeliverWebMessage(std::string* owned) const;
+
     HWND ParentHwnd() const noexcept { return m_parent; }
 
     // The main WebView2 environment — shared with AuthLoginWindow so the

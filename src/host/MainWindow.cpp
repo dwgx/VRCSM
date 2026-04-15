@@ -4,6 +4,7 @@
 #include "WebViewHost.h"
 
 #include <dwmapi.h>
+#include <string>
 
 MainWindow::MainWindow() = default;
 MainWindow::~MainWindow() = default;
@@ -148,6 +149,23 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
+    case WM_APP_POST_WEB_MESSAGE:
+    {
+        // Worker-thread PostMessageToWeb landed here. We own the
+        // payload pointer; hand it to the WebView host which fires
+        // the real WebView2 call on this (the UI) thread and then
+        // deletes the string.
+        auto* payload = reinterpret_cast<std::string*>(lParam);
+        if (m_webViewHost != nullptr)
+        {
+            m_webViewHost->DeliverWebMessage(payload);
+        }
+        else
+        {
+            delete payload;
+        }
+        return 0;
+    }
     default:
         return DefWindowProcW(m_hwnd, message, wParam, lParam);
     }

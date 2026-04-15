@@ -48,12 +48,31 @@ void WebViewHost::Resize(RECT bounds) const
 
 void WebViewHost::PostMessageToWeb(const std::string& json) const
 {
-    if (m_webview == nullptr)
+    if (m_webview == nullptr || m_parent == nullptr)
     {
         return;
     }
 
-    const std::wstring payload = Utf8ToWide(json);
+    // Marshal every call onto the UI thread unconditionally. Even
+    // when the caller happens to already be on the UI thread, the
+    // round-trip through PostMessage adds one cheap message-loop
+    // iteration and keeps the semantics trivially consistent — we
+    // don't have to reason about "was this the right thread?" at
+    // every call site. Ownership of the heap string transfers to
+    // DeliverWebMessage on the receiving side.
+    auto* payload = new std::string(json);
+    if (!PostMessageW(m_parent, WM_APP_POST_WEB_MESSAGE, 0, reinterpret_cast<LPARAM>(payload)))
+    {
+        delete payload;
+    }
+}
+
+void WebViewHost::DeliverWebMessage(std::string* owned) const
+{
+    std::unique_ptr<std::string> guard(owned);
+    if (m_webview == nullptr || guard == nullptr) return;
+
+    const std::wstring payload = Utf8ToWide(*guard);
     (void)m_webview->PostWebMessageAsString(payload.c_str());
 }
 
