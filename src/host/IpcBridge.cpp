@@ -156,8 +156,11 @@ void IpcBridge::RegisterHandlers()
 
 nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::optional<std::string>&)
 {
+    // Bump in lockstep with installer/vrcsm.wxs ProductVersion and
+    // web/package.json — the About dialog reads this, so leaving it stale
+    // lies to the user.
     return nlohmann::json{
-        {"version", "0.1.1"},
+        {"version", "0.1.2"},
         {"build", std::string(__DATE__) + " " + std::string(__TIME__)}
     };
 }
