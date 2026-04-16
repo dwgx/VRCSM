@@ -4,6 +4,7 @@
 
 #include "../core/Common.h"
 #include "../core/LogTailer.h"
+#include "../core/TaskQueue.h"
 
 class WebViewHost;
 
@@ -65,4 +66,5 @@ private:
     WebViewHost& m_host;
     std::unordered_map<std::string, Handler> m_handlers;
     std::unique_ptr<vrcsm::core::LogTailer> m_logTailer;
+    vrcsm::core::TaskQueue m_previewQueue;
 };

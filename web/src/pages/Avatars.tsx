@@ -19,6 +19,7 @@ import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { formatDate } from "@/lib/utils";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
+import { useIpcQuery } from "@/hooks/useIpcQuery";
 import type { LocalAvatarItem } from "@/lib/types";
 import { Eye, Sliders, Search, User, Info, Lock, Box, Sword } from "lucide-react";
 
@@ -54,66 +55,23 @@ interface AvatarDetailsResponse {
   details: AvatarDetailsPayload | null;
 }
 
-// Tiny in-process memo so switching back and forth in the list pane
-// doesn't re-issue the same IPC. Keyed by avatar id. `null` means "we
-// asked and there's nothing" (anon, 401, 404) — don't retry.
-const detailsMemo = new Map<string, AvatarDetailsPayload | null>();
-
-function useAvatarDetails(
+export function useAvatarDetails(
   avatarId: string | null,
-): {
-  details: AvatarDetailsPayload | null;
-  loading: boolean;
-} {
+) {
   const { status } = useAuth();
-  const [details, setDetails] = useState<AvatarDetailsPayload | null>(() => {
-    if (!avatarId) return null;
-    return detailsMemo.get(avatarId) ?? null;
-  });
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!avatarId || !status.authed) {
-      setDetails(null);
-      setLoading(false);
-      return;
+  const { data, isLoading } = useIpcQuery<{ id: string }, AvatarDetailsResponse>(
+    "avatar.details",
+    { id: avatarId! },
+    {
+      staleTime: 5 * 60 * 1000,
+      enabled: !!avatarId && status.authed,
     }
+  );
 
-    if (detailsMemo.has(avatarId)) {
-      setDetails(detailsMemo.get(avatarId) ?? null);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    ipc
-      .call<{ id: string }, AvatarDetailsResponse>("avatar.details", {
-        id: avatarId,
-      })
-      .then((resp) => {
-        if (cancelled) return;
-        const payload = resp.details ?? null;
-        detailsMemo.set(avatarId, payload);
-        setDetails(payload);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        // On network / handler failure, cache null so we don't retry
-        // storm. The user can clear state by signing out + back in.
-        detailsMemo.set(avatarId, null);
-        setDetails(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [avatarId, status.authed]);
-
-  return { details, loading };
+  return { 
+    details: data?.details ?? null, 
+    loading: isLoading,
+  };
 }
 
 /**

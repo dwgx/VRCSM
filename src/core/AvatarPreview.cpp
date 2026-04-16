@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "PathProbe.h"
+#include "TaskQueue.h"
 #include "VrcApi.h"
 
 #include <algorithm>
@@ -57,6 +58,10 @@
 
 namespace vrcsm::core
 {
+
+#ifndef IDR_EXTRACTOR_EXE
+#define IDR_EXTRACTOR_EXE 1000
+#endif
 
 namespace
 {
@@ -123,44 +128,41 @@ std::filesystem::path executableDir()
     return std::filesystem::path(buffer).parent_path();
 }
 
-std::optional<std::filesystem::path> resolveToolBinary(std::wstring_view filename)
+std::optional<std::filesystem::path> ensureExtractor(const std::filesystem::path& baseDir)
 {
-    const auto exeDir = executableDir();
-    if (!exeDir.empty())
+    const auto targetPath = baseDir / L"vrcsm_extractor.exe";
+    HMODULE hModule = GetModuleHandleW(nullptr);
+    HRSRC hRes = FindResourceW(hModule, MAKEINTRESOURCEW(IDR_EXTRACTOR_EXE), RT_RCDATA);
+    
+    // Fallback: If not embedded (e.g. dev build without RC), allow loose file
+    if (!hRes)
     {
-        // Look next to VRCSM.exe first. The MSI installs any
-        // co-bundled extractor tools under `extractor/` so we check
-        // both the flat and the subdir layouts.
-        std::array<std::filesystem::path, 2> candidates{
-            exeDir / filename,
-            exeDir / L"extractor" / filename,
-        };
-        for (const auto& candidate : candidates)
-        {
-            std::error_code ec;
-            if (std::filesystem::exists(candidate, ec) && !ec)
-            {
-                return candidate;
-            }
-        }
+        const auto exeDir = executableDir();
+        if (std::filesystem::exists(exeDir / L"vrcsm_extractor.exe")) return exeDir / L"vrcsm_extractor.exe";
+        if (std::filesystem::exists(targetPath)) return targetPath;
+        return std::nullopt;
     }
 
-    // Fallback: plain PATH lookup via SearchPathW so a dev-mode user
-    // who installed AssetRipper globally still gets the preview.
-    std::wstring found(static_cast<std::size_t>(MAX_PATH), L'\0');
-    const DWORD n = SearchPathW(
-        nullptr,
-        filename.data(),
-        nullptr,
-        static_cast<DWORD>(found.size()),
-        found.data(),
-        nullptr);
-    if (n > 0 && n < found.size())
+    HGLOBAL hMem = LoadResource(hModule, hRes);
+    if (!hMem) return std::nullopt;
+
+    DWORD resSize = SizeofResource(hModule, hRes);
+    void* pData = LockResource(hMem);
+    if (!pData || resSize == 0) return std::nullopt;
+
+    std::error_code ec;
+    if (std::filesystem::exists(targetPath, ec) && std::filesystem::file_size(targetPath, ec) == resSize)
     {
-        found.resize(n);
-        return std::filesystem::path(found);
+        return targetPath;
     }
-    return std::nullopt;
+
+    std::filesystem::create_directories(baseDir, ec);
+    std::ofstream out(targetPath, std::ios::binary);
+    if (!out) return std::nullopt;
+    out.write(static_cast<const char*>(pData), resSize);
+    out.close();
+
+    return targetPath;
 }
 
 bool fileContainsAscii(const std::filesystem::path& path, std::string_view needle)
@@ -258,6 +260,133 @@ std::filesystem::path findBundleForAvatar(
     }
 
     return {};
+}
+
+// Spawn the extractor binary and wait for it to finish. Two code paths:
+//   - TaskQueue path (queue != null): uses Job Object + 500ms cancellation poll
+//   - Legacy path (queue == null): blocking WaitForSingleObject(INFINITE)
+AvatarPreviewResult spawnExtractor(
+    const std::string& avatarId,
+    const std::string& hash,
+    const std::filesystem::path& extractorPath,
+    const std::filesystem::path& dataPath,
+    const std::filesystem::path& glbPath,
+    const std::filesystem::path& cacheDir,
+    TaskQueue* queue,
+    const TaskToken* token)
+{
+    AvatarPreviewResult result;
+    std::error_code ec;
+
+    const auto logsDir = cacheDir / L"logs";
+    std::filesystem::create_directories(logsDir, ec);
+    const auto extractorLogPath = logsDir / (hash + ".log");
+
+    const auto tempExportDir = cacheDir / (hash + "_export");
+    std::filesystem::remove_all(tempExportDir, ec);
+
+    std::wstring cmdLine = L"\"" + extractorPath.wstring() + L"\" \"" + dataPath.wstring() + L"\" \"" + glbPath.wstring() + L"\"";
+
+    {
+        std::error_code szEc;
+        const auto bundleSize = std::filesystem::file_size(dataPath, szEc);
+        spdlog::info(
+            "AvatarPreview: spawning extractor for {} (hash={}, bundle={} bytes)",
+            avatarId,
+            hash,
+            szEc ? 0 : bundleSize);
+    }
+
+    bool spawnOk = false;
+
+    if (queue && token)
+    {
+        if (token->cancelled)
+        {
+            result.code = "cancelled";
+            result.message = "Request cancelled before extractor spawn";
+            return result;
+        }
+
+        auto spawnResult = queue->SpawnAndWait(cmdLine, cacheDir, extractorLogPath, *token);
+        spawnOk = spawnResult.ok;
+
+        if (token->cancelled)
+        {
+            result.code = "cancelled";
+            result.message = "Request cancelled during extraction";
+            std::filesystem::remove_all(tempExportDir, ec);
+            return result;
+        }
+    }
+    else
+    {
+        SECURITY_ATTRIBUTES sa{};
+        sa.nLength = sizeof(sa);
+        sa.bInheritHandle = TRUE;
+
+        HANDLE hLog = CreateFileW(
+            extractorLogPath.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+            &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (hLog == INVALID_HANDLE_VALUE) hLog = nullptr;
+
+        std::wstring mutableCmd = cmdLine;
+        STARTUPINFOW si{};
+        si.cb = sizeof(si);
+        if (hLog)
+        {
+            si.dwFlags = STARTF_USESTDHANDLES;
+            si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+            si.hStdOutput = hLog;
+            si.hStdError = hLog;
+        }
+        PROCESS_INFORMATION pi{};
+
+        if (CreateProcessW(nullptr, mutableCmd.data(), nullptr, nullptr,
+                hLog ? TRUE : FALSE, CREATE_NO_WINDOW, nullptr,
+                cacheDir.c_str(), &si, &pi))
+        {
+            WaitForSingleObject(pi.hProcess, INFINITE);
+            DWORD exitCode = 1;
+            GetExitCodeProcess(pi.hProcess, &exitCode);
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            spawnOk = (exitCode == 0);
+            if (!spawnOk)
+            {
+                spdlog::error("AvatarPreview: extractor exited with code {} — see {}",
+                    exitCode, toUtf8(extractorLogPath.wstring()));
+            }
+        }
+        else
+        {
+            spdlog::error("AvatarPreview: CreateProcessW failed ({})", GetLastError());
+        }
+        if (hLog) CloseHandle(hLog);
+    }
+
+    if (!spawnOk)
+    {
+        result.code = "preview_failed";
+        result.message = "Extraction pipeline failed (see preview-cache/logs/<hash>.log)";
+        std::filesystem::remove_all(tempExportDir, ec);
+        return result;
+    }
+
+    std::filesystem::remove_all(tempExportDir, ec);
+
+    if (!std::filesystem::exists(glbPath, ec))
+    {
+        result.code = "preview_failed";
+        result.message = "Pipeline succeeded but output GLB was not produced.";
+        return result;
+    }
+
+    result.ok = true;
+    result.cached = false;
+    result.glbPath = toUtf8(glbPath.wstring());
+    result.glbUrl = fmt::format("https://{}/{}.glb", kPreviewHost, hash);
+    return result;
 }
 
 } // namespace
@@ -379,131 +508,119 @@ AvatarPreviewResult AvatarPreview::Request(
     // This replaces AssetStudioModCLI which crashes on VRChat 2022's LZ4 bundles.
     // -------------------------------------------------------------------------
     
-    std::optional<std::filesystem::path> extractorPath = resolveToolBinary(L"vrcsm_extractor.exe");
+    std::optional<std::filesystem::path> extractorPath = ensureExtractor(cacheDir / L"internal");
     if (!extractorPath.has_value())
     {
-        // Try looking in current working directory for local testing
-        std::filesystem::path localExe = std::filesystem::current_path() / "dist" / "vrcsm_extractor.exe";
-        if (std::filesystem::exists(localExe)) {
-            extractorPath = localExe;
-        } else {
-            result.code = "extractor_missing";
-            result.message = "vrcsm_extractor.exe is not available — 3D preview disabled";
-            return result;
-        }
-    }
-
-    // Spawn the extractor with its stdout+stderr redirected to a
-    // per-avatar log file. Silently-failing child processes are the
-    // worst class of bug to chase — every run now leaves a breadcrumb
-    // at `preview-cache/logs/<hash>.log` so a bad bundle or a Python
-    // traceback is one file away instead of invisible.
-    const auto logsDir = cacheDir / L"logs";
-    std::filesystem::create_directories(logsDir, ec);
-    const auto extractorLogPath = logsDir / (hash + ".log");
-
-    auto spawnProcess = [&extractorLogPath](const std::wstring& cmd, const std::filesystem::path& cwd) -> bool {
-        SECURITY_ATTRIBUTES sa{};
-        sa.nLength = sizeof(sa);
-        sa.bInheritHandle = TRUE;
-        sa.lpSecurityDescriptor = nullptr;
-
-        HANDLE hLog = CreateFileW(
-            extractorLogPath.c_str(),
-            GENERIC_WRITE,
-            FILE_SHARE_READ,
-            &sa,
-            CREATE_ALWAYS,
-            FILE_ATTRIBUTE_NORMAL,
-            nullptr);
-        if (hLog == INVALID_HANDLE_VALUE)
-        {
-            spdlog::warn("AvatarPreview: could not open log file {}", toUtf8(extractorLogPath.wstring()));
-            hLog = nullptr;
-        }
-
-        std::wstring mutableCmd = cmd;
-        STARTUPINFOW si{};
-        si.cb = sizeof(si);
-        if (hLog)
-        {
-            si.dwFlags = STARTF_USESTDHANDLES;
-            si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
-            si.hStdOutput = hLog;
-            si.hStdError  = hLog;
-        }
-        PROCESS_INFORMATION pi{};
-
-        if (!CreateProcessW(
-            nullptr,
-            mutableCmd.data(),
-            nullptr,
-            nullptr,
-            hLog ? TRUE : FALSE,
-            CREATE_NO_WINDOW,
-            nullptr,
-            cwd.empty() ? nullptr : cwd.c_str(),
-            &si,
-            &pi))
-        {
-            spdlog::error("AvatarPreview: CreateProcessW failed with error code: {}", GetLastError());
-            if (hLog) CloseHandle(hLog);
-            return false;
-        }
-
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        DWORD exitCode = 1;
-        GetExitCodeProcess(pi.hProcess, &exitCode);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        if (hLog) CloseHandle(hLog);
-
-        if (exitCode != 0) {
-            spdlog::error(
-                "AvatarPreview: extractor exited with code {} — see {}",
-                exitCode,
-                toUtf8(extractorLogPath.wstring()));
-        }
-        return exitCode == 0;
-    };
-
-    const auto tempExportDir = cacheDir / (hash + "_export");
-    std::filesystem::remove_all(tempExportDir, ec);
-
-    std::wstring cmdLine = L"\"" + extractorPath->wstring() + L"\" \"" + dataPath.wstring() + L"\" \"" + glbPath.wstring() + L"\"";
-
-    {
-        std::error_code szEc;
-        const auto bundleSize = std::filesystem::file_size(dataPath, szEc);
-        spdlog::info(
-            "AvatarPreview: spawning extractor for {} (hash={}, bundle={} bytes)",
-            avatarId,
-            hash,
-            szEc ? 0 : bundleSize);
-    }
-
-    if (!spawnProcess(cmdLine, cacheDir))
-    {
-        result.code = "preview_failed";
-        result.message = "Extraction pipeline script failed (see preview-cache/logs/<hash>.log)";
-        std::filesystem::remove_all(tempExportDir, ec);
+        result.code = "extractor_missing";
+        result.message = "vrcsm_extractor.exe resource is missing — 3D preview disabled";
         return result;
     }
 
-    std::filesystem::remove_all(tempExportDir, ec);
+    // Phase 5 — spawn extractor (legacy blocking path, no cancellation).
+    return spawnExtractor(avatarId, hash, *extractorPath, dataPath, glbPath, cacheDir, nullptr, nullptr);
+}
 
-    if (!std::filesystem::exists(glbPath, ec))
+AvatarPreviewResult AvatarPreview::Request(
+    const std::string& avatarId,
+    const std::filesystem::path& vrchatBaseDir,
+    const std::string& assetUrl,
+    TaskQueue& queue,
+    const TaskToken& token)
+{
+    if (token.cancelled)
     {
-        result.code = "preview_failed";
-        result.message = "Pipeline succeeded but output GLB was not produced.";
-        return result;
+        return AvatarPreviewResult{false, {}, {}, false, "cancelled", "Request cancelled"};
     }
 
-    result.ok = true;
-    result.cached = false;
-    result.glbPath = toUtf8(glbPath.wstring());
-    result.glbUrl = buildUrl();
-    return result;
+    if (avatarId.empty())
+    {
+        return AvatarPreviewResult{false, {}, {}, false, "missing_avatar_id", "avatarId is required"};
+    }
+
+    const std::string hash = stableHashHex(avatarId);
+    const auto cacheDir = PreviewCacheDir();
+    const auto glbPath = cacheDir / (hash + ".glb");
+
+    // 1) Hot cache hit.
+    std::error_code ec;
+    if (std::filesystem::exists(glbPath, ec) && !ec)
+    {
+        return AvatarPreviewResult{
+            true,
+            toUtf8(glbPath.wstring()),
+            fmt::format("https://{}/{}.glb", kPreviewHost, hash),
+            true, {}, {}};
+    }
+
+    if (token.cancelled)
+    {
+        return AvatarPreviewResult{false, {}, {}, false, "cancelled", "Request cancelled"};
+    }
+
+    // 2) Resolve bundle (same logic as the base overload).
+    std::filesystem::path localBundlePath;
+    if (assetUrl.empty())
+    {
+        const auto localAvatarDir = vrchatBaseDir / L"LocalAvatarData";
+        std::error_code l_ec;
+        if (std::filesystem::exists(localAvatarDir, l_ec))
+        {
+            for (const auto& userEntry : std::filesystem::directory_iterator(localAvatarDir, l_ec))
+            {
+                if (l_ec || !userEntry.is_directory(l_ec)) continue;
+                auto potentialPath = userEntry.path() / toWide(avatarId) / L"custom.vrca";
+                if (std::filesystem::exists(potentialPath, l_ec))
+                {
+                    localBundlePath = potentialPath;
+                    break;
+                }
+            }
+        }
+        if (localBundlePath.empty())
+        {
+            return AvatarPreviewResult{false, {}, {}, false, "bundle_not_found",
+                "No assetUrl provided and offline cache sweeps are unsupported."};
+        }
+    }
+
+    const auto bundleDir = cacheDir / L"bundles";
+    std::filesystem::create_directories(bundleDir, ec);
+    std::filesystem::path dataPath = bundleDir / (hash + ".vrca");
+
+    if (!localBundlePath.empty())
+    {
+        dataPath = localBundlePath;
+    }
+    else if (!std::filesystem::exists(dataPath, ec) || ec)
+    {
+        if (token.cancelled)
+        {
+            return AvatarPreviewResult{false, {}, {}, false, "cancelled", "Request cancelled"};
+        }
+        spdlog::info("AvatarPreview: downloading bundle for {}...", avatarId);
+        if (!VrcApi::downloadFile(assetUrl, dataPath))
+        {
+            return AvatarPreviewResult{false, {}, {}, false, "bundle_not_found",
+                "Failed to download the .vrca bundle from the VRChat API."};
+        }
+    }
+
+    if (!std::filesystem::exists(dataPath, ec))
+    {
+        return AvatarPreviewResult{false, {}, {}, false, "bundle_not_found",
+            "Bundle directory found but __data file is missing"};
+    }
+
+    // 3) Extractor gate.
+    std::optional<std::filesystem::path> extractorPath = ensureExtractor(cacheDir / L"internal");
+    if (!extractorPath.has_value())
+    {
+        return AvatarPreviewResult{false, {}, {}, false, "extractor_missing",
+            "vrcsm_extractor.exe resource is missing — 3D preview disabled"};
+    }
+
+    // 4) Spawn via TaskQueue — Job Object + cancellation-aware poll.
+    return spawnExtractor(avatarId, hash, *extractorPath, dataPath, glbPath, cacheDir, &queue, &token);
 }
 
 } // namespace vrcsm::core
