@@ -88,14 +88,14 @@ void WebViewHost::ClearVrcCookies() const
         return;
     }
 
-    auto webview2 = m_webview.try_query<ICoreWebView2_2>();
-    if (webview2 == nullptr)
+    Microsoft::WRL::ComPtr<ICoreWebView2_2> webview2;
+    if (FAILED(m_webview.As(&webview2)) || webview2 == nullptr)
     {
         return;
     }
 
-    wil::com_ptr<ICoreWebView2CookieManager> cookieManager;
-    if (FAILED(webview2->get_CookieManager(cookieManager.put())) || cookieManager == nullptr)
+    Microsoft::WRL::ComPtr<ICoreWebView2CookieManager> cookieManager;
+    if (FAILED(webview2->get_CookieManager(&cookieManager)) || cookieManager == nullptr)
     {
         return;
     }
@@ -126,8 +126,8 @@ void WebViewHost::ClearVrcCookies() const
                 UINT deleted = 0;
                 for (UINT i = 0; i < count; ++i)
                 {
-                    wil::com_ptr<ICoreWebView2Cookie> cookie;
-                    if (FAILED(list->GetValueAtIndex(i, cookie.put())) || cookie == nullptr)
+                    Microsoft::WRL::ComPtr<ICoreWebView2Cookie> cookie;
+                    if (FAILED(list->GetValueAtIndex(i, &cookie)) || cookie == nullptr)
                     {
                         continue;
                     }
@@ -139,7 +139,7 @@ void WebViewHost::ClearVrcCookies() const
                     const std::wstring nameStr(name.get());
                     if (nameStr == L"auth" || nameStr == L"twoFactorAuth")
                     {
-                        cookieManager->DeleteCookie(cookie.get());
+                        cookieManager->DeleteCookie(cookie.Get());
                         ++deleted;
                     }
                 }
@@ -223,7 +223,7 @@ HRESULT WebViewHost::OnControllerCreated(HRESULT result, ICoreWebView2Controller
     try
     {
         m_controller = controller;
-        THROW_IF_FAILED(m_controller->get_CoreWebView2(m_webview.put()));
+        THROW_IF_FAILED(m_controller->get_CoreWebView2(&m_webview));
         ConfigureWebView();
 
         RECT bounds{};
@@ -240,8 +240,8 @@ HRESULT WebViewHost::OnControllerCreated(HRESULT result, ICoreWebView2Controller
 
 void WebViewHost::ConfigureWebView()
 {
-    wil::com_ptr<ICoreWebView2Settings> settings;
-    THROW_IF_FAILED(m_webview->get_Settings(settings.put()));
+    Microsoft::WRL::ComPtr<ICoreWebView2Settings> settings;
+    THROW_IF_FAILED(m_webview->get_Settings(&settings));
 
 #if defined(_DEBUG)
     THROW_IF_FAILED(settings->put_AreDevToolsEnabled(TRUE));
@@ -253,8 +253,9 @@ void WebViewHost::ConfigureWebView()
     THROW_IF_FAILED(settings->put_IsZoomControlEnabled(FALSE));
 
     const std::filesystem::path webDir = GetExecutableDirectory() / L"web";
-    auto webview3 = m_webview.try_query<ICoreWebView2_3>();
-    THROW_HR_IF_NULL(E_NOINTERFACE, webview3.get());
+    Microsoft::WRL::ComPtr<ICoreWebView2_3> webview3;
+    THROW_IF_FAILED(m_webview.As(&webview3));
+    THROW_HR_IF_NULL(E_NOINTERFACE, webview3.Get());
     THROW_IF_FAILED(webview3->SetVirtualHostNameToFolderMapping(
         L"app.vrcsm",
         webDir.c_str(),

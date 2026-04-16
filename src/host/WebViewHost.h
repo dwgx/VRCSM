@@ -38,7 +38,7 @@ public:
     // The main WebView2 environment — retained for future popups /
     // additional controllers that should share the same user-data
     // folder and cookie jar as the primary view.
-    ICoreWebView2Environment* Environment() const noexcept { return m_environment.get(); }
+    ICoreWebView2Environment* Environment() const noexcept { return m_environment.Get(); }
 
     // Erase every VRChat-related cookie from the shared WebView2
     // profile. Called on explicit sign-out so any cached cookie from
@@ -54,8 +54,8 @@ private:
     void ConfigureWebView();
 
     HWND m_parent{};
-    wil::com_ptr<ICoreWebView2Environment> m_environment;
-    wil::com_ptr<ICoreWebView2Controller> m_controller;
-    wil::com_ptr<ICoreWebView2> m_webview;
+    Microsoft::WRL::ComPtr<ICoreWebView2Environment> m_environment;
+    Microsoft::WRL::ComPtr<ICoreWebView2Controller> m_controller;
+    Microsoft::WRL::ComPtr<ICoreWebView2> m_webview;
     std::unique_ptr<IpcBridge> m_ipcBridge;
 };
