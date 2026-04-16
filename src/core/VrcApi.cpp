@@ -69,7 +69,8 @@ constexpr const char* kApiKey = "JlE5Jldo5Jibnk5O5hTx6XVqsJu4WJ26";
 // VRChat's API rejects requests without a properly formatted UA — the
 // format is `<tool>/<version> <contact>`. The contact segment just needs
 // to parse as email-ish; it's how VRChat can reach out if a tool misbehaves.
-constexpr const wchar_t* kUserAgentW = L"VRCSM/0.2.0 dwgx@vrcsm.local";
+// Bumped in lockstep with package.json / installer / app.rc.
+constexpr const wchar_t* kUserAgentW = L"VRCSM/0.5.0 dwgx@vrcsm.local";
 
 constexpr const wchar_t* kApiHostW = L"api.vrchat.cloud";
 
@@ -577,6 +578,8 @@ std::optional<std::string> extractThumbnailUrl(const std::string& jsonBody)
     return std::nullopt;
 }
 
+
+
 nlohmann::json parseJsonBody(const HttpResponse& response, std::string_view endpointLabel)
 {
     try
@@ -732,50 +735,49 @@ std::vector<ThumbnailResult> VrcApi::fetchThumbnails(const std::vector<std::stri
     return out;
 }
 
-std::optional<nlohmann::json> VrcApi::fetchCurrentUser()
+Result<nlohmann::json> VrcApi::fetchCurrentUser()
 {
     const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
     if (cookieHeader.empty())
     {
-        return std::nullopt;
+        return Error{"auth_expired", "No session cookie", 401};
     }
 
-    // `/auth/user` is the cheapest "is this cookie still valid?" probe.
-    // Keep the contract narrow: 401 becomes nullopt so callers can sign
-    // out; everything else surfaces as an actual failure.
     const auto response = httpGet(
         kApiHostW,
         L"/api/1/auth/user",
         std::make_optional(cookieHeader));
     if (response.error.has_value())
     {
-        throw std::runtime_error(*response.error);
+        return Error{"network", *response.error, 0};
     }
     if (response.status == 401)
     {
-        return std::nullopt;
+        return Error{"auth_expired", "Session expired", 401};
+    }
+    if (response.status == 429)
+    {
+        return Error{"rate_limited", "Too many requests", 429};
     }
     if (response.status != 200)
     {
-        throw std::runtime_error(fmt::format("/auth/user returned HTTP {}", response.status));
+        return Error{"api_error", fmt::format("/auth/user returned HTTP {}", response.status), response.status};
     }
 
     return parseJsonBody(response, "/auth/user");
 }
 
-std::optional<nlohmann::json> VrcApi::fetchAvatarDetails(const std::string& avatarId)
+Result<nlohmann::json> VrcApi::fetchAvatarDetails(const std::string& avatarId)
 {
     if (avatarId.empty())
     {
-        return std::nullopt;
+        return Error{"not_found", "Empty avatar id", 404};
     }
 
     const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
     if (cookieHeader.empty())
     {
-        // Anonymous callers get 401 here; bail out early so we don't
-        // even touch the network.
-        return std::nullopt;
+        return Error{"auth_expired", "No session cookie", 401};
     }
 
     const std::wstring path = toWide(fmt::format("/api/1/avatars/{}", avatarId));
@@ -785,21 +787,280 @@ std::optional<nlohmann::json> VrcApi::fetchAvatarDetails(const std::string& avat
         std::make_optional(cookieHeader));
     if (response.error.has_value())
     {
-        throw std::runtime_error(*response.error);
+        return Error{"network", *response.error, 0};
     }
-    if (response.status == 401 || response.status == 404)
+    if (response.status == 401)
     {
-        // 401 — cookie stale or avatar private to someone else.
-        // 404 — the avatar was deleted upstream. Both are
-        // "nothing to show", not "blow up the inspector".
-        return std::nullopt;
+        return Error{"auth_expired", "Session expired", 401};
+    }
+    if (response.status == 404)
+    {
+        return Error{"not_found", fmt::format("Avatar {} not found", avatarId), 404};
+    }
+    if (response.status == 429)
+    {
+        return Error{"rate_limited", "Too many requests", 429};
     }
     if (response.status != 200)
     {
-        throw std::runtime_error(fmt::format("/avatars/{} returned HTTP {}", avatarId, response.status));
+        return Error{"api_error", fmt::format("/avatars/{} returned HTTP {}", avatarId, response.status), response.status};
     }
 
     return parseJsonBody(response, "/avatars/{id}");
+}
+
+namespace
+{
+// VRChat's username+password dance:
+//   GET /api/1/auth/user                  (Authorization: Basic base64(user:pass))
+// → 200 + full user body                   (logged in, no 2FA gate)
+// → 200 + { requiresTwoFactorAuth: [...] } (gated — captures `auth` cookie
+//                                            but not `twoFactorAuth` yet)
+// → 401                                   (bad password / captcha wall)
+//
+// The username+password pair is passed percent-encoded BEFORE base64 —
+// VRChat runs the raw bytes through `decodeURIComponent` before
+// validating. Forgetting to percent-encode means every password with a
+// non-ASCII character ("!", ":", Chinese, etc.) silently fails.
+std::string buildBasicAuthHeader(const std::string& username, const std::string& password)
+{
+    const std::string userPart = percentEncode(username);
+    const std::string passPart = percentEncode(password);
+    const std::string combined = userPart + ":" + passPart;
+    return "Basic " + base64Encode(combined);
+}
+
+std::vector<std::string> parseTwoFactorMethods(const nlohmann::json& doc)
+{
+    std::vector<std::string> methods;
+    const auto it = doc.find("requiresTwoFactorAuth");
+    if (it == doc.end() || !it->is_array())
+    {
+        return methods;
+    }
+    for (const auto& v : *it)
+    {
+        if (v.is_string())
+        {
+            methods.push_back(v.get<std::string>());
+        }
+    }
+    return methods;
+}
+} // namespace
+
+LoginResult VrcApi::loginWithPassword(const std::string& username, const std::string& password)
+{
+    LoginResult out;
+
+    if (username.empty() || password.empty())
+    {
+        out.status = LoginResult::Status::Error;
+        out.error = "username and password are required";
+        return out;
+    }
+
+    // /auth/user with HTTP Basic — WinHTTP does not auto-inject the
+    // Authorization header because we're explicitly avoiding the
+    // "negotiate" stack, so we build it by hand.
+    const std::string authHeaderUtf8 = buildBasicAuthHeader(username, password);
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Authorization", toWide(authHeaderUtf8));
+
+    HttpResponse response = httpRequest(
+        L"GET",
+        kApiHostW,
+        L"/api/1/auth/user",
+        headers,
+        /*bodyUtf8*/ {},
+        /*captureSetCookie*/ true);
+
+    out.httpStatus = static_cast<int>(response.status);
+
+    if (response.error.has_value())
+    {
+        out.status = LoginResult::Status::Error;
+        out.error = *response.error;
+        return out;
+    }
+
+    if (response.status == 401)
+    {
+        // VRChat tells us "Invalid Username/Email or Password" as plain
+        // JSON here — lift it verbatim so the UI toast matches the
+        // official login page phrasing.
+        const auto msg = extractApiErrorMessage(response.body);
+        out.status = LoginResult::Status::Error;
+        out.error = msg.value_or("Invalid username or password");
+        return out;
+    }
+
+    if (response.status != 200)
+    {
+        out.status = LoginResult::Status::Error;
+        out.error = describeHttpFailure(response, "/auth/user");
+        return out;
+    }
+
+    nlohmann::json doc;
+    try
+    {
+        doc = nlohmann::json::parse(response.body);
+    }
+    catch (const std::exception& ex)
+    {
+        out.status = LoginResult::Status::Error;
+        out.error = fmt::format("/auth/user returned invalid JSON: {}", ex.what());
+        return out;
+    }
+
+    // VRChat sets the `auth` cookie regardless of whether 2FA is
+    // required — the presence of `requiresTwoFactorAuth` is what
+    // distinguishes "logged in" from "needs second factor". Capture
+    // the cookie either way so the follow-up /twofactorauth/*/verify
+    // request has a valid session to attach to.
+    const auto authCookie = extractCookieValue(response.setCookies, "auth");
+    if (!authCookie.has_value() || authCookie->empty())
+    {
+        // Defensive: even with a 200, a missing `auth` cookie means
+        // VRChat swapped contracts on us. Don't pretend we're logged in.
+        spdlog::warn("VrcApi::loginWithPassword: 200 OK but no `auth` cookie in response");
+        out.status = LoginResult::Status::Error;
+        out.error = "VRChat did not return a session cookie";
+        return out;
+    }
+
+    // Persist the cookie *now* so the subsequent 2FA verify call can
+    // use the same session. We clear the previous twoFactorAuth cookie
+    // because it belongs to a stale session and would confuse VRChat.
+    AuthStore::Instance().SetCookies(*authCookie, {});
+    (void)AuthStore::Instance().Save();
+
+    const auto twoFactorMethods = parseTwoFactorMethods(doc);
+    if (!twoFactorMethods.empty())
+    {
+        out.status = LoginResult::Status::Requires2FA;
+        out.twoFactorMethods = twoFactorMethods;
+        out.user = doc; // stub — frontend reads `twoFactorMethods`
+        return out;
+    }
+
+    out.status = LoginResult::Status::Success;
+    out.user = doc;
+    return out;
+}
+
+VerifyResult VrcApi::verifyTwoFactor(const std::string& method, const std::string& code)
+{
+    VerifyResult out;
+
+    if (method.empty() || code.empty())
+    {
+        out.ok = false;
+        out.error = "method and code are required";
+        return out;
+    }
+
+    // Only totp and emailOtp are currently used by VRChat. We
+    // deliberately allow-list them instead of passing the method
+    // straight into the URL so a malformed frontend payload can't
+    // build `/twofactorauth/../admin/` style requests.
+    if (method != "totp" && method != "emailOtp" && method != "otp")
+    {
+        out.ok = false;
+        out.error = fmt::format("unsupported 2FA method: {}", method);
+        return out;
+    }
+
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (cookieHeader.empty())
+    {
+        out.ok = false;
+        out.error = "no active login session — start over from the username/password step";
+        return out;
+    }
+
+    // Body is minimal JSON: { "code": "123456" }. VRChat is strict
+    // about the Content-Type header — it refuses text/plain.
+    nlohmann::json body;
+    body["code"] = code;
+    const std::string bodyUtf8 = body.dump();
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const std::wstring path = toWide(fmt::format("/api/1/auth/twofactorauth/{}/verify", method));
+
+    HttpResponse response = httpRequest(
+        L"POST",
+        kApiHostW,
+        path,
+        headers,
+        bodyUtf8,
+        /*captureSetCookie*/ true);
+
+    out.httpStatus = static_cast<int>(response.status);
+
+    if (response.error.has_value())
+    {
+        out.ok = false;
+        out.error = *response.error;
+        return out;
+    }
+
+    if (response.status != 200)
+    {
+        // 400 → bad code, 401 → session expired, anything else → surface
+        // whatever the server said and let the UI show a toast.
+        out.ok = false;
+        const auto msg = extractApiErrorMessage(response.body);
+        out.error = msg.value_or(
+            fmt::format("/twofactorauth/{}/verify returned HTTP {}", method, response.status));
+        return out;
+    }
+
+    // Response body is `{ "verified": true }` on success. Technically
+    // we should check it, but the `twoFactorAuth` Set-Cookie is the
+    // load-bearing piece — no cookie means the call failed regardless
+    // of what the body says.
+    const auto twoFactorCookie = extractCookieValue(response.setCookies, "twoFactorAuth");
+    if (!twoFactorCookie.has_value() || twoFactorCookie->empty())
+    {
+        out.ok = false;
+        out.error = "VRChat did not return a 2FA session cookie";
+        return out;
+    }
+
+    // Merge with the existing `auth` cookie we already have from the
+    // loginWithPassword step. SetCookies(new-auth, ...) would wipe it.
+    const std::string existingAuth = [&]() {
+        const std::string header = AuthStore::Instance().BuildCookieHeader();
+        // BuildCookieHeader returns "auth=...; twoFactorAuth=..." — we
+        // only want the `auth` value, so re-extract it from the in-memory
+        // state via a second read.
+        constexpr std::string_view prefix = "auth=";
+        if (header.rfind(prefix, 0) != 0)
+        {
+            return std::string{};
+        }
+        const auto end = header.find(';');
+        return header.substr(prefix.size(),
+            end == std::string::npos ? std::string::npos : end - prefix.size());
+    }();
+
+    if (existingAuth.empty())
+    {
+        out.ok = false;
+        out.error = "lost the primary session cookie during 2FA verification";
+        return out;
+    }
+
+    AuthStore::Instance().SetCookies(existingAuth, *twoFactorCookie);
+    (void)AuthStore::Instance().Save();
+
+    out.ok = true;
+    return out;
 }
 
 std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
@@ -844,6 +1105,266 @@ std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
         out.push_back(item);
     }
     return out;
+}bool VrcApi::downloadFile(const std::string& url, const std::filesystem::path& destPath)
+{
+    std::wstring wUrl = toWide(url);
+    URL_COMPONENTS urlComp = {0};
+    urlComp.dwStructSize = sizeof(urlComp);
+    
+    std::wstring hostName; hostName.resize(256);
+    std::wstring urlPath; urlPath.resize(2048);
+    
+    urlComp.lpszHostName = hostName.data();
+    urlComp.dwHostNameLength = 256;
+    urlComp.lpszUrlPath = urlPath.data();
+    urlComp.dwUrlPathLength = 2048;
+
+    if (!WinHttpCrackUrl(wUrl.c_str(), 0, 0, &urlComp))
+    {
+        spdlog::warn("VrcApi: downloadFile failed to crack URL: {}", url);
+        return false;
+    }
+    
+    hostName.resize(urlComp.dwHostNameLength);
+    urlPath.resize(urlComp.dwUrlPathLength);
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    const auto cookie = AuthStore::Instance().BuildCookieHeader();
+    if (!cookie.empty())
+    {
+        headers.emplace_back(L"Cookie", toWide(cookie));
+    }
+    
+    HINTERNET hSession = WinHttpOpen(kUserAgentW, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return false;
+    WinHttpSetTimeouts(hSession, 60000, 60000, 60000, 300000);
+    HINTERNET hConnect = WinHttpConnect(hSession, hostName.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", urlPath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
+
+    std::wstring headerBlock = L"Accept: */*\r\n";
+    for (const auto& [name, value] : headers) {
+        headerBlock += name + L": " + value + L"\r\n";
+    }
+
+    BOOL ok = WinHttpSendRequest(hRequest, headerBlock.c_str(), static_cast<DWORD>(headerBlock.size()), WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+    if (ok) ok = WinHttpReceiveResponse(hRequest, nullptr);
+    if (!ok) { WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
+
+    DWORD status = 0;
+    DWORD statusSize = sizeof(status);
+    WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX);
+    if (status < 200 || status >= 300) {
+        spdlog::warn("VrcApi: downloadFile failed with HTTP status {}", status);
+        WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; 
+    }
+
+    std::ofstream out(destPath, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        spdlog::warn("VrcApi: downloadFile failed to open destPath for write.");
+        WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false;
+    }
+
+    DWORD available = 0;
+    std::vector<char> chunk(64 * 1024);
+    while (WinHttpQueryDataAvailable(hRequest, &available) && available > 0)
+    {
+        if (available > chunk.size()) chunk.resize(available);
+        DWORD read = 0;
+        if (!WinHttpReadData(hRequest, chunk.data(), available, &read)) break;
+        out.write(chunk.data(), read);
+    }
+
+    out.flush();
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    return out.good();
+}
+
+Result<nlohmann::json> VrcApi::fetchUser(const std::string& userId)
+{
+    if (userId.empty())
+    {
+        return Error{"not_found", "Empty user id", 404};
+    }
+
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    const std::wstring path = toWide(fmt::format("/api/1/users/{}?apiKey={}", userId, kApiKey));
+    const auto response = httpGet(
+        kApiHostW,
+        path,
+        std::make_optional(cookieHeader));
+    if (response.error.has_value())
+    {
+        return Error{"network", *response.error, 0};
+    }
+    if (response.status == 401)
+    {
+        return Error{"auth_expired", "Session expired", 401};
+    }
+    if (response.status == 404)
+    {
+        return Error{"not_found", fmt::format("User {} not found", userId), 404};
+    }
+    if (response.status == 429)
+    {
+        return Error{"rate_limited", "Too many requests", 429};
+    }
+    if (response.status != 200)
+    {
+        return Error{"api_error", fmt::format("/users/{} returned HTTP {}", userId, response.status), response.status};
+    }
+
+    return parseJsonBody(response, "/users/{id}");
+}
+
+Result<nlohmann::json> VrcApi::selectAvatar(const std::string& avatarId)
+{
+    if (avatarId.empty())
+    {
+        return Error{"not_found", "Empty avatar id", 400};
+    }
+
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const std::wstring path = toWide(fmt::format("/api/1/avatars/{}/select", avatarId));
+    const auto response = httpRequest(
+        L"PUT",
+        kApiHostW,
+        path,
+        headers,
+        "{}",
+        /*captureSetCookie*/ false);
+
+    if (response.error.has_value())
+    {
+        return Error{"network", *response.error, 0};
+    }
+    if (response.status == 401)
+    {
+        return Error{"auth_expired", "Session expired", 401};
+    }
+    if (response.status == 429)
+    {
+        return Error{"rate_limited", "Too many requests", 429};
+    }
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error", msg.value_or(
+            fmt::format("/avatars/{}/select returned HTTP {}", avatarId, response.status)), response.status};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::updateAuthUser(const nlohmann::json& patch)
+{
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    // `PUT /users/{id}` needs the currently-authenticated user id.
+    const auto current = fetchCurrentUser();
+    if (!isOk(current))
+    {
+        return std::get<Error>(current);
+    }
+    const auto& currentUser = value(current);
+    const auto idIt = currentUser.find("id");
+    if (idIt == currentUser.end() || !idIt->is_string())
+    {
+        return Error{"api_error", "Current user has no id field", 0};
+    }
+    const std::string userId = idIt->get<std::string>();
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const std::wstring path = toWide(fmt::format("/api/1/users/{}", userId));
+    const std::string bodyUtf8 = patch.dump();
+    const auto response = httpRequest(
+        L"PUT",
+        kApiHostW,
+        path,
+        headers,
+        bodyUtf8,
+        /*captureSetCookie*/ false);
+
+    if (response.error.has_value())
+    {
+        return Error{"network", *response.error, 0};
+    }
+    if (response.status == 401)
+    {
+        return Error{"auth_expired", "Session expired", 401};
+    }
+    if (response.status == 429)
+    {
+        return Error{"rate_limited", "Too many requests", 429};
+    }
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error", msg.value_or(
+            fmt::format("/users/{} returned HTTP {}", userId, response.status)), response.status};
+    }
+
+    return parseJsonBody(response, "/users/{id}");
+}
+
+Result<nlohmann::json> VrcApi::fetchWorldDetails(const std::string& worldId)
+{
+    if (worldId.empty())
+    {
+        return Error{"not_found", "Empty world id", 404};
+    }
+
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    std::optional<std::string> authHeader = cookieHeader.empty() ? std::nullopt : std::make_optional(cookieHeader);
+
+    const std::wstring path = toWide(fmt::format("/api/1/worlds/{}?apiKey={}", worldId, kApiKey));
+    const auto response = httpGet(kApiHostW, path, authHeader);
+
+    if (response.error.has_value())
+    {
+        return Error{"network", *response.error, 0};
+    }
+    if (response.status == 401)
+    {
+        return Error{"auth_expired", "Session expired", 401};
+    }
+    if (response.status == 404)
+    {
+        return Error{"not_found", fmt::format("World {} not found", worldId), 404};
+    }
+    if (response.status == 429)
+    {
+        return Error{"rate_limited", "Too many requests", 429};
+    }
+    if (response.status != 200)
+    {
+        return Error{"api_error", fmt::format("/worlds/{} returned HTTP {}", worldId, response.status), response.status};
+    }
+
+    return parseJsonBody(response, "/worlds/{id}");
 }
 
 } // namespace vrcsm::core

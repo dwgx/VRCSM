@@ -5,12 +5,13 @@ import { LogIn, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
+import { LoginForm } from "./LoginForm";
 
 /**
  * Toolbar chip for the VRChat session. When signed out it's a single
- * "Sign in" button that spawns the WebView2 login popup directly — the
- * user doesn't have to navigate anywhere first. When signed in, shows
- * the display name with a hover-to-reveal sign-out affordance.
+ * "Sign in" button that opens the native LoginForm dialog. When
+ * signed in, shows the display name with a hover-to-reveal sign-out
+ * affordance.
  *
  * Pages read `useAuth()` to know whether to fetch friends / avatar
  * thumbnails; this chip is mostly a status indicator plus a shortcut
@@ -18,8 +19,8 @@ import { useAuth } from "@/lib/auth-context";
  */
 export function AuthChip() {
   const { t } = useTranslation();
-  const { status, loading, openLogin, logout } = useAuth();
-  const [launching, setLaunching] = useState(false);
+  const { status, loading, logout } = useAuth();
+  const [loginOpen, setLoginOpen] = useState(false);
 
   if (loading && !status.authed) {
     return (
@@ -32,32 +33,17 @@ export function AuthChip() {
 
   if (!status.authed) {
     return (
-      <Button
-        variant="tonal"
-        size="sm"
-        disabled={launching}
-        onClick={async () => {
-          setLaunching(true);
-          try {
-            const result = await openLogin();
-            if (!result.ok && result.error && result.error !== "cancelled") {
-              toast.error(
-                t("auth.loginWindowFailed", {
-                  error: result.error,
-                  defaultValue: `Login window failed: ${result.error}`,
-                }),
-              );
-            }
-          } finally {
-            setLaunching(false);
-          }
-        }}
-      >
-        <LogIn />
-        {launching
-          ? t("auth.opening", { defaultValue: "Opening…" })
-          : t("auth.signIn")}
-      </Button>
+      <>
+        <Button
+          variant="tonal"
+          size="sm"
+          onClick={() => setLoginOpen(true)}
+        >
+          <LogIn />
+          {t("auth.signIn")}
+        </Button>
+        <LoginForm open={loginOpen} onOpenChange={setLoginOpen} />
+      </>
     );
   }
 

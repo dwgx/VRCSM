@@ -43,6 +43,28 @@ type Pending = {
   reject: (reason: unknown) => void;
 };
 
+/**
+ * Structured IPC error — mirrors the C++ `Error` struct's JSON shape.
+ * Every IPC rejection now carries a machine-readable `code` that callers
+ * can switch on instead of parsing exception message strings.
+ */
+export class IpcError extends Error {
+  readonly code: string;
+  readonly httpStatus: number;
+
+  constructor(code: string, message: string, httpStatus = 0) {
+    super(message);
+    this.name = "IpcError";
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+
+  /** True when the backend reports a stale/missing session cookie. */
+  get isAuthExpired(): boolean {
+    return this.code === "auth_expired" || this.httpStatus === 401;
+  }
+}
+
 function uuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -227,6 +249,24 @@ function buildMockReport(): Report {
       screenshots: [
         { iso_time: "2026.04.15 02:18:44", path: "C:\\Users\\mock\\Pictures\\VRChat\\2026-04\\VRChat_2026-04-15_02-18-44.439_1920x1080.png" },
       ],
+      world_switches: [
+        {
+          iso_time: "2026.04.15 00:41:48",
+          world_id: "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+          instance_id: "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345~hidden(usr_mock-1234-5678)~region(jp)",
+          access_type: "hidden",
+          owner_id: "usr_mock-1234-5678",
+          region: "jp"
+        },
+        {
+          iso_time: "2026.04.15 01:10:22",
+          world_id: "wrld_11111111-2222-3333-4444-555555555555",
+          instance_id: "wrld_11111111-2222-3333-4444-555555555555:9999~public~region(us)",
+          access_type: "public",
+          owner_id: null,
+          region: "us"
+        }
+      ],
     },
   };
 }
@@ -382,13 +422,22 @@ class IpcClient {
       if (!slot) return;
       this.pending.delete(resp.id);
       if (resp.error) {
-        // The wire envelope carries `{code, message}`. Promise consumers
-        // invariably do `e instanceof Error ? e.message : String(e)` — if
-        // we reject with the bare object, `String({code,message})` turns
-        // into `[object Object]` in every toast. Wrap in a real Error so
-        // every call site gets a usable message without special casing.
-        const err = new Error(resp.error.message || resp.error.code || "ipc error");
-        (err as Error & { code?: string }).code = resp.error.code;
+        const err = new IpcError(
+          resp.error.code ?? "unknown",
+          resp.error.message || resp.error.code || "ipc error",
+          resp.error.httpStatus ?? 0,
+        );
+
+        // ── Global auth-expired interceptor ──
+        // Any handler returning "auth_expired" or HTTP 401 fires a
+        // window-level event so App.tsx can pop the LoginForm overlay
+        // without every page needing its own auth-check logic.
+        if (err.isAuthExpired) {
+          window.dispatchEvent(
+            new CustomEvent("vrcsm:auth-expired", { detail: err }),
+          );
+        }
+
         slot.reject(err);
       } else {
         slot.resolve(resp.result);
@@ -507,15 +556,52 @@ class IpcClient {
           userId: null,
           displayName: null,
         } satisfies AuthStatus as unknown as TResult;
-      case "auth.openLoginWindow":
-        // Browser-only dev mode has no real WebView2 popup to host the
-        // VRChat sign-in page — just acknowledge the request so the UI
-        // stops the "launching" spinner. The Friends page stays in its
-        // logged-out state because the mock `auth.status` keeps
-        // returning `authed: false`.
-        return { ok: true } as unknown as TResult;
+      case "auth.login": {
+        // Browser-only dev mode has no real WinHTTP path. Pretend the
+        // call succeeded so UI flows can be exercised without the C++
+        // host — but flip `auth.status` in the next poll loop by
+        // hand-waving a signed-in response here. The mock Friends page
+        // then renders the fake friends list from below.
+        const p = (params ?? {}) as { username?: string; password?: string };
+        if (!p.username || !p.password) {
+          return {
+            status: "error",
+            error: "missing-credentials",
+          } as unknown as TResult;
+        }
+        return {
+          status: "success",
+          user: {
+            authed: true,
+            userId: "usr_mock-1234-5678",
+            displayName: p.username,
+          },
+        } as unknown as TResult;
+      }
+      case "auth.verify2FA":
+        return {
+          ok: true,
+          user: {
+            authed: true,
+            userId: "usr_mock-1234-5678",
+            displayName: "mock_user",
+          },
+        } as unknown as TResult;
       case "auth.logout":
         return { ok: true } as unknown as TResult;
+      case "avatar.preview": {
+        // Browser-only dev mode can't spawn AssetRipper, so always
+        // return the same "extractor missing" response the host would
+        // send on an un-bundled install. The React <AvatarPreview3D>
+        // component uses this branch to exercise its empty-state.
+        const p = (params ?? {}) as { avatarId?: string };
+        return {
+          avatarId: p.avatarId ?? "",
+          ok: false,
+          code: "extractor_missing",
+          message: "browser dev mode has no extractor",
+        } as unknown as TResult;
+      }
       case "auth.user":
         return {
           id: "usr_mock-1234-5678",
@@ -569,6 +655,100 @@ class IpcClient {
           ok: true,
           path: "C:/Users/dev/AppData/Local/Temp/vrcsm-vrc-settings-mock.reg",
         } satisfies VrcSettingsExportResult as unknown as TResult;
+      case "avatar.details": {
+        return {
+          details: {
+            name: "Mock Avatar Model",
+            description: "A test avatar generated in browser dev mode.",
+            authorName: "VRCSM Dev",
+            authorId: "usr_mock-author-0001",
+            releaseStatus: "private",
+            version: 3,
+            thumbnailImageUrl: null,
+            imageUrl: null,
+            tags: ["author_tag_test", "content_horror"],
+            unityPackages: [
+              { platform: "standalonewindows", unityVersion: "2022.3.22f1", assetVersion: 4 },
+              { platform: "android", unityVersion: "2022.3.22f1", assetVersion: 4 },
+            ],
+            created_at: "2025-06-01T12:00:00Z",
+            updated_at: nowIso(),
+          },
+        } as unknown as TResult;
+      }
+      case "user.me": {
+        return {
+          profile: {
+            id: "usr_mock-1234-5678",
+            displayName: "mock_user",
+            bio: "Browser dev mode user.\nこれはテストです。",
+            status: "active",
+            statusDescription: "VRCSM 開発中",
+            currentAvatarImageUrl: null,
+            currentAvatarThumbnailImageUrl: null,
+            profilePicOverride: "",
+            developerType: "none",
+            last_login: nowIso(),
+            last_activity: nowIso(),
+            worldId: "",
+            location: "",
+            bioLinks: ["https://github.com/vrcsm"],
+            tags: ["system_trust_trusted"],
+          },
+        } as unknown as TResult;
+      }
+      case "user.getProfile": {
+        const p = (params ?? {}) as { userId?: string };
+        return {
+          profile: {
+            id: p.userId ?? "usr_unknown",
+            displayName: "Mock User Profile",
+            bio: "Fetched via user.getProfile mock.",
+            status: "active",
+            statusDescription: "",
+            currentAvatarImageUrl: null,
+            currentAvatarThumbnailImageUrl: null,
+            profilePicOverride: "",
+            developerType: "none",
+            last_login: nowIso(),
+            last_activity: nowIso(),
+            worldId: "",
+            location: "",
+            bioLinks: [],
+            tags: ["system_trust_known"],
+          },
+        } as unknown as TResult;
+      }
+      case "user.updateProfile":
+        return { profile: null } as unknown as TResult;
+      case "screenshots.list": {
+        const mockShots = Array.from({ length: 8 }).map((_, i) => {
+          const d = new Date(Date.now() - i * 86400000);
+          const dateStr = d.toISOString().slice(0, 10);
+          const timeStr = d.toISOString().slice(11, 19).replace(/:/g, "-");
+          const filename = `VRChat_2560x1440_${dateStr}_${timeStr}.png`;
+          return {
+            path: `C:/Users/dev/Pictures/VRChat/${dateStr.slice(0, 7)}/${filename}`,
+            filename,
+            created_at: d.toISOString(),
+            size_bytes: 2_400_000 + Math.floor(Math.random() * 1_600_000),
+            url: `https://picsum.photos/seed/vrcsm${i}/640/360`,
+          };
+        });
+        return {
+          screenshots: mockShots,
+          folder: "C:/Users/dev/Pictures/VRChat",
+        } as unknown as TResult;
+      }
+      case "screenshots.open":
+      case "screenshots.folder":
+        return { ok: true } as unknown as TResult;
+      case "app.factoryReset":
+        return {
+          ok: true,
+          removed: ["session.dat", "thumb-cache.json"],
+          skipped: ["WebView2"],
+        } as unknown as TResult;
       default:
         return null as unknown as TResult;
     }

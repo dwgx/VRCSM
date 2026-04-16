@@ -136,6 +136,7 @@ function Settings() {
   const [version, setVersion] = useState<AppVersion | null>(null);
   const [factoryResetOpen, setFactoryResetOpen] = useState(false);
   const [factoryResetting, setFactoryResetting] = useState(false);
+  const [liveRefresh, setLiveRefresh] = useState(() => localStorage.getItem("vrcsm.friends.liveRefresh") === "true");
 
   useEffect(() => {
     let alive = true;
@@ -601,6 +602,53 @@ function Settings() {
                 defaultValue: "Factory reset",
               })}
             </Button>
+          </SettingRow>
+        </CardContent>
+      </Card>
+
+      {/* ─── Social & Tracking ────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.social.sectionTitle", { defaultValue: "Social & Tracking" })}</CardTitle>
+          <CardDescription>
+            {t("settings.social.sectionDesc", { defaultValue: "Configure live tracker and background polling for your friend list." })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 pt-0">
+          <SettingRow
+            label={t("settings.social.liveRefreshLabel", { defaultValue: "Live Friends Tracker" })}
+            hint={t("settings.social.liveRefreshHint", { defaultValue: "Automatically query VRChat servers in the background to detect when friends come online or switch instances." })}
+          >
+            <Button
+              size="sm"
+              variant={liveRefresh ? "default" : "outline"}
+              className={liveRefresh ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.25)] border-[hsl(var(--primary)/0.3)]" : ""}
+              onClick={() => {
+                const current = localStorage.getItem("vrcsm.friends.liveRefresh") === "true";
+                localStorage.setItem("vrcsm.friends.liveRefresh", (!current).toString());
+                setLiveRefresh(!current);
+              }}
+            >
+              {liveRefresh ? "Enabled" : "Disabled"}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.social.refreshIntervalLabel", { defaultValue: "Polling Interval (Seconds)" })}
+            hint={t("settings.social.refreshIntervalHint", { defaultValue: "How often the background tracker refreshes data. Lower values update faster but may trigger VRChat API rate limits (429)." })}
+          >
+            <Input
+              type="number"
+              min={10}
+              max={600}
+              defaultValue={parseInt(localStorage.getItem("vrcsm.friends.refreshInterval") || "60", 10)}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val) && val >= 10) {
+                  localStorage.setItem("vrcsm.friends.refreshInterval", val.toString());
+                }
+              }}
+              className="w-24 h-8 text-[12px]"
+            />
           </SettingRow>
         </CardContent>
       </Card>

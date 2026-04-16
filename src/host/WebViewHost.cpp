@@ -5,6 +5,11 @@
 #include "IpcBridge.h"
 #include "StringUtil.h"
 
+#include "../core/AvatarPreview.h"
+
+#include <KnownFolders.h>
+#include <shlobj.h>
+
 WebViewHost::WebViewHost()
     : m_ipcBridge(std::make_unique<IpcBridge>(*this))
 {
@@ -254,6 +259,40 @@ void WebViewHost::ConfigureWebView()
         L"app.vrcsm",
         webDir.c_str(),
         COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW));
+
+    // Second virtual host: `preview.local` → the preview-cache dir.
+    // The AvatarPreview pipeline writes `<hash>.glb` files under
+    // `%LocalAppData%\VRCSM\preview-cache`, and the React renderer
+    // fetches them via `http://preview.local/<hash>.glb`. Mapping
+    // them to a virtual host keeps the Three.js `useGLTF` call URL-
+    // based (no file:// hackery) and sidesteps DownloadAcceptPolicy
+    // quirks around loading binary assets off local disk.
+    const auto previewDir = vrcsm::core::AvatarPreview::PreviewCacheDir();
+    THROW_IF_FAILED(webview3->SetVirtualHostNameToFolderMapping(
+        L"preview.local",
+        previewDir.c_str(),
+        COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW));
+
+    // Third virtual host: `screenshots.local` → VRChat's Pictures folder.
+    // Used by the Screenshots page to render thumbnails via plain
+    // `<img src="https://screenshots.local/<relative>">` without shuttling
+    // base64 blobs over IPC. The folder is read-only from the web side —
+    // we only serve files, never write or delete via this host.
+    wil::unique_cotaskmem_string picturesPath;
+    std::filesystem::path screenshotsDir;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, picturesPath.put())))
+    {
+        screenshotsDir = std::filesystem::path(picturesPath.get()) / L"VRChat";
+    }
+    if (!screenshotsDir.empty())
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(screenshotsDir, ec);
+        THROW_IF_FAILED(webview3->SetVirtualHostNameToFolderMapping(
+            L"screenshots.local",
+            screenshotsDir.c_str(),
+            COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW));
+    }
 
     EventRegistrationToken token{};
     THROW_IF_FAILED(m_webview->add_WebMessageReceived(

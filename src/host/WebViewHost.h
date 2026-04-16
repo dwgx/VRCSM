@@ -35,14 +35,15 @@ public:
 
     HWND ParentHwnd() const noexcept { return m_parent; }
 
-    // The main WebView2 environment — shared with AuthLoginWindow so the
-    // login popup inherits the same user-data folder / cookie jar and any
-    // credentials the user enters persist back to the main WebView.
+    // The main WebView2 environment — retained for future popups /
+    // additional controllers that should share the same user-data
+    // folder and cookie jar as the primary view.
     ICoreWebView2Environment* Environment() const noexcept { return m_environment.get(); }
 
-    // Erase every VRChat-related cookie from the shared profile. Called
-    // on explicit sign-out so a subsequent login popup starts from a
-    // clean state instead of silently reusing a stale session.
+    // Erase every VRChat-related cookie from the shared WebView2
+    // profile. Called on explicit sign-out so any cached cookie from
+    // the v0.2.0 era popup login flow is wiped alongside the DPAPI
+    // session.
     void ClearVrcCookies() const;
 
 private:

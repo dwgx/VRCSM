@@ -2,9 +2,10 @@
 
 #include "IpcBridge.h"
 
-#include "AuthLoginWindow.h"
 #include "StringUtil.h"
 #include "WebViewHost.h"
+
+#include "../core/AvatarPreview.h"
 
 #include "../core/AuthStore.h"
 #include "../core/BundleSniff.h"
@@ -18,6 +19,7 @@
 #include "../core/VrcApi.h"
 #include "../core/VrcSettings.h"
 
+#include <KnownFolders.h>
 #include <shellapi.h>
 #include <shlobj.h>
 #include <shobjidl.h>
@@ -50,8 +52,17 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "auth.status",
         "auth.user",
         "auth.logout",
+        "auth.login",
+        "auth.verify2FA",
         "friends.list",
         "avatar.details",
+        "world.details",
+        "avatar.preview",
+        "avatar.select",
+        "user.me",
+        "user.getProfile",
+        "user.updateProfile",
+        "screenshots.list",
         "app.factoryReset",
     };
     return kMethods;
@@ -80,6 +91,28 @@ std::optional<std::string> JsonStringField(const nlohmann::json& json, const cha
         return json[key].get<std::string>();
     }
     return std::nullopt;
+}
+
+// Structured exception carrying a full Error — the dispatch layer catches
+// this to produce `PostError(id, err.code, err.message)` with the correct
+// error code instead of the generic "handler_error".
+struct IpcException : std::exception
+{
+    vrcsm::core::Error err;
+    explicit IpcException(vrcsm::core::Error e) : err(std::move(e)) {}
+    const char* what() const noexcept override { return err.message.c_str(); }
+};
+
+// Unwrap a `Result<json>` — returns the value on success, throws
+// `IpcException` on failure so the dispatch layer can surface the
+// structured error code all the way to the frontend.
+nlohmann::json unwrapResult(vrcsm::core::Result<nlohmann::json>&& r)
+{
+    if (vrcsm::core::isOk(r))
+    {
+        return std::move(std::get<nlohmann::json>(r));
+    }
+    throw IpcException(std::move(std::get<vrcsm::core::Error>(r)));
 }
 
 nlohmann::json MakeAuthSummary(const nlohmann::json& user)
@@ -150,6 +183,110 @@ nlohmann::json FilterFriend(const nlohmann::json& friendJson)
 
     return out;
 }
+
+// Shape the raw VRChat user JSON into the `VrcUserProfile` contract the
+// frontend `ProfileCard` component expects. Extra fields in the upstream
+// payload are dropped here so the IPC envelope stays compact and the
+// schema on the TypeScript side remains a closed set. Missing fields
+// degrade to empty strings / nullopt rather than raising, because
+// VRChat's `/auth/user` vs `/users/{id}` endpoints return subtly
+// different shapes (e.g. `last_activity` lives on friends only).
+nlohmann::json FilterUserProfile(const nlohmann::json& user)
+{
+    nlohmann::json out{
+        {"id", JsonStringField(user, "id").value_or("")},
+        {"displayName", JsonStringField(user, "displayName").value_or("")},
+        {"bio", JsonStringField(user, "bio").value_or("")},
+        {"status", JsonStringField(user, "status").value_or("offline")},
+        {"statusDescription", JsonStringField(user, "statusDescription").value_or("")},
+        {"currentAvatarImageUrl", JsonStringField(user, "currentAvatarImageUrl").value_or("")},
+        {"currentAvatarThumbnailImageUrl", JsonStringField(user, "currentAvatarThumbnailImageUrl").value_or("")},
+        {"profilePicOverride", JsonStringField(user, "profilePicOverride").value_or("")},
+        {"developerType", JsonStringField(user, "developerType").value_or("")},
+        {"last_login", JsonStringField(user, "last_login").value_or("")},
+        {"last_activity", JsonStringField(user, "last_activity").value_or("")},
+        {"worldId", JsonStringField(user, "worldId").value_or("")},
+        {"location", JsonStringField(user, "location").value_or("")},
+    };
+
+    // bioLinks — VRChat stores these as a `bioLinks` array of strings.
+    // Pass through as-is when present; otherwise emit an empty array so
+    // the frontend can unconditionally `.map()` over it.
+    nlohmann::json bioLinks = nlohmann::json::array();
+    if (user.contains("bioLinks") && user["bioLinks"].is_array())
+    {
+        for (const auto& link : user["bioLinks"])
+        {
+            if (link.is_string()) bioLinks.push_back(link.get<std::string>());
+        }
+    }
+    out["bioLinks"] = std::move(bioLinks);
+
+    // Tag subset — same filter as FilterFriend so the UI renders the
+    // trust badges (system_trust_*) consistently across Friends and
+    // Profile cards.
+    nlohmann::json tags = nlohmann::json::array();
+    if (user.contains("tags") && user["tags"].is_array())
+    {
+        for (const auto& tag : user["tags"])
+        {
+            if (tag.is_string()) tags.push_back(tag.get<std::string>());
+        }
+    }
+    out["tags"] = std::move(tags);
+
+    return out;
+}
+
+// Percent-encode a path segment so it survives being embedded in a URL.
+// VRChat screenshot filenames include spaces, `VRChat_<world>_<datetime>.png`
+// and in some builds the world name can contain any printable character.
+// Reserved unreserved set per RFC 3986 section 2.3.
+std::string UrlEncodeSegment(std::string_view input)
+{
+    std::string out;
+    out.reserve(input.size() + 16);
+    for (const unsigned char c : input)
+    {
+        const bool unreserved =
+            (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+            || c == '-' || c == '_' || c == '.' || c == '~';
+        if (unreserved)
+        {
+            out.push_back(static_cast<char>(c));
+        }
+        else
+        {
+            static const char kHex[] = "0123456789ABCDEF";
+            out.push_back('%');
+            out.push_back(kHex[(c >> 4) & 0xF]);
+            out.push_back(kHex[c & 0xF]);
+        }
+    }
+    return out;
+}
+
+// Build the absolute path to the VRChat screenshots folder. The default
+// location is `%USERPROFILE%\Pictures\VRChat` but VRChat writes into
+// whatever SHGetKnownFolderPath(Pictures) resolves to, so we use the
+// same API rather than hardcoding the English folder name (which
+// breaks for users with localized %USERPROFILE%\Pictures\ names).
+std::filesystem::path ScreenshotsRootDir()
+{
+    wil::unique_cotaskmem_string picturesPath;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, picturesPath.put())))
+    {
+        return std::filesystem::path(picturesPath.get()) / L"VRChat";
+    }
+    // Fallback — build from environment.
+    wchar_t buffer[MAX_PATH]{};
+    const DWORD length = GetEnvironmentVariableW(L"USERPROFILE", buffer, MAX_PATH);
+    if (length > 0 && length < MAX_PATH)
+    {
+        return std::filesystem::path(buffer) / L"Pictures" / L"VRChat";
+    }
+    return {};
+}
 }
 
 IpcBridge::IpcBridge(WebViewHost& host)
@@ -212,6 +349,10 @@ void IpcBridge::Dispatch(const std::string& jsonText)
                 {
                     PostResult(capturedId, handler(params, capturedId));
                 }
+                catch (const IpcException& ex)
+                {
+                    PostError(capturedId, ex.err);
+                }
                 catch (const std::exception& ex)
                 {
                     PostError(capturedId, "handler_error", ex.what());
@@ -227,6 +368,10 @@ void IpcBridge::Dispatch(const std::string& jsonText)
         try
         {
             PostResult(id, it->second(params, id));
+        }
+        catch (const IpcException& ex)
+        {
+            PostError(id, ex.err);
         }
         catch (const std::exception& ex)
         {
@@ -319,9 +464,13 @@ void IpcBridge::RegisterHandlers()
     {
         return HandleAuthStatus(params, id);
     });
-    m_handlers.emplace("auth.openLoginWindow", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    m_handlers.emplace("auth.login", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
-        return HandleAuthOpenLoginWindow(params, id);
+        return HandleAuthLogin(params, id);
+    });
+    m_handlers.emplace("auth.verify2FA", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAuthVerify2FA(params, id);
     });
     m_handlers.emplace("auth.logout", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
@@ -331,6 +480,10 @@ void IpcBridge::RegisterHandlers()
     {
         return HandleAuthUser(params, id);
     });
+    m_handlers.emplace("avatar.preview", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAvatarPreviewRequest(params, id);
+    });
     m_handlers.emplace("friends.list", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleFriendsList(params, id);
@@ -338,6 +491,38 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("avatar.details", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleAvatarDetails(params, id);
+    });
+    m_handlers.emplace("world.details", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleWorldDetails(params, id);
+    });
+    m_handlers.emplace("avatar.select", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleAvatarSelect(params, id);
+    });
+    m_handlers.emplace("user.me", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleUserMe(params, id);
+    });
+    m_handlers.emplace("user.getProfile", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleUserGetProfile(params, id);
+    });
+    m_handlers.emplace("user.updateProfile", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleUserUpdateProfile(params, id);
+    });
+    m_handlers.emplace("screenshots.list", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleScreenshotsList(params, id);
+    });
+    m_handlers.emplace("screenshots.open", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleScreenshotsOpen(params, id);
+    });
+    m_handlers.emplace("screenshots.folder", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleScreenshotsFolder(params, id);
     });
     m_handlers.emplace("logs.stream.start", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
@@ -359,7 +544,7 @@ nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::opt
     // web/package.json — the About dialog reads this, so leaving it stale
     // lies to the user.
     return nlohmann::json{
-        {"version", "0.3.0"},
+        {"version", "0.5.0"},
         {"build", std::string(__DATE__) + " " + std::string(__TIME__)}
     };
 }
@@ -704,8 +889,8 @@ nlohmann::json IpcBridge::HandleThumbnailsFetch(const nlohmann::json& params, co
 
 nlohmann::json IpcBridge::HandleAuthStatus(const nlohmann::json&, const std::optional<std::string>&)
 {
-    const auto user = vrcsm::core::VrcApi::fetchCurrentUser();
-    if (!user.has_value())
+    auto result = vrcsm::core::VrcApi::fetchCurrentUser();
+    if (!vrcsm::core::isOk(result))
     {
         vrcsm::core::AuthStore::Instance().Clear();
         return nlohmann::json{
@@ -715,60 +900,166 @@ nlohmann::json IpcBridge::HandleAuthStatus(const nlohmann::json&, const std::opt
         };
     }
 
-    return MakeAuthSummary(*user);
+    return MakeAuthSummary(vrcsm::core::value(result));
 }
 
-nlohmann::json IpcBridge::HandleAuthOpenLoginWindow(const nlohmann::json&, const std::optional<std::string>& id)
+nlohmann::json IpcBridge::HandleAuthLogin(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    // Pop the VRChat login page in its own WebView2 window, let the user
-    // do the whole username+password / Steam / 2FA / captcha dance, then
-    // harvest cookies and persist via AuthStore. The login popup is
-    // self-managed — ownership is transferred to the window itself.
-    // When the window finishes (success or cancellation) it fires the
-    // completion callback which broadcasts an `auth.loginCompleted`
-    // event over the same PostMessageToWeb channel used by logs.stream.
-    auto* env = m_host.Environment();
-    if (env == nullptr)
+    // Native VRChat login — v0.5.0 replaces the WebView2 popup with a
+    // direct WinHTTP request against /api/1/auth/user using HTTP Basic
+    // credentials. The frontend owns the form; this handler just runs
+    // the request + translates the three-state result (success /
+    // needs-2FA / error) into JSON the UI can switch on.
+    const auto username = JsonStringField(params, "username").value_or("");
+    const auto password = JsonStringField(params, "password").value_or("");
+
+    if (username.empty() || password.empty())
     {
-        PostError(id, "auth_env_unavailable", "WebView2 environment is not initialised yet");
-        return nlohmann::json{{"ok", false}};
+        return nlohmann::json{
+            {"status", "error"},
+            {"error", "username and password are required"},
+        };
     }
 
-    const bool launched = vrcsm::host::AuthLoginWindow::Launch(
-        m_host.ParentHwnd(),
-        env,
-        [this](bool ok, const std::string& error)
+    const auto result = vrcsm::core::VrcApi::loginWithPassword(username, password);
+
+    nlohmann::json out;
+    switch (result.status)
+    {
+    case vrcsm::core::LoginResult::Status::Success:
+    {
+        out["status"] = "success";
+        if (result.user.has_value())
         {
-            nlohmann::json data{{"ok", ok}};
-            if (!ok)
-            {
-                data["error"] = error;
-            }
-            else
-            {
-                const auto user = vrcsm::core::VrcApi::fetchCurrentUser();
-                if (user.has_value())
-                {
-                    data["user"] = MakeAuthSummary(*user);
-                }
-            }
+            out["user"] = MakeAuthSummary(*result.user);
+        }
 
-            nlohmann::json envelope{
-                {"event", "auth.loginCompleted"},
-                {"data", std::move(data)},
-            };
-            m_host.PostMessageToWeb(envelope.dump());
-        });
-
-    if (!launched)
+        // Broadcast an auth.loginCompleted event so components that
+        // were subscribed under the old popup flow (AuthProvider's
+        // refresh hook) still light up without changes. The event
+        // carries the same `ok`/`user` shape the popup used to fire.
+        nlohmann::json event{
+            {"event", "auth.loginCompleted"},
+            {"data", {
+                {"ok", true},
+                {"user", out.value("user", nlohmann::json::object())},
+            }},
+        };
+        m_host.PostMessageToWeb(event.dump());
+        return out;
+    }
+    case vrcsm::core::LoginResult::Status::Requires2FA:
     {
-        PostError(id, "auth_window_failed", "Failed to open login window");
-        return nlohmann::json{{"ok", false}};
+        out["status"] = "requires2FA";
+        nlohmann::json methods = nlohmann::json::array();
+        for (const auto& m : result.twoFactorMethods)
+        {
+            methods.push_back(m);
+        }
+        out["twoFactorMethods"] = std::move(methods);
+        return out;
+    }
+    case vrcsm::core::LoginResult::Status::Error:
+    default:
+    {
+        out["status"] = "error";
+        out["error"] = result.error.value_or("Login failed");
+        if (result.httpStatus > 0)
+        {
+            out["httpStatus"] = result.httpStatus;
+        }
+        return out;
+    }
+    }
+}
+
+nlohmann::json IpcBridge::HandleAuthVerify2FA(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto method = JsonStringField(params, "method").value_or("totp");
+    const auto code = JsonStringField(params, "code").value_or("");
+
+    if (code.empty())
+    {
+        return nlohmann::json{{"ok", false}, {"error", "code is required"}};
     }
 
-    // The request itself just acknowledges the popup was spawned — the
-    // actual success/failure arrives asynchronously as the event above.
-    return nlohmann::json{{"ok", true}};
+    const auto result = vrcsm::core::VrcApi::verifyTwoFactor(method, code);
+    if (!result.ok)
+    {
+        return nlohmann::json{
+            {"ok", false},
+            {"error", result.error.value_or("2FA verification failed")},
+            {"httpStatus", result.httpStatus},
+        };
+    }
+
+    // 2FA passed → re-probe /auth/user for the real user payload so we
+    // can hand it to the UI and broadcast the same login-completed
+    // event the success path above fires.
+    auto user = vrcsm::core::VrcApi::fetchCurrentUser();
+    nlohmann::json userSummary = nlohmann::json::object();
+    if (vrcsm::core::isOk(user))
+    {
+        userSummary = MakeAuthSummary(vrcsm::core::value(user));
+    }
+
+    nlohmann::json event{
+        {"event", "auth.loginCompleted"},
+        {"data", {
+            {"ok", true},
+            {"user", userSummary},
+        }},
+    };
+    m_host.PostMessageToWeb(event.dump());
+
+    return nlohmann::json{
+        {"ok", true},
+        {"user", std::move(userSummary)},
+    };
+}
+
+nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto avatarId = JsonStringField(params, "avatarId").value_or("");
+    const auto assetUrl = JsonStringField(params, "assetUrl").value_or("");
+    if (avatarId.empty())
+    {
+        return nlohmann::json{
+            {"ok", false},
+            {"code", "missing_avatar_id"},
+            {"message", "avatarId is required"},
+        };
+    }
+
+    // Delegate the heavy lifting — bundle location, extractor spawn,
+    // fbx→glb conversion, cache hit-path — to AvatarPreview::Request
+    // so the IPC handler stays a thin adapter. The request runs on the
+    // async worker thread already (avatar.preview is in
+    // AsyncMethodSet), so we can block here without freezing the UI.
+    const auto probe = vrcsm::core::PathProbe::Probe();
+    const auto result = vrcsm::core::AvatarPreview::Request(avatarId, probe.baseDir, assetUrl);
+
+    nlohmann::json out;
+    out["avatarId"] = avatarId;
+    out["ok"] = result.ok;
+    if (result.ok)
+    {
+        out["glbUrl"] = result.glbUrl;
+        if (!result.glbPath.empty())
+        {
+            out["glbPath"] = result.glbPath;
+        }
+        out["cached"] = result.cached;
+        return out;
+    }
+
+    // All failure modes come through here — the frontend switches on
+    // `code` so each mode gets its own empty-state message. Keep the
+    // taxonomy flat and stable; adding a new code is fine, renaming
+    // one silently breaks the fallback.
+    out["code"] = result.code.empty() ? std::string("preview_failed") : result.code;
+    out["message"] = result.message;
+    return out;
 }
 
 nlohmann::json IpcBridge::HandleAuthLogout(const nlohmann::json&, const std::optional<std::string>&)
@@ -782,8 +1073,8 @@ nlohmann::json IpcBridge::HandleAuthLogout(const nlohmann::json&, const std::opt
 
 nlohmann::json IpcBridge::HandleAuthUser(const nlohmann::json&, const std::optional<std::string>&)
 {
-    const auto user = vrcsm::core::VrcApi::fetchCurrentUser();
-    if (!user.has_value())
+    auto result = vrcsm::core::VrcApi::fetchCurrentUser();
+    if (!vrcsm::core::isOk(result))
     {
         vrcsm::core::AuthStore::Instance().Clear();
         return nlohmann::json{
@@ -794,7 +1085,7 @@ nlohmann::json IpcBridge::HandleAuthUser(const nlohmann::json&, const std::optio
 
     return nlohmann::json{
         {"authed", true},
-        {"user", *user},
+        {"user", vrcsm::core::value(result)},
     };
 }
 
@@ -804,8 +1095,8 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
         ? params["offline"].get<bool>()
         : false;
 
-    const auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
-    if (!currentUser.has_value())
+    auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
+    if (!vrcsm::core::isOk(currentUser))
     {
         vrcsm::core::AuthStore::Instance().Clear();
         return nlohmann::json{{"friends", nlohmann::json::array()}};
@@ -929,16 +1220,279 @@ nlohmann::json IpcBridge::HandleAvatarDetails(const nlohmann::json& params, cons
         return nlohmann::json{{"details", nullptr}};
     }
 
-    const auto details = vrcsm::core::VrcApi::fetchAvatarDetails(*idField);
-    if (!details.has_value())
+    // Pass the whole payload through — the frontend decides which fields
+    // to render. Auth/network/404 errors surface as IpcException so the
+    // dispatch layer can post structured error codes to the frontend.
+    return nlohmann::json{{"details", unwrapResult(vrcsm::core::VrcApi::fetchAvatarDetails(*idField))}};
+}
+
+nlohmann::json IpcBridge::HandleWorldDetails(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto idField = JsonStringField(params, "id");
+    if (!idField.has_value() || idField->empty())
     {
         return nlohmann::json{{"details", nullptr}};
     }
 
-    // Pass the whole payload through — the frontend decides which fields
-    // to render. This keeps the host out of the business of guessing
-    // which keys matter for future UI iterations.
-    return nlohmann::json{{"details", *details}};
+    return nlohmann::json{{"details", unwrapResult(vrcsm::core::VrcApi::fetchWorldDetails(*idField))}};
+}
+
+nlohmann::json IpcBridge::HandleAvatarSelect(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto avatarId = JsonStringField(params, "avatarId");
+    if (!avatarId.has_value() || avatarId->empty())
+    {
+        throw std::runtime_error("avatar.select: missing 'avatarId'");
+    }
+
+    // Result<json> — auth/network/permission errors surface as IpcException;
+    // on success VRChat returns the selected avatar JSON.
+    return unwrapResult(vrcsm::core::VrcApi::selectAvatar(*avatarId));
+}
+
+nlohmann::json IpcBridge::HandleUserMe(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto user = unwrapResult(vrcsm::core::VrcApi::fetchCurrentUser());
+    return nlohmann::json{{"profile", FilterUserProfile(user)}};
+}
+
+nlohmann::json IpcBridge::HandleUserGetProfile(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId");
+    if (!userId.has_value() || userId->empty())
+    {
+        return nlohmann::json{{"profile", nullptr}};
+    }
+
+    auto user = unwrapResult(vrcsm::core::VrcApi::fetchUser(*userId));
+    return nlohmann::json{{"profile", FilterUserProfile(user)}};
+}
+
+nlohmann::json IpcBridge::HandleUserUpdateProfile(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    // Accept bio/statusDescription/status as optional fields. Anything
+    // present gets forwarded to VRChat's PUT /users/{id} endpoint; anything
+    // absent is left untouched (VRChat's API treats missing keys as
+    // "no change"). Build the patch JSON inline so we never send keys the
+    // caller didn't explicitly set.
+    nlohmann::json patch = nlohmann::json::object();
+    if (const auto bio = JsonStringField(params, "bio"); bio.has_value())
+    {
+        patch["bio"] = *bio;
+    }
+    if (const auto statusDesc = JsonStringField(params, "statusDescription"); statusDesc.has_value())
+    {
+        patch["statusDescription"] = *statusDesc;
+    }
+    if (const auto status = JsonStringField(params, "status"); status.has_value())
+    {
+        patch["status"] = *status;
+    }
+
+    if (patch.empty())
+    {
+        return nlohmann::json{{"profile", nullptr}, {"error", "no fields to update"}};
+    }
+
+    auto updated = unwrapResult(vrcsm::core::VrcApi::updateAuthUser(patch));
+    return nlohmann::json{{"profile", FilterUserProfile(updated)}};
+}
+
+nlohmann::json IpcBridge::HandleScreenshotsList(const nlohmann::json&, const std::optional<std::string>&)
+{
+    const auto folder = ScreenshotsRootDir();
+    nlohmann::json screenshots = nlohmann::json::array();
+
+    std::error_code ec;
+    if (folder.empty() || !std::filesystem::exists(folder, ec))
+    {
+        return nlohmann::json{
+            {"screenshots", std::move(screenshots)},
+            {"folder", folder.empty() ? "" : WideToUtf8(folder.wstring())},
+        };
+    }
+
+    // Walk recursively — VRChat buckets screenshots into daily subfolders
+    // like `2024-06\VRChat_<...>.png`, so a single-level iterate would
+    // miss everything. Cap at 2000 entries to keep the IPC envelope
+    // manageable; if a user has more than that we surface the most
+    // recently modified ones first via sort_by.
+    struct Entry
+    {
+        std::filesystem::path path;
+        std::filesystem::file_time_type mtime;
+        std::uintmax_t size;
+    };
+    std::vector<Entry> entries;
+    entries.reserve(256);
+
+    for (auto it = std::filesystem::recursive_directory_iterator(folder, ec);
+         it != std::filesystem::recursive_directory_iterator();
+         it.increment(ec))
+    {
+        if (ec) break;
+        if (!it->is_regular_file(ec)) continue;
+        const auto& p = it->path();
+        const auto ext = p.extension().wstring();
+        // VRChat writes PNG by default; also accept JPG just in case
+        // someone's using a mod. Everything else is ignored — we don't
+        // want to list random files users might have dropped in here.
+        if (ext != L".png" && ext != L".PNG" && ext != L".jpg" && ext != L".jpeg"
+            && ext != L".JPG" && ext != L".JPEG")
+        {
+            continue;
+        }
+        std::error_code sizeEc;
+        const auto size = std::filesystem::file_size(p, sizeEc);
+        std::error_code timeEc;
+        const auto mtime = std::filesystem::last_write_time(p, timeEc);
+        entries.push_back({p, mtime, sizeEc ? 0 : size});
+    }
+
+    // Newest first — VRChat users want to find the screenshot they just
+    // took, not the one from 2019.
+    std::sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b)
+    {
+        return a.mtime > b.mtime;
+    });
+    if (entries.size() > 2000)
+    {
+        entries.resize(2000);
+    }
+
+    // Convert filesystem time to an ISO-8601 string. `file_time_type` is
+    // the file_clock epoch on Windows, which is FILETIME-based. Roundtrip
+    // through system_clock so std::gmtime works on a known epoch.
+    for (const auto& entry : entries)
+    {
+        const auto sysTime = std::chrono::clock_cast<std::chrono::system_clock>(entry.mtime);
+        const auto timeT = std::chrono::system_clock::to_time_t(sysTime);
+        std::tm tmUtc{};
+        gmtime_s(&tmUtc, &timeT);
+        char isoBuf[32]{};
+        std::strftime(isoBuf, sizeof(isoBuf), "%Y-%m-%dT%H:%M:%SZ", &tmUtc);
+
+        // Relative path under the screenshots root so nested daily
+        // folders are preserved in the virtual-host URL. Each segment
+        // is percent-encoded independently so slashes survive.
+        std::error_code relEc;
+        const auto rel = std::filesystem::relative(entry.path, folder, relEc);
+        std::string urlPath;
+        if (!relEc)
+        {
+            for (const auto& seg : rel)
+            {
+                if (!urlPath.empty()) urlPath.push_back('/');
+                urlPath.append(UrlEncodeSegment(WideToUtf8(seg.wstring())));
+            }
+        }
+        else
+        {
+            urlPath = UrlEncodeSegment(WideToUtf8(entry.path.filename().wstring()));
+        }
+
+        screenshots.push_back({
+            {"path", WideToUtf8(entry.path.wstring())},
+            {"filename", WideToUtf8(entry.path.filename().wstring())},
+            {"created_at", isoBuf},
+            {"size_bytes", static_cast<std::uint64_t>(entry.size)},
+            {"url", fmt::format("https://screenshots.local/{}", urlPath)},
+        });
+    }
+
+    return nlohmann::json{
+        {"screenshots", std::move(screenshots)},
+        {"folder", WideToUtf8(folder.wstring())},
+    };
+}
+
+nlohmann::json IpcBridge::HandleScreenshotsOpen(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    // Hand the path to the OS shell so it opens in the user's default
+    // image viewer. We defend against being tricked into launching an
+    // executable by requiring the path to live under the known
+    // screenshots root AND by checking the extension whitelist.
+    const auto pathStr = JsonStringField(params, "path");
+    if (!pathStr.has_value() || pathStr->empty())
+    {
+        throw std::runtime_error("screenshots.open: missing 'path'");
+    }
+    const std::filesystem::path target = Utf8ToWide(*pathStr);
+    const auto root = ScreenshotsRootDir();
+    if (root.empty())
+    {
+        throw std::runtime_error("screenshots.open: screenshots folder unavailable");
+    }
+
+    std::error_code ec;
+    const auto absTarget = std::filesystem::weakly_canonical(target, ec);
+    const auto absRoot = std::filesystem::weakly_canonical(root, ec);
+    const auto targetStr = absTarget.wstring();
+    const auto rootStr = absRoot.wstring();
+    if (targetStr.rfind(rootStr, 0) != 0)
+    {
+        throw std::runtime_error("screenshots.open: path escapes screenshots root");
+    }
+    const auto ext = target.extension().wstring();
+    if (ext != L".png" && ext != L".PNG" && ext != L".jpg" && ext != L".jpeg"
+        && ext != L".JPG" && ext != L".JPEG")
+    {
+        throw std::runtime_error("screenshots.open: unsupported file type");
+    }
+
+    const HINSTANCE h = ShellExecuteW(nullptr, L"open", targetStr.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    if (reinterpret_cast<INT_PTR>(h) <= 32)
+    {
+        throw std::runtime_error("screenshots.open: ShellExecute failed");
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+nlohmann::json IpcBridge::HandleScreenshotsFolder(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    // Optional `path` parameter — if absent, open the VRChat screenshots
+    // root. If present, reveal that specific file inside Explorer (same
+    // behaviour as right-click → "Open file location" on Windows).
+    const auto pathStr = JsonStringField(params, "path");
+    const auto root = ScreenshotsRootDir();
+    if (root.empty())
+    {
+        throw std::runtime_error("screenshots.folder: screenshots folder unavailable");
+    }
+
+    if (!pathStr.has_value() || pathStr->empty())
+    {
+        const HINSTANCE h = ShellExecuteW(nullptr, L"open", root.wstring().c_str(),
+            nullptr, nullptr, SW_SHOWNORMAL);
+        if (reinterpret_cast<INT_PTR>(h) <= 32)
+        {
+            throw std::runtime_error("screenshots.folder: ShellExecute failed");
+        }
+        return nlohmann::json{{"ok", true}};
+    }
+
+    // Path provided — reveal the file inside its parent folder.
+    const std::filesystem::path target = Utf8ToWide(*pathStr);
+    std::error_code ec;
+    const auto absTarget = std::filesystem::weakly_canonical(target, ec);
+    const auto absRoot = std::filesystem::weakly_canonical(root, ec);
+    if (absTarget.wstring().rfind(absRoot.wstring(), 0) != 0)
+    {
+        throw std::runtime_error("screenshots.folder: path escapes screenshots root");
+    }
+
+    // Use `explorer.exe /select,<path>` so the target file is highlighted
+    // when Explorer opens. ShellExecute with a verb of "open" on a folder
+    // doesn't support the /select flag; we have to invoke explorer.exe
+    // directly via the lpParameters argument.
+    const std::wstring args = L"/select,\"" + absTarget.wstring() + L"\"";
+    const HINSTANCE h = ShellExecuteW(nullptr, L"open", L"explorer.exe",
+        args.c_str(), nullptr, SW_SHOWNORMAL);
+    if (reinterpret_cast<INT_PTR>(h) <= 32)
+    {
+        throw std::runtime_error("screenshots.folder: ShellExecute failed");
+    }
+    return nlohmann::json{{"ok", true}};
 }
 
 void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const
@@ -967,5 +1521,17 @@ void IpcBridge::PostError(const std::optional<std::string>& id, std::string_view
         response["id"] = *id;
     }
 
+    m_host.PostMessageToWeb(response.dump());
+}
+
+void IpcBridge::PostError(const std::optional<std::string>& id, const vrcsm::core::Error& err) const
+{
+    nlohmann::json errJson;
+    to_json(errJson, err);
+    nlohmann::json response{{"error", errJson}};
+    if (id.has_value())
+    {
+        response["id"] = *id;
+    }
     m_host.PostMessageToWeb(response.dump());
 }

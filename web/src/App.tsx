@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { TitleBar } from "@/components/TitleBar";
@@ -28,6 +30,8 @@ const Bundles = lazy(() => import("@/pages/Bundles"));
 const Avatars = lazy(() => import("@/pages/Avatars"));
 const Worlds = lazy(() => import("@/pages/Worlds"));
 const Friends = lazy(() => import("@/pages/Friends"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const Screenshots = lazy(() => import("@/pages/Screenshots"));
 const Logs = lazy(() => import("@/pages/Logs"));
 const Migrate = lazy(() => import("@/pages/Migrate"));
 const Settings = lazy(() => import("@/pages/Settings"));
@@ -76,6 +80,14 @@ function AppContent() {
       "/friends": {
         title: t("nav.friends"),
         breadcrumb: ["Social", t("nav.friends")],
+      },
+      "/profile": {
+        title: t("nav.profile"),
+        breadcrumb: ["Social", t("nav.profile")],
+      },
+      "/screenshots": {
+        title: t("nav.screenshots"),
+        breadcrumb: ["Media", t("nav.screenshots")],
       },
       "/logs": {
         title: t("nav.logs"),
@@ -307,6 +319,8 @@ function AppContent() {
                           <Route path="/avatars" element={<Avatars />} />
                           <Route path="/worlds" element={<Worlds />} />
                           <Route path="/friends" element={<Friends />} />
+                          <Route path="/profile" element={<Profile />} />
+                          <Route path="/screenshots" element={<Screenshots />} />
                           <Route path="/logs" element={<Logs />} />
                           <Route path="/migrate" element={<Migrate />} />
                           <Route path="/settings" element={<Settings />} />
@@ -341,11 +355,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <ReportProvider>
-        <AppContent />
-      </ReportProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ReportProvider>
+          <AppContent />
+        </ReportProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

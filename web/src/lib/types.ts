@@ -93,10 +93,19 @@ export interface AvatarSwitchEvent {
   avatar_name: string;
 }
 
-/** `[VRC Camera] Took screenshot to:` — absolute path, unmodified. */
 export interface ScreenshotEvent {
   iso_time: string | null;
   path: string;
+}
+
+/** `[Behaviour] Joining wrld_...:port~tags` — detailed map instance connection streams. */
+export interface WorldSwitchEvent {
+  iso_time: string | null;
+  world_id: string;
+  instance_id: string;
+  access_type: string;
+  owner_id: string | null;
+  region: string | null;
 }
 
 export interface LogReport {
@@ -117,10 +126,10 @@ export interface LogReport {
   avatar_names: Record<string, AvatarNameInfo>;
   world_event_count: number;
   avatar_event_count: number;
-  /** VRCX-parity event streams, capped at 500 each to keep IPC sane. */
   player_events: PlayerEvent[];
   avatar_switches: AvatarSwitchEvent[];
   screenshots: ScreenshotEvent[];
+  world_switches: WorldSwitchEvent[];
 }
 
 export interface BrokenLink {
@@ -255,6 +264,7 @@ export interface IpcEnvelopeRequest<T = unknown> {
 export interface IpcEnvelopeError {
   code: string;
   message: string;
+  httpStatus?: number;
 }
 
 export interface IpcEnvelopeResponse<T = unknown> {

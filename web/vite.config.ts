@@ -19,6 +19,15 @@ export default defineConfig({
     emptyOutDir: true,
     target: "esnext",
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
+          'ui-vendor': ['lucide-react', 'sonner']
+        }
+      }
+    }
   },
   server: {
     port: 5173,

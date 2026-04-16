@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -12,6 +12,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LoginForm } from "@/components/LoginForm";
+import {
+  ProfileCard,
+  type VrcUserProfile,
+  type VrcStatus,
+} from "@/components/ProfileCard";
+import { IdBadge } from "@/components/IdBadge";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import type { Friend, FriendsListResult } from "@/lib/types";
@@ -30,7 +37,6 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  Copy,
   LogIn,
   RefreshCcw,
   Search,
@@ -39,6 +45,9 @@ import {
   Globe2,
   Monitor,
   Smartphone,
+  UserRound,
+  X,
+  Play,
 } from "lucide-react";
 
 function statusColor(
@@ -88,21 +97,17 @@ function FriendAvatar({ friend }: { friend: Friend }) {
   );
 }
 
-/**
- * Copy-to-clipboard with a toast confirmation — used for user id and
- * location strings so power users can paste into DMs / VRCX / scripts
- * without hunting through the raw JSON.
- */
-async function copyValue(value: string, label: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(value);
-    toast.success(`${label} copied`);
-  } catch {
-    toast.error("Clipboard unavailable");
-  }
-}
 
-const FriendRow = memo(function FriendRow({ friend }: { friend: Friend }) {
+
+const FriendRow = memo(function FriendRow({
+  friend,
+  colocatedFriends = [],
+  onOpenDetail,
+}: {
+  friend: Friend;
+  colocatedFriends?: Friend[];
+  onOpenDetail: (friend: Friend) => void;
+}) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
@@ -185,22 +190,7 @@ const FriendRow = memo(function FriendRow({ friend }: { friend: Friend }) {
             <span className="text-[hsl(var(--muted-foreground))]">
               {t("friends.fields.userId")}
             </span>
-            <div className="flex items-center gap-1.5">
-              <span className="truncate font-mono text-[10.5px]">
-                {friend.id}
-              </span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copyValue(friend.id, t("friends.fields.userId"));
-                }}
-                className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                aria-label={t("common.copy", { defaultValue: "Copy" })}
-              >
-                <Copy className="size-3" />
-              </button>
-            </div>
+            <IdBadge id={friend.id} size="xs" />
 
             <span className="text-[hsl(var(--muted-foreground))]">
               {t("friends.fields.trust")}
@@ -223,25 +213,7 @@ const FriendRow = memo(function FriendRow({ friend }: { friend: Friend }) {
                 <span className="text-[hsl(var(--muted-foreground))]">
                   {t("friends.fields.world")}
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate font-mono text-[10.5px]">
-                    {loc.worldId}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void copyValue(
-                        friend.location ?? "",
-                        t("friends.fields.location"),
-                      );
-                    }}
-                    className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                    aria-label={t("common.copy", { defaultValue: "Copy" })}
-                  >
-                    <Copy className="size-3" />
-                  </button>
-                </div>
+                <IdBadge id={loc.worldId} size="xs" />
               </>
             ) : null}
 
@@ -276,42 +248,155 @@ const FriendRow = memo(function FriendRow({ friend }: { friend: Friend }) {
               </>
             ) : null}
           </div>
+
+          {colocatedFriends.length > 0 && loc.kind === "world" ? (
+            <div className="mt-3 flex flex-col gap-2 border-t border-[hsl(var(--border))] pt-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                {t("friends.alsoInInstance", { defaultValue: "同行好友" })} ({colocatedFriends.length})
+              </span>
+              <div className="flex flex-col gap-1.5 pl-1">
+                {colocatedFriends.map((cf) => (
+                  <button
+                    key={cf.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenDetail(cf);
+                    }}
+                    className="flex w-fit items-center gap-2 hover:bg-[hsl(var(--muted))] rounded pr-2 py-0.5"
+                  >
+                    <div className="relative size-4 shrink-0 overflow-hidden rounded shadow-sm">
+                      <img
+                        src={
+                          cf.profilePicOverride ||
+                          cf.currentAvatarThumbnailImageUrl ||
+                          ""
+                        }
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        alt=""
+                      />
+                    </div>
+                    <span className="text-[11px] font-medium text-[hsl(var(--foreground))]">
+                      {cf.displayName}
+                    </span>
+                    <span className={`text-[10px] font-medium ${trustColorClass(trustRank(cf.tags))}`}>
+                      {t(trustLabelKey(trustRank(cf.tags)))}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-2 flex justify-end gap-1.5">
+            {loc.kind === "world" && loc.worldId && loc.instanceId ? (
+              <Button
+                variant="tonal"
+                size="sm"
+                className="bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.25)]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                    url: `vrchat://launch?id=${loc.worldId}:${loc.instanceId}`,
+                  }).catch(console.error);
+                }}
+              >
+                <Play className="mr-1 size-3 shrink-0" />
+                <span className="font-semibold">{t("worlds.instanceBadge", { defaultValue: "Join Room" })}</span>
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDetail(friend);
+              }}
+            >
+              <UserRound className="mr-1 size-3 shrink-0" />
+              <span>{t("friends.detailPaneTitle", { defaultValue: "详情" })}</span>
+            </Button>
+          </div>
         </div>
       ) : null}
     </div>
   );
 });
 
+// Adapt the lightweight Friend row shape into the full VrcUserProfile
+// the ProfileCard component expects. Friends come from `FilterFriend` in
+// the C++ bridge, so some fields (bioLinks, worldName) are absent —
+// ProfileCard handles that gracefully. `Friend` fields are `string | null`
+// while `VrcUserProfile` uses `string | undefined`, so fold nulls away.
+function friendToProfile(friend: Friend): VrcUserProfile {
+  const nn = (v: string | null | undefined): string | undefined =>
+    v == null || v === "" ? undefined : v;
+  return {
+    id: friend.id,
+    displayName: friend.displayName,
+    bio: nn(friend.bio),
+    status: (nn(friend.status) as VrcStatus) ?? "offline",
+    statusDescription: nn(friend.statusDescription),
+    currentAvatarImageUrl: nn(friend.currentAvatarImageUrl),
+    currentAvatarThumbnailImageUrl: nn(friend.currentAvatarThumbnailImageUrl),
+    profilePicOverride: nn(friend.profilePicOverride),
+    developerType: nn(friend.developerType),
+    last_login: nn(friend.last_login),
+    last_activity: nn(friend.last_activity),
+    isFriend: true,
+  };
+}
+
 export default function Friends() {
   const { t } = useTranslation();
-  const { status, openLogin, error: authError } = useAuth();
+  const { status, error: authError } = useAuth();
   const [data, setData] = useState<FriendsListResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, 150);
   const [showOffline, setShowOffline] = useState(false);
-  const [launching, setLaunching] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [collapsedBuckets, setCollapsedBuckets] = useState<Set<StatusBucket>>(
     new Set(),
   );
 
-  const handleOpenLogin = async () => {
-    setLaunching(true);
-    try {
-      const result = await openLogin();
-      if (!result.ok && result.error) {
-        toast.error(
-          t("auth.loginWindowFailed", {
-            error: result.error,
-            defaultValue: `Login window failed: ${result.error}`,
-          }),
-        );
-      }
-    } finally {
-      setLaunching(false);
-    }
-  };
+  // Detail-panel state. We seed it with the lightweight row data
+  // immediately so the panel renders without a loading flash, then
+  // upgrade it with the full `user.getProfile` payload as soon as it
+  // resolves (bioLinks, currentAvatarName, world, etc.).
+  const [selectedFriend, setSelectedFriend] = useState<VrcUserProfile | null>(
+    null,
+  );
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const openDetail = useCallback(
+    (friend: Friend) => {
+      const base = friendToProfile(friend);
+      setSelectedFriend(base);
+      setDetailLoading(true);
+      ipc
+        .call<{ userId: string }, { profile: VrcUserProfile | null }>(
+          "user.getProfile",
+          { userId: friend.id },
+        )
+        .then((res) => {
+          // Only overwrite if the user hasn't closed or switched
+          // targets — guard against stale promises clobbering state.
+          setSelectedFriend((prev) =>
+            prev && prev.id === friend.id
+              ? { ...prev, ...(res.profile ?? {}), isFriend: true }
+              : prev,
+          );
+        })
+        .catch((e: unknown) => {
+          toast.error(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => setDetailLoading(false));
+    },
+    [],
+  );
 
   const refresh = () => {
     if (!status.authed) return;
@@ -334,6 +419,42 @@ export default function Friends() {
     refresh();
     // `showOffline` change + auth flip are the two triggers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status.authed, showOffline]);
+
+  // Background Live Tracker Polling
+  useEffect(() => {
+    if (!status.authed) return;
+    let timer: number | null = null;
+    let cancelled = false;
+
+    const tick = () => {
+      if (cancelled) return;
+      const live = localStorage.getItem("vrcsm.friends.liveRefresh") === "true";
+      const intv = parseInt(localStorage.getItem("vrcsm.friends.refreshInterval") || "60", 10);
+      
+      if (live) {
+        // Silently poll without triggering the main loading spinner or toasts
+        ipc
+          .call<{ offline: boolean }, FriendsListResult>("friends.list", {
+            offline: showOffline,
+          })
+          .then((result) => {
+            if (!cancelled) setData(result);
+          })
+          .catch(() => undefined);
+      }
+      
+      const nextDelay = isNaN(intv) || intv < 10 ? 60 : intv;
+      timer = window.setTimeout(tick, nextDelay * 1000);
+    };
+
+    const initialIntv = parseInt(localStorage.getItem("vrcsm.friends.refreshInterval") || "60", 10);
+    timer = window.setTimeout(tick, (isNaN(initialIntv) || initialIntv < 10 ? 60 : initialIntv) * 1000);
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
   }, [status.authed, showOffline]);
 
   // Filter first, then group — doing filter-post-group wastes work rebuilding
@@ -371,6 +492,19 @@ export default function Friends() {
     return buckets;
   }, [filtered]);
 
+  const locationGroups = useMemo(() => {
+    const groups: Record<string, Friend[]> = {};
+    for (const f of data?.friends ?? []) {
+      if (!f.location || f.location === "offline" || f.location === "private") continue;
+      const loc = parseLocation(f.location);
+      if (loc.kind === "world") {
+        if (!groups[f.location]) groups[f.location] = [];
+        groups[f.location].push(f);
+      }
+    }
+    return groups;
+  }, [data?.friends]);
+
   const toggleBucket = (bucket: StatusBucket) => {
     setCollapsedBuckets((prev) => {
       const next = new Set(prev);
@@ -383,12 +517,11 @@ export default function Friends() {
     });
   };
 
-  // Not signed in — show a single "Sign in with VRChat" button. The
-  // host spawns a second WebView2 pointing at vrchat.com/home/login so
-  // VRChat's own web frontend handles every login permutation
-  // (password + 2FA + Steam OAuth + captcha + email verify). VRCSM
-  // never sees the password — we just harvest the session cookie out
-  // of the WebView2 cookie jar once the user lands back on /home.
+  // Not signed in — show a single "Sign in with VRChat" button that
+  // spawns the native LoginForm dialog. The C++ host calls the real
+  // VRChat `/api/1/auth/user` endpoint via WinHTTP, handles 2FA if
+  // required, and persists the resulting cookie via DPAPI. The
+  // password lives in memory only for the duration of the request.
   if (!status.authed) {
     return (
       <div className="flex flex-col gap-4 animate-fade-in">
@@ -409,23 +542,20 @@ export default function Friends() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <p className="text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
-              {t("auth.loginWindowHint", {
+              {t("auth.nativeLoginHint", {
                 defaultValue:
-                  "VRCSM will open a secure login window so VRChat's own site handles password, 2FA, Steam, and captcha. Your password never touches VRCSM.",
+                  "VRCSM calls the VRChat REST API directly with WinHTTP. Your credentials never leave this machine — only the session cookie is kept, DPAPI-encrypted at %LocalAppData%\\VRCSM\\session.dat.",
               })}
             </p>
             <Button
               type="button"
               variant="tonal"
-              onClick={handleOpenLogin}
-              disabled={launching}
+              onClick={() => setLoginOpen(true)}
             >
               <LogIn />
-              {launching
-                ? t("auth.opening", { defaultValue: "Opening…" })
-                : t("auth.signInWithVrchat", {
-                    defaultValue: "Sign in with VRChat",
-                  })}
+              {t("auth.signInWithVrchat", {
+                defaultValue: "Sign in with VRChat",
+              })}
             </Button>
             {authError ? (
               <div className="text-[11px] text-[hsl(var(--warn-foreground,var(--destructive)))]">
@@ -434,6 +564,7 @@ export default function Friends() {
             ) : null}
           </CardContent>
         </Card>
+        <LoginForm open={loginOpen} onOpenChange={setLoginOpen} />
       </div>
     );
   }
@@ -458,7 +589,8 @@ export default function Friends() {
         </div>
       </header>
 
-      <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
+      <div className="flex gap-3">
+      <Card elevation="flat" className="flex min-w-0 flex-1 flex-col overflow-hidden p-0">
         <div className="unity-panel-header flex items-center justify-between">
           <span>{t("friends.listPaneTitle")}</span>
           <span className="font-mono text-[10px] normal-case tracking-normal">
@@ -532,9 +664,19 @@ export default function Friends() {
                     </button>
                     {!collapsed ? (
                       <div className="flex flex-col gap-1.5">
-                        {rows.map((f) => (
-                          <FriendRow key={f.id} friend={f} />
-                        ))}
+                        {rows.map((f) => {
+                          const colocated = locationGroups[f.location || ""]?.filter(
+                            (x) => x.id !== f.id
+                          );
+                          return (
+                            <FriendRow
+                              key={f.id}
+                              friend={f}
+                              colocatedFriends={colocated}
+                              onOpenDetail={openDetail}
+                            />
+                          );
+                        })}
                       </div>
                     ) : null}
                   </section>
@@ -544,6 +686,29 @@ export default function Friends() {
           )}
         </div>
       </Card>
+
+      {selectedFriend ? (
+        <div className="w-[300px] shrink-0">
+          <div className="sticky top-0 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                {t("friends.detailPaneTitle", { defaultValue: "好友详情" })}
+                {detailLoading ? " · …" : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedFriend(null)}
+                className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                title={t("common.close", { defaultValue: "关闭" })}
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+            <ProfileCard user={selectedFriend} />
+          </div>
+        </div>
+      ) : null}
+      </div>
     </div>
   );
 }
