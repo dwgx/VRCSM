@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -8,14 +9,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AvatarPreview3D } from "@/components/AvatarPreview3D";
+import { IdBadge } from "@/components/IdBadge";
+import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { formatDate } from "@/lib/utils";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import type { LocalAvatarItem } from "@/lib/types";
-import { Eye, Sliders, Search, User, Info, Lock, Box } from "lucide-react";
+import { Eye, Sliders, Search, User, Info, Lock, Box, Sword } from "lucide-react";
 
 type AugmentedAvatar = LocalAvatarItem & {
   display_name?: string;
@@ -39,6 +44,7 @@ interface AvatarDetailsPayload {
     platform?: string;
     unityVersion?: string;
     assetVersion?: number;
+    assetUrl?: string;
   }>;
   created_at?: string;
   updated_at?: string;
@@ -135,48 +141,10 @@ function shortenId(id: string, head = 8, tail = 4): string {
 }
 
 /**
- * Inspector preview. When VRCSM is logged into VRChat (v0.2.0+) we fetch
- * the real avatar thumbnail from the CDN; if the call returns null — user
- * not authed, or avatar is private even for the current session — we
- * render a procedural CSS 3D cube keyed off the avatar id instead so the
- * inspector still looks alive. Both paths come from the same
- * `useThumbnail` hook which handles caching + dedup.
- */
-function AvatarPreview({
-  avatarId,
-  size = 140,
-}: {
-  avatarId: string;
-  size?: number;
-}) {
-  const { url } = useThumbnail(avatarId);
-  return (
-    <div
-      className="relative flex items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
-      style={{ width: size, height: size }}
-    >
-      {url ? (
-        <img
-          src={url}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 h-full w-full object-cover animate-fade-in"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
-      ) : (
-        <Avatar3DPreview seed={avatarId} size={Math.round(size * 0.62)} />
-      )}
-    </div>
-  );
-}
-
-/**
  * Row thumbnail — real CDN image when available, else the procedural
  * cube at a smaller size so the list pane reads like a Unity hierarchy
- * with icons rather than a wall of text.
+ * with icons rather than a wall of text. The inspector uses
+ * <AvatarPreview3D> instead for the real 3D pipeline.
  */
 function AvatarRowThumb({ avatarId }: { avatarId: string }) {
   const { url } = useThumbnail(avatarId);
@@ -264,6 +232,34 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
   const { details, loading: detailsLoading } = useAvatarDetails(
     selected.avatar_id,
   );
+  const [switching, setSwitching] = useState(false);
+
+  async function handleSelectAvatar() {
+    if (!authStatus.authed) {
+      toast.error(t("avatars_extra.selectAvatarNeedsAuth"));
+      return;
+    }
+    setSwitching(true);
+    try {
+      const res = await ipc.call<{ avatarId: string }, { ok: boolean }>(
+        "avatar.select",
+        { avatarId: selected.avatar_id },
+      );
+      if (res.ok) {
+        toast.success(t("avatars_extra.selectAvatarDone"));
+      } else {
+        toast.error(t("avatars_extra.selectAvatarFailed"));
+      }
+    } catch (e) {
+      toast.error(
+        `${t("avatars_extra.selectAvatarFailed")}: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   // API-sourced display name beats logs beats "unknown".
   const displayName =
@@ -283,7 +279,13 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
       </div>
       <div className="grid gap-4 p-5 md:grid-cols-[160px_1fr]">
         <div className="flex flex-col items-center gap-2">
-          <AvatarPreview avatarId={selected.avatar_id} size={140} />
+          {(() => {
+            const windowsAssetUrl = details?.unityPackages?.find(
+              (p) => p.platform === "standalonewindows"
+            )?.assetUrl;
+            const fallbackUrl = details?.imageUrl || details?.thumbnailImageUrl;
+            return <AvatarPreview3D avatarId={selected.avatar_id} assetUrl={windowsAssetUrl} fallbackImageUrl={fallbackUrl} size={140} />;
+          })()}
           <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
             {t("avatars.previewLabel")}
           </span>
@@ -399,22 +401,30 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
             </div>
           ) : null}
 
-          {/* Raw ids + cache path — always visible, cheap to show */}
-          <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[11px]">
-            <div>
-              <span className="text-[hsl(var(--muted-foreground))]">id: </span>
-              <span className="font-mono text-[hsl(var(--foreground))]">
-                {selected.avatar_id}
-              </span>
+          {/* Switch avatar button — only when signed in */}
+          {authStatus.authed ? (
+            <Button
+              variant="tonal"
+              size="sm"
+              onClick={handleSelectAvatar}
+              disabled={switching}
+              className="self-start"
+            >
+              <Sword />
+              {switching
+                ? t("common.loading")
+                : t("avatars_extra.selectAvatar")}
+            </Button>
+          ) : null}
+
+          {/* ID badges + cache path */}
+          <div className="flex flex-col gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2">
+            <div className="flex gap-2 min-w-0">
+               <IdBadge id={selected.avatar_id} size="sm" />
             </div>
-            {(details?.authorId || selected.user_id) ? (
-              <div>
-                <span className="text-[hsl(var(--muted-foreground))]">
-                  user:{" "}
-                </span>
-                <span className="font-mono text-[hsl(var(--foreground))]">
-                  {details?.authorId ?? selected.user_id}
-                </span>
+            {details?.authorId || selected.user_id ? (
+              <div className="flex gap-2 min-w-0">
+                 <UserPopupBadge userId={(details?.authorId ?? selected.user_id) as string} />
               </div>
             ) : null}
             {selected.path ? (
@@ -627,9 +637,9 @@ function Avatars() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid min-h-[560px] gap-4 md:grid-cols-[260px_1fr]">
+        <div className="grid min-h-[560px] items-start gap-4 md:grid-cols-[260px_1fr]">
           {/* List pane — Unity hierarchy style */}
-          <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
+          <Card elevation="flat" className="flex flex-col p-0 border-0 bg-transparent mb-10">
             <div className="unity-panel-header flex items-center justify-between">
               <span>{t("avatars.listPaneTitle")}</span>
               <span className="font-mono text-[10px] normal-case tracking-normal">
@@ -668,16 +678,18 @@ function Avatars() {
           </Card>
 
           {/* Inspector pane — 3D preview + metadata */}
-          {selected ? (
-            <AvatarInspector selected={selected} />
-          ) : (
-            <Card elevation="flat" className="flex items-center justify-center p-0">
-              <div className="flex flex-col items-center gap-2 py-10 text-[12px] text-[hsl(var(--muted-foreground))]">
-                <User className="size-6" />
-                {t("avatars.pickOne")}
-              </div>
-            </Card>
-          )}
+          <div className="sticky top-4">
+            {selected ? (
+              <AvatarInspector selected={selected} />
+            ) : (
+              <Card elevation="flat" className="flex items-center justify-center p-0">
+                <div className="flex flex-col items-center gap-2 py-10 text-[12px] text-[hsl(var(--muted-foreground))]">
+                  <User className="size-6" />
+                  {t("avatars.pickOne")}
+                </div>
+              </Card>
+            )}
+          </div>
         </div>
       )}
     </div>

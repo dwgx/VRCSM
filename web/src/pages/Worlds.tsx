@@ -11,10 +11,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UserPopupBadge } from "@/components/UserPopupBadge";
+import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { ipc } from "@/lib/ipc";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
-import { Copy, ExternalLink, Globe2, Play, Search } from "lucide-react";
+import { type WorldSwitchEvent } from "@/lib/types";
+import { Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff } from "lucide-react";
 
 /**
  * Stable string hash used to seed the world tile gradient so each
@@ -124,6 +127,112 @@ function WorldTile({
   );
 }
 
+function WorldHistoryPanel({
+  switches,
+}: {
+  switches: WorldSwitchEvent[];
+}) {
+  const { t } = useTranslation();
+  if (switches.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-3 mt-4">
+      <div className="text-[12px] font-semibold text-[hsl(var(--foreground))]">
+        {t("worlds.joinHistory")}
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {switches.map((ev, i) => {
+          let AccessIcon = Globe2;
+          let accessLabel = t("worlds.accessPublic");
+          if (ev.access_type === "private") {
+            AccessIcon = Lock;
+            accessLabel = t("worlds.accessPrivate");
+          } else if (ev.access_type === "hidden") {
+            AccessIcon = EyeOff;
+            accessLabel = t("worlds.accessHidden");
+          } else if (ev.access_type === "friends") {
+            AccessIcon = Users;
+            accessLabel = t("worlds.accessFriends");
+          } else if (ev.access_type === "group") {
+            AccessIcon = Users;
+            accessLabel = t("worlds.accessGroup");
+          }
+
+          const timeStr = ev.iso_time
+            ? new Intl.DateTimeFormat("default", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }).format(new Date(ev.iso_time.replace(/\./g, "-")))
+            : "Unknown time";
+
+          return (
+            <div key={i} className="group relative flex flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 transition-colors hover:bg-[hsl(var(--accent))]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[11px] font-medium text-[hsl(var(--foreground))]">
+                  <Clock className="size-3.5 text-[hsl(var(--muted-foreground))]" />
+                  {timeStr}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
+                    <AccessIcon className="size-3.5" />
+                    <span className="font-medium text-[hsl(var(--foreground))]">{accessLabel}</span>
+                  </div>
+                  <Badge variant="secondary" className="h-[20px] px-2 text-[10px] font-semibold tracking-wide ml-1">
+                    {ev.region?.toUpperCase() ?? "US"}
+                  </Badge>
+                </div>
+              </div>
+
+              {ev.owner_id && (
+                <div className="mt-1 flex items-center justify-between rounded bg-[hsl(var(--muted))] px-2 py-1.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <UserPopupBadge userId={ev.owner_id} />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--foreground))]"
+                      title="Open Profile on vrchat.com"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const urlPath = ev.owner_id!.startsWith("grp_") ? `group/${ev.owner_id}` : `user/${ev.owner_id}`;
+                        ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                          url: `https://vrchat.com/home/${urlPath}`,
+                        }).catch(console.error);
+                      }}
+                    >
+                      <ExternalLink className="size-3" />
+                    </Button>
+                    {(ev.instance_id && ev.instance_id.includes(":")) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-6 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--foreground))]"
+                        title="Launch this specific instance in VRChat"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                            url: `vrchat://launch?id=${ev.instance_id}`,
+                          }).catch(console.error);
+                        }}
+                      >
+                        <Play className="size-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Worlds() {
   const { t } = useTranslation();
   const { report, loading, error } = useReport();
@@ -148,6 +257,18 @@ function Worlds() {
     if (!selectedId) return filtered[0];
     return filtered.find((id) => id === selectedId) ?? filtered[0];
   }, [filtered, selectedId]);
+
+  const selectedSwitches = useMemo(() => {
+    if (!selected || !logs?.world_switches) return [];
+    const hits = logs.world_switches.filter((s) => s.world_id === selected);
+    // Sort descending by time
+    hits.sort((a, b) => {
+      if (!a.iso_time) return 1;
+      if (!b.iso_time) return -1;
+      return a.iso_time < b.iso_time ? 1 : -1;
+    });
+    return hits;
+  }, [selected, logs?.world_switches]);
 
   // Warm the thumbnail cache for the full world list as soon as it lands —
   // batches into a single IPC call and kicks the C++ side to fetch
@@ -265,14 +386,7 @@ function Worlds() {
                 </div>
 
                 <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[11px]">
-                  <div>
-                    <span className="text-[hsl(var(--muted-foreground))]">
-                      id:{" "}
-                    </span>
-                    <span className="font-mono break-all text-[hsl(var(--foreground))]">
-                      {selected}
-                    </span>
-                  </div>
+                  <WorldPopupBadge worldId={selected} />
                 </div>
 
                 {/*
@@ -344,6 +458,8 @@ function Worlds() {
                     {t("worlds.launchInVrc")}
                   </Button>
                 </div>
+
+                <WorldHistoryPanel switches={selectedSwitches} />
               </div>
             </Card>
           ) : (

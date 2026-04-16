@@ -3,6 +3,8 @@ import {
   LayoutDashboard,
   Package,
   User,
+  UserCircle2,
+  Camera,
   ScrollText,
   MoveRight,
   Settings as SettingsIcon,
@@ -25,10 +27,12 @@ interface NavItem {
 
 const items: NavItem[] = [
   { to: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { to: "/profile", labelKey: "nav.profile", icon: UserCircle2 },
   { to: "/friends", labelKey: "nav.friends", icon: Users },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
   { to: "/avatars", labelKey: "nav.avatars", icon: User },
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
+  { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
   { to: "/settings", labelKey: "nav.settings", icon: SettingsIcon },

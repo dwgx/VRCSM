@@ -26,6 +26,8 @@ const std::regex kSwitchingAvatarRe(
     R"(\[Behaviour\] Switching (.+?) to avatar (.+?)\s*$)");
 const std::regex kScreenshotRe(
     R"(\[VRC Camera\] Took screenshot to: (.+?)\s*$)");
+const std::regex kJoiningInstanceRe(
+    R"(\[Behaviour\] Joining (wrld_[0-9a-fA-F-]+):([0-9a-zA-Z~()_-]+)\s*$)");
 
 std::optional<std::string> isoTimeOrNull(const std::string& iso)
 {
@@ -115,6 +117,55 @@ nlohmann::json ClassifyStreamLine(const LogTailLine& line)
             event.path = match[1].str();
             return nlohmann::json{
                 {"kind", "screenshot"},
+                {"data", event},
+            };
+        }
+    }
+
+    // World Join
+    if (body.find("Joining wrld_") != std::string::npos)
+    {
+        std::smatch match;
+        if (std::regex_search(body, match, kJoiningInstanceRe))
+        {
+            const std::string worldId = match[1].str();
+            const std::string instanceIdStr = match[2].str();
+            
+            WorldSwitchEvent event;
+            event.iso_time = isoTimeOrNull(line.iso_time);
+            event.world_id = worldId;
+            event.instance_id = worldId + ":" + instanceIdStr;
+            
+            event.access_type = "public"; // default
+            if (instanceIdStr.find("~private(") != std::string::npos) {
+                event.access_type = "private";
+                std::smatch t;
+                if (std::regex_search(instanceIdStr, t, std::regex(R"(private\((usr_[0-9a-fA-F-]+)\))")))
+                    event.owner_id = t[1].str();
+            } else if (instanceIdStr.find("~friends(") != std::string::npos) {
+                event.access_type = "friends";
+                std::smatch t;
+                if (std::regex_search(instanceIdStr, t, std::regex(R"(friends\((usr_[0-9a-fA-F-]+)\))")))
+                    event.owner_id = t[1].str();
+            } else if (instanceIdStr.find("~hidden(") != std::string::npos) {
+                event.access_type = "hidden";
+                std::smatch t;
+                if (std::regex_search(instanceIdStr, t, std::regex(R"(hidden\((usr_[0-9a-fA-F-]+)\))")))
+                    event.owner_id = t[1].str();
+            } else if (instanceIdStr.find("~group(") != std::string::npos) {
+                event.access_type = "group";
+                std::smatch t;
+                if (std::regex_search(instanceIdStr, t, std::regex(R"(group\((grp_[0-9a-fA-F-]+)\))")))
+                    event.owner_id = t[1].str();
+            }
+            
+            std::smatch r;
+            if (std::regex_search(instanceIdStr, r, std::regex(R"(~region\(([a-zA-Z]+)\))"))) {
+                event.region = r[1].str();
+            }
+
+            return nlohmann::json{
+                {"kind", "worldSwitch"},
                 {"data", event},
             };
         }

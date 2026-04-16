@@ -16,11 +16,16 @@ struct Error
 {
     std::string code;
     std::string message;
+    int httpStatus{0};
 };
 
 inline void to_json(nlohmann::json& j, const Error& e)
 {
     j = nlohmann::json{{"code", e.code}, {"message", e.message}};
+    if (e.httpStatus != 0)
+    {
+        j["httpStatus"] = e.httpStatus;
+    }
 }
 
 template <typename T>

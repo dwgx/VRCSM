@@ -8,6 +8,7 @@ add_library(vrcsm_core STATIC
     LogTailer.cpp
     LogEventClassifier.cpp
     AvatarData.cpp
+    AvatarPreview.cpp
     JunctionUtil.cpp
     ProcessGuard.cpp
     SafeDelete.cpp

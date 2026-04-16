@@ -6,14 +6,55 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "profile": "My Profile",
     "friends": "Friends",
     "bundles": "Bundles",
     "avatars": "Avatars",
     "worlds": "Worlds",
+    "screenshots": "Screenshots",
     "logs": "Logs",
     "migrate": "Migrate",
     "settings": "Settings",
     "language": "Language"
+  },
+  "profile": {
+    "title": "My Profile",
+    "subtitle": "View and edit your VRChat profile",
+    "switchAvatar": "Switch avatar",
+    "switchAvatarHint": "Head over to the Avatars page, select a model, and click Switch to this avatar to change it live. Requires a signed-in VRChat session.",
+    "editProfile": "Edit profile",
+    "viewOnVrchat": "View on vrchat.com",
+    "bio": "Bio",
+    "bioPlaceholder": "Bio…",
+    "statusPlaceholder": "Status message…",
+    "currentAvatar": "Current avatar",
+    "currentWorld": "Current world",
+    "emptyBio": "No bio",
+    "updated": "Profile updated",
+    "saveFailed": "Save failed",
+    "saving": "Saving…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "noneTitle": "Profile unavailable",
+    "notSignedIn": "Not signed in"
+  },
+  "screenshots": {
+    "title": "Screenshots",
+    "subtitle": "VRChat screenshot browser",
+    "openFolder": "Open folder",
+    "openFolderItem": "Show in Explorer",
+    "filter": "Filter by filename…",
+    "empty": "No screenshots",
+    "countSuffix": "shots",
+    "openHover": "Open",
+    "open": "Open",
+    "loadFailed": "Load failed: {{error}}"
+  },
+  "avatars_extra": {
+    "selectAvatar": "Switch to this avatar",
+    "selectAvatarDone": "Switched to avatar",
+    "selectAvatarNeedsAuth": "Please sign in to VRChat first",
+    "selectAvatarFailed": "Switch failed"
   },
   "auth": {
     "signIn": "Sign in",
@@ -24,8 +65,22 @@
     "signedOut": "Signed out",
     "checking": "Checking…",
     "loginSuccess": "Signed in to VRChat",
-    "loginWindowHint": "VRCSM will open a secure login window so VRChat's own site handles password, 2FA, Steam, and captcha. Your password never touches VRCSM.",
-    "loginWindowFailed": "Login window failed: {{error}}"
+    "submitting": "Signing in…",
+    "dialogTitle": "Sign in with VRChat",
+    "dialogBody": "VRCSM calls the VRChat REST API directly with WinHTTP. Your credentials never leave this machine — only the session cookie is kept, DPAPI-encrypted.",
+    "usernameLabel": "Username or email",
+    "passwordLabel": "Password",
+    "missingCredentials": "Enter your username and password.",
+    "nativeLoginHint": "VRCSM calls the VRChat REST API directly with WinHTTP. Your credentials never leave this machine — only the session cookie is kept, DPAPI-encrypted at %LocalAppData%\\VRCSM\\session.dat.",
+    "twoFactor": {
+      "title": "Two-factor verification",
+      "body": "VRChat asked for a two-factor code. Enter the 6-digit token from your authenticator app or the email VRChat just sent.",
+      "totpLabel": "Authenticator code",
+      "emailLabel": "Email verification code",
+      "verify": "Verify",
+      "verifying": "Verifying…",
+      "invalidCode": "Enter the 6-digit code."
+    }
   },
   "friends": {
     "title": "Friends",
@@ -207,8 +262,20 @@
     "params_other": "{{count}} params",
     "modified": "modified {{date}}",
     "preview": "Preview",
-    "previewLabel": "Procedural preview",
+    "previewLabel": "3D preview",
     "previewPrivate": "Procedural preview",
+    "preview3d": {
+      "loading": "Extracting…",
+      "cache_missing": "Cache unreachable",
+      "bundle_not_found": "No cached bundle",
+      "extractor_missing": "Extractor not installed",
+      "converter_missing": "Converter not installed",
+      "extractor_failed": "Extractor failed",
+      "converter_failed": "Converter failed",
+      "encrypted": "Asset encrypted",
+      "preview_failed": "Preview unavailable",
+      "missing_avatar_id": "Missing avatar id"
+    },
     "thumbnailNote": "VRChat's avatar API refuses anonymous requests — even for public avatars — so VRCSM renders a stable, id-seeded cube instead of a real thumbnail. Worlds use the public endpoint and show real images.",
     "unknownUser": "Unknown user",
     "listPaneTitle": "Local Avatars",
@@ -248,7 +315,14 @@
     "openExternal": "Open on vrchat.com",
     "openFailed": "Open failed: {{error}}",
     "launchInVrc": "Launch in VRChat",
-    "launchFailed": "Launch failed: {{error}}"
+    "launchFailed": "Launch failed: {{error}}",
+    "joinHistory": "Join History",
+    "accessPublic": "Public",
+    "accessFriends": "Friends",
+    "accessHidden": "Friends+",
+    "accessPrivate": "Invite Only",
+    "accessGroup": "Group",
+    "ownerLabel": "Owner:"
   },
   "logs": {
     "title": "Logs",

@@ -102,6 +102,19 @@ struct ScreenshotEvent
 
 void to_json(nlohmann::json& j, const ScreenshotEvent& e);
 
+/// Detailed instance connection tracking for the worlds tab.
+struct WorldSwitchEvent
+{
+    std::optional<std::string> iso_time;
+    std::string world_id;       // The base wrld_xxx ID
+    std::string instance_id;    // The full wrld_...:port~tags connection string
+    std::string access_type;    // "public", "hidden", "friends", "private", "group"
+    std::optional<std::string> owner_id; // Room owner (usr_xxx) or group owner (grp_xxx)
+    std::optional<std::string> region;   // Server region (jp, us, eu, etc)
+};
+
+void to_json(nlohmann::json& j, const WorldSwitchEvent& e);
+
 struct LogReport
 {
     std::vector<std::string> log_files;
@@ -140,6 +153,7 @@ struct LogReport
     std::vector<PlayerEvent> player_events;
     std::vector<AvatarSwitchEvent> avatar_switches;
     std::vector<ScreenshotEvent> screenshots;
+    std::vector<WorldSwitchEvent> world_switches;
 };
 
 void to_json(nlohmann::json& j, const LogReport& r);

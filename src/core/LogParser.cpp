@@ -117,6 +117,18 @@ void to_json(nlohmann::json& j, const ScreenshotEvent& e)
     };
 }
 
+void to_json(nlohmann::json& j, const WorldSwitchEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"world_id", e.world_id},
+        {"instance_id", e.instance_id},
+        {"access_type", e.access_type},
+        {"owner_id", e.owner_id ? nlohmann::json(*e.owner_id) : nlohmann::json(nullptr)},
+        {"region", e.region ? nlohmann::json(*e.region) : nlohmann::json(nullptr)}
+    };
+}
+
 void to_json(nlohmann::json& j, const LogReport& r)
 {
     j = nlohmann::json{
@@ -136,6 +148,7 @@ void to_json(nlohmann::json& j, const LogReport& r)
         {"player_events", r.player_events},
         {"avatar_switches", r.avatar_switches},
         {"screenshots", r.screenshots},
+        {"world_switches", r.world_switches},
     };
 }
 
@@ -170,6 +183,7 @@ const std::regex kDestSetRe(R"(\[Behaviour\] Destination set: (wrld_[0-9a-fA-F-]
 const std::regex kUnpackWorldRe(R"(Unpacking World \((wrld_[0-9a-fA-F-]+)\))");
 const std::regex kEnteringRoomRe(R"(\[Behaviour\] Entering Room: (.+?)\s*$)");
 const std::regex kJoiningRoomRe(R"(\[Behaviour\] Joining or Creating Room: (.+?)\s*$)");
+const std::regex kJoiningInstanceRe(R"(\[Behaviour\] Joining (wrld_[0-9a-fA-F-]+):([0-9a-zA-Z~()_-]+)\s*$)");
 
 // Avatar switch / unpack / load. Real VRChat lines:
 //   [Behaviour] Switching <player> to avatar <name>
@@ -389,6 +403,52 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             && report.world_names.find(st.pendingWorldId) == report.world_names.end())
         {
             report.world_names[st.pendingWorldId] = name;
+        }
+    }
+
+    // World instance connection stream
+    if (std::regex_search(line, m, kJoiningInstanceRe))
+    {
+        const std::string worldId = stripTrailing(m[1]);
+        const std::string instanceIdStr = stripTrailing(m[2]);
+
+        if (report.world_switches.size() < kMaxEventsPerKind)
+        {
+            WorldSwitchEvent ev;
+            ev.iso_time = st.lastTimestamp;
+            ev.world_id = worldId;
+            ev.instance_id = worldId + ":" + instanceIdStr;
+            
+            // Parse tags
+            ev.access_type = "public"; // default
+            if (instanceIdStr.find("~private(") != std::string::npos) {
+                ev.access_type = "private";
+                std::smatch t;
+                if (std::regex_search(instanceIdStr, t, std::regex(R"(private\((usr_[0-9a-fA-F-]+)\))")))
+                    ev.owner_id = t[1].str();
+            } else if (instanceIdStr.find("~friends(") != std::string::npos) {
+                ev.access_type = "friends";
+                std::smatch t;
+                if (std::regex_search(instanceIdStr, t, std::regex(R"(friends\((usr_[0-9a-fA-F-]+)\))")))
+                    ev.owner_id = t[1].str();
+            } else if (instanceIdStr.find("~hidden(") != std::string::npos) {
+                ev.access_type = "hidden";
+                std::smatch t;
+                if (std::regex_search(instanceIdStr, t, std::regex(R"(hidden\((usr_[0-9a-fA-F-]+)\))")))
+                    ev.owner_id = t[1].str();
+            } else if (instanceIdStr.find("~group(") != std::string::npos) {
+                ev.access_type = "group";
+                std::smatch t;
+                if (std::regex_search(instanceIdStr, t, std::regex(R"(group\((grp_[0-9a-fA-F-]+)\))")))
+                    ev.owner_id = t[1].str();
+            }
+            
+            std::smatch r;
+            if (std::regex_search(instanceIdStr, r, std::regex(R"(~region\(([a-zA-Z]+)\))"))) {
+                ev.region = r[1].str();
+            }
+            
+            report.world_switches.push_back(std::move(ev));
         }
     }
 

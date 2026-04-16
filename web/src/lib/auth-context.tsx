@@ -13,30 +13,67 @@ import { invalidateThumbnails } from "./thumbnails";
 import type { AuthStatus } from "./types";
 
 /**
- * Centralised VRChat auth state for the app. Three IPC touch-points:
+ * Centralised VRChat auth state. Four IPC touch-points:
  *
- *   - `auth.status`            cheap "are we still logged in" probe
- *   - `auth.openLoginWindow`   ask the host to pop a WebView2 that
- *                              navigates to vrchat.com/home/login; the
- *                              host harvests cookies on success and
- *                              broadcasts `auth.loginCompleted`
- *   - `auth.logout`            drop persisted session + wipe cookies
+ *   - `auth.status`        cheap "are we still logged in" probe
+ *   - `auth.login`         native WinHTTP call to /api/1/auth/user with
+ *                          HTTP Basic credentials, captures the `auth`
+ *                          cookie, returns {status: "success" | "requires2FA"
+ *                          | "error"}
+ *   - `auth.verify2FA`     POST the TOTP / emailOtp code to
+ *                          /api/1/auth/twofactorauth/<method>/verify,
+ *                          merges `twoFactorAuth` into the cookie jar
+ *   - `auth.logout`        drop persisted session + wipe cookies
  *
- * This is PLAN.md §4.2 Option A: VRChat's own web frontend drives the
- * entire login dance (password + 2FA + Steam OAuth + captcha + email
- * verify) and we just watch the cookie jar for the final `auth` cookie.
- * VRCSM never sees the user's password — the only thing we persist is
- * the session cookie, via DPAPI, under `%LocalAppData%\VRCSM\session.dat`.
+ * This is the v0.5.0 rewrite: no more second WebView2 popup, no more
+ * "sign in on vrchat.com in our window and we'll watch the cookie jar".
+ * The user hands VRCSM their password through a native React form, the
+ * C++ side calls the real VRChat REST API, and the only thing we
+ * persist is the resulting session cookie (DPAPI-encrypted at
+ * `%LocalAppData%\VRCSM\session.dat`).
  *
- * The status poll runs every 30s when the window is visible. It
- * intentionally does NOT retry on failure — a 401 just means "not logged
- * in" and we want the UI to show that state immediately, not flap.
+ * The status poll still runs every 30s when the window is visible. A
+ * 401 just means "not logged in" and we want the UI to reflect that
+ * state immediately, not flap.
  */
 
-interface OpenLoginResult {
-  ok: boolean;
-  error?: string;
+export type TwoFactorMethod = "totp" | "emailOtp" | "otp";
+
+interface LoginSuccessResult {
+  status: "success";
+  user: AuthStatus;
 }
+
+interface LoginTwoFactorResult {
+  status: "requires2FA";
+  twoFactorMethods: TwoFactorMethod[];
+}
+
+interface LoginErrorResult {
+  status: "error";
+  error: string;
+  httpStatus?: number;
+}
+
+export type LoginResult =
+  | LoginSuccessResult
+  | LoginTwoFactorResult
+  | LoginErrorResult;
+
+interface VerifyTwoFactorSuccess {
+  ok: true;
+  user: AuthStatus;
+}
+
+interface VerifyTwoFactorFailure {
+  ok: false;
+  error: string;
+  httpStatus?: number;
+}
+
+export type VerifyTwoFactorResult =
+  | VerifyTwoFactorSuccess
+  | VerifyTwoFactorFailure;
 
 interface AuthLoginCompletedEvent {
   ok: boolean;
@@ -49,12 +86,22 @@ interface AuthContextValue {
   loading: boolean;
   error: string | null;
   /**
-   * Opens the WebView2 login popup. Resolves as soon as the popup is
-   * spawned — actual success is delivered asynchronously through the
-   * `auth.loginCompleted` event and reflected in `status` once the
-   * follow-up `refresh()` completes.
+   * Call VRChat `/api/1/auth/user` with HTTP Basic auth. Resolves with
+   * `status: "success"` once logged in (the context's own status is
+   * updated automatically via the `auth.loginCompleted` event),
+   * `"requires2FA"` when a TOTP / emailOtp code is needed, or
+   * `"error"` with a human-readable reason the form can display.
    */
-  openLogin: () => Promise<OpenLoginResult>;
+  login: (username: string, password: string) => Promise<LoginResult>;
+  /**
+   * Second leg of the 2FA flow. `method` matches one of the values from
+   * `LoginResult.twoFactorMethods`; `code` is the 6-digit TOTP or
+   * emailOtp digits the user typed.
+   */
+  verifyTwoFactor: (
+    method: TwoFactorMethod,
+    code: string,
+  ) => Promise<VerifyTwoFactorResult>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -90,18 +137,58 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const openLogin = useCallback(async (): Promise<OpenLoginResult> => {
-    try {
-      const result = await ipc.call<undefined, OpenLoginResult>(
-        "auth.openLoginWindow",
-      );
-      return result;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (mountedRef.current) setError(msg);
-      return { ok: false, error: msg };
-    }
-  }, []);
+  const login = useCallback(
+    async (username: string, password: string): Promise<LoginResult> => {
+      try {
+        const result = await ipc.call<
+          { username: string; password: string },
+          LoginResult
+        >("auth.login", { username, password });
+        if (result.status === "success" && mountedRef.current) {
+          setError(null);
+          // The host also broadcasts `auth.loginCompleted`, but pushing
+          // the status directly here shaves one round-trip off the UI
+          // update so the badge flips the instant the user closes the
+          // login dialog.
+          setStatus(result.user);
+        } else if (result.status === "error" && mountedRef.current) {
+          setError(result.error);
+        }
+        return result;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (mountedRef.current) setError(msg);
+        return { status: "error", error: msg };
+      }
+    },
+    [],
+  );
+
+  const verifyTwoFactor = useCallback(
+    async (
+      method: TwoFactorMethod,
+      code: string,
+    ): Promise<VerifyTwoFactorResult> => {
+      try {
+        const result = await ipc.call<
+          { method: TwoFactorMethod; code: string },
+          VerifyTwoFactorResult
+        >("auth.verify2FA", { method, code });
+        if (result.ok && mountedRef.current) {
+          setError(null);
+          setStatus(result.user);
+        } else if (!result.ok && mountedRef.current) {
+          setError(result.error);
+        }
+        return result;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (mountedRef.current) setError(msg);
+        return { ok: false, error: msg };
+      }
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -120,9 +207,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   // Subscribe to the host-side login completion event. Success triggers
-  // a status refresh so the AuthChip / Friends page update without the
-  // user having to click again. Failure (other than plain cancellation)
-  // surfaces in `error`.
+  // a status refresh so the AuthChip / Friends page update even when
+  // the login came from somewhere other than the dialog (e.g. a
+  // cookie-rehydrate on app launch).
   useEffect(() => {
     const unsubscribe = ipc.on<AuthLoginCompletedEvent>(
       "auth.loginCompleted",
@@ -156,11 +243,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       status,
       loading,
       error,
-      openLogin,
+      login,
+      verifyTwoFactor,
       logout,
       refresh,
     }),
-    [status, loading, error, openLogin, logout, refresh],
+    [status, loading, error, login, verifyTwoFactor, logout, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
