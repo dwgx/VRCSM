@@ -24,6 +24,10 @@
 #include <shlobj.h>
 #include <shobjidl.h>
 
+#include <wil/com.h>
+#include <wil/resource.h>
+#include <wil/result.h>
+
 #include <thread>
 #include <unordered_set>
 
@@ -704,49 +708,50 @@ nlohmann::json IpcBridge::HandleShellPickFolder(const nlohmann::json& params, co
         }
     });
 
-    wil::com_ptr<IFileOpenDialog> dialog;
-    THROW_IF_FAILED(CoCreateInstance(
+    Microsoft::WRL::ComPtr<IFileOpenDialog> dialog;
+    HRESULT hr = CoCreateInstance(
         CLSID_FileOpenDialog,
         nullptr,
         CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(dialog.put())));
+        IID_PPV_ARGS(&dialog));
+    if (FAILED(hr)) return nlohmann::json{{"cancelled", true}};
 
     FILEOPENDIALOGOPTIONS options = 0;
-    THROW_IF_FAILED(dialog->GetOptions(&options));
-    THROW_IF_FAILED(dialog->SetOptions(
-        options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST));
-    THROW_IF_FAILED(dialog->SetTitle(title.c_str()));
+    dialog->GetOptions(&options);
+    dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+    dialog->SetTitle(title.c_str());
 
     if (!initialDir.empty())
     {
-        wil::com_ptr<IShellItem> folder;
+        Microsoft::WRL::ComPtr<IShellItem> folder;
         if (SUCCEEDED(SHCreateItemFromParsingName(
                 initialDir.c_str(),
                 nullptr,
-                IID_PPV_ARGS(folder.put()))))
+                IID_PPV_ARGS(&folder))))
         {
-            (void)dialog->SetFolder(folder.get());
+            (void)dialog->SetFolder(folder.Get());
         }
     }
 
     const HWND parent = m_host.ParentHwnd();
     const HRESULT showResult = dialog->Show(parent);
-    if (showResult == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+    if (showResult == HRESULT_FROM_WIN32(ERROR_CANCELLED) || FAILED(showResult))
     {
         return nlohmann::json{{"cancelled", true}};
     }
-    THROW_IF_FAILED(showResult);
 
-    wil::com_ptr<IShellItem> result;
-    THROW_IF_FAILED(dialog->GetResult(result.put()));
+    Microsoft::WRL::ComPtr<IShellItem> result;
+    if (FAILED(dialog->GetResult(&result))) return nlohmann::json{{"cancelled", true}};
 
-    wil::unique_cotaskmem_string path;
-    THROW_IF_FAILED(result->GetDisplayName(SIGDN_FILESYSPATH, &path));
+    PWSTR path = nullptr;
+    if (FAILED(result->GetDisplayName(SIGDN_FILESYSPATH, &path))) return nlohmann::json{{"cancelled", true}};
 
-    return nlohmann::json{
+    nlohmann::json ret = {
         {"cancelled", false},
-        {"path", WideToUtf8(path.get())}
+        {"path", WideToUtf8(path)}
     };
+    CoTaskMemFree(path);
+    return ret;
 }
 
 nlohmann::json IpcBridge::HandleShellOpenUrl(const nlohmann::json& params, const std::optional<std::string>&)
