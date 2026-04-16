@@ -6,6 +6,9 @@
 namespace vrcsm::core
 {
 
+class TaskQueue;
+struct TaskToken;
+
 // Outcome of an avatar-preview request. Successful runs produce an
 // absolute glb path plus the web-facing URL the React renderer should
 // load (served over the `preview.local` virtual host); failures carry
@@ -63,6 +66,17 @@ public:
         const std::string& avatarId,
         const std::filesystem::path& vrchatBaseDir,
         const std::string& assetUrl = "");
+
+    /// Cancellation-aware variant. Uses `queue` for child process
+    /// management (Job Object, concurrency=1) and checks `token` at
+    /// every phase boundary so the worker bails early when the user
+    /// switches avatars.
+    static AvatarPreviewResult Request(
+        const std::string& avatarId,
+        const std::filesystem::path& vrchatBaseDir,
+        const std::string& assetUrl,
+        TaskQueue& queue,
+        const TaskToken& token);
 
     /// Directory where converted glbs land.
     /// `%LocalAppData%\VRCSM\preview-cache`. Created on first access.

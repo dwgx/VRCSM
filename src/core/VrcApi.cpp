@@ -2,11 +2,13 @@
 
 #include "AuthStore.h"
 #include "Common.h"
+#include "RateLimiter.h"
 
 #include <chrono>
 #include <fstream>
 #include <mutex>
 #include <system_error>
+#include <thread>
 #include <unordered_map>
 
 #include <Windows.h>
@@ -372,13 +374,15 @@ std::string describeHttpFailure(const HttpResponse& response, std::string_view l
     return std::string(label);
 }
 
-HttpResponse httpRequest(
+/// Fires a single HTTP request and reads the full response.
+/// Does NOT handle rate limiting or retries — see httpRequestWithRetry().
+HttpResponse httpRequestOnce(
     const std::wstring& method,
     const std::wstring& host,
     const std::wstring& pathAndQuery,
-    const std::vector<std::pair<std::wstring, std::wstring>>& headers = {},
-    const std::string& bodyUtf8 = {},
-    bool captureSetCookie = false)
+    const std::vector<std::pair<std::wstring, std::wstring>>& headers,
+    const std::string& bodyUtf8,
+    bool captureSetCookie)
 {
     HttpResponse result;
 
@@ -538,6 +542,50 @@ HttpResponse httpRequest(
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
     return result;
+}
+
+/// Rate-limited wrapper around httpRequestOnce().
+/// Acquires a token from the global rate limiter before each attempt and
+/// retries up to 3 times on HTTP 429 with exponential backoff (1s, 2s, 4s).
+HttpResponse httpRequest(
+    const std::wstring& method,
+    const std::wstring& host,
+    const std::wstring& pathAndQuery,
+    const std::vector<std::pair<std::wstring, std::wstring>>& headers = {},
+    const std::string& bodyUtf8 = {},
+    bool captureSetCookie = false)
+{
+    static constexpr int kMaxRetries = 3;
+    static constexpr int kBaseBackoffMs = 1000; // 1 second
+
+    for (int attempt = 0; attempt <= kMaxRetries; ++attempt)
+    {
+        vrcsm::core::RateLimiter::Instance().Acquire();
+
+        auto result = httpRequestOnce(
+            method, host, pathAndQuery, headers, bodyUtf8, captureSetCookie);
+
+        if (result.status != 429)
+        {
+            return result;
+        }
+
+        // Last attempt — give up and return the 429 as-is.
+        if (attempt == kMaxRetries)
+        {
+            spdlog::warn("HTTP 429 after {} retries, giving up", kMaxRetries);
+            return result;
+        }
+
+        int backoffMs = kBaseBackoffMs * (1 << attempt); // 1s, 2s, 4s
+        spdlog::warn(
+            "HTTP 429 on attempt {}/{}, backing off {}ms",
+            attempt + 1, kMaxRetries + 1, backoffMs);
+        std::this_thread::sleep_for(std::chrono::milliseconds(backoffMs));
+    }
+
+    // Unreachable, but keeps the compiler happy.
+    return {};
 }
 
 HttpResponse httpGet(

@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { IdBadge } from "./IdBadge";
+import { AvatarPreview3D } from "./AvatarPreview3D";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import type { AvatarDetails, UnityPackage } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +12,8 @@ import {
 import { Box, User, AlertTriangle, CloudSun } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
-export function AvatarPopupBadge({ avatarId }: { avatarId: string }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, isLoading } = useIpcQuery<{ id: string }, { details: any | null }>(
+export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { avatarId: string }) {
+  const { data, isLoading } = useIpcQuery<{ id: string }, { details: AvatarDetails | null }>(
     "avatar.details",
     { id: avatarId },
     { staleTime: 120_000, enabled: !!avatarId && avatarId.startsWith("avtr_") },
@@ -69,16 +70,12 @@ export function AvatarPopupBadge({ avatarId }: { avatarId: string }) {
         <div className="group flex flex-col gap-0 overflow-hidden rounded-[calc(var(--radius-sm)+4px)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] shadow-lg backdrop-blur-md">
             {/* Display Image */}
             <div className="relative h-[240px] w-full shrink-0 bg-[hsl(var(--muted))] overflow-hidden flex items-center justify-center">
-               {details.imageUrl ? (
-                  <img
-                    src={details.imageUrl}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    alt=""
-                    loading="lazy"
-                  />
-               ) : (
-                  <User className="size-16 text-[hsl(var(--border))]" />
-               )}
+               <AvatarPreview3D
+                 avatarId={avatarId}
+                 assetUrl={details.unityPackages?.find((p: UnityPackage) => p.platform === "standalonewindows")?.assetUrl ?? undefined}
+                 fallbackImageUrl={details.thumbnailImageUrl ?? details.imageUrl ?? undefined}
+                 size={80}
+               />
                {/* Fade from image to content */}
                <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--surface))] via-[hsl(var(--surface)/0.2)] to-transparent" />
                
@@ -108,13 +105,13 @@ export function AvatarPopupBadge({ avatarId }: { avatarId: string }) {
                   <div className="flex flex-col bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.4)] rounded-md px-3 py-2">
                      <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center gap-1"><CloudSun className="size-3" />PLATFORMS</span>
                      <span className="font-mono text-[hsl(var(--foreground))] font-semibold mt-1">
-                       {details.unityPackages ? details.unityPackages.map((p: any) => p.platform).join(" / ") : "Unspecified"}
+                       {details.unityPackages ? details.unityPackages.map((p: UnityPackage) => p.platform).join(" / ") : "Unspecified"}
                      </span>
                   </div>
                   <div className="flex flex-col bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.4)] rounded-md px-3 py-2">
                      <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center gap-1"><Box className="size-3" />FILE SIZE</span>
                      <span className="font-mono text-[hsl(var(--foreground))] font-semibold mt-1 flex flex-wrap gap-1">
-                        {details.unityPackages ? details.unityPackages.map((p: any) => p.platform === "android" ? "Quest: " : "PC: " + (p.assetUrl ? "Valid" : "None")).join(" ") : "Unknown"}
+                        {details.unityPackages ? details.unityPackages.map((p: UnityPackage) => p.platform === "android" ? "Quest: " : "PC: " + (p.assetUrl ? "Valid" : "None")).join(" ") : "Unknown"}
                      </span>
                   </div>
                </div>
@@ -148,4 +145,4 @@ export function AvatarPopupBadge({ avatarId }: { avatarId: string }) {
       </DialogContent>
     </Dialog>
   );
-}
+});

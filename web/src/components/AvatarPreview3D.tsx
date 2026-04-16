@@ -1,7 +1,8 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 import { AlertTriangle, Box, Lock, Loader2 } from "lucide-react";
 import { ipc } from "@/lib/ipc";
 
@@ -104,22 +105,106 @@ function LoadingState({ size }: { size: number }) {
 }
 
 /**
- * React-three-fiber model. `useGLTF` suspends on load, which is why
- * we wrap it in a `<Suspense>` below. Cleaning up the cache on
- * unmount prevents a slow leak when the user clicks through dozens
- * of avatars — react-three-fiber's default cache keeps every blob
- * alive indefinitely otherwise.
+ * Compute a "tight" bounding box by trimming the 2% most extreme
+ * vertices from each axis. This eliminates outlier geometry (oversized
+ * skybox props, enormous trumpet meshes, stray vertices at world
+ * origin) that would otherwise push the bounding box to absurd
+ * extents and cause the model to appear as a tiny dot.
+ */
+function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
+  const positions: THREE.Vector3[] = [];
+
+  scene.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    const geo = child.geometry;
+    if (!geo?.attributes?.position) return;
+
+    const posAttr = geo.attributes.position;
+    const worldMatrix = child.matrixWorld;
+    const v = new THREE.Vector3();
+
+    for (let i = 0; i < posAttr.count; i++) {
+      v.fromBufferAttribute(posAttr, i);
+      v.applyMatrix4(worldMatrix);
+      positions.push(v.clone());
+    }
+  });
+
+  if (positions.length === 0) {
+    return new THREE.Box3().setFromObject(scene);
+  }
+
+  // Sort per axis, trim 2% from each end.
+  const trim = Math.max(1, Math.floor(positions.length * 0.02));
+
+  const xs = positions.map((p) => p.x).sort((a, b) => a - b);
+  const ys = positions.map((p) => p.y).sort((a, b) => a - b);
+  const zs = positions.map((p) => p.z).sort((a, b) => a - b);
+
+  return new THREE.Box3(
+    new THREE.Vector3(xs[trim], ys[trim], zs[trim]),
+    new THREE.Vector3(
+      xs[xs.length - 1 - trim],
+      ys[ys.length - 1 - trim],
+      zs[zs.length - 1 - trim],
+    ),
+  );
+}
+
+/**
+ * React-three-fiber model with robust origin normalization.
+ *
+ * VRChat avatars extracted via UnityPy often have their root bone
+ * displaced from world origin (rigged with Hips at an arbitrary
+ * position). Drei's `<Stage>` fails because it uses the raw bounding
+ * box — oversized props (skyboxes, huge trumpets) pollute the bounds.
+ *
+ * We fix this by:
+ *   1. Computing a robust bounding box (trimming 2% outlier vertices).
+ *   2. Centering the model so the mid-point of the robust AABB sits
+ *      at the scene origin (X/Z centered, Y floor at 0).
+ *   3. Scaling to fit a 2m-tall viewport so the camera always frames
+ *      the avatar regardless of original scale.
  */
 function GlbModel({ url }: { url: string }) {
   const { scene } = useGLTF(url);
+  const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
+    if (!groupRef.current) return;
+
+    // Force world matrix update before measuring.
+    scene.updateMatrixWorld(true);
+
+    const box = computeRobustBounds(scene);
+    const boxSize = new THREE.Vector3();
+    const boxCenter = new THREE.Vector3();
+    box.getSize(boxSize);
+    box.getCenter(boxCenter);
+
+    // Scale so the tallest axis fits in ~2 meters.
+    const maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z);
+    const scale = maxDim > 0 ? 2.0 / maxDim : 1;
+
+    groupRef.current.scale.setScalar(scale);
+
+    // Center X/Z, plant feet on Y=0.
+    groupRef.current.position.set(
+      -boxCenter.x * scale,
+      -box.min.y * scale,
+      -boxCenter.z * scale,
+    );
+
     return () => {
       useGLTF.clear(url);
     };
-  }, [url]);
+  }, [url, scene]);
 
-  return <primitive object={scene} />;
+  return (
+    <group ref={groupRef}>
+      <primitive object={scene} />
+    </group>
+  );
 }
 
 /**
@@ -152,9 +237,18 @@ export function AvatarPreview3D({
     | { kind: "error"; code: string; message?: string }
   >({ kind: "loading" });
 
+  const prevAvatarRef = useRef<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     setState({ kind: "loading" });
+
+    // If the user switched avatars, abort the previous extraction so
+    // the TaskQueue cancels the stale child process immediately.
+    if (prevAvatarRef.current && prevAvatarRef.current !== avatarId) {
+      ipc.call("avatar.preview.abort", { avatarId: prevAvatarRef.current }).catch(() => {});
+    }
+    prevAvatarRef.current = avatarId;
 
     ipc
       .call<{ avatarId: string; assetUrl?: string }, PreviewResponse>("avatar.preview", { avatarId, assetUrl })
@@ -181,6 +275,8 @@ export function AvatarPreview3D({
 
     return () => {
       cancelled = true;
+      // Abort on unmount too — if the dialog closes mid-extraction.
+      ipc.call("avatar.preview.abort", { avatarId }).catch(() => {});
     };
   }, [avatarId, assetUrl]);
 
@@ -201,9 +297,9 @@ export function AvatarPreview3D({
           style={{ width: size, height: size }}
         >
           <img src={fallbackImageUrl} className="h-full w-full object-cover" alt="" />
-          <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 bg-gradient-to-t from-[hsl(var(--background))/0.9] to-transparent">
-            <AlertTriangle className="size-4 text-[hsl(var(--warn-foreground,var(--destructive)))] mb-1" />
-            <span className="text-[9px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center bg-[hsl(var(--background))/0.9] py-1 border-t border-[hsl(var(--border))]">
+            <AlertTriangle className="size-3 text-[hsl(var(--warn-foreground,var(--destructive)))] mr-1.5" />
+            <span className="text-[9.5px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] text-center">
               {state.message?.includes("assetUrl") ? 'No Asset URL' : 'Preview Unavailable'}
             </span>
           </div>

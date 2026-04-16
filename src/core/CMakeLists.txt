@@ -2,6 +2,7 @@ add_library(vrcsm_core STATIC
     Common.cpp
     AuthStore.cpp
     PathProbe.cpp
+    CacheIndex.cpp
     CacheScanner.cpp
     BundleSniff.cpp
     LogParser.cpp
@@ -15,6 +16,8 @@ add_library(vrcsm_core STATIC
     Migrator.cpp
     VrcConfig.cpp
     VrcSettings.cpp
+    TaskQueue.cpp
+    RateLimiter.cpp
     VrcApi.cpp
     Report.cpp
 )

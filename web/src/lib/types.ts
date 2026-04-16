@@ -335,3 +335,53 @@ export interface Friend {
 export interface FriendsListResult {
   friends: Friend[];
 }
+
+// ─── Avatar Details (v0.5.0) ──────────────────────────────────────────
+// Full avatar record from /api/1/avatars/{id}. Used by AvatarPopupBadge
+// and the Avatars page inspector.
+
+export interface UnityPackage {
+  id: string;
+  assetUrl: string | null;
+  assetVersion: number;
+  platform: "standalonewindows" | "android" | string;
+  unityVersion: string | null;
+  unitySortNumber: number;
+  created_at: string | null;
+}
+
+export interface AvatarDetails {
+  id: string;
+  name: string;
+  description: string | null;
+  authorId: string;
+  authorName: string;
+  imageUrl: string | null;
+  thumbnailImageUrl: string | null;
+  releaseStatus: "public" | "private" | string;
+  version: number;
+  unityPackages: UnityPackage[];
+  created_at: string | null;
+  updated_at: string | null;
+  tags: string[];
+  assetUrl: string | null;
+}
+
+// ─── World Details (v0.5.0) ───────────────────────────────────────────
+
+export interface WorldDetails {
+  id: string;
+  name: string;
+  description: string | null;
+  authorId: string;
+  authorName: string;
+  imageUrl: string | null;
+  thumbnailImageUrl: string | null;
+  releaseStatus: string;
+  capacity: number;
+  visits: number;
+  favorites: number;
+  tags: string[];
+  created_at: string | null;
+  updated_at: string | null;
+}

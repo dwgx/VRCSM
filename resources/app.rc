@@ -10,6 +10,9 @@ IDI_APP_ICON ICON "icons\\vrcsm.ico"
 
 1 RT_MANIFEST "app.manifest"
 
+#define IDR_EXTRACTOR_EXE 1000
+IDR_EXTRACTOR_EXE RCDATA "..\\dist\\vrcsm_extractor.exe"
+
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION 0,5,0,0
  PRODUCTVERSION 0,5,0,0

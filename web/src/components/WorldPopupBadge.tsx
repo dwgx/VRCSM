@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { IdBadge } from "./IdBadge";
 import { ipc } from "@/lib/ipc";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import type { WorldDetails } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Users, Globe2, Play } from "lucide-react";
 
-export function WorldPopupBadge({ worldId }: { worldId: string }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, isLoading } = useIpcQuery<{ id: string }, { details: any | null }>(
+export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worldId: string }) {
+  const { data, isLoading } = useIpcQuery<{ id: string }, { details: WorldDetails | null }>(
     "world.details",
     { id: worldId },
     { staleTime: 120_000, enabled: !!worldId && worldId.startsWith("wrld_") },
@@ -139,4 +139,4 @@ export function WorldPopupBadge({ worldId }: { worldId: string }) {
       </DialogContent>
     </Dialog>
   );
-}
+});

@@ -8,6 +8,7 @@
 #include "../core/AvatarPreview.h"
 
 #include "../core/AuthStore.h"
+#include "../core/CacheIndex.h"
 #include "../core/BundleSniff.h"
 #include "../core/CacheScanner.h"
 #include "../core/JunctionUtil.h"
@@ -28,6 +29,7 @@
 #include <wil/resource.h>
 #include <wil/result.h>
 
+#include <future>
 #include <thread>
 #include <unordered_set>
 
@@ -62,6 +64,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "avatar.details",
         "world.details",
         "avatar.preview",
+        "avatar.preview.abort",
         "avatar.select",
         "user.me",
         "user.getProfile",
@@ -299,6 +302,14 @@ IpcBridge::IpcBridge(WebViewHost& host)
     (void)vrcsm::core::AuthStore::Instance().Load();
     RegisterHandlers();
 
+    // Kick off the background cache indexer so avatar-preview lookups
+    // don't hit the 2000-file brute-force wall.
+    {
+        const auto probe = vrcsm::core::PathProbe::Probe();
+        const auto cwpDir = std::filesystem::path(probe.baseDir) / L"Cache-WindowsPlayer";
+        vrcsm::core::CacheIndex::Instance().StartScan(cwpDir);
+    }
+
     // Spin up the VRChat process watcher now. It pushes a
     // `process.vrcStatusChanged` event on every transition (first tick
     // also emits so the frontend has initial state without polling).
@@ -487,6 +498,15 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("avatar.preview", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleAvatarPreviewRequest(params, id);
+    });
+    m_handlers.emplace("avatar.preview.abort", [this](const nlohmann::json& params, const std::optional<std::string>&) -> nlohmann::json
+    {
+        const auto avatarId = JsonStringField(params, "avatarId").value_or("");
+        if (!avatarId.empty())
+        {
+            m_previewQueue.Cancel(avatarId);
+        }
+        return nlohmann::json{{"ok", true}};
     });
     m_handlers.emplace("friends.list", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
@@ -1036,34 +1056,80 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
         };
     }
 
-    // Delegate the heavy lifting — bundle location, extractor spawn,
-    // fbx→glb conversion, cache hit-path — to AvatarPreview::Request
-    // so the IPC handler stays a thin adapter. The request runs on the
-    // async worker thread already (avatar.preview is in
-    // AsyncMethodSet), so we can block here without freezing the UI.
+    // Submit to the TaskQueue instead of blocking the IPC worker thread.
+    // The queue serialises extractor runs (concurrency=1), cancels stale
+    // requests when the user switches avatars, and assigns every child
+    // process to a Job Object so orphans are impossible.
+    //
+    // We still run synchronously from the IPC worker's perspective — the
+    // worker thread blocks on the promise below. But the TaskQueue's own
+    // worker handles the actual child process, and the key-based
+    // cancellation means a rapid-click sequence only ever runs the LAST
+    // requested avatar.
+    std::promise<vrcsm::core::AvatarPreviewResult> promise;
+    auto future = promise.get_future();
+
     const auto probe = vrcsm::core::PathProbe::Probe();
-    const auto result = vrcsm::core::AvatarPreview::Request(avatarId, probe.baseDir, assetUrl);
+
+    vrcsm::core::Task task;
+    task.key = avatarId;
+    task.work = [avatarId, assetUrl, baseDir = probe.baseDir, this](const vrcsm::core::TaskToken& token) -> vrcsm::core::TaskResult
+    {
+        const auto result = vrcsm::core::AvatarPreview::Request(avatarId, baseDir, assetUrl, m_previewQueue, token);
+        nlohmann::json out;
+        out["avatarId"] = avatarId;
+        out["ok"] = result.ok;
+        if (result.ok)
+        {
+            out["glbUrl"] = result.glbUrl;
+            if (!result.glbPath.empty()) out["glbPath"] = result.glbPath;
+            out["cached"] = result.cached;
+        }
+        else
+        {
+            out["code"] = result.code.empty() ? std::string("preview_failed") : result.code;
+            out["message"] = result.message;
+        }
+        return vrcsm::core::TaskResult{result.ok, out.dump(), result.message};
+    };
+
+    task.onDone = [&promise](const vrcsm::core::TaskResult& taskResult)
+    {
+        vrcsm::core::AvatarPreviewResult result;
+        if (taskResult.error == "cancelled")
+        {
+            result.code = "cancelled";
+            result.message = "Request superseded by a newer avatar.preview call";
+        }
+        else if (taskResult.ok)
+        {
+            result.ok = true;
+            result.glbPath = taskResult.value; // JSON string, parsed by caller
+        }
+        else
+        {
+            result.code = "preview_failed";
+            result.message = taskResult.error;
+        }
+        promise.set_value(std::move(result));
+    };
+
+    m_previewQueue.Submit(std::move(task));
+    auto queueResult = future.get();
+
+    // If the queue returned the raw JSON in `value`, parse and return it.
+    // Otherwise build the error envelope.
+    if (!queueResult.glbPath.empty() && queueResult.glbPath.front() == '{')
+    {
+        try { return nlohmann::json::parse(queueResult.glbPath); }
+        catch (...) {}
+    }
 
     nlohmann::json out;
     out["avatarId"] = avatarId;
-    out["ok"] = result.ok;
-    if (result.ok)
-    {
-        out["glbUrl"] = result.glbUrl;
-        if (!result.glbPath.empty())
-        {
-            out["glbPath"] = result.glbPath;
-        }
-        out["cached"] = result.cached;
-        return out;
-    }
-
-    // All failure modes come through here — the frontend switches on
-    // `code` so each mode gets its own empty-state message. Keep the
-    // taxonomy flat and stable; adding a new code is fine, renaming
-    // one silently breaks the fallback.
-    out["code"] = result.code.empty() ? std::string("preview_failed") : result.code;
-    out["message"] = result.message;
+    out["ok"] = queueResult.ok;
+    out["code"] = queueResult.code.empty() ? std::string("preview_failed") : queueResult.code;
+    out["message"] = queueResult.message;
     return out;
 }
 
