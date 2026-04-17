@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Card,
@@ -14,10 +15,16 @@ import { Input } from "@/components/ui/input";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { ipc } from "@/lib/ipc";
+import {
+  LIBRARY_LIST_NAME,
+  useFavoriteActions,
+  useFavoriteItems,
+} from "@/lib/library";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { type WorldSwitchEvent, type PlayerEvent } from "@/lib/types";
-import { Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff, Heart } from "lucide-react";
 
 /**
  * Stable string hash used to seed the world tile gradient so each
@@ -47,10 +54,14 @@ function WorldThumb({
   id,
   className,
   label,
+  isFavorited,
+  onToggleFavorite,
 }: {
   id: string;
   className?: string;
   label?: boolean;
+  isFavorited?: boolean;
+  onToggleFavorite?: (thumbnailUrl: string | null) => void;
 }) {
   const { url } = useThumbnail(id);
   const hue = hueFor(id);
@@ -87,6 +98,24 @@ function WorldThumb({
           wrld
         </div>
       ) : null}
+      {onToggleFavorite ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(url);
+          }}
+          className={cn(
+            "absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full border border-black/20 transition-colors",
+            isFavorited
+              ? "bg-[#C25B5B] text-white"
+              : "bg-black/45 text-white/85 hover:bg-black/65",
+          )}
+          title={isFavorited ? "Remove from library" : "Save to library"}
+        >
+          <Heart className={cn("size-3", isFavorited && "fill-current")} />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -95,12 +124,16 @@ function WorldTile({
   id,
   name,
   isSelected,
+  isFavorited,
   onSelect,
+  onToggleFavorite,
 }: {
   id: string;
   name: string | null;
   isSelected: boolean;
+  isFavorited: boolean;
   onSelect: () => void;
+  onToggleFavorite: (thumbnailUrl: string | null) => void;
 }) {
   const display = name ?? shortenId(id);
   return (
@@ -114,7 +147,12 @@ function WorldTile({
           : "border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] hover:border-[hsl(var(--border-strong))]")
       }
     >
-      <WorldThumb id={id} label />
+      <WorldThumb
+        id={id}
+        label
+        isFavorited={isFavorited}
+        onToggleFavorite={onToggleFavorite}
+      />
       <div className="flex flex-col gap-0.5 px-2.5 py-2">
         <div className="truncate text-[12px] font-medium text-[hsl(var(--foreground))]">
           {display}
@@ -284,10 +322,20 @@ function WorldHistoryPanel({
 
 function Worlds() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const { report, loading, error } = useReport();
   const logs = report?.logs ?? null;
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
+  const { toggleFavorite } = useFavoriteActions();
+
+  useEffect(() => {
+    const selectedFromRoute = searchParams.get("select");
+    if (selectedFromRoute) {
+      setSelectedId(selectedFromRoute);
+    }
+  }, [searchParams]);
 
   const ids = useMemo(() => logs?.recent_world_ids ?? [], [logs]);
 
@@ -327,6 +375,35 @@ function Worlds() {
       prefetchThumbnails(ids);
     }
   }, [ids]);
+
+  async function handleToggleFavorite(
+    worldId: string,
+    thumbnailUrl: string | null,
+  ) {
+    const isFavorited = favoriteIds.world.has(worldId);
+    const displayName = logs?.world_names[worldId] ?? null;
+    try {
+      await toggleFavorite(
+        {
+          type: "world",
+          target_id: worldId,
+          list_name: LIBRARY_LIST_NAME,
+          display_name: displayName ?? undefined,
+          thumbnail_url: thumbnailUrl,
+        },
+        isFavorited,
+      );
+      toast.success(
+        t(
+          isFavorited ? "library.removedToast" : "library.savedToast",
+          { name: displayName ?? shortenId(worldId) },
+        ),
+      );
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast.error(t("library.toggleFailed", { error: message }));
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
@@ -398,7 +475,11 @@ function Worlds() {
                       id={id}
                       name={logs.world_names[id] ?? null}
                       isSelected={selected === id}
+                      isFavorited={favoriteIds.world.has(id)}
                       onSelect={() => setSelectedId(id)}
+                      onToggleFavorite={(thumbnailUrl) =>
+                        handleToggleFavorite(id, thumbnailUrl)
+                      }
                     />
                   ))}
                 </div>
@@ -413,7 +494,15 @@ function Worlds() {
               </div>
               <div className="flex flex-col gap-3 p-4">
                 <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]">
-                  <WorldThumb id={selected} className="h-36 w-full" label />
+                  <WorldThumb
+                    id={selected}
+                    className="h-36 w-full"
+                    label
+                    isFavorited={favoriteIds.world.has(selected)}
+                    onToggleFavorite={(thumbnailUrl) =>
+                      handleToggleFavorite(selected, thumbnailUrl)
+                    }
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1">

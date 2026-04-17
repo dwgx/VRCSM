@@ -163,6 +163,18 @@ public:
     // Items in a specific list, ordered by sort_order asc, added_at asc.
     Result<nlohmann::json> FavoriteItems(const std::string& list_name);
 
+    Result<std::monostate> SetFavoriteNote(const std::string& type,
+                                           const std::string& target_id,
+                                           const std::string& list_name,
+                                           const std::string& note,
+                                           const std::string& updated_at);
+
+    Result<std::monostate> SetFavoriteTags(const std::string& type,
+                                           const std::string& target_id,
+                                           const std::string& list_name,
+                                           const std::vector<std::string>& tags,
+                                           const std::string& updated_at);
+
     // Export one list as a canonical JSON payload (for user-driven
     // backup). The shape is identical to FavoriteItems() but with
     // a `schema_version` header so imports can detect format changes.

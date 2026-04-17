@@ -444,3 +444,26 @@ export interface WorldDetails {
   created_at: string | null;
   updated_at: string | null;
 }
+
+// ─── Local Library / Favorites ───────────────────────────────────────
+
+export interface FavoriteListSummary {
+  list_name: string;
+  name: string;
+  type: string | null;
+  item_count: number;
+  latest_added_at: string | null;
+}
+
+export interface FavoriteItem {
+  type: string | null;
+  target_id: string;
+  list_name: string;
+  display_name: string | null;
+  thumbnail_url: string | null;
+  added_at: string | null;
+  sort_order: number;
+  tags: string[];
+  note: string | null;
+  note_updated_at: string | null;
+}

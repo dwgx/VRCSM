@@ -134,6 +134,88 @@ nlohmann::json IpcBridge::HandleFavoritesRemove(const nlohmann::json& params, co
     return nlohmann::json{{"ok", true}};
 }
 
+nlohmann::json IpcBridge::HandleFavoritesNoteSet(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto type = JsonStringField(params, "type").value_or("");
+    const auto targetId = JsonStringField(params, "target_id").value_or("");
+    const auto listName = JsonStringField(params, "list_name").value_or("");
+    const auto note = JsonStringField(params, "note").value_or("");
+    if (type.empty() || targetId.empty() || listName.empty())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument",
+            "favorites.note.set requires type, target_id, list_name",
+            0,
+        });
+    }
+
+    const auto updatedAt = vrcsm::core::nowIso();
+    auto res = vrcsm::core::Database::Instance().SetFavoriteNote(
+        type,
+        targetId,
+        listName,
+        note,
+        updatedAt);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    return nlohmann::json{{"ok", true}, {"updated_at", updatedAt}};
+}
+
+nlohmann::json IpcBridge::HandleFavoritesTagsSet(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto type = JsonStringField(params, "type").value_or("");
+    const auto targetId = JsonStringField(params, "target_id").value_or("");
+    const auto listName = JsonStringField(params, "list_name").value_or("");
+    if (type.empty() || targetId.empty() || listName.empty())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument",
+            "favorites.tags.set requires type, target_id, list_name",
+            0,
+        });
+    }
+
+    std::vector<std::string> tags;
+    if (params.contains("tags"))
+    {
+        if (!params["tags"].is_array())
+        {
+            throw IpcException(vrcsm::core::Error{
+                "invalid_argument",
+                "favorites.tags.set requires tags to be an array",
+                0,
+            });
+        }
+        for (const auto& tag : params["tags"])
+        {
+            if (!tag.is_string())
+            {
+                throw IpcException(vrcsm::core::Error{
+                    "invalid_argument",
+                    "favorites.tags.set requires every tag to be a string",
+                    0,
+                });
+            }
+            tags.push_back(tag.get<std::string>());
+        }
+    }
+
+    const auto updatedAt = vrcsm::core::nowIso();
+    auto res = vrcsm::core::Database::Instance().SetFavoriteTags(
+        type,
+        targetId,
+        listName,
+        tags,
+        updatedAt);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    return nlohmann::json{{"ok", true}, {"updated_at", updatedAt}};
+}
+
 nlohmann::json IpcBridge::HandleFavoritesExport(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto listName = JsonStringField(params, "list_name").value_or("");

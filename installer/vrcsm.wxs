@@ -4,7 +4,7 @@
   <Package
     Name="VRCSM"
     Manufacturer="dwgx"
-    Version="0.5.0.0"
+    Version="$(var.ProductVersion)"
     UpgradeCode="6e3f2c84-7e1d-4c2f-9a3d-1f0a8b2d4e5c"
     Scope="perUser"
     Compressed="yes">
