@@ -1,0 +1,89 @@
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { ipc } from "@/lib/ipc";
+import type { AppVersion } from "@/lib/types";
+import { useVrcProcess } from "@/lib/vrc-context";
+import { cn } from "@/lib/utils";
+
+import { TabGeneral } from "./TabGeneral";
+import { TabConfigJson } from "./TabConfigJson";
+import { TabSteamVR } from "./TabSteamVR";
+import { TabRegistry } from "./TabRegistry";
+
+export default function SettingsLayout() {
+  const { t } = useTranslation();
+  const { status } = useVrcProcess();
+  const vrcRunning = status.running;
+  const [version, setVersion] = useState<AppVersion | null>(null);
+  const [activeTab, setActiveTab] = useState<"general" | "config" | "steamvr" | "registry">("general");
+
+  useEffect(() => {
+    let alive = true;
+    ipc
+      .version()
+      .then((v) => {
+        if (alive) setVersion(v);
+      })
+      .catch((e: unknown) => {
+        console.error("Failed to fetch version", e);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-4 animate-fade-in relative max-w-5xl mx-auto w-full">
+      {/* ─── Unity-style compact header + Tab Navigation ─────────────────────────── */}
+      <header className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="unity-panel-header inline-flex items-center gap-2 border-0 bg-transparent px-0 py-0 normal-case tracking-normal">
+            <span className="text-[11px] uppercase tracking-[0.08em]">
+              {t("settings.title", { defaultValue: "Settings" })}
+            </span>
+          </div>
+          <span className="h-[11px] w-px bg-[hsl(var(--border-strong))]" />
+          <span className="font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
+            {t("settings.subtitle", { defaultValue: "Preferences & Configuration" })}
+          </span>
+        </div>
+
+        {/* Custom Tab Bar */}
+        <div className="flex flex-wrap items-end gap-0.5 border-b border-[hsl(var(--border))] pb-0">
+          <button
+            onClick={() => setActiveTab("general")}
+            className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "general" && "unity-tab-active")}
+          >
+            General
+          </button>
+          <button
+            onClick={() => setActiveTab("config")}
+            className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "config" && "unity-tab-active")}
+          >
+            App Config (config.json)
+          </button>
+          <button
+            onClick={() => setActiveTab("steamvr")}
+            className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "steamvr" && "unity-tab-active")}
+          >
+            SteamVR
+          </button>
+          <button
+            onClick={() => setActiveTab("registry")}
+            className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "registry" && "unity-tab-active")}
+          >
+            VRChat Registry
+          </button>
+        </div>
+      </header>
+
+      {/* Render Active Tab */}
+      <div className="mt-2 text-left">
+        {activeTab === "general" && <TabGeneral version={version} />}
+        {activeTab === "config" && <TabConfigJson vrcRunning={vrcRunning} />}
+        {activeTab === "steamvr" && <TabSteamVR vrcRunning={vrcRunning} />}
+        {activeTab === "registry" && <TabRegistry vrcRunning={vrcRunning} />}
+      </div>
+    </div>
+  );
+}
