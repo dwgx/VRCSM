@@ -442,6 +442,46 @@ function Settings() {
   const [factoryResetting, setFactoryResetting] = useState(false);
   const [liveRefresh, setLiveRefresh] = useState(() => localStorage.getItem("vrcsm.friends.liveRefresh") === "true");
 
+  const [clearCacheOpen, setClearCacheOpen] = useState(false);
+  const [clearCacheWorking, setClearCacheWorking] = useState(false);
+  const [selectedCacheKeys, setSelectedCacheKeys] = useState<Set<string>>(new Set(["cache_windows_player", "http_cache"]));
+
+  const CACHE_CATEGORIES = [
+    { key: "cache_windows_player", name: "Avatars & Worlds (Cache-WindowsPlayer)", desc: "Main VRChat cache folder taking up the most space." },
+    { key: "http_cache", name: "Image Cache (HTTPCache)", desc: "Thumbnails and UI images." },
+    { key: "texture_cache", name: "Texture Cache", desc: "Cached textures for avatars and worlds." },
+    { key: "local_avatar_data", name: "Local Avatar Data", desc: "Local avatar configuration files." },
+    { key: "local_player_moderations", name: "Local Moderations", desc: "Local instance mutes, blocks, and show-avatar toggles." },
+    { key: "osc", name: "OSC Data", desc: "OSC log files and cache." }
+  ];
+
+  const handleToggleCache = (key: string) => {
+    setSelectedCacheKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleExecuteCacheClear = async () => {
+    if (selectedCacheKeys.size === 0) return;
+    setClearCacheWorking(true);
+    let successCount = 0;
+    try {
+      for (const key of selectedCacheKeys) {
+        await ipc.call("delete.execute", { category: key });
+        successCount++;
+      }
+      toast.success(t("settings.app.clearCacheSuccess", { defaultValue: `Successfully cleared ${successCount} cache categories.` }));
+      setClearCacheOpen(false);
+    } catch (e: any) {
+      toast.error(t("settings.app.clearCacheError", { defaultValue: `Clear failed: ${e.message || e}` }));
+    } finally {
+      setClearCacheWorking(false);
+    }
+  };
+
   useEffect(() => {
     let alive = true;
     ipc
@@ -881,6 +921,26 @@ function Settings() {
               })}
             </Button>
           </SettingRow>
+          <SettingRow
+            label={t("settings.app.clearVrcCacheLabel", {
+              defaultValue: "Clear VRC Cache",
+            })}
+            hint={t("settings.app.clearVrcCacheHint", {
+              defaultValue: "Selectively wipe VRChat caches like Avatars, Worlds, and Textures.",
+            })}
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setClearCacheOpen(true)}
+              className="border-[hsl(var(--destructive)/0.55)] text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.12)]"
+            >
+              <Trash2 className="size-3 mr-1.5" />
+              {t("settings.app.clearVrcCacheLabel", {
+                defaultValue: "一键清理缓存",
+              })}
+            </Button>
+          </SettingRow>
         </CardContent>
       </Card>
 
@@ -1188,6 +1248,67 @@ function Settings() {
                 : t("settings.app.factoryResetConfirm", {
                     defaultValue: "Wipe VRCSM data",
                   })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear VRC Cache Selection Dialog */}
+      <Dialog
+        open={clearCacheOpen}
+        onOpenChange={(open) => {
+          if (clearCacheWorking) return;
+          setClearCacheOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="size-4 text-[hsl(var(--destructive))]" />
+              {t("settings.app.clearCacheTitle", { defaultValue: "一键清理缓存 (Clear VRC Cache)" })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("settings.app.clearCacheBody", { defaultValue: "Select which VRChat cache categories you want to safely wipe. Useful if the cache is taking up a massive amount of space or you want a fresh start." })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 py-4">
+            {CACHE_CATEGORIES.map(cat => {
+              const selected = selectedCacheKeys.has(cat.key);
+              return (
+                <div key={cat.key} className="flex items-start gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-[hsl(var(--muted))]">
+                  <Button
+                    size="icon"
+                    variant={selected ? "default" : "outline"}
+                    className={cn("size-4 mt-0.5 shrink-0 rounded-sm border p-0", selected && "bg-[hsl(var(--primary))] border-[hsl(var(--primary))]")}
+                    onClick={() => handleToggleCache(cat.key)}
+                  >
+                    {selected && <Check className="size-3 text-primary-foreground stroke-[3]" />}
+                  </Button>
+                  <div className="flex flex-col min-w-0 flex-1 cursor-pointer" onClick={() => handleToggleCache(cat.key)}>
+                    <span className={cn("text-[13px] font-medium leading-none", selected ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]")}>{cat.name}</span>
+                    <span className="text-[11px] text-[hsl(var(--muted-foreground))] leading-snug mt-1">{cat.desc}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setClearCacheOpen(false)}
+              disabled={clearCacheWorking}
+            >
+              {t("common.cancel", { defaultValue: "Cancel" })}
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => void handleExecuteCacheClear()}
+              disabled={clearCacheWorking || selectedCacheKeys.size === 0}
+              className="bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] hover:bg-[hsl(var(--destructive)/0.9)]"
+            >
+              {clearCacheWorking
+                ? t("settings.app.factoryResetting", { defaultValue: "Wiping…" })
+                : t("settings.app.executeClear", { defaultValue: "Clear Selected" })}
             </Button>
           </DialogFooter>
         </DialogContent>
