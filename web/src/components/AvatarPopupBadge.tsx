@@ -74,7 +74,8 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
                  avatarId={avatarId}
                  assetUrl={details.unityPackages?.find((p: UnityPackage) => p.platform === "standalonewindows")?.assetUrl ?? undefined}
                  fallbackImageUrl={details.thumbnailImageUrl ?? details.imageUrl ?? undefined}
-                 size={80}
+                 size={208}
+                 expandedSize={640}
                />
                {/* Fade from image to content */}
                <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--surface))] via-[hsl(var(--surface)/0.2)] to-transparent" />
