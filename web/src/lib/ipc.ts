@@ -5,6 +5,8 @@ import type {
   BundlePreview,
   DeleteResult,
   DryRunResult,
+  FavoriteItem,
+  FavoriteListSummary,
   Friend,
   FriendsListResult,
   IpcEnvelopeEvent,
@@ -77,6 +79,58 @@ function uuid(): string {
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+const mockFavorites: FavoriteItem[] = [
+  {
+    type: "world",
+    target_id: "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    list_name: "Library",
+    display_name: "Mock World A",
+    thumbnail_url: "https://picsum.photos/seed/mock-world-a/512/288",
+    added_at: "2026-04-16T13:20:00Z",
+    sort_order: 0,
+    tags: ["scenic", "sleep"],
+    note: "Good ambient world for screenshot sessions and low-key late-night chill.",
+    note_updated_at: "2026-04-16T14:00:00Z",
+  },
+  {
+    type: "avatar",
+    target_id: "avtr_99999999-8888-7777-6666-555555555555",
+    list_name: "Library",
+    display_name: "Mock Avatar",
+    thumbnail_url: null,
+    added_at: "2026-04-17T08:40:00Z",
+    sort_order: 0,
+    tags: ["meme", "flashy"],
+    note: null,
+    note_updated_at: null,
+  },
+];
+
+function buildMockFavoriteLists(): FavoriteListSummary[] {
+  const map = new Map<string, FavoriteListSummary>();
+  for (const item of mockFavorites) {
+    const key = `${item.list_name}::${item.type ?? ""}`;
+    const row = map.get(key);
+    if (row) {
+      row.item_count += 1;
+      if ((item.added_at ?? "") > (row.latest_added_at ?? "")) {
+        row.latest_added_at = item.added_at;
+      }
+      continue;
+    }
+    map.set(key, {
+      list_name: item.list_name,
+      name: item.list_name,
+      type: item.type,
+      item_count: 1,
+      latest_added_at: item.added_at,
+    });
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    (b.latest_added_at ?? "").localeCompare(a.latest_added_at ?? ""),
+  );
 }
 
 function buildMockReport(): Report {
@@ -479,7 +533,7 @@ class IpcClient {
     await new Promise((r) => setTimeout(r, 180));
     switch (method) {
       case "app.version":
-        return { version: "0.1.0", build: "mock" } as unknown as TResult;
+        return { version: "0.4.0", build: "mock" } as unknown as TResult;
       case "scan":
         return buildMockReport() as unknown as TResult;
       case "bundle.preview":
@@ -674,6 +728,121 @@ class IpcClient {
           ok: true,
           path: "C:/Users/dev/AppData/Local/Temp/vrcsm-vrc-settings-mock.reg",
         } satisfies VrcSettingsExportResult as unknown as TResult;
+      case "favorites.lists":
+        return { lists: buildMockFavoriteLists() } as unknown as TResult;
+      case "favorites.items": {
+        const p = (params ?? {}) as { list_name?: string };
+        const listName = p.list_name ?? "Library";
+        return {
+          items: mockFavorites
+            .filter((item) => item.list_name === listName)
+            .sort((a, b) =>
+              a.sort_order !== b.sort_order
+                ? a.sort_order - b.sort_order
+                : (a.added_at ?? "").localeCompare(b.added_at ?? ""),
+            ),
+        } as unknown as TResult;
+      }
+      case "favorites.add": {
+        const p = (params ?? {}) as {
+          type?: string;
+          target_id?: string;
+          list_name?: string;
+          display_name?: string;
+          thumbnail_url?: string | null;
+        };
+        const type = p.type ?? "";
+        const targetId = p.target_id ?? "";
+        const listName = p.list_name ?? "Library";
+        const existingIndex = mockFavorites.findIndex(
+          (item) =>
+            item.type === type &&
+            item.target_id === targetId &&
+            item.list_name === listName,
+        );
+        const next: FavoriteItem = {
+          type,
+          target_id: targetId,
+          list_name: listName,
+          display_name: p.display_name ?? null,
+          thumbnail_url: p.thumbnail_url ?? null,
+          added_at: nowIso(),
+          sort_order: 0,
+          tags: existingIndex >= 0 ? mockFavorites[existingIndex].tags : [],
+          note: existingIndex >= 0 ? mockFavorites[existingIndex].note : null,
+          note_updated_at: existingIndex >= 0 ? mockFavorites[existingIndex].note_updated_at : null,
+        };
+        if (existingIndex >= 0) {
+          mockFavorites.splice(existingIndex, 1, next);
+        } else {
+          mockFavorites.push(next);
+        }
+        return { ok: true } as unknown as TResult;
+      }
+      case "favorites.remove": {
+        const p = (params ?? {}) as {
+          type?: string;
+          target_id?: string;
+          list_name?: string;
+        };
+        const existingIndex = mockFavorites.findIndex(
+          (item) =>
+            item.type === (p.type ?? "") &&
+            item.target_id === (p.target_id ?? "") &&
+            item.list_name === (p.list_name ?? "Library"),
+        );
+        if (existingIndex >= 0) {
+          mockFavorites.splice(existingIndex, 1);
+        }
+        return { ok: true } as unknown as TResult;
+      }
+      case "favorites.note.set": {
+        const p = (params ?? {}) as {
+          type?: string;
+          target_id?: string;
+          list_name?: string;
+          note?: string;
+        };
+        const updatedAt = nowIso();
+        const item = mockFavorites.find(
+          (entry) =>
+            entry.type === (p.type ?? "") &&
+            entry.target_id === (p.target_id ?? "") &&
+            entry.list_name === (p.list_name ?? "Library"),
+        );
+        if (item) {
+          const note = p.note?.trim() ?? "";
+          item.note = note.length > 0 ? p.note ?? "" : null;
+          item.note_updated_at = note.length > 0 ? updatedAt : null;
+        }
+        return { ok: true, updated_at: updatedAt } as unknown as TResult;
+      }
+      case "favorites.tags.set": {
+        const p = (params ?? {}) as {
+          type?: string;
+          target_id?: string;
+          list_name?: string;
+          tags?: string[];
+        };
+        const updatedAt = nowIso();
+        const item = mockFavorites.find(
+          (entry) =>
+            entry.type === (p.type ?? "") &&
+            entry.target_id === (p.target_id ?? "") &&
+            entry.list_name === (p.list_name ?? "Library"),
+        );
+        if (item) {
+          item.tags = Array.from(
+            new Map(
+              (p.tags ?? [])
+                .map((tag) => tag.trim())
+                .filter(Boolean)
+                .map((tag) => [tag.toLowerCase(), tag] as const),
+            ).values(),
+          ).sort((a, b) => a.localeCompare(b));
+        }
+        return { ok: true, updated_at: updatedAt } as unknown as TResult;
+      }
       case "config.read":
         return {
           cache_directory: "D:/VRChatCache/",
@@ -947,11 +1116,11 @@ class IpcClient {
   // ── Favorites ───────────────────────────────────────────────────────
 
   async favoriteLists() {
-    return this.call<undefined, { lists: any[] }>("favorites.lists");
+    return this.call<undefined, { lists: FavoriteListSummary[] }>("favorites.lists");
   }
 
   async favoriteItems(listName: string) {
-    return this.call<{ list_name: string }, { items: any[] }>(
+    return this.call<{ list_name: string }, { items: FavoriteItem[] }>(
       "favorites.items", { list_name: listName },
     );
   }
@@ -968,6 +1137,30 @@ class IpcClient {
       { type: string; target_id: string; list_name: string },
       { ok: boolean }
     >("favorites.remove", { type, target_id: targetId, list_name: listName });
+  }
+
+  async favoriteNoteSet(params: {
+    type: string;
+    target_id: string;
+    list_name: string;
+    note: string;
+  }) {
+    return this.call<typeof params, { ok: boolean; updated_at: string }>(
+      "favorites.note.set",
+      params,
+    );
+  }
+
+  async favoriteTagsSet(params: {
+    type: string;
+    target_id: string;
+    list_name: string;
+    tags: string[];
+  }) {
+    return this.call<typeof params, { ok: boolean; updated_at: string }>(
+      "favorites.tags.set",
+      params,
+    );
   }
 
   // ── Friend Log ──────────────────────────────────────────────────────

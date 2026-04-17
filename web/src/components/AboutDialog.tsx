@@ -38,7 +38,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
         if (alive) setVersion(v);
       })
       .catch(() => {
-        if (alive) setVersion({ version: "0.5.0", build: "Apr 16 2026" });
+        if (alive) setVersion(null);
       });
     return () => {
       alive = false;

@@ -19,6 +19,7 @@ import { ToolbarSearchProvider } from "@/components/Toolbar";
 import { AboutDialog } from "@/components/AboutDialog";
 import { ReportProvider, useReport } from "@/lib/report-context";
 import { AuthProvider } from "@/lib/auth-context";
+import { ipc } from "@/lib/ipc";
 import { formatDate } from "@/lib/utils";
 import { VrcProcessProvider, useVrcProcess } from "@/lib/vrc-context";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
@@ -29,6 +30,7 @@ import { Download } from "lucide-react";
 // us from re-scanning when pages mount.
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Bundles = lazy(() => import("@/pages/Bundles"));
+const Library = lazy(() => import("@/pages/Library"));
 const Avatars = lazy(() => import("@/pages/Avatars"));
 const Worlds = lazy(() => import("@/pages/Worlds"));
 const Friends = lazy(() => import("@/pages/Friends"));
@@ -64,6 +66,7 @@ function AppContent() {
   const { status: vrcProcessStatus } = useVrcProcess();
   const vrcRunning = vrcProcessStatus.running;
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [shellVersion, setShellVersion] = useState("…");
   const { updateAvailable } = useUpdateCheck();
 
   const routeMeta = useMemo<Record<string, RouteShellMeta>>(
@@ -75,6 +78,10 @@ function AppContent() {
       "/bundles": {
         title: t("nav.bundles"),
         breadcrumb: ["Assets", t("nav.bundles")],
+      },
+      "/library": {
+        title: t("nav.library"),
+        breadcrumb: ["Assets", t("nav.library")],
       },
       "/avatars": {
         title: t("nav.avatars"),
@@ -121,11 +128,28 @@ function AppContent() {
   );
 
   const currentMeta = routeMeta[location.pathname] ?? routeMeta["/"];
-  const shellVersion = "v0.5.0";
 
   useEffect(() => {
     setSearchQuery("");
   }, [location.pathname]);
+
+  useEffect(() => {
+    let alive = true;
+    ipc.version()
+      .then((info) => {
+        if (alive) {
+          setShellVersion(`v${info.version}`);
+        }
+      })
+      .catch(() => {
+        if (alive) {
+          setShellVersion("v?");
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
 
   const rightDockFallback = useMemo<RightDockDescriptor | null>(() => {
@@ -329,6 +353,7 @@ function AppContent() {
                               <Routes>
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/bundles" element={<Bundles />} />
+                                <Route path="/library" element={<Library />} />
                                 <Route path="/avatars" element={<Avatars />} />
                                 <Route path="/worlds" element={<Worlds />} />
                                 <Route path="/friends" element={<Friends />} />

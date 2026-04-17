@@ -82,6 +82,8 @@ private:
     nlohmann::json HandleFavoritesItems(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesAdd(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesRemove(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFavoritesNoteSet(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFavoritesTagsSet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesExport(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesImport(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendLogRecent(const nlohmann::json& params, const std::optional<std::string>& id);

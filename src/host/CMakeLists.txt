@@ -22,6 +22,17 @@ add_executable(vrcsm WIN32
     bridges/DatabaseBridge.cpp
 )
 
+set(VRCSM_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
+set(VRCSM_ICON_PATH "${CMAKE_SOURCE_DIR}/resources/icons/vrcsm.ico")
+set(VRCSM_EXTRACTOR_PATH "${CMAKE_SOURCE_DIR}/dist/vrcsm_extractor.exe")
+set(VRCSM_MANIFEST_PATH "${CMAKE_SOURCE_DIR}/resources/app.manifest")
+file(MAKE_DIRECTORY "${VRCSM_GENERATED_DIR}")
+configure_file(
+    "${CMAKE_SOURCE_DIR}/resources/app.rc"
+    "${VRCSM_GENERATED_DIR}/app.rc"
+    @ONLY
+)
+
 target_link_libraries(vrcsm PRIVATE
     vrcsm_core
     nlohmann_json::nlohmann_json
@@ -40,7 +51,11 @@ target_link_libraries(vrcsm PRIVATE
 )
 
 target_sources(vrcsm PRIVATE
-    ${CMAKE_SOURCE_DIR}/resources/app.rc
+    ${VRCSM_GENERATED_DIR}/app.rc
+)
+
+target_compile_definitions(vrcsm PRIVATE
+    VRCSM_VERSION_STRING="${PROJECT_VERSION}"
 )
 
 target_link_options(vrcsm PRIVATE /MANIFEST:NO)

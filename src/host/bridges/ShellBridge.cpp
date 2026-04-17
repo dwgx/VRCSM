@@ -15,7 +15,7 @@
 nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::optional<std::string>&)
 {
     return nlohmann::json{
-        {"version", "0.5.0"},
+        {"version", VRCSM_VERSION_STRING},
         {"build", std::string(__DATE__) + " " + std::string(__TIME__)}
     };
 }

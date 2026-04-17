@@ -6,16 +6,16 @@
 
 // Keep IDI_APP_ICON == 101 in sync with MainWindow.cpp (LoadIconW).
 // A low numeric ID also ensures Explorer picks this as the shell icon.
-IDI_APP_ICON ICON "icons\\vrcsm.ico"
+IDI_APP_ICON ICON "@VRCSM_ICON_PATH@"
 
-1 RT_MANIFEST "app.manifest"
+1 RT_MANIFEST "@VRCSM_MANIFEST_PATH@"
 
 #define IDR_EXTRACTOR_EXE 1000
-IDR_EXTRACTOR_EXE RCDATA "..\\dist\\vrcsm_extractor.exe"
+IDR_EXTRACTOR_EXE RCDATA "@VRCSM_EXTRACTOR_PATH@"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,5,0,0
- PRODUCTVERSION 0,5,0,0
+ FILEVERSION @VRCSM_FILE_VERSION@
+ PRODUCTVERSION @VRCSM_FILE_VERSION@
  FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
 #ifdef _DEBUG
  FILEFLAGS VS_FF_DEBUG
@@ -32,11 +32,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "dwgx\0"
             VALUE "FileDescription", "VRC Settings Manager\0"
-            VALUE "FileVersion", "0.5.0.0\0"
+            VALUE "FileVersion", "@VRCSM_PRODUCT_VERSION@\0"
             VALUE "InternalName", "VRCSM\0"
             VALUE "OriginalFilename", "VRCSM.exe\0"
             VALUE "ProductName", "VRC Settings Manager\0"
-            VALUE "ProductVersion", "0.5.0.0\0"
+            VALUE "ProductVersion", "@VRCSM_PRODUCT_VERSION@\0"
         END
     END
     BLOCK "VarFileInfo"

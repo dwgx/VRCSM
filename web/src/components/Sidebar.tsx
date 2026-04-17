@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
+  Heart,
   Package,
   User,
   UserCircle2,
@@ -36,6 +37,7 @@ const items: NavItem[] = [
   { to: "/friend-log", labelKey: "nav.friendLog", icon: FileClock },
   { to: "/radar", labelKey: "nav.radar", icon: Radio },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
+  { to: "/library", labelKey: "nav.library", icon: Heart },
   { to: "/avatars", labelKey: "nav.avatars", icon: User },
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
@@ -120,7 +122,7 @@ function VersionFooter() {
     ipc.version().then((v) => { if (alive) setVer(v); }).catch(() => {});
     return () => { alive = false; };
   }, []);
-  const label = ver ? `v${ver.version} · ${ver.build}` : "v0.5.0";
+  const label = ver ? `v${ver.version} · ${ver.build}` : "v…";
   return (
     <div className="px-2.5 pt-0.5 text-[10px] font-mono tracking-tight text-[hsl(var(--muted-foreground))]">
       {label}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Card,
@@ -16,12 +17,17 @@ import { IdBadge } from "@/components/IdBadge";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import {
+  LIBRARY_LIST_NAME,
+  useFavoriteActions,
+  useFavoriteItems,
+} from "@/lib/library";
 import type { LocalAvatarItem } from "@/lib/types";
-import { Eye, Sliders, Search, User, Info, Lock, Box, Sword } from "lucide-react";
+import { Eye, Sliders, Search, User, Info, Lock, Box, Sword, Heart } from "lucide-react";
 
 type AugmentedAvatar = LocalAvatarItem & {
   display_name?: string;
@@ -104,10 +110,18 @@ function shortenId(id: string, head = 8, tail = 4): string {
  * with icons rather than a wall of text. The inspector uses
  * <AvatarPreview3D> instead for the real 3D pipeline.
  */
-function AvatarRowThumb({ avatarId }: { avatarId: string }) {
+function AvatarRowThumb({
+  avatarId,
+  isFavorited,
+  onToggleFavorite,
+}: {
+  avatarId: string;
+  isFavorited: boolean;
+  onToggleFavorite?: (thumbnailUrl: string | null) => void;
+}) {
   const { url } = useThumbnail(avatarId);
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
+    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
       {url ? (
         <img
           src={url}
@@ -122,6 +136,24 @@ function AvatarRowThumb({ avatarId }: { avatarId: string }) {
       ) : (
         <Avatar3DPreview seed={avatarId} size={22} />
       )}
+      {onToggleFavorite ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(url);
+          }}
+          className={cn(
+            "absolute right-0.5 bottom-0.5 flex size-4 items-center justify-center rounded-full border border-black/20 transition-colors",
+            isFavorited
+              ? "bg-[#C25B5B] text-white"
+              : "bg-black/45 text-white/85 hover:bg-black/65",
+          )}
+          title={isFavorited ? "Remove from library" : "Save to library"}
+        >
+          <Heart className={cn("size-2.5", isFavorited && "fill-current")} />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -440,11 +472,15 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
 function AvatarRow({
   item,
   isSelected,
+  isFavorited,
   onSelect,
+  onToggleFavorite,
 }: {
   item: AugmentedAvatar;
   isSelected: boolean;
+  isFavorited: boolean;
   onSelect: () => void;
+  onToggleFavorite: (thumbnailUrl: string | null) => void;
 }) {
   const { t } = useTranslation();
   const display = item.display_name ?? shortenId(item.avatar_id);
@@ -466,7 +502,11 @@ function AvatarRow({
           className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full bg-[hsl(var(--primary))]"
         />
       ) : null}
-      <AvatarRowThumb avatarId={item.avatar_id} />
+      <AvatarRowThumb
+        avatarId={item.avatar_id}
+        isFavorited={isFavorited}
+        onToggleFavorite={onToggleFavorite}
+      />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="truncate text-[12.5px] font-medium text-[hsl(var(--foreground))]">
           {display}
@@ -485,9 +525,19 @@ function AvatarRow({
 
 function Avatars() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const { report, loading, error } = useReport();
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
+  const { toggleFavorite } = useFavoriteActions();
+
+  useEffect(() => {
+    const selectedFromRoute = searchParams.get("select");
+    if (selectedFromRoute) {
+      setSelectedId(selectedFromRoute);
+    }
+  }, [searchParams]);
 
   // Merge LocalAvatarData with recent_avatar_ids + avatar_names from the
   // parsed logs. LocalAvatarData only contains avatars the user has
@@ -554,6 +604,36 @@ function Avatars() {
       prefetchThumbnails(items.map((it) => it.avatar_id));
     }
   }, [items]);
+
+  async function handleToggleFavorite(
+    item: AugmentedAvatar,
+    thumbnailUrl: string | null,
+  ) {
+    const isFavorited = favoriteIds.avatar.has(item.avatar_id);
+    try {
+      await toggleFavorite(
+        {
+          type: "avatar",
+          target_id: item.avatar_id,
+          list_name: LIBRARY_LIST_NAME,
+          display_name: item.display_name,
+          thumbnail_url: thumbnailUrl,
+        },
+        isFavorited,
+      );
+      toast.success(
+        t(
+          isFavorited ? "library.removedToast" : "library.savedToast",
+          {
+            name: item.display_name ?? shortenId(item.avatar_id),
+          },
+        ),
+      );
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast.error(t("library.toggleFailed", { error: message }));
+    }
+  }
 
   const selected = useMemo(() => {
     if (!filtered.length) return null;
@@ -629,7 +709,11 @@ function Avatars() {
                       key={item.avatar_id}
                       item={item}
                       isSelected={selected?.avatar_id === item.avatar_id}
+                      isFavorited={favoriteIds.avatar.has(item.avatar_id)}
                       onSelect={() => setSelectedId(item.avatar_id)}
+                      onToggleFavorite={(thumbnailUrl) =>
+                        handleToggleFavorite(item, thumbnailUrl)
+                      }
                     />
                   ))}
                   {filtered.length > 250 && (
