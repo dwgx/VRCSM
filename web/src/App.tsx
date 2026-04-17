@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/sonner";
 import { Sidebar } from "@/components/Sidebar";
@@ -18,9 +19,10 @@ import { ToolbarSearchProvider } from "@/components/Toolbar";
 import { AboutDialog } from "@/components/AboutDialog";
 import { ReportProvider, useReport } from "@/lib/report-context";
 import { AuthProvider } from "@/lib/auth-context";
-import { ipc } from "@/lib/ipc";
-import type { ProcessStatus } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { VrcProcessProvider, useVrcProcess } from "@/lib/vrc-context";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import { Download } from "lucide-react";
 
 // Lazy-load every page so navigating between tabs doesn't cost us a
 // second tree of page modules upfront. The shared report context keeps
@@ -33,8 +35,10 @@ const Friends = lazy(() => import("@/pages/Friends"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Screenshots = lazy(() => import("@/pages/Screenshots"));
 const Logs = lazy(() => import("@/pages/Logs"));
+const Radar = lazy(() => import("@/pages/Radar"));
 const Migrate = lazy(() => import("@/pages/Migrate"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const MemoryRadar = lazy(() => import("@/pages/MemoryRadar"));
 
 interface RouteShellMeta {
   breadcrumb: string[];
@@ -56,8 +60,10 @@ function AppContent() {
   const { report: shellReport, loading: isRescanning, refresh } = useReport();
   const [searchQuery, setSearchQuery] = useState("");
   const [layoutResetToken, setLayoutResetToken] = useState(0);
-  const [vrcRunning, setVrcRunning] = useState(false);
+  const { status: vrcProcessStatus } = useVrcProcess();
+  const vrcRunning = vrcProcessStatus.running;
   const [aboutOpen, setAboutOpen] = useState(false);
+  const { updateAvailable } = useUpdateCheck();
 
   const routeMeta = useMemo<Record<string, RouteShellMeta>>(
     () => ({
@@ -93,6 +99,10 @@ function AppContent() {
         title: t("nav.logs"),
         breadcrumb: ["Diagnostics", t("nav.logs")],
       },
+      "/radar": {
+        title: "Instance Radar",
+        breadcrumb: ["Social", "Instance Radar"],
+      },
       "/migrate": {
         title: t("nav.migrate"),
         breadcrumb: ["Maintenance", t("nav.migrate")],
@@ -106,40 +116,12 @@ function AppContent() {
   );
 
   const currentMeta = routeMeta[location.pathname] ?? routeMeta["/"];
-  const shellVersion = "v0.3.0";
+  const shellVersion = "v0.5.0";
 
   useEffect(() => {
     setSearchQuery("");
   }, [location.pathname]);
 
-  useEffect(() => {
-    let alive = true;
-
-    // One-shot seed so the sidebar doesn't flash "unknown" on mount.
-    // After this the host pushes every transition via the event below,
-    // so we never poll again — detection latency drops from 5s to 1s
-    // and the IPC round-trip per tick goes to zero.
-    ipc
-      .call<undefined, ProcessStatus>("process.vrcRunning")
-      .then((status) => {
-        if (alive) setVrcRunning(status.running);
-      })
-      .catch(() => {
-        if (alive) setVrcRunning(false);
-      });
-
-    const unsubscribe = ipc.on<ProcessStatus>(
-      "process.vrcStatusChanged",
-      (status) => {
-        if (alive) setVrcRunning(status.running);
-      },
-    );
-
-    return () => {
-      alive = false;
-      unsubscribe();
-    };
-  }, []);
 
   const rightDockFallback = useMemo<RightDockDescriptor | null>(() => {
     if (!shellReport) {
@@ -286,65 +268,105 @@ function AppContent() {
     >
       <RightDockProvider>
         <div className="flex h-screen w-screen overflow-hidden bg-[hsl(var(--canvas))] text-[hsl(var(--foreground))]">
-          <Sidebar />
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <TitleBar
-              currentPageLabel={currentMeta.title}
-              isRescanning={isRescanning}
-              onRescan={refresh}
-              onResetLayout={() => setLayoutResetToken((value) => value + 1)}
-              onOpenAbout={() => setAboutOpen(true)}
-              vrcRunning={vrcRunning}
-            />
+          <PanelGroup orientation="horizontal">
+            {/* ── Resizable Sidebar ── */}
+            <Panel
+              defaultSize={15}
+              minSize={5}
+              collapsible
+              collapsedSize={0}
+            >
+              <Sidebar />
+            </Panel>
+            <PanelResizeHandle className="w-[3px] bg-[hsl(var(--border)/0.3)] hover:bg-[hsl(var(--primary)/0.5)] active:bg-[hsl(var(--primary))] transition-colors cursor-col-resize" />
 
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="flex min-h-0 flex-1 overflow-hidden">
-                <section className="unity-dock flex min-w-0 flex-1 flex-col overflow-hidden">
-                  <div className="flex h-8 items-end gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 pt-1">
-                    <div className="unity-tab unity-tab-active">
-                      {currentMeta.title}
+            {/* ── Main content area ── */}
+            <Panel defaultSize={85} minSize={20}>
+              <div className="flex min-w-0 h-full flex-col overflow-hidden">
+                <TitleBar
+                  currentPageLabel={currentMeta.title}
+                  isRescanning={isRescanning}
+                  onRescan={refresh}
+                  onResetLayout={() => setLayoutResetToken((value) => value + 1)}
+                  onOpenAbout={() => setAboutOpen(true)}
+                  vrcRunning={vrcRunning}
+                />
+
+                {updateAvailable && (
+                  <div className="flex items-center gap-3 bg-[hsl(var(--primary)/0.15)] px-4 py-2 border-b border-[hsl(var(--primary)/0.3)]">
+                    <Download className="size-4 shrink-0 text-primary" />
+                    <div className="flex-1 text-sm text-[hsl(var(--foreground))]">
+                      <strong>Update Available</strong> — VRCSM {updateAvailable.version} is now available!
                     </div>
+                    <a
+                      href={updateAvailable.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-7 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                      Download
+                    </a>
                   </div>
-                  <main className="scrollbar-thin flex-1 overflow-y-auto bg-[hsl(var(--surface))] px-6 py-5">
-                    {/*
-                      `resetKey={location.pathname}` makes the boundary
-                      auto-clear on tab switch — no dangling error state
-                      from a page you already navigated away from.
-                    */}
-                    <RouteErrorBoundary resetKey={location.pathname}>
-                      <Suspense fallback={<PageFallback />}>
-                        <Routes>
-                          <Route path="/" element={<Dashboard />} />
-                          <Route path="/bundles" element={<Bundles />} />
-                          <Route path="/avatars" element={<Avatars />} />
-                          <Route path="/worlds" element={<Worlds />} />
-                          <Route path="/friends" element={<Friends />} />
-                          <Route path="/profile" element={<Profile />} />
-                          <Route path="/screenshots" element={<Screenshots />} />
-                          <Route path="/logs" element={<Logs />} />
-                          <Route path="/migrate" element={<Migrate />} />
-                          <Route path="/settings" element={<Settings />} />
-                          <Route path="*" element={<Navigate to="/" replace />} />
-                        </Routes>
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  </main>
-                </section>
+                )}
 
-                <RightDock fallback={rightDockFallback} />
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <PanelGroup orientation="horizontal">
+                    <Panel defaultSize={75} minSize={20}>
+                      <section className="unity-dock flex h-full flex-col overflow-hidden">
+                        <div className="flex h-8 items-end gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 pt-1">
+                          <div className="unity-tab unity-tab-active">
+                            {currentMeta.title}
+                          </div>
+                        </div>
+                        <main className="scrollbar-thin flex-1 min-w-0 overflow-x-hidden overflow-y-auto bg-[hsl(var(--surface))] px-6 py-5">
+                          <RouteErrorBoundary resetKey={location.pathname}>
+                            <Suspense fallback={<PageFallback />}>
+                              <Routes>
+                                <Route path="/" element={<Dashboard />} />
+                                <Route path="/bundles" element={<Bundles />} />
+                                <Route path="/avatars" element={<Avatars />} />
+                                <Route path="/worlds" element={<Worlds />} />
+                                <Route path="/friends" element={<Friends />} />
+                                <Route path="/profile" element={<Profile />} />
+                                <Route path="/screenshots" element={<Screenshots />} />
+                                <Route path="/logs" element={<Logs />} />
+                                <Route path="/radar" element={<Radar />} />
+                                <Route path="/migrate" element={<Migrate />} />
+                                <Route path="/settings" element={<Settings />} />
+                                <Route path="/tools/memory-radar" element={<MemoryRadar />} />
+                                <Route path="*" element={<Navigate to="/" replace />} />
+                              </Routes>
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        </main>
+                      </section>
+                    </Panel>
+                    <PanelResizeHandle className="w-[3px] bg-[hsl(var(--border)/0.3)] hover:bg-[hsl(var(--primary)/0.5)] active:bg-[hsl(var(--primary))] transition-colors cursor-col-resize" />
+
+                    {/* ── Resizable Right Dock ── */}
+                    <Panel
+                      defaultSize={25}
+                      minSize={5}
+                      collapsible
+                      collapsedSize={0}
+                    >
+                      <RightDock fallback={rightDockFallback} />
+                    </Panel>
+                  </PanelGroup>
+
+                  <BottomDock report={shellReport} resetToken={layoutResetToken} />
+
+                  <StatusBar
+                    breadcrumb={currentMeta.breadcrumb}
+                    cacheTotal={shellReport?.total_bytes_human ?? "—"}
+                    currentPageLabel={currentMeta.title}
+                    version={shellVersion}
+                    vrcRunning={vrcRunning}
+                  />
+                </div>
               </div>
-
-              <BottomDock report={shellReport} resetToken={layoutResetToken} />
-
-              <StatusBar
-                breadcrumb={currentMeta.breadcrumb}
-                cacheTotal={shellReport?.total_bytes_human ?? "—"}
-                currentPageLabel={currentMeta.title}
-                version={shellVersion}
-                vrcRunning={vrcRunning}
-              />
-            </div>
-          </div>
+            </Panel>
+          </PanelGroup>
           <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
           <Toaster />
         </div>
@@ -357,9 +379,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ReportProvider>
-          <AppContent />
-        </ReportProvider>
+        <VrcProcessProvider>
+          <ReportProvider>
+            <AppContent />
+          </ReportProvider>
+        </VrcProcessProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -5,6 +5,7 @@
 #include "../core/Common.h"
 #include "../core/LogTailer.h"
 #include "../core/TaskQueue.h"
+#include "../core/VrcRadarEngine.h"
 
 class WebViewHost;
 
@@ -55,16 +56,24 @@ private:
     nlohmann::json HandleScreenshotsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleScreenshotsOpen(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleScreenshotsFolder(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleScreenshotsDelete(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsStreamStart(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsStreamStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleConfigRead(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleConfigWrite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAppFactoryReset(const nlohmann::json& params, const std::optional<std::string>& id);
-
+    nlohmann::json HandleSteamVrRead(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSteamVrWrite(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleMemoryStatus(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleRadarPoll(const nlohmann::json& params, const std::optional<std::string>& id);
     void PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const;
     void PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message) const;
     void PostError(const std::optional<std::string>& id, const vrcsm::core::Error& err) const;
 
     WebViewHost& m_host;
+    std::shared_ptr<std::atomic<bool>> m_alive;
     std::unordered_map<std::string, Handler> m_handlers;
     std::unique_ptr<vrcsm::core::LogTailer> m_logTailer;
     vrcsm::core::TaskQueue m_previewQueue;
+    vrcsm::core::VrcRadarEngine m_radarEngine;
 };

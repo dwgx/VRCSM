@@ -1,6 +1,7 @@
 #include "PathProbe.h"
 
 #include "Common.h"
+#include "SteamVrConfig.h"
 
 #include <array>
 #include <system_error>
@@ -54,6 +55,7 @@ void to_json(nlohmann::json& j, const PathProbeResult& r)
         {"vrchatExe", pathOrNull(r.vrchatExe)},
         {"configJson", pathOrNull(r.configJson)},
         {"melonLoaderCfg", pathOrNull(r.melonLoaderCfg)},
+        {"steamVrSettings", pathOrNull(r.steamVrSettings)},
     };
 }
 
@@ -93,6 +95,8 @@ PathProbeResult PathProbe::Probe()
             result.melonLoaderCfg = mlCfg;
         }
     }
+
+    result.steamVrSettings = SteamVrConfig::DetectVrSettingsPath();
 
     return result;
 }

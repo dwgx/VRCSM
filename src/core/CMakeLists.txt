@@ -15,6 +15,9 @@ add_library(vrcsm_core STATIC
     SafeDelete.cpp
     Migrator.cpp
     VrcConfig.cpp
+    SteamVrConfig.cpp
+    ProcessMemoryReader.cpp
+    VrcRadarEngine.cpp
     VrcSettings.cpp
     TaskQueue.cpp
     RateLimiter.cpp

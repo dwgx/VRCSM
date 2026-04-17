@@ -33,4 +33,6 @@ if(VRCSM_BUILD_TOOLS)
     add_subdirectory(tools/tail_probe)
 endif()
 
-# tests/ will be added to the build later.
+# Configure GoogleTest options
+option(INSTALL_GTEST "Enable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" OFF)
+add_subdirectory(tests)

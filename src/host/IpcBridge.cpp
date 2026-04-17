@@ -18,8 +18,11 @@
 #include "../core/ProcessGuard.h"
 #include "../core/SafeDelete.h"
 #include "../core/VrcApi.h"
+#include "../core/VrcConfig.h"
 #include "../core/VrcSettings.h"
-
+#include "../core/SteamVrConfig.h"
+#include "../core/ProcessMemoryReader.h"
+#include "../core/VrcRadarEngine.h"
 #include <KnownFolders.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -52,6 +55,8 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "settings.readAll",
         "settings.writeOne",
         "settings.exportReg",
+        "config.read",
+        "config.write",
         "migrate.preflight",
         "junction.repair",
         "thumbnails.fetch",
@@ -214,6 +219,8 @@ nlohmann::json FilterUserProfile(const nlohmann::json& user)
         {"last_activity", JsonStringField(user, "last_activity").value_or("")},
         {"worldId", JsonStringField(user, "worldId").value_or("")},
         {"location", JsonStringField(user, "location").value_or("")},
+        {"currentAvatarId", JsonStringField(user, "currentAvatar").value_or("")},
+        {"currentAvatarName", JsonStringField(user, "currentAvatarName").value_or("")},
     };
 
     // bioLinks — VRChat stores these as a `bioLinks` array of strings.
@@ -297,7 +304,7 @@ std::filesystem::path ScreenshotsRootDir()
 }
 
 IpcBridge::IpcBridge(WebViewHost& host)
-    : m_host(host)
+    : m_host(host), m_alive(std::make_shared<std::atomic<bool>>(true))
 {
     (void)vrcsm::core::AuthStore::Instance().Load();
     RegisterHandlers();
@@ -326,6 +333,7 @@ IpcBridge::IpcBridge(WebViewHost& host)
 
 IpcBridge::~IpcBridge()
 {
+    *m_alive = false;
     // StopWatcher blocks until the polling thread exits, which prevents
     // the captured `this` from being used after destruction.
     vrcsm::core::ProcessGuard::StopWatcher();
@@ -358,25 +366,26 @@ void IpcBridge::Dispatch(const std::string& jsonText)
         {
             auto handler = it->second;
             const auto capturedId = id;
-            std::thread([this, handler = std::move(handler), params, capturedId, method]()
+            GetIpcPool().enqueue([this, handler = std::move(handler), params, capturedId, alive = m_alive, method]()
             {
                 try
                 {
-                    PostResult(capturedId, handler(params, capturedId));
+                    auto result = handler(params, capturedId);
+                    if (*alive) PostResult(capturedId, result);
                 }
                 catch (const IpcException& ex)
                 {
-                    PostError(capturedId, ex.err);
+                    if (*alive) PostError(capturedId, ex.err);
                 }
                 catch (const std::exception& ex)
                 {
-                    PostError(capturedId, "handler_error", ex.what());
+                    if (*alive) PostError(capturedId, "handler_error", ex.what());
                 }
                 catch (...)
                 {
-                    PostError(capturedId, "handler_error", "Unknown handler failure");
+                    if (*alive) PostError(capturedId, "handler_error", "Unknown handler failure");
                 }
-            }).detach();
+            });
             return;
         }
 
@@ -409,7 +418,7 @@ void IpcBridge::Dispatch(const std::string& jsonText)
 
 void IpcBridge::RegisterHandlers()
 {
-    // IPC roster is now 24 methods: the original shell/cache/settings
+    // IPC roster is now 25 methods: the original shell/cache/settings
     // calls, plus live logs, plus the v0.2.0 auth + friends endpoints.
     m_handlers.emplace("app.version", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
@@ -434,6 +443,22 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("delete.execute", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleDeleteExecute(params, id);
+    });
+    m_handlers.emplace("steamvr.read", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleSteamVrRead(params, id);
+    });
+    m_handlers.emplace("steamvr.write", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleSteamVrWrite(params, id);
+    });
+    m_handlers.emplace("memory.status", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleMemoryStatus(params, id);
+    });
+    m_handlers.emplace("radar.poll", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleRadarPoll(params, id);
     });
     m_handlers.emplace("process.vrcRunning", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
@@ -548,6 +573,10 @@ void IpcBridge::RegisterHandlers()
     {
         return HandleScreenshotsFolder(params, id);
     });
+    m_handlers.emplace("screenshots.delete", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleScreenshotsDelete(params, id);
+    });
     m_handlers.emplace("logs.stream.start", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleLogsStreamStart(params, id);
@@ -560,6 +589,14 @@ void IpcBridge::RegisterHandlers()
     {
         return HandleAppFactoryReset(params, id);
     });
+    m_handlers.emplace("config.read", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleConfigRead(params, id);
+    });
+    m_handlers.emplace("config.write", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleConfigWrite(params, id);
+    });
 }
 
 nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::optional<std::string>&)
@@ -571,6 +608,16 @@ nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::opt
         {"version", "0.5.0"},
         {"build", std::string(__DATE__) + " " + std::string(__TIME__)}
     };
+}
+
+nlohmann::json IpcBridge::HandleConfigRead(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    return vrcsm::core::VrcConfig::ReadJson(params);
+}
+
+nlohmann::json IpcBridge::HandleConfigWrite(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    return vrcsm::core::VrcConfig::WriteJson(params);
 }
 
 nlohmann::json IpcBridge::HandlePathProbe(const nlohmann::json&, const std::optional<std::string>&)
@@ -670,7 +717,7 @@ nlohmann::json IpcBridge::HandleMigrateExecute(const nlohmann::json& params, con
     const auto request = params;
     const auto requestId = id;
 
-    std::thread([this, request, requestId]()
+    GetIpcPool().enqueue([this, request, requestId]()
     {
         try
         {
@@ -697,7 +744,7 @@ nlohmann::json IpcBridge::HandleMigrateExecute(const nlohmann::json& params, con
         {
             PostError(requestId, "migrate_failed", "Unknown migration failure");
         }
-    }).detach();
+    });
 
     return nlohmann::json{{"started", true}};
 }
@@ -1173,7 +1220,13 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
         return nlohmann::json{{"friends", nlohmann::json::array()}};
     }
 
-    const auto friends = vrcsm::core::VrcApi::fetchFriends(offline);
+    const auto result = vrcsm::core::VrcApi::fetchFriends(offline);
+    if (!vrcsm::core::isOk(result))
+    {
+        throw IpcException{vrcsm::core::getError(result)};
+    }
+    const auto& friends = vrcsm::core::getValue(result);
+
     nlohmann::json out = nlohmann::json::array();
     for (const auto& item : friends)
     {
@@ -1564,6 +1617,158 @@ nlohmann::json IpcBridge::HandleScreenshotsFolder(const nlohmann::json& params, 
         throw std::runtime_error("screenshots.folder: ShellExecute failed");
     }
     return nlohmann::json{{"ok", true}};
+}
+
+nlohmann::json IpcBridge::HandleScreenshotsDelete(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto paths = params.value("paths", std::vector<std::string>{});
+    int deleted = 0;
+    std::vector<std::string> failed;
+
+    const auto root = ScreenshotsRootDir();
+    if (root.empty())
+    {
+        throw std::runtime_error("screenshots.delete: screenshots folder unavailable");
+    }
+
+    std::error_code rootEc;
+    const auto absRoot = std::filesystem::weakly_canonical(root, rootEc);
+    const auto rootStr = absRoot.wstring();
+
+    for (const auto& pathStr : paths)
+    {
+        std::error_code ec;
+        const std::filesystem::path target = Utf8ToWide(pathStr);
+        const auto absTarget = std::filesystem::weakly_canonical(target, ec);
+
+        // Security check: Only allow deleting files inside VRChat screenshots folder
+        if (absTarget.wstring().rfind(rootStr, 0) != 0)
+        {
+            failed.push_back(pathStr);
+            continue;
+        }
+
+        // Must be PNG or JPG to prevent deleting non-screenshot files
+        const auto ext = target.extension().wstring();
+        if (ext != L".png" && ext != L".PNG" && ext != L".jpg" && ext != L".jpeg"
+            && ext != L".JPG" && ext != L".JPEG")
+        {
+            failed.push_back(pathStr);
+            continue;
+        }
+
+        if (std::filesystem::remove(absTarget, ec))
+        {
+            deleted++;
+        }
+        else
+        {
+            failed.push_back(pathStr);
+        }
+    }
+
+    return nlohmann::json{
+        {"deleted", deleted},
+        {"failed", failed}
+    };
+}
+
+nlohmann::json IpcBridge::HandleSteamVrRead(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    (void)params;
+    (void)id;
+    auto path = vrcsm::core::SteamVrConfig::DetectVrSettingsPath();
+    if (!path) {
+        throw std::runtime_error("SteamVR settings file not found.");
+    }
+    
+    nlohmann::json doc = vrcsm::core::SteamVrConfig::Read(*path);
+    auto hw = vrcsm::core::SteamVrConfig::ExtractHardwareInfo(doc);
+
+    return nlohmann::json{
+        {"steamvr", doc.value("steamvr", nlohmann::json::object())},
+        {"driver_vrlink", doc.value("driver_vrlink", nlohmann::json::object())},
+        {"hardware", {
+            {"gpuVendor", hw.gpuVendor},
+            {"gpuHorsepower", hw.gpuHorsepower},
+            {"hmdModel", hw.hmdModel},
+            {"hmdManufacturer", hw.hmdManufacturer},
+            {"hmdDriver", hw.hmdDriver}
+        }}
+    };
+}
+
+nlohmann::json IpcBridge::HandleSteamVrWrite(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    (void)id;
+    if (vrcsm::core::SteamVrConfig::IsSteamVrRunning()) {
+        throw std::runtime_error("Cannot write SteamVR settings while SteamVR is running.");
+    }
+    
+    auto path = vrcsm::core::SteamVrConfig::DetectVrSettingsPath();
+    if (!path) {
+        throw std::runtime_error("SteamVR settings file not found.");
+    }
+
+    vrcsm::core::SteamVrConfig::Write(*path, params);
+    return nlohmann::json{
+        {"success", true},
+        {"message", "SteamVR settings written successfully."}
+    };
+}
+
+nlohmann::json IpcBridge::HandleMemoryStatus(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    (void)params;
+    (void)id;
+
+    vrcsm::core::ProcessMemoryReader memoryReader(L"VRChat.exe");
+    bool attached = memoryReader.Attach();
+    uint64_t vrcBase = 0;
+    uint64_t gaBase = 0;
+
+    if (attached) {
+        vrcBase = memoryReader.GetModuleBase(L"VRChat.exe");
+        gaBase = memoryReader.GetModuleBase(L"GameAssembly.dll");
+        memoryReader.Detach();
+    }
+
+    return nlohmann::json{
+        {"attached", attached},
+        {"vrcBase", vrcBase},
+        {"gaBase", gaBase}
+    };
+}
+
+nlohmann::json IpcBridge::HandleRadarPoll(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    (void)params;
+    (void)id;
+
+    auto snap = m_radarEngine.PollOnce();
+
+    nlohmann::json playersArr = nlohmann::json::array();
+    for (const auto& p : snap.players) {
+        playersArr.push_back({
+            {"actorNumber", p.actorNumber},
+            {"displayName", p.displayName},
+            {"userId",      p.userId},
+            {"isLocal",     p.isLocal},
+            {"isMaster",    p.isMaster},
+            {"posX",        p.posX},
+            {"posY",        p.posY},
+            {"posZ",        p.posZ},
+        });
+    }
+
+    return nlohmann::json{
+        {"attached",   snap.vrcAttached},
+        {"vrcBase",    snap.vrcBase},
+        {"gaBase",     snap.gaBase},
+        {"players",    playersArr},
+        {"instanceId", snap.instanceId},
+        {"worldId",    snap.worldId},
+    };
 }
 
 void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const
