@@ -8,6 +8,18 @@ add_executable(vrcsm WIN32
     WebViewHost.cpp
     IpcBridge.cpp
     StringUtil.cpp
+
+    # Domain-specific IPC handler implementations (split from IpcBridge.cpp)
+    bridges/AuthBridge.cpp
+    bridges/ApiBridge.cpp
+    bridges/CacheBridge.cpp
+    bridges/SettingsBridge.cpp
+    bridges/MigrateBridge.cpp
+    bridges/ScreenshotBridge.cpp
+    bridges/ShellBridge.cpp
+    bridges/LogsBridge.cpp
+    bridges/RadarBridge.cpp
+    bridges/DatabaseBridge.cpp
 )
 
 target_link_libraries(vrcsm PRIVATE
