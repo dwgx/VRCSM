@@ -12,12 +12,15 @@ import {
   Check,
   Globe2,
   Users,
+  Radio,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_LANGUAGES, changeLanguage } from "@/i18n";
+import { ipc } from "@/lib/ipc";
+import type { AppVersion } from "@/lib/types";
 
 interface NavItem {
   to: string;
@@ -29,6 +32,7 @@ const items: NavItem[] = [
   { to: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { to: "/profile", labelKey: "nav.profile", icon: UserCircle2 },
   { to: "/friends", labelKey: "nav.friends", icon: Users },
+  { to: "/radar", labelKey: "nav.radar", icon: Radio },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
   { to: "/avatars", labelKey: "nav.avatars", icon: User },
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
@@ -107,12 +111,27 @@ function LanguageMenu() {
   );
 }
 
+function VersionFooter() {
+  const [ver, setVer] = useState<AppVersion | null>(null);
+  useEffect(() => {
+    let alive = true;
+    ipc.version().then((v) => { if (alive) setVer(v); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const label = ver ? `v${ver.version} · ${ver.build}` : "v0.5.0";
+  return (
+    <div className="px-2.5 pt-0.5 text-[10px] font-mono tracking-tight text-[hsl(var(--muted-foreground))]">
+      {label}
+    </div>
+  );
+}
+
 export function Sidebar() {
   const { t } = useTranslation();
   return (
     <aside
       className={cn(
-        "flex h-full w-56 shrink-0 flex-col",
+        "flex h-full w-full flex-col overflow-hidden",
         "bg-[hsl(var(--surface))]",
         "border-r border-[hsl(var(--border))]",
       )}
@@ -179,9 +198,7 @@ export function Sidebar() {
       {/* Footer — language + version */}
       <div className="flex flex-col gap-1 border-t border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1.5 py-2">
         <LanguageMenu />
-        <div className="px-2.5 pt-0.5 text-[10px] font-mono tracking-tight text-[hsl(var(--muted-foreground))]">
-          v0.3.0 · dwgx
-        </div>
+        <VersionFooter />
       </div>
     </aside>
   );

@@ -224,7 +224,10 @@ std::filesystem::path findBundleForAvatar(
         return it->second;
     }
 
-    constexpr std::size_t kMaxInfoFiles = 2000;
+    // Increase scan budget significantly. A 30GB cache like the user's
+    // can easily contain >2000 items. Scanning is fast, and we
+    // only do it once per new cache state.
+    constexpr std::size_t kMaxInfoFiles = 100000;
     std::size_t scanned = 0;
 
     // Two-level walk: Cache-WindowsPlayer/<topHash>/<versionHash>/__info
@@ -467,8 +470,23 @@ AvatarPreviewResult AvatarPreview::Request(
         
         if (localBundlePath.empty())
         {
+            const auto cwpDir = vrchatBaseDir / L"Cache-WindowsPlayer";
+            auto cwpHit = findBundleForAvatar(cwpDir, avatarId);
+            if (!cwpHit.empty())
+            {
+                std::error_code l_ec;
+                auto cand = cwpHit / L"__data";
+                if (std::filesystem::exists(cand, l_ec))
+                {
+                    localBundlePath = cand;
+                }
+            }
+        }
+        
+        if (localBundlePath.empty())
+        {
             result.code = "bundle_not_found";
-            result.message = "No assetUrl provided and offline cache sweeps are unsupported.";
+            result.message = "No assetUrl provided and bundle not found in Cache-WindowsPlayer.";
             return result;
         }
     }
@@ -578,8 +596,23 @@ AvatarPreviewResult AvatarPreview::Request(
         }
         if (localBundlePath.empty())
         {
+            const auto cwpDir = vrchatBaseDir / L"Cache-WindowsPlayer";
+            auto cwpHit = findBundleForAvatar(cwpDir, avatarId);
+            if (!cwpHit.empty())
+            {
+                std::error_code l_ec;
+                auto cand = cwpHit / L"__data";
+                if (std::filesystem::exists(cand, l_ec))
+                {
+                    localBundlePath = cand;
+                }
+            }
+        }
+        
+        if (localBundlePath.empty())
+        {
             return AvatarPreviewResult{false, {}, {}, false, "bundle_not_found",
-                "No assetUrl provided and offline cache sweeps are unsupported."};
+                "No assetUrl provided and bundle not found in Cache-WindowsPlayer."};
         }
     }
 

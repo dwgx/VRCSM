@@ -21,6 +21,8 @@ struct BundleEntry
     std::optional<std::string> latest_mtime;
     std::optional<std::string> oldest_mtime;
     std::string bundle_format;
+    /// First line of __info (typically the asset URL) — cheap to read during scan.
+    std::string info_url;
 };
 
 void to_json(nlohmann::json& j, const BundleEntry& e);

@@ -6,6 +6,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "radar": "Instance Radar",
     "profile": "My Profile",
     "friends": "Friends",
     "bundles": "Bundles",
@@ -48,7 +49,19 @@
     "countSuffix": "shots",
     "openHover": "Open",
     "open": "Open",
-    "loadFailed": "Load failed: {{error}}"
+    "loadFailed": "Load failed: {{error}}",
+    "copyPath": "Copy path",
+    "pathCopied": "Path copied to clipboard",
+    "pathsCopied": "{{count}} paths copied",
+    "copyFailed": "Copy failed",
+    "delete": "Delete",
+    "deleteNotImpl": "Delete not implemented yet",
+    "showInExplorer": "Show in Explorer",
+    "selectAll": "Select all",
+    "clearSelection": "Clear",
+    "selectionCount": "{{count}} selected",
+    "openSelected": "Open ({{count}})",
+    "copyPaths": "Copy paths"
   },
   "avatars_extra": {
     "selectAvatar": "Switch to this avatar",
@@ -86,7 +99,7 @@
     "title": "Friends",
     "subtitle": "Live VRChat friend roster — requires sign-in.",
     "listPaneTitle": "Friends",
-    "filterPlaceholder": "Filter by name or status…",
+    "filterPlaceholder": "Filter by name, trust rank, world, or ID…",
     "totalCount_one": "{{count}} friend",
     "totalCount_other": "{{count}} friends",
     "showOffline": "Show offline",
@@ -130,8 +143,12 @@
       "instance": "Instance",
       "location": "Location",
       "lastSeen": "Last seen",
-      "bio": "Bio"
-    }
+      "bio": "Bio",
+      "avatar": "Avatar",
+      "avatarName": "Avatar name"
+    },
+    "alsoInInstance": "Also in instance",
+    "detailPaneTitle": "Details"
   },
   "menu": {
     "file": "File",
@@ -145,7 +162,38 @@
     "windowResetLayout": "Reset layout",
     "helpAbout": "About VRCSM",
     "helpDocs": "Documentation",
-    "helpCheckUpdates": "Check for updates"
+    "helpCheckUpdates": "Check for Updates"
+  },
+  "radar": {
+    "title": "Live Instance Radar",
+    "subtitle": "Real-time player monitoring via log tailing",
+    "experimental": "Experimental — log analysis only",
+    "currentInstance": "Current Instance",
+    "waitingJoin": "Waiting for world join event...",
+    "host": "Host: {{owner}}",
+    "leftSession": "Left Session",
+    "nobodyLeft": "No one has left yet.",
+    "activePlayers": "Active Players",
+    "activeDesc": "Players in your immediate vicinity",
+    "onlineCount": "{{count}} Online",
+    "unknownTime": "Unknown",
+    "unknownAvatar": "Unknown Avatar",
+    "trackingWait": "Tracking will populate as players join...",
+    "stats": {
+      "timeInWorld": "Time in world",
+      "peakPlayers": "Peak players",
+      "uniquePlayers": "Unique players",
+      "avatarChanges": "Avatar changes"
+    },
+    "timeline": {
+      "title": "Session Timeline",
+      "events": "events",
+      "empty": "Events will appear here...",
+      "worldChanged": "World changed"
+    },
+    "idUnknown": "ID unknown, cannot load profile details",
+    "nameCopied": "Name copied",
+    "copyName": "Copy Name"
   },
   "common": {
     "loading": "Loading…",
@@ -213,7 +261,21 @@
     "scanFailed": "Scan failed",
     "entry": "Entry",
     "size": "Size",
-    "modified": "Modified"
+    "modified": "Modified",
+    "vrcOnline": "VRChat Online",
+    "vrcOffline": "VRChat Offline",
+    "currentSession": "Current Session",
+    "playersInWorld": "{{count}} players",
+    "playerJoined": "joined",
+    "playerLeft": "left",
+    "friendsOnline": "Friends online",
+    "friendsOnlineHint": "from VRChat API",
+    "signInForFriends": "sign in to view",
+    "screenshots": "Screenshots",
+    "screenshotsHint": "captured in logs",
+    "recentActivity": "Recent Activity",
+    "recentActivityDesc": "World joins, player events, and avatar switches",
+    "noActivity": "No recent activity in logs"
   },
   "bundles": {
     "title": "Bundles",
@@ -322,7 +384,8 @@
     "accessHidden": "Friends+",
     "accessPrivate": "Invite Only",
     "accessGroup": "Group",
-    "ownerLabel": "Owner:"
+    "ownerLabel": "Owner:",
+    "playersSeen": "Players in Room"
   },
   "logs": {
     "title": "Logs",
@@ -362,31 +425,38 @@
   "migrate": {
     "title": "Migrate",
     "subtitle": "Move a cache directory to another drive and replace it with a junction.",
-    "step": "Step {{n}}",
-    "step1Title": "1. Pick a category",
-    "step1Desc": "Select which VRChat cache to relocate.",
-    "step2Title": "2. Source and target",
-    "step2Desc": "Source is read-only. Pick a target directory on another drive.",
-    "step3Title": "3. Preflight",
-    "step3Desc": "Check disk space, junction state, and whether VRChat is running.",
-    "step4Title": "4. Execute",
-    "step4Desc": "Copy → verify → remove source → create junction.",
+    "selectCategory": "Cache category",
+    "selectCategoryDesc": "Select which VRChat cache directory to migrate to another drive.",
+    "noCategories": "Scanning... no migratable categories found yet.",
+    "files": "files",
+    "pathConfig": "Source & target",
+    "pathConfigDesc": "Source is the current cache location. Pick or type a target on another drive.",
     "source": "Source",
     "target": "Target",
     "targetPlaceholder": "D:\\VRChatCache\\…",
+    "advancedOptions": "Advanced options",
+    "advancedHint": "The migration pipeline runs: preflight check, file copy, hash verification, source removal, and NTFS junction creation. All phases are mandatory for data safety.",
     "runPreflight": "Run preflight",
     "checking": "Checking…",
-    "execute": "Execute migration",
+    "preflightResults": "Preflight results",
+    "preflightResultsDesc": "Disk space, blocker checks, and migration readiness.",
+    "blocked": "Blocked",
+    "ready": "Ready",
+    "sourceBytes": "Source size",
+    "targetFree": "Target free space",
+    "spaceRequired": "Space required",
+    "vrcRunningBlocker": "VRChat is running. Close it before migrating to avoid data corruption.",
+    "noBlockers": "No blockers detected. Ready to migrate.",
+    "pipeline": "Migration pipeline",
+    "execute": "Start migration",
     "running": "Running…",
-    "sourceBytes": "source size",
-    "targetFree": "target free",
-    "noBlockers": "no blockers",
+    "resetPreflight": "Reset",
     "phase": {
       "preflight": "Preflight",
-      "copy": "Copying files",
-      "verify": "Verifying",
-      "remove": "Removing source",
-      "junction": "Creating junction",
+      "copy": "Copying",
+      "verify": "Verify",
+      "remove": "Remove",
+      "junction": "Junction",
       "done": "Done",
       "error": "Error"
     },
@@ -399,7 +469,12 @@
     "complete": "Migration complete",
     "failed": "Migration failed",
     "browseError": "Folder picker not available",
-    "browseCancelled": "No folder selected"
+    "browseCancelled": "No folder selected",
+    "junctionState": "Existing junction detected",
+    "junctionStateDesc": "The source path is already an NTFS junction. You can repair it if the target is missing or broken.",
+    "pointsTo": "points to",
+    "repairSuccess": "Junction repaired successfully",
+    "repairFailed": "Repair failed: {{error}}"
   },
   "settings": {
     "title": "Settings",
@@ -416,7 +491,23 @@
     "light": "Light",
     "app": {
       "sectionTitle": "VRCSM",
-      "sectionDesc": "Shell preferences — applied immediately."
+      "sectionDesc": "Shell preferences — applied immediately.",
+      "factoryResetLabel": "Factory reset",
+      "factoryResetHint": "Wipe VRCSM's saved session, thumbnail cache and logs. Does NOT touch VRChat's own data.",
+      "factoryResetOk": "Factory reset complete ({{count}} files wiped)",
+      "factoryResetFailed": "Factory reset failed: {{error}}",
+      "factoryResetConfirmTitle": "Factory reset VRCSM?",
+      "factoryResetConfirmBody": "This wipes VRCSM's saved VRChat session, thumbnail cache and logs under %LocalAppData%\\VRCSM. VRChat's own avatars, cache and registry settings are NOT affected. This action cannot be undone.",
+      "factoryResetting": "Wiping\u2026",
+      "factoryResetConfirm": "Wipe VRCSM data"
+    },
+    "social": {
+      "sectionTitle": "Social & Tracking",
+      "sectionDesc": "Configure live tracker and background polling for your friend list.",
+      "liveRefreshLabel": "Live Friends Tracker",
+      "liveRefreshHint": "Automatically query VRChat servers in the background to detect when friends come online or switch instances.",
+      "refreshIntervalLabel": "Polling Interval (Seconds)",
+      "refreshIntervalHint": "How often the background tracker refreshes data. Lower values update faster but may trigger VRChat API rate limits (429)."
     },
     "vrc": {
       "sectionTitle": "VRChat game settings",

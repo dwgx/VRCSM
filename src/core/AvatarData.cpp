@@ -115,7 +115,7 @@ LocalAvatarReport AvatarData::scan(const std::filesystem::path& baseDir)
     std::sort(items.begin(), items.end(), [](const LocalAvatarItem& a, const LocalAvatarItem& b) {
         return a.modified_at.value_or("") > b.modified_at.value_or("");
     });
-    if (items.size() > 50) items.resize(50);
+    if (items.size() > 10000) items.resize(10000);
     report.recent_items = std::move(items);
 
     return report;

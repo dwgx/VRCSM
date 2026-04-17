@@ -21,12 +21,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { FileCode2, FolderTree, Search } from "lucide-react";
+import { FileCode2, FolderTree, Search, Globe2, User, Package } from "lucide-react";
 import { ipc } from "@/lib/ipc";
 import { useReport } from "@/lib/report-context";
 import { formatBytes, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import type { BundleEntry, BundlePreview } from "@/lib/types";
+
+/** Extract asset type and ID from a VRChat cache __info URL */
+function parseInfoUrl(url: string): { type: "avatar" | "world" | "unknown"; id: string | null } {
+  if (!url) return { type: "unknown", id: null };
+  const avtrMatch = url.match(/(avtr_[0-9a-f-]{36})/i);
+  if (avtrMatch) return { type: "avatar", id: avtrMatch[1] };
+  const wrldMatch = url.match(/(wrld_[0-9a-f-]{36})/i);
+  if (wrldMatch) return { type: "world", id: wrldMatch[1] };
+  return { type: "unknown", id: null };
+}
 
 /**
  * Parse the key=value lines VRChat stores inside `__info`. The file is
@@ -141,14 +151,36 @@ function Bundles() {
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Name lookup maps from parsed logs
+  const avatarNames = report?.logs?.avatar_names as Record<string, { name: string; author: string | null }> | undefined;
+  const worldNames = report?.logs?.world_names as Record<string, string> | undefined;
+
+  function resolveAssetName(entry: BundleEntry): { label: string; type: "avatar" | "world" | "unknown"; id: string | null } {
+    const parsed = parseInfoUrl(entry.info_url);
+    if (parsed.type === "avatar" && parsed.id) {
+      const info = avatarNames?.[parsed.id];
+      return { label: info?.name ?? parsed.id, type: "avatar", id: parsed.id };
+    }
+    if (parsed.type === "world" && parsed.id) {
+      const name = worldNames?.[parsed.id];
+      return { label: name ?? parsed.id, type: "world", id: parsed.id };
+    }
+    return { label: entry.entry.slice(0, 16) + "…", type: "unknown", id: null };
+  }
+
   const filtered = useMemo(() => {
     if (!report) return [];
     const q = filter.trim().toLowerCase();
     if (!q) return report.cache_windows_player.entries;
-    return report.cache_windows_player.entries.filter((e) =>
-      e.entry.toLowerCase().includes(q),
-    );
-  }, [report, filter]);
+    return report.cache_windows_player.entries.filter((e) => {
+      if (e.entry.toLowerCase().includes(q)) return true;
+      // Also search by resolved name
+      const resolved = resolveAssetName(e);
+      if (resolved.label.toLowerCase().includes(q)) return true;
+      if (resolved.id?.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [report, filter, avatarNames, worldNames]);
 
   const infoFields = useMemo(
     () => (preview ? parseInfoText(preview.data.infoText) : {}),
@@ -290,10 +322,28 @@ function Bundles() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((entry) => (
+              {filtered.map((entry) => {
+                const resolved = resolveAssetName(entry);
+                return (
                 <TableRow key={entry.entry}>
-                  <TableCell className="font-mono text-[11px]">
-                    {entry.entry.slice(0, 16)}…
+                  <TableCell className="text-[11px]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {resolved.type === "avatar" ? (
+                        <User className="size-3.5 shrink-0 text-purple-400" />
+                      ) : resolved.type === "world" ? (
+                        <Globe2 className="size-3.5 shrink-0 text-blue-400" />
+                      ) : (
+                        <Package className="size-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-[hsl(var(--foreground))]">
+                          {resolved.label}
+                        </div>
+                        <div className="truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                          {entry.entry.slice(0, 12)}…
+                        </div>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-[11px]">
                     {entry.bytes_human}
@@ -327,7 +377,8 @@ function Bundles() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell

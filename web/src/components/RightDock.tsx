@@ -53,7 +53,7 @@ export function RightDock({ fallback = null }: RightDockProps) {
   if (!activeDock) return null;
 
   return (
-    <aside className="unity-dock flex h-full w-[320px] shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--surface))]">
+    <aside className="unity-dock flex h-full w-full flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--surface))]">
       <div className="flex h-8 items-center border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-3">
         <div className="unity-tab unity-tab-active min-w-0 max-w-full">
           {activeDock.title}

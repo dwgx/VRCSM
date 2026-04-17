@@ -159,7 +159,7 @@ void to_json(nlohmann::json& j, const LogReport& r)
 namespace
 {
 constexpr std::size_t kMaxLogFiles = 5;
-constexpr std::size_t kMaxRecentIds = 64;
+constexpr std::size_t kMaxRecentIds = 1000;
 // Hard cap per event stream. A long party in GoGo Loco routinely generates
 // 2000+ OnPlayerJoined lines and the frontend doesn't need them all — 500
 // gives "recent activity" enough headroom while keeping the IPC payload
@@ -250,6 +250,9 @@ std::vector<std::filesystem::path> findLogFiles(const std::filesystem::path& bas
     {
         files.resize(kMaxLogFiles);
     }
+    
+    // Reverse the vector so that we process them chronologically (oldest of the top 5 first, newest last)
+    std::reverse(files.begin(), files.end());
     return files;
 }
 

@@ -56,7 +56,7 @@ export function AuthChip() {
         <User className="size-3.5" />
         {status.displayName ?? t("auth.signedIn")}
       </Badge>
-      <div className="pointer-events-none absolute right-0 top-full z-50 mt-1 w-max opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+      <div className="pointer-events-none absolute right-0 top-full z-50 pt-1 w-max opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
         <Button
           variant="outline"
           size="sm"

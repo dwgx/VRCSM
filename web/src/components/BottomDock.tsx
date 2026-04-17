@@ -129,7 +129,7 @@ export function BottomDock({ report, resetToken = 0 }: BottomDockProps) {
 
   return (
     <section
-      className="unity-dock flex shrink-0 flex-col border-t border-[hsl(var(--border))] bg-[hsl(var(--surface))]"
+      className="unity-dock flex min-w-0 overflow-x-hidden shrink-0 flex-col border-t border-[hsl(var(--border))] bg-[hsl(var(--surface))]"
       style={{ height }}
     >
       <button

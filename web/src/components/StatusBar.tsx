@@ -20,7 +20,7 @@ export function StatusBar({
   const { t } = useTranslation();
 
   return (
-    <footer className="unity-statusbar flex h-[22px] items-center gap-3 px-3 text-[11px]">
+    <footer className="unity-statusbar flex min-w-0 overflow-x-hidden h-[22px] items-center gap-3 px-3 text-[11px]">
       <div className="min-w-0 truncate text-[hsl(var(--muted-foreground))]">
         <span className="text-[hsl(var(--foreground))]">{currentPageLabel}</span>
         <span className="mx-2 text-[hsl(var(--border-strong))]">/</span>

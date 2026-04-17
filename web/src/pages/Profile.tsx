@@ -60,7 +60,7 @@ export default function Profile() {
       <div className="flex flex-col gap-4 animate-fade-in">
         <header>
           <h1 className="text-[22px] font-semibold leading-none tracking-tight">
-            {t("profile.title", { defaultValue: "我的资料" })}
+            {t("profile.title", { defaultValue: "My Profile" })}
           </h1>
         </header>
         <Card className="max-w-md">
@@ -85,10 +85,10 @@ export default function Profile() {
       <header className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-semibold leading-none tracking-tight">
-            {t("profile.title", { defaultValue: "我的资料" })}
+            {t("profile.title", { defaultValue: "My Profile" })}
           </h1>
           <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
-            {t("profile.subtitle", { defaultValue: "查看和编辑你的 VRChat 个人信息" })}
+            {t("profile.subtitle", { defaultValue: "View and edit your VRChat profile information" })}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
@@ -113,12 +113,12 @@ export default function Profile() {
           <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-3 py-2.5 text-[11px] text-[hsl(var(--muted-foreground))]">
             <div className="flex items-center gap-2 font-medium text-[hsl(var(--foreground))]">
               <Sword className="size-3.5" />
-              {t("profile.switchAvatar", { defaultValue: "切换模型" })}
+              {t("profile.switchAvatar", { defaultValue: "Switch Avatar" })}
             </div>
             <p className="mt-1 leading-relaxed">
               {t("profile.switchAvatarHint", {
                 defaultValue:
-                  "前往「模型」页面，选中一个模型后点击「切换为此模型」即可在线切换。需要保持 VRChat 账号登录状态。",
+                  "Go to the 'Avatars' page, select an avatar and click 'Switch to this avatar' to change it online. You must be signed in to VRChat.",
               })}
             </p>
           </div>

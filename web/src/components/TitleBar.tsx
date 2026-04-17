@@ -19,7 +19,7 @@ export function TitleBar({
   vrcRunning,
 }: TitleBarProps) {
   return (
-    <header className="shrink-0 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))]">
+    <header className="shrink-0 min-w-0 overflow-x-hidden border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))]">
       <MenuBar
         onRescan={onRescan}
         onResetLayout={onResetLayout}

@@ -1,62 +1,45 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { AlertTriangle, Box, Lock, Loader2 } from "lucide-react";
-import { ipc } from "@/lib/ipc";
+import { AlertTriangle, Box, Lock, Loader2, RotateCcw } from "lucide-react";
+import { useAvatarPreview } from "@/hooks/useAvatarPreview";
 
-/**
- * C++ → JS response from `avatar.preview`. `ok: true` means the
- * pipeline (or the on-disk cache) produced a usable `.glb` URL.
- * Failures carry a stable `code` the frontend switches on to pick an
- * empty state — the exact taxonomy lives in `src/core/AvatarPreview.h`.
- */
-interface PreviewResponse {
-  avatarId: string;
-  ok: boolean;
-  glbUrl?: string;
-  glbPath?: string;
-  cached?: boolean;
-  code?: string;
-  message?: string;
-}
+/* ── Error code → UI metadata ──────────────────────────────────────── */
 
-// Every known failure code maps to an i18n key + an icon. Unknown
-// codes drop to a generic "preview failed" state so new C++ codes
-// don't render as broken UI.
 const CODE_META: Record<
   string,
   { icon: typeof AlertTriangle; kind: "info" | "warn" }
 > = {
-  cache_missing: { icon: Box, kind: "info" },
-  bundle_not_found: { icon: Box, kind: "info" },
-  bundle_invalid: { icon: Box, kind: "info" },
-  extractor_missing: { icon: Box, kind: "info" },
-  converter_missing: { icon: Box, kind: "info" },
-  extractor_failed: { icon: AlertTriangle, kind: "warn" },
-  converter_failed: { icon: AlertTriangle, kind: "warn" },
-  encrypted: { icon: Lock, kind: "warn" },
-  preview_failed: { icon: AlertTriangle, kind: "warn" },
-  missing_avatar_id: { icon: AlertTriangle, kind: "warn" },
+  cache_missing:     { icon: Box,            kind: "info" },
+  bundle_not_found:  { icon: Box,            kind: "info" },
+  bundle_invalid:    { icon: Box,            kind: "info" },
+  extractor_missing: { icon: Box,            kind: "info" },
+  converter_missing: { icon: Box,            kind: "info" },
+  extractor_failed:  { icon: AlertTriangle,  kind: "warn" },
+  converter_failed:  { icon: AlertTriangle,  kind: "warn" },
+  encrypted:         { icon: Lock,           kind: "warn" },
+  preview_failed:    { icon: AlertTriangle,  kind: "warn" },
+  missing_avatar_id: { icon: AlertTriangle,  kind: "warn" },
 };
+
+/* ── Sub-components ────────────────────────────────────────────────── */
 
 function EmptyState({
   code,
   size,
   message,
+  onRetry,
 }: {
   code: string;
   size: number;
   message?: string;
+  onRetry?: () => void;
 }) {
   const { t } = useTranslation();
   const meta = CODE_META[code] ?? CODE_META.preview_failed;
   const Icon = meta.icon;
-  // The translation key is conventionally `avatars.preview3d.<code>`.
-  // i18next silently falls back to the default value when a key is
-  // missing, so adding a new code only needs one C++ + one locale
-  // edit.
   const title = t(`avatars.preview3d.${code}`, {
     defaultValue:
       code === "encrypted"
@@ -69,9 +52,10 @@ function EmptyState({
     meta.kind === "warn"
       ? "border-[hsl(var(--warn-foreground,var(--destructive))/0.5)] bg-[hsl(var(--destructive)/0.08)]"
       : "border-[hsl(var(--border))] bg-[hsl(var(--canvas))]";
+
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border px-3 py-4 text-center ${tint}`}
+      className={`relative flex flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border px-3 py-4 text-center ${tint}`}
       style={{ width: size, height: size }}
     >
       <Icon className="size-5 text-[hsl(var(--muted-foreground))]" />
@@ -82,6 +66,15 @@ function EmptyState({
         <span className="font-mono text-[9px] text-[hsl(var(--muted-foreground))] opacity-70">
           {message}
         </span>
+      ) : null}
+      {onRetry && code !== "encrypted" && code !== "extractor_missing" ? (
+        <button
+          onClick={onRetry}
+          className="mt-1 flex items-center gap-1 rounded px-2 py-0.5 text-[9px] font-medium text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.1)] transition-colors"
+        >
+          <RotateCcw className="size-3" />
+          {t("avatars.preview3d.retry", { defaultValue: "Retry" })}
+        </button>
       ) : null}
     </div>
   );
@@ -96,20 +89,52 @@ function LoadingState({ size }: { size: number }) {
     >
       <Loader2 className="size-5 animate-spin text-[hsl(var(--primary))]" />
       <span className="text-[10px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-        {t("avatars.preview3d.loading", {
-          defaultValue: "Extracting…",
-        })}
+        {t("avatars.preview3d.loading", { defaultValue: "Extracting\u2026" })}
       </span>
     </div>
   );
 }
 
+function FallbackError({
+  size,
+  fallbackImageUrl,
+  message,
+}: {
+  size: number;
+  fallbackImageUrl: string;
+  message?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-1.5" style={{ width: size }}>
+      <div
+        className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]"
+        style={{ width: size, height: size }}
+      >
+        <img
+          src={fallbackImageUrl}
+          className="h-full w-full object-cover"
+          alt=""
+        />
+      </div>
+      <div className="flex w-full items-center justify-center rounded-[calc(var(--radius-sm)-2px)] border border-[hsl(var(--warn-foreground,var(--destructive))/0.5)] bg-[hsl(var(--destructive)/0.08)] py-1.5">
+        <AlertTriangle className="mr-1.5 size-3 text-[hsl(var(--warn-foreground,var(--destructive)))]" />
+        <span className="text-center text-[9px] font-bold uppercase tracking-wider text-[hsl(var(--warn-foreground,var(--destructive)))]">
+          {message?.includes("assetUrl")
+            ? "No Asset URL"
+            : "Preview Unavailable"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ── 3D Scene internals ────────────────────────────────────────────── */
+
 /**
  * Compute a "tight" bounding box by trimming the 2% most extreme
- * vertices from each axis. This eliminates outlier geometry (oversized
- * skybox props, enormous trumpet meshes, stray vertices at world
- * origin) that would otherwise push the bounding box to absurd
- * extents and cause the model to appear as a tiny dot.
+ * vertices from each axis. This is a safety net that eliminates any
+ * residual outlier geometry the Python extractor didn't catch
+ * (e.g. stray vertices at world origin, edge-case props).
  */
 function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
   const positions: THREE.Vector3[] = [];
@@ -134,7 +159,6 @@ function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
     return new THREE.Box3().setFromObject(scene);
   }
 
-  // Sort per axis, trim 2% from each end.
   const trim = Math.max(1, Math.floor(positions.length * 0.02));
 
   const xs = positions.map((p) => p.x).sort((a, b) => a - b);
@@ -152,19 +176,10 @@ function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
 }
 
 /**
- * React-three-fiber model with robust origin normalization.
- *
- * VRChat avatars extracted via UnityPy often have their root bone
- * displaced from world origin (rigged with Hips at an arbitrary
- * position). Drei's `<Stage>` fails because it uses the raw bounding
- * box — oversized props (skyboxes, huge trumpets) pollute the bounds.
- *
- * We fix this by:
- *   1. Computing a robust bounding box (trimming 2% outlier vertices).
- *   2. Centering the model so the mid-point of the robust AABB sits
- *      at the scene origin (X/Z centered, Y floor at 0).
- *   3. Scaling to fit a 2m-tall viewport so the camera always frames
- *      the avatar regardless of original scale.
+ * Loads a GLB via drei's useGLTF, then normalizes its origin:
+ *   1. Robust bounding box (trim 2% outlier vertices)
+ *   2. Center X/Z, plant feet at Y=0
+ *   3. Scale to fit ~2m tall
  */
 function GlbModel({ url }: { url: string }) {
   const { scene } = useGLTF(url);
@@ -173,7 +188,6 @@ function GlbModel({ url }: { url: string }) {
   useEffect(() => {
     if (!groupRef.current) return;
 
-    // Force world matrix update before measuring.
     scene.updateMatrixWorld(true);
 
     const box = computeRobustBounds(scene);
@@ -182,13 +196,10 @@ function GlbModel({ url }: { url: string }) {
     box.getSize(boxSize);
     box.getCenter(boxCenter);
 
-    // Scale so the tallest axis fits in ~2 meters.
     const maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z);
     const scale = maxDim > 0 ? 2.0 / maxDim : 1;
 
     groupRef.current.scale.setScalar(scale);
-
-    // Center X/Z, plant feet on Y=0.
     groupRef.current.position.set(
       -boxCenter.x * scale,
       -box.min.y * scale,
@@ -207,18 +218,46 @@ function GlbModel({ url }: { url: string }) {
   );
 }
 
+/** Subtle ground reference grid — only rendered at larger sizes. */
+function GroundGrid({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <group>
+      <gridHelper
+        args={[3, 12, 0x444444, 0x2a2a2a]}
+        position={[0, 0, 0]}
+      />
+      {/* Faint ground disc for visual grounding */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.002, 0]}
+        receiveShadow
+      >
+        <circleGeometry args={[1.2, 32]} />
+        <meshStandardMaterial
+          color="#1a1a1a"
+          transparent
+          opacity={0.25}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/* ── Main Export ────────────────────────────────────────────────────── */
+
 /**
- * Dark Unity-style 3D preview. Calls the C++ `avatar.preview` IPC,
- * which returns either a `.glb` URL (possibly cached) or a stable
- * error code that maps to an empty-state. The Canvas is only
- * mounted on success — failures render as a single dimmed panel so
- * the inspector still has a fixed-size slot.
+ * Dark Unity-style 3D avatar preview.
  *
- * The Canvas background is pinned to the Unity "canvas" token so
- * the model blends with the rest of the inspector. `<Stage>` from
- * drei adds the three-point rim/fill/key lighting and ground
- * shadow plane; `OrbitControls` lets the user rotate the model
- * without keyboard shortcuts getting in the way.
+ * Calls C++ `avatar.preview` IPC (via `useAvatarPreview` hook), which
+ * resolves the bundle, runs the Python extractor, and returns a `.glb`
+ * URL served via WebView2's `preview.local` virtual host.
+ *
+ * Camera controls (built into Three.js OrbitControls):
+ *   - LMB drag:        Rotate
+ *   - Shift+LMB drag:  Pan
+ *   - Scroll:          Zoom
+ *   - RMB drag:        Pan (alternative)
  */
 export function AvatarPreview3D({
   avatarId,
@@ -231,59 +270,15 @@ export function AvatarPreview3D({
   fallbackImageUrl?: string;
   size?: number;
 }) {
-  const [state, setState] = useState<
-    | { kind: "loading" }
-    | { kind: "ready"; url: string }
-    | { kind: "error"; code: string; message?: string }
-  >({ kind: "loading" });
-
-  const prevAvatarRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setState({ kind: "loading" });
-
-    // If the user switched avatars, abort the previous extraction so
-    // the TaskQueue cancels the stale child process immediately.
-    if (prevAvatarRef.current && prevAvatarRef.current !== avatarId) {
-      ipc.call("avatar.preview.abort", { avatarId: prevAvatarRef.current }).catch(() => {});
-    }
-    prevAvatarRef.current = avatarId;
-
-    ipc
-      .call<{ avatarId: string; assetUrl?: string }, PreviewResponse>("avatar.preview", { avatarId, assetUrl })
-      .then((resp) => {
-        if (cancelled) return;
-        if (resp.ok && resp.glbUrl) {
-          setState({ kind: "ready", url: resp.glbUrl });
-        } else {
-          setState({
-            kind: "error",
-            code: resp.code ?? "preview_failed",
-            message: resp.message,
-          });
-        }
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setState({
-          kind: "error",
-          code: "preview_failed",
-          message: e instanceof Error ? e.message : String(e),
-        });
-      });
-
-    return () => {
-      cancelled = true;
-      // Abort on unmount too — if the dialog closes mid-extraction.
-      ipc.call("avatar.preview.abort", { avatarId }).catch(() => {});
-    };
-  }, [avatarId, assetUrl]);
+  const { state, retry } = useAvatarPreview(avatarId, assetUrl);
 
   const canvasStyle = useMemo<React.CSSProperties>(
     () => ({ width: size, height: size, background: "hsl(var(--canvas))" }),
     [size],
   );
+
+  // Show ground grid only when the preview is large enough to see it
+  const showGrid = size >= 180;
 
   if (state.kind === "loading") {
     return <LoadingState size={size} />;
@@ -292,31 +287,23 @@ export function AvatarPreview3D({
   if (state.kind === "error") {
     if (fallbackImageUrl) {
       return (
-        <div 
-          className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]" 
-          style={{ width: size, height: size }}
-        >
-          <img src={fallbackImageUrl} className="h-full w-full object-cover" alt="" />
-          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center bg-[hsl(var(--background))/0.9] py-1 border-t border-[hsl(var(--border))]">
-            <AlertTriangle className="size-3 text-[hsl(var(--warn-foreground,var(--destructive)))] mr-1.5" />
-            <span className="text-[9.5px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] text-center">
-              {state.message?.includes("assetUrl") ? 'No Asset URL' : 'Preview Unavailable'}
-            </span>
-          </div>
-        </div>
+        <FallbackError
+          size={size}
+          fallbackImageUrl={fallbackImageUrl}
+          message={state.message}
+        />
       );
     }
-    return <EmptyState code={state.code} size={size} message={state.message} />;
+    return (
+      <EmptyState
+        code={state.code}
+        size={size}
+        message={state.message}
+        onRetry={retry}
+      />
+    );
   }
 
-  // We explicitly avoid Drei's <Stage> because it computes a bounding
-  // box over ALL meshes in the GLTF. If a prop (like a trumpet) was
-  // oversized locally and scaled down in Unity, our raw mesh extraction
-  // sees it as 100 meters large. <Stage> would then shift the entire
-  // model so the 100-meter prop is centered, wildly displacing the
-  // character's body. By managing the camera and origin ourselves,
-  // the avatar's native feet origin (0,0,0) stays anchored, and the
-  // camera looks statically at the waist/chest [0, 0.8, 0].
   return (
     <div
       className="overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]"
@@ -328,23 +315,28 @@ export function AvatarPreview3D({
         style={canvasStyle}
       >
         <Suspense fallback={null}>
+          {/* 3-point lighting: ambient fill + key + rim */}
           <ambientLight intensity={0.5} />
           <directionalLight position={[5, 10, -5]} intensity={1.5} />
           <directionalLight position={[-5, 5, 5]} intensity={0.5} />
-          
+
           <group position={[0, -0.05, 0]}>
             <GlbModel url={state.url} />
+            <GroundGrid visible={showGrid} />
           </group>
         </Suspense>
+
         <OrbitControls
-          enablePan={true}
-          enableZoom={true}
+          enablePan
+          enableZoom
+          enableRotate
           panSpeed={1.5}
           zoomSpeed={2.5}
-          enableDamping={true}
-          dampingFactor={0.05}
-          minDistance={1.2}
-          maxDistance={8}
+          rotateSpeed={1.0}
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={0.5}
+          maxDistance={10}
           target={[0, 0.8, 0]}
           makeDefault
         />

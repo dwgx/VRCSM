@@ -72,7 +72,7 @@ constexpr const char* kApiKey = "JlE5Jldo5Jibnk5O5hTx6XVqsJu4WJ26";
 // format is `<tool>/<version> <contact>`. The contact segment just needs
 // to parse as email-ish; it's how VRChat can reach out if a tool misbehaves.
 // Bumped in lockstep with package.json / installer / app.rc.
-constexpr const wchar_t* kUserAgentW = L"VRCSM/0.5.0 dwgx@vrcsm.local";
+constexpr const wchar_t* kUserAgentW = L"VRCSM/1.0";
 
 constexpr const wchar_t* kApiHostW = L"api.vrchat.cloud";
 
@@ -354,6 +354,32 @@ std::optional<std::string> extractApiErrorMessage(const std::string& body)
     return std::nullopt;
 }
 
+namespace
+{
+struct WinHttpHandleDeleter
+{
+    void operator()(HINTERNET h) const noexcept
+    {
+        if (h) }
+};
+using UniqueWinHttpHandle = std::unique_ptr<void, WinHttpHandleDeleter>;
+
+std::optional<Error> checkStandardHttpError(const HttpResponse& response, std::string_view label)
+{
+    if (response.error.has_value()) return Error{"network", *response.error, 0};
+    if (response.status == 401) return Error{"auth_expired", "Session expired", 401};
+    if (response.status == 429) return Error{"rate_limited", "Too many requests", 429};
+    if (response.status < 200 || response.status >= 300)
+    {
+        // Many endpoints will have explicit 404 checks before this generic check,
+        // but for generic failures, surface exactly what the server sent.
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error", msg.value_or(fmt::format("{} returned HTTP {}", label, response.status)), static_cast<int>(response.status)};
+    }
+    return std::nullopt;
+}
+} // namespace
+
 std::string describeHttpFailure(const HttpResponse& response, std::string_view label)
 {
     if (response.error.has_value())
@@ -386,12 +412,12 @@ HttpResponse httpRequestOnce(
 {
     HttpResponse result;
 
-    HINTERNET hSession = WinHttpOpen(
+    UniqueWinHttpHandle hSession(WinHttpOpen(
         kUserAgentW,
         WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
         WINHTTP_NO_PROXY_NAME,
         WINHTTP_NO_PROXY_BYPASS,
-        0);
+        0));
     if (!hSession)
     {
         result.error = fmt::format("WinHttpOpen failed ({})", GetLastError());
@@ -399,29 +425,26 @@ HttpResponse httpRequestOnce(
     }
 
     // 8s for each phase — VRChat API usually answers in well under 1s.
-    WinHttpSetTimeouts(hSession, 8000, 8000, 8000, 8000);
+    WinHttpSetTimeouts(hSession.get(), 8000, 8000, 8000, 8000);
 
-    HINTERNET hConnect = WinHttpConnect(hSession, host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
+    UniqueWinHttpHandle hConnect(WinHttpConnect(hSession.get(), host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0));
     if (!hConnect)
     {
         result.error = fmt::format("WinHttpConnect failed ({})", GetLastError());
-        WinHttpCloseHandle(hSession);
         return result;
     }
 
-    HINTERNET hRequest = WinHttpOpenRequest(
-        hConnect,
+    UniqueWinHttpHandle hRequest(WinHttpOpenRequest(
+        hConnect.get(),
         method.c_str(),
         pathAndQuery.c_str(),
         nullptr,
         WINHTTP_NO_REFERER,
         WINHTTP_DEFAULT_ACCEPT_TYPES,
-        WINHTTP_FLAG_SECURE);
+        WINHTTP_FLAG_SECURE));
     if (!hRequest)
     {
         result.error = fmt::format("WinHttpOpenRequest failed ({})", GetLastError());
-        WinHttpCloseHandle(hConnect);
-        WinHttpCloseHandle(hSession);
         return result;
     }
 
@@ -443,27 +466,24 @@ HttpResponse httpRequestOnce(
     }
 
     BOOL ok = WinHttpSendRequest(
-        hRequest,
+        hRequest.get(),
         headerBlock.c_str(),
         static_cast<DWORD>(headerBlock.size()),
         body,
         bodySize,
         bodySize,
-        0);
-    if (ok) ok = WinHttpReceiveResponse(hRequest, nullptr);
+        0));
+    if (ok) ok = WinHttpReceiveResponse(hRequest.get(), nullptr);
     if (!ok)
     {
         result.error = fmt::format("WinHttp request failed ({})", GetLastError());
-        WinHttpCloseHandle(hRequest);
-        WinHttpCloseHandle(hConnect);
-        WinHttpCloseHandle(hSession);
         return result;
     }
 
     DWORD status = 0;
     DWORD statusSize = sizeof(status);
     WinHttpQueryHeaders(
-        hRequest,
+        hRequest.get(),
         WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
         WINHTTP_HEADER_NAME_BY_INDEX,
         &status,
@@ -478,7 +498,7 @@ HttpResponse httpRequestOnce(
             DWORD bufferSize = 0;
             DWORD headerIndex = index;
             if (!WinHttpQueryHeaders(
-                    hRequest,
+                    hRequest.get(),
                     WINHTTP_QUERY_SET_COOKIE,
                     WINHTTP_HEADER_NAME_BY_INDEX,
                     WINHTTP_NO_OUTPUT_BUFFER,
@@ -500,7 +520,7 @@ HttpResponse httpRequestOnce(
             std::wstring rawCookie(static_cast<std::size_t>(bufferSize / sizeof(wchar_t)), L'\0');
             headerIndex = index;
             if (!WinHttpQueryHeaders(
-                    hRequest,
+                    hRequest.get(),
                     WINHTTP_QUERY_SET_COOKIE,
                     WINHTTP_HEADER_NAME_BY_INDEX,
                     rawCookie.data(),
@@ -526,11 +546,11 @@ HttpResponse httpRequestOnce(
 
     // Drain body regardless of status — useful for error messages.
     DWORD available = 0;
-    while (WinHttpQueryDataAvailable(hRequest, &available) && available > 0)
+    while (WinHttpQueryDataAvailable(hRequest.get(), &available) && available > 0)
     {
         std::string chunk(available, '\0');
         DWORD read = 0;
-        if (!WinHttpReadData(hRequest, chunk.data(), available, &read))
+        if (!WinHttpReadData(hRequest.get(), chunk.data(), available, &read))
         {
             break;
         }
@@ -538,9 +558,6 @@ HttpResponse httpRequestOnce(
         result.body.append(chunk);
     }
 
-    WinHttpCloseHandle(hRequest);
-    WinHttpCloseHandle(hConnect);
-    WinHttpCloseHandle(hSession);
     return result;
 }
 
@@ -833,26 +850,9 @@ Result<nlohmann::json> VrcApi::fetchAvatarDetails(const std::string& avatarId)
         kApiHostW,
         path,
         std::make_optional(cookieHeader));
-    if (response.error.has_value())
-    {
-        return Error{"network", *response.error, 0};
-    }
-    if (response.status == 401)
-    {
-        return Error{"auth_expired", "Session expired", 401};
-    }
-    if (response.status == 404)
-    {
-        return Error{"not_found", fmt::format("Avatar {} not found", avatarId), 404};
-    }
-    if (response.status == 429)
-    {
-        return Error{"rate_limited", "Too many requests", 429};
-    }
-    if (response.status != 200)
-    {
-        return Error{"api_error", fmt::format("/avatars/{} returned HTTP {}", avatarId, response.status), response.status};
-    }
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status == 404) return Error{"not_found", fmt::format("Avatar {} not found", avatarId), 404};
+    if (response.status != 200) return Error{"api_error", fmt::format("/avatars/{} returned HTTP {}", avatarId, response.status), static_cast<int>(response.status)};
 
     return parseJsonBody(response, "/avatars/{id}");
 }
@@ -1183,26 +1183,26 @@ std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
         headers.emplace_back(L"Cookie", toWide(cookie));
     }
     
-    HINTERNET hSession = WinHttpOpen(kUserAgentW, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    UniqueWinHttpHandle hSession(WinHttpOpen(kUserAgentW, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) return false;
-    WinHttpSetTimeouts(hSession, 60000, 60000, 60000, 300000);
-    HINTERNET hConnect = WinHttpConnect(hSession, hostName.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
-    if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", urlPath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-    if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
+    WinHttpSetTimeouts(hSession.get(), 60000, 60000, 60000, 300000);
+    UniqueWinHttpHandle hConnect(WinHttpConnect(hSession.get(), hostName.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0));
+    if (!hConnect) { return false; }
+    UniqueWinHttpHandle hRequest(WinHttpOpenRequest(hConnect.get(), L"GET", urlPath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE));
+    if (!hRequest) { return false; }
 
     std::wstring headerBlock = L"Accept: */*\r\n";
     for (const auto& [name, value] : headers) {
         headerBlock += name + L": " + value + L"\r\n";
     }
 
-    BOOL ok = WinHttpSendRequest(hRequest, headerBlock.c_str(), static_cast<DWORD>(headerBlock.size()), WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
-    if (ok) ok = WinHttpReceiveResponse(hRequest, nullptr);
-    if (!ok) { WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
+    BOOL ok = WinHttpSendRequest(hRequest.get(), headerBlock.c_str(), static_cast<DWORD>(headerBlock.size()), WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+    if (ok) ok = WinHttpReceiveResponse(hRequest.get(), nullptr);
+    if (!ok) { return false; }
 
     DWORD status = 0;
     DWORD statusSize = sizeof(status);
-    WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX);
+    WinHttpQueryHeaders(hRequest.get(), WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX);
     if (status < 200 || status >= 300) {
         spdlog::warn("VrcApi: downloadFile failed with HTTP status {}", status);
         WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; 
@@ -1211,23 +1211,20 @@ std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
     std::ofstream out(destPath, std::ios::binary | std::ios::trunc);
     if (!out) {
         spdlog::warn("VrcApi: downloadFile failed to open destPath for write.");
-        WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false;
+        return false;
     }
 
     DWORD available = 0;
     std::vector<char> chunk(64 * 1024);
-    while (WinHttpQueryDataAvailable(hRequest, &available) && available > 0)
+    while (WinHttpQueryDataAvailable(hRequest.get(), &available) && available > 0)
     {
         if (available > chunk.size()) chunk.resize(available);
         DWORD read = 0;
-        if (!WinHttpReadData(hRequest, chunk.data(), available, &read)) break;
+        if (!WinHttpReadData(hRequest.get(), chunk.data(), available, &read)) break;
         out.write(chunk.data(), read);
     }
 
     out.flush();
-    WinHttpCloseHandle(hRequest);
-    WinHttpCloseHandle(hConnect);
-    WinHttpCloseHandle(hSession);
     return out.good();
 }
 
@@ -1249,26 +1246,9 @@ Result<nlohmann::json> VrcApi::fetchUser(const std::string& userId)
         kApiHostW,
         path,
         std::make_optional(cookieHeader));
-    if (response.error.has_value())
-    {
-        return Error{"network", *response.error, 0};
-    }
-    if (response.status == 401)
-    {
-        return Error{"auth_expired", "Session expired", 401};
-    }
-    if (response.status == 404)
-    {
-        return Error{"not_found", fmt::format("User {} not found", userId), 404};
-    }
-    if (response.status == 429)
-    {
-        return Error{"rate_limited", "Too many requests", 429};
-    }
-    if (response.status != 200)
-    {
-        return Error{"api_error", fmt::format("/users/{} returned HTTP {}", userId, response.status), response.status};
-    }
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status == 404) return Error{"not_found", fmt::format("User {} not found", userId), 404};
+    if (response.status != 200) return Error{"api_error", fmt::format("/users/{} returned HTTP {}", userId, response.status), static_cast<int>(response.status)};
 
     return parseJsonBody(response, "/users/{id}");
 }
@@ -1299,23 +1279,11 @@ Result<nlohmann::json> VrcApi::selectAvatar(const std::string& avatarId)
         "{}",
         /*captureSetCookie*/ false);
 
-    if (response.error.has_value())
-    {
-        return Error{"network", *response.error, 0};
-    }
-    if (response.status == 401)
-    {
-        return Error{"auth_expired", "Session expired", 401};
-    }
-    if (response.status == 429)
-    {
-        return Error{"rate_limited", "Too many requests", 429};
-    }
+    if (auto err = checkStandardHttpError(response, "")) return *err;
     if (response.status < 200 || response.status >= 300)
     {
         const auto msg = extractApiErrorMessage(response.body);
-        return Error{"api_error", msg.value_or(
-            fmt::format("/avatars/{}/select returned HTTP {}", avatarId, response.status)), response.status};
+        return Error{"api_error", msg.value_or(fmt::format("/avatars/{}/select returned HTTP {}", avatarId, response.status)), static_cast<int>(response.status)};
     }
     return nlohmann::json{{"ok", true}};
 }
@@ -1356,23 +1324,11 @@ Result<nlohmann::json> VrcApi::updateAuthUser(const nlohmann::json& patch)
         bodyUtf8,
         /*captureSetCookie*/ false);
 
-    if (response.error.has_value())
-    {
-        return Error{"network", *response.error, 0};
-    }
-    if (response.status == 401)
-    {
-        return Error{"auth_expired", "Session expired", 401};
-    }
-    if (response.status == 429)
-    {
-        return Error{"rate_limited", "Too many requests", 429};
-    }
+    if (auto err = checkStandardHttpError(response, "")) return *err;
     if (response.status < 200 || response.status >= 300)
     {
         const auto msg = extractApiErrorMessage(response.body);
-        return Error{"api_error", msg.value_or(
-            fmt::format("/users/{} returned HTTP {}", userId, response.status)), response.status};
+        return Error{"api_error", msg.value_or(fmt::format("/users/{} returned HTTP {}", userId, response.status)), static_cast<int>(response.status)};
     }
 
     return parseJsonBody(response, "/users/{id}");
@@ -1391,26 +1347,9 @@ Result<nlohmann::json> VrcApi::fetchWorldDetails(const std::string& worldId)
     const std::wstring path = toWide(fmt::format("/api/1/worlds/{}?apiKey={}", worldId, kApiKey));
     const auto response = httpGet(kApiHostW, path, authHeader);
 
-    if (response.error.has_value())
-    {
-        return Error{"network", *response.error, 0};
-    }
-    if (response.status == 401)
-    {
-        return Error{"auth_expired", "Session expired", 401};
-    }
-    if (response.status == 404)
-    {
-        return Error{"not_found", fmt::format("World {} not found", worldId), 404};
-    }
-    if (response.status == 429)
-    {
-        return Error{"rate_limited", "Too many requests", 429};
-    }
-    if (response.status != 200)
-    {
-        return Error{"api_error", fmt::format("/worlds/{} returned HTTP {}", worldId, response.status), response.status};
-    }
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status == 404) return Error{"not_found", fmt::format("World {} not found", worldId), 404};
+    if (response.status != 200) return Error{"api_error", fmt::format("/worlds/{} returned HTTP {}", worldId, response.status), static_cast<int>(response.status)};
 
     return parseJsonBody(response, "/worlds/{id}");
 }

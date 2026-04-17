@@ -16,6 +16,11 @@ import {
   Twitch,
   MessageSquare,
   Link,
+  Copy,
+  UserPlus,
+  LogIn,
+  LogOut,
+  Shirt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +28,7 @@ import { IdBadge } from "@/components/IdBadge";
 import { ipc } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
 import { trustRank, trustColorClass, trustLabelKey } from "@/lib/vrcFriends";
+import { useAuth } from "@/lib/auth-context";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -40,8 +46,10 @@ export interface VrcUserProfile {
   currentAvatarThumbnailImageUrl?: string;
   profilePicOverride?: string;
   currentAvatarName?: string;
+  currentAvatarId?: string;
   worldName?: string;
   worldId?: string;
+  location?: string;
   last_login?: string;
   last_activity?: string;
   developerType?: string;
@@ -123,6 +131,10 @@ export function ProfileCard({
 }: ProfileCardProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [wearingAvatar, setWearingAvatar] = useState(false);
+
+  const { status: authStatus } = useAuth();
+  const isSelf = authStatus.userId === user.id;
 
   // Edit draft state
   const [draftBio, setDraftBio] = useState(user.bio ?? "");
@@ -204,15 +216,7 @@ export function ProfileCard({
         <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--surface))] to-transparent" />
         
         {/* Utilities float top right */}
-        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
-          <button
-            type="button"
-            onClick={openVrcProfile}
-            className="rounded bg-black/40 p-1.5 text-white/90 hover:bg-black/60 transition-colors backdrop-blur-sm shadow-sm"
-            title="在 VRChat 网站查看"
-          >
-            <ExternalLink className="size-3" />
-          </button>
+        <div className="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
           {editable && !editing && (
             <button
               type="button"
@@ -417,6 +421,106 @@ export function ProfileCard({
               </span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Action Buttons ── */}
+      <div className="relative z-10 flex flex-wrap items-center gap-1.5 border-t border-[hsl(var(--border)/0.4)] bg-[hsl(var(--canvas)/0.3)] px-3 py-2.5">
+        {/* Row 1: Navigation actions */}
+        <button
+          type="button"
+          onClick={openVrcProfile}
+          title="在 VRChat 网站查看"
+          className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 py-1 text-[11px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.5)] transition-all"
+        >
+          <ExternalLink className="size-3" />
+          主页
+        </button>
+
+        {!isSelf && !user.isFriend && (
+          <button
+            type="button"
+            onClick={() => void ipc.call("shell.openUrl", { url: `https://vrchat.com/home/user/${user.id}` })}
+            title="添加好友"
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 py-1 text-[11px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:border-[hsl(var(--primary)/0.5)] hover:bg-[hsl(var(--primary)/0.08)] transition-all"
+          >
+            <UserPlus className="size-3" />
+            添加好友
+          </button>
+        )}
+
+        {!isSelf && user.location && user.location !== "offline" && user.location !== "private" && user.location !== "traveling" && (
+          <button
+            type="button"
+            onClick={() => void ipc.call("shell.openUrl", { url: `vrchat://launch?ref=vrchat.com&id=${user.location}` })}
+            title="加入到同一房间"
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 py-1 text-[11px] font-medium text-[hsl(var(--muted-foreground))] hover:text-emerald-400 hover:border-emerald-400/40 hover:bg-emerald-400/5 transition-all"
+          >
+            <LogIn className="size-3" />
+            加入房间
+          </button>
+        )}
+
+        {isSelf && authStatus.authed && (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await ipc.call("auth.logout");
+                toast.success("已登出 VRChat");
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "登出失败");
+              }
+            }}
+            title="登出 VRChat"
+            className="ml-auto flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-red-400/40 bg-red-400/5 px-2.5 py-1 text-[11px] font-medium text-red-400 hover:bg-red-400/15 hover:border-red-400/60 transition-all"
+          >
+            <LogOut className="size-3" />
+            登出
+          </button>
+        )}
+      </div>
+
+      {/* ── Avatar Actions (separate row to avoid overlap) ── */}
+      {!isSelf && user.currentAvatarId && (
+        <div className="relative z-10 flex items-center gap-1.5 border-t border-[hsl(var(--border)/0.4)] bg-[hsl(var(--surface-raised)/0.5)] px-3 py-2">
+          <Shirt className="size-3 text-[hsl(var(--primary))] shrink-0" />
+          <span className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">
+            {user.currentAvatarName || user.currentAvatarId}
+          </span>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              disabled={wearingAvatar}
+              onClick={async () => {
+                if (!user.currentAvatarId) return;
+                setWearingAvatar(true);
+                try {
+                  await ipc.call("avatar.select", { avatarId: user.currentAvatarId });
+                  toast.success(`已穿上：${user.currentAvatarName || user.currentAvatarId}`);
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "穿戴模型失败，该模型可能不是公开/可用模型");
+                } finally {
+                  setWearingAvatar(false);
+                }
+              }}
+              title={`穿上 ${user.currentAvatarName || user.currentAvatarId}`}
+              className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.6)] bg-[hsl(var(--primary)/0.1)] px-2 py-0.5 text-[10px] font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.2)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {wearingAvatar ? "穿戴中…" : "穿上"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(user.currentAvatarId!);
+                toast.success("模型 ID 已复制");
+              }}
+              title="复制模型 ID"
+              className="flex items-center gap-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all"
+            >
+              <Copy className="size-2.5" />
+            </button>
+          </div>
         </div>
       )}
 

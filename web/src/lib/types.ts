@@ -24,6 +24,8 @@ export interface BundleEntry {
   latest_mtime: string | null;
   oldest_mtime: string | null;
   bundle_format: string;
+  /** First line of __info — typically the asset URL containing avtr_/wrld_ IDs */
+  info_url: string;
 }
 
 export interface CacheWindowsPlayer {
@@ -218,6 +220,61 @@ export interface LogStreamChunk {
 
 export type VrcSettingType = "int" | "float" | "string" | "bool" | "raw";
 
+export interface SteamVrHardwareInfo {
+  gpuVendor: string;
+  gpuHorsepower: number;
+  hmdModel: string;
+  hmdManufacturer: string;
+  hmdDriver: string;
+}
+
+export interface SteamVrConfig {
+  ok?: boolean;
+  path?: string;
+  hardware?: SteamVrHardwareInfo;
+  driver_vrlink?: {
+    automaticBandwidth?: boolean;
+    automaticStreamFormatWidth?: boolean;
+    targetBandwidth?: number;
+    [key: string]: any;
+  };
+  steamvr?: {
+    supersampleScale?: number;
+    preferredRefreshRate?: number;
+    motionSmoothing?: boolean;
+    allowSupersampleFiltering?: boolean;
+    supersampleManualOverride?: boolean;
+    [key: string]: any;
+  };
+  steamvr_running?: boolean;
+}
+
+export interface MemoryStatus {
+  attached: boolean;
+  vrcBase: number;
+  gaBase: number;
+}
+
+export interface RadarPlayer {
+  actorNumber: number;
+  displayName: string;
+  userId: string;
+  isLocal: boolean;
+  isMaster: boolean;
+  posX: number;
+  posY: number;
+  posZ: number;
+}
+
+export interface RadarSnapshot {
+  attached: boolean;
+  vrcBase: number;
+  gaBase: number;
+  players: RadarPlayer[];
+  instanceId: string;
+  worldId: string;
+}
+
 export interface VrcSettingValueSnapshot {
   type: VrcSettingType;
   intValue?: number;
@@ -312,6 +369,8 @@ export interface Friend {
   displayName: string;
   currentAvatarImageUrl: string | null;
   currentAvatarThumbnailImageUrl: string | null;
+  /** Display name of the friend's current avatar. May be absent. */
+  currentAvatarName?: string | null;
   statusDescription: string | null;
   status: string | null;
   location: string | null;
