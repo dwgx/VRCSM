@@ -27,6 +27,8 @@ import type {
   RadarSnapshot,
 } from "./types";
 
+const FAVORITES_COMPAT_STORAGE_KEY = "vrcsm:favorites-compat";
+
 interface WebViewBridge {
   postMessage: (message: string) => void;
   addEventListener: (type: "message", listener: (event: { data: string }) => void) => void;
@@ -109,9 +111,9 @@ const mockFavorites: FavoriteItem[] = [
   },
 ];
 
-function buildMockFavoriteLists(): FavoriteListSummary[] {
+function buildFavoriteLists(items: FavoriteItem[]): FavoriteListSummary[] {
   const map = new Map<string, FavoriteListSummary>();
-  for (const item of mockFavorites) {
+  for (const item of items) {
     const key = `${item.list_name}::${item.type ?? ""}`;
     const row = map.get(key);
     if (row) {
@@ -131,6 +133,62 @@ function buildMockFavoriteLists(): FavoriteListSummary[] {
   }
   return Array.from(map.values()).sort((a, b) =>
     (b.latest_added_at ?? "").localeCompare(a.latest_added_at ?? ""),
+  );
+}
+
+function buildMockFavoriteLists(): FavoriteListSummary[] {
+  return buildFavoriteLists(mockFavorites);
+}
+
+function sortFavoriteItems(items: FavoriteItem[]): FavoriteItem[] {
+  return [...items].sort((a, b) =>
+    a.sort_order !== b.sort_order
+      ? a.sort_order - b.sort_order
+      : (a.added_at ?? "").localeCompare(b.added_at ?? ""),
+  );
+}
+
+function readCompatFavorites(): FavoriteItem[] {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FAVORITES_COMPAT_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is FavoriteItem => {
+      return (
+        item &&
+        typeof item === "object" &&
+        typeof item.target_id === "string" &&
+        typeof item.list_name === "string"
+      );
+    });
+  } catch {
+    return [];
+  }
+}
+
+function writeCompatFavorites(items: FavoriteItem[]): void {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    FAVORITES_COMPAT_STORAGE_KEY,
+    JSON.stringify(items),
+  );
+}
+
+function isMethodNotFoundError(error: unknown): boolean {
+  if (!(error instanceof IpcError)) {
+    return false;
+  }
+  return (
+    error.code === "method_not_found" ||
+    error.message.includes("Unknown IPC method:")
   );
 }
 
@@ -1167,27 +1225,106 @@ class IpcClient {
   // ── Favorites ───────────────────────────────────────────────────────
 
   async favoriteLists() {
-    return this.call<undefined, { lists: FavoriteListSummary[] }>("favorites.lists");
+    try {
+      return await this.call<undefined, { lists: FavoriteListSummary[] }>("favorites.lists");
+    } catch (error) {
+      if (!isMethodNotFoundError(error)) {
+        throw error;
+      }
+      return { lists: buildFavoriteLists(readCompatFavorites()) };
+    }
   }
 
   async favoriteItems(listName: string) {
-    return this.call<{ list_name: string }, { items: FavoriteItem[] }>(
-      "favorites.items", { list_name: listName },
-    );
+    try {
+      return await this.call<{ list_name: string }, { items: FavoriteItem[] }>(
+        "favorites.items",
+        { list_name: listName },
+      );
+    } catch (error) {
+      if (!isMethodNotFoundError(error)) {
+        throw error;
+      }
+      return {
+        items: sortFavoriteItems(
+          readCompatFavorites().filter((item) => item.list_name === listName),
+        ),
+      };
+    }
   }
 
   async favoriteAdd(params: {
     type: string; target_id: string; list_name: string;
     display_name?: string; thumbnail_url?: string;
   }) {
-    return this.call<typeof params, { ok: boolean }>("favorites.add", params);
+    try {
+      return await this.call<typeof params, { ok: boolean }>("favorites.add", params);
+    } catch (error) {
+      if (!isMethodNotFoundError(error)) {
+        throw error;
+      }
+
+      const items = readCompatFavorites();
+      const nextItem: FavoriteItem = {
+        type: params.type,
+        target_id: params.target_id,
+        list_name: params.list_name,
+        display_name: params.display_name ?? null,
+        thumbnail_url: params.thumbnail_url ?? null,
+        added_at: nowIso(),
+        sort_order: 0,
+        tags: [],
+        note: null,
+        note_updated_at: null,
+      };
+
+      const existingIndex = items.findIndex(
+        (item) =>
+          item.type === params.type &&
+          item.target_id === params.target_id &&
+          item.list_name === params.list_name,
+      );
+
+      if (existingIndex >= 0) {
+        const existing = items[existingIndex];
+        items.splice(existingIndex, 1, {
+          ...existing,
+          ...nextItem,
+          tags: existing.tags ?? [],
+          note: existing.note ?? null,
+          note_updated_at: existing.note_updated_at ?? null,
+        });
+      } else {
+        items.push(nextItem);
+      }
+
+      writeCompatFavorites(items);
+      return { ok: true };
+    }
   }
 
   async favoriteRemove(type: string, targetId: string, listName: string) {
-    return this.call<
-      { type: string; target_id: string; list_name: string },
-      { ok: boolean }
-    >("favorites.remove", { type, target_id: targetId, list_name: listName });
+    try {
+      return await this.call<
+        { type: string; target_id: string; list_name: string },
+        { ok: boolean }
+      >("favorites.remove", { type, target_id: targetId, list_name: listName });
+    } catch (error) {
+      if (!isMethodNotFoundError(error)) {
+        throw error;
+      }
+
+      const items = readCompatFavorites().filter(
+        (item) =>
+          !(
+            item.type === type &&
+            item.target_id === targetId &&
+            item.list_name === listName
+          ),
+      );
+      writeCompatFavorites(items);
+      return { ok: true };
+    }
   }
 
   async favoriteNoteSet(params: {
@@ -1196,10 +1333,32 @@ class IpcClient {
     list_name: string;
     note: string;
   }) {
-    return this.call<typeof params, { ok: boolean; updated_at: string }>(
-      "favorites.note.set",
-      params,
-    );
+    try {
+      return await this.call<typeof params, { ok: boolean; updated_at: string }>(
+        "favorites.note.set",
+        params,
+      );
+    } catch (error) {
+      if (!isMethodNotFoundError(error)) {
+        throw error;
+      }
+
+      const items = readCompatFavorites();
+      const updatedAt = nowIso();
+      const target = items.find(
+        (item) =>
+          item.type === params.type &&
+          item.target_id === params.target_id &&
+          item.list_name === params.list_name,
+      );
+      if (target) {
+        const note = params.note.trim();
+        target.note = note.length > 0 ? params.note : null;
+        target.note_updated_at = note.length > 0 ? updatedAt : null;
+        writeCompatFavorites(items);
+      }
+      return { ok: true, updated_at: updatedAt };
+    }
   }
 
   async favoriteTagsSet(params: {
@@ -1208,10 +1367,37 @@ class IpcClient {
     list_name: string;
     tags: string[];
   }) {
-    return this.call<typeof params, { ok: boolean; updated_at: string }>(
-      "favorites.tags.set",
-      params,
-    );
+    try {
+      return await this.call<typeof params, { ok: boolean; updated_at: string }>(
+        "favorites.tags.set",
+        params,
+      );
+    } catch (error) {
+      if (!isMethodNotFoundError(error)) {
+        throw error;
+      }
+
+      const items = readCompatFavorites();
+      const updatedAt = nowIso();
+      const target = items.find(
+        (item) =>
+          item.type === params.type &&
+          item.target_id === params.target_id &&
+          item.list_name === params.list_name,
+      );
+      if (target) {
+        target.tags = Array.from(
+          new Map(
+            params.tags
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+              .map((tag) => [tag.toLowerCase(), tag] as const),
+          ).values(),
+        ).sort((a, b) => a.localeCompare(b));
+        writeCompatFavorites(items);
+      }
+      return { ok: true, updated_at: updatedAt };
+    }
   }
 
   async favoriteSyncOfficial() {
