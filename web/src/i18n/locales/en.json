@@ -365,7 +365,12 @@
     "savedToast": "Saved {{name}} to Library",
     "removedToast": "Removed {{name}} from Library",
     "toggleFailed": "Library update failed: {{error}}",
-    "syncing": "Syncing local library…"
+    "syncing": "Syncing local library…",
+    "officialSync": "Sync VRChat favorites",
+    "officialSyncing": "Syncing VRChat favorites…",
+    "officialSyncSuccess": "Synced {{count}} official favorites ({{avatars}} avatars, {{worlds}} worlds)",
+    "officialSyncFailed": "VRChat favorites sync failed: {{error}}",
+    "officialLastSync": "VRChat favorites synced {{date}}"
   },
   "avatars": {
     "title": "Avatars",

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import {
   Tag,
   Trash2,
   User,
+  RefreshCw,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +46,8 @@ import {
   useFavoriteLists,
   type FavoriteEntityType,
 } from "@/lib/library";
+import { useAuth } from "@/lib/auth-context";
+import { ipc } from "@/lib/ipc";
 import { useThumbnail } from "@/lib/thumbnails";
 import type { FavoriteItem } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
@@ -366,12 +370,17 @@ function LibraryItemCard({
 function Library() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { status: authStatus } = useAuth();
   const { mergedLists, isLoading: listsLoading } = useFavoriteLists();
   const [selectedListName, setSelectedListName] = useState(LIBRARY_LIST_NAME);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<FavoriteItem | null>(null);
+  const [syncingOfficial, setSyncingOfficial] = useState(false);
+  const [lastOfficialSyncAt, setLastOfficialSyncAt] = useState<string | null>(null);
+  const officialSyncTriggeredRef = useRef(false);
   const { items, isLoading: itemsLoading } = useFavoriteItems(selectedListName, !!selectedListName);
   const { removeFavorite, saveFavoriteDetails, pending } = useFavoriteActions();
 
@@ -492,6 +501,46 @@ function Library() {
   const selectedList =
     mergedLists.find((row) => row.list_name === selectedListName) ?? null;
 
+  useEffect(() => {
+    if (!authStatus.authed) {
+      officialSyncTriggeredRef.current = false;
+      return;
+    }
+    if (officialSyncTriggeredRef.current) return;
+    officialSyncTriggeredRef.current = true;
+    void handleSyncOfficialFavorites(false);
+  }, [authStatus.authed]);
+
+  async function handleSyncOfficialFavorites(showToast = true) {
+    if (!authStatus.authed || syncingOfficial) return;
+
+    setSyncingOfficial(true);
+    try {
+      const result = await ipc.favoriteSyncOfficial();
+      setLastOfficialSyncAt(result.synced_at);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["favorites.lists"] }),
+        queryClient.invalidateQueries({ queryKey: ["favorites.items"] }),
+      ]);
+      if (showToast) {
+        toast.success(
+          t("library.officialSyncSuccess", {
+            count: result.imported,
+            avatars: result.avatars,
+            worlds: result.worlds,
+          }),
+        );
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (showToast) {
+        toast.error(t("library.officialSyncFailed", { error: message }));
+      }
+    } finally {
+      setSyncingOfficial(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
       <header className="flex items-end justify-between gap-4">
@@ -503,10 +552,29 @@ function Library() {
             {t("library.subtitle")}
           </p>
         </div>
-        <Badge variant="tonal" className="gap-1.5">
-          <Heart className="size-3" />
-          {t("library.totalSaved", { count: totalSaved })}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {authStatus.authed ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleSyncOfficialFavorites(true)}
+              disabled={syncingOfficial}
+            >
+              {syncingOfficial ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              {syncingOfficial
+                ? t("library.officialSyncing")
+                : t("library.officialSync")}
+            </Button>
+          ) : null}
+          <Badge variant="tonal" className="gap-1.5">
+            <Heart className="size-3" />
+            {t("library.totalSaved", { count: totalSaved })}
+          </Badge>
+        </div>
       </header>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -619,6 +687,11 @@ function Library() {
                     date: formatDate(selectedList?.latest_added_at ?? items[items.length - 1]?.added_at),
                   })}
                 </CardDescription>
+                {lastOfficialSyncAt ? (
+                  <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                    {t("library.officialLastSync", { date: formatDate(lastOfficialSyncAt) })}
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="relative md:max-w-sm md:flex-1">
@@ -722,9 +795,9 @@ function Library() {
         onSave={handleSaveDetails}
       />
 
-      {pending ? (
+      {pending || syncingOfficial ? (
         <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
-          {t("library.syncing")}
+          {syncingOfficial ? t("library.officialSyncing") : t("library.syncing")}
         </div>
       ) : null}
     </div>

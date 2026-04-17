@@ -364,7 +364,12 @@
     "savedToast": "已将 {{name}} 保存到资料库",
     "removedToast": "已将 {{name}} 从资料库移除",
     "toggleFailed": "资料库更新失败: {{error}}",
-    "syncing": "正在同步本地资料库…"
+    "syncing": "正在同步本地资料库…",
+    "officialSync": "同步 VRChat 收藏",
+    "officialSyncing": "正在同步 VRChat 收藏…",
+    "officialSyncSuccess": "已同步 {{count}} 个官方收藏（{{avatars}} 个模型，{{worlds}} 个地图）",
+    "officialSyncFailed": "同步 VRChat 收藏失败: {{error}}",
+    "officialLastSync": "VRChat 收藏同步时间 {{date}}"
   },
   "avatars": {
     "title": "模型",

@@ -155,6 +155,7 @@ public:
     Result<std::monostate> RemoveFavorite(const std::string& type,
                                           const std::string& target_id,
                                           const std::string& list_name);
+    Result<std::monostate> ClearFavoriteList(const std::string& list_name);
 
     // All distinct list names (plus item counts per list), grouped by
     // type. Shape: [{ name, type, item_count, latest_added_at }, ...]

@@ -1230,6 +1230,24 @@ Result<std::monostate> Database::RemoveFavorite(const std::string& type,
     });
 }
 
+Result<std::monostate> Database::ClearFavoriteList(const std::string& list_name)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    const char* sql =
+        "DELETE FROM local_favorites "
+        "WHERE list_name = ?;";
+
+    return RunOnce(sql, [this, &list_name](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, list_name) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
 Result<std::monostate> Database::SetFavoriteNote(const std::string& type,
                                                  const std::string& target_id,
                                                  const std::string& list_name,

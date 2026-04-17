@@ -467,3 +467,12 @@ export interface FavoriteItem {
   note: string | null;
   note_updated_at: string | null;
 }
+
+export interface FavoritesSyncResult {
+  ok: boolean;
+  list_name: string;
+  imported: number;
+  avatars: number;
+  worlds: number;
+  synced_at: string;
+}

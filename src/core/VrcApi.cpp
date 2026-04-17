@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <mutex>
 #include <system_error>
 #include <thread>
@@ -661,6 +662,54 @@ nlohmann::json parseJsonBody(const HttpResponse& response, std::string_view endp
     }
 }
 
+Result<std::vector<nlohmann::json>> fetchPagedAuthedArray(
+    std::string_view endpointLabel,
+    const std::function<std::wstring(int limit, int offset)>& buildPath)
+{
+    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "Not signed in", 401};
+    }
+
+    static constexpr int kPageSize = 100;
+
+    std::vector<nlohmann::json> out;
+    for (int offset = 0;; offset += kPageSize)
+    {
+        const auto response = httpGet(
+            kApiHostW,
+            buildPath(kPageSize, offset),
+            std::make_optional(cookieHeader));
+        if (auto err = checkStandardHttpError(response, endpointLabel))
+        {
+            return *err;
+        }
+
+        const auto doc = parseJsonBody(response, endpointLabel);
+        if (!doc.is_array())
+        {
+            return Error{
+                "api_error",
+                fmt::format("{} returned a non-array payload", endpointLabel),
+                0,
+            };
+        }
+
+        for (const auto& item : doc)
+        {
+            out.push_back(item);
+        }
+
+        if (static_cast<int>(doc.size()) < kPageSize)
+        {
+            break;
+        }
+    }
+
+    return out;
+}
+
 enum class IdKind
 {
     World,
@@ -1146,6 +1195,32 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchFriends(bool offline)
         out.push_back(item);
     }
     return out;
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchFavoritedAvatars()
+{
+    return fetchPagedAuthedArray(
+        "/avatars/favorites",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/avatars/favorites?n={}&offset={}&releaseStatus=all",
+                limit,
+                offset));
+        });
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchFavoritedWorlds()
+{
+    return fetchPagedAuthedArray(
+        "/worlds/favorites",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/worlds/favorites?n={}&offset={}&releaseStatus=all",
+                limit,
+                offset));
+        });
 }
 
 bool VrcApi::downloadFile(const std::string& url, const std::filesystem::path& destPath)

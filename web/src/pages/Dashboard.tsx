@@ -1,4 +1,5 @@
 import { ipc } from "@/lib/ipc";
+import { getTrueCacheBytes, getTrueCacheCategoryCount } from "@/lib/report-metrics";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -378,6 +379,8 @@ function Dashboard() {
 
   const screenshotCount = report.logs.screenshots.length;
   const top = report.cache_windows_player.largest_entries.slice(0, 8);
+  const trueCacheBytes = getTrueCacheBytes(report);
+  const trueCacheCategoryCount = getTrueCacheCategoryCount(report);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
@@ -518,9 +521,9 @@ function Dashboard() {
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <StatCard
           title={t("dashboard.totalCache")}
-          value={report.total_bytes_human}
+          value={formatBytes(trueCacheBytes)}
           hint={t("dashboard.totalCacheHint", {
-            count: report.existing_category_count,
+            count: trueCacheCategoryCount,
           })}
           icon={<Database className="size-5" />}
           onClick={() => navigate("/bundles")}

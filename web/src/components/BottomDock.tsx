@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, CircleOff, Eraser, ScrollText, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/lib/ipc";
+import { getTrueCacheLabel } from "@/lib/report-metrics";
 import { cn, formatDate } from "@/lib/utils";
 import type { LogStreamChunk, Report } from "@/lib/types";
 
@@ -121,7 +122,7 @@ export function BottomDock({ report, resetToken = 0 }: BottomDockProps) {
     return [
       `Scan generated: ${formatDate(report.generated_at)}`,
       `Base dir: ${report.base_dir}`,
-      `Cache total: ${report.total_bytes_human}`,
+      `Cache total: ${getTrueCacheLabel(report)}`,
       `Categories present: ${report.existing_category_count}`,
       `Log files: ${report.logs.log_count}`,
     ];

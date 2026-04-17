@@ -2,9 +2,12 @@
 #include "BridgeCommon.h"
 
 #include "../../core/Database.h"
+#include "../../core/VrcApi.h"
 
 namespace
 {
+
+constexpr std::string_view kOfficialFavoritesListName = "VRChat Official Favorites";
 
 nlohmann::json RequireJsonField(const nlohmann::json& params, const char* key)
 {
@@ -17,6 +20,21 @@ nlohmann::json RequireJsonField(const nlohmann::json& params, const char* key)
         });
     }
     return params[key];
+}
+
+std::optional<std::string> FirstStringField(
+    const nlohmann::json& obj,
+    std::initializer_list<const char*> keys)
+{
+    for (const auto* key : keys)
+    {
+        if (!obj.is_object() || !obj.contains(key) || !obj[key].is_string())
+        {
+            continue;
+        }
+        return obj[key].get<std::string>();
+    }
+    return std::nullopt;
 }
 
 } // namespace
@@ -214,6 +232,72 @@ nlohmann::json IpcBridge::HandleFavoritesTagsSet(const nlohmann::json& params, c
         throw IpcException(vrcsm::core::error(res));
     }
     return nlohmann::json{{"ok", true}, {"updated_at", updatedAt}};
+}
+
+nlohmann::json IpcBridge::HandleFavoritesSyncOfficial(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto avatarsRes = vrcsm::core::VrcApi::fetchFavoritedAvatars();
+    if (!vrcsm::core::isOk(avatarsRes))
+    {
+        throw IpcException(vrcsm::core::error(avatarsRes));
+    }
+
+    auto worldsRes = vrcsm::core::VrcApi::fetchFavoritedWorlds();
+    if (!vrcsm::core::isOk(worldsRes))
+    {
+        throw IpcException(vrcsm::core::error(worldsRes));
+    }
+
+    auto& db = vrcsm::core::Database::Instance();
+    auto clearRes = db.ClearFavoriteList(std::string(kOfficialFavoritesListName));
+    if (!vrcsm::core::isOk(clearRes))
+    {
+        throw IpcException(vrcsm::core::error(clearRes));
+    }
+
+    const auto syncedAt = vrcsm::core::nowIso();
+    int sortOrder = 0;
+    int imported = 0;
+
+    const auto importRows = [&](const std::vector<nlohmann::json>& rows, const char* type)
+    {
+        for (const auto& row : rows)
+        {
+            const auto id = FirstStringField(row, {"id"});
+            if (!id.has_value() || id->empty())
+            {
+                continue;
+            }
+
+            vrcsm::core::Database::FavoriteInsert favorite;
+            favorite.type = type;
+            favorite.target_id = *id;
+            favorite.list_name = std::string(kOfficialFavoritesListName);
+            favorite.display_name = FirstStringField(row, {"name", "displayName"});
+            favorite.thumbnail_url = FirstStringField(row, {"thumbnailImageUrl", "imageUrl"});
+            favorite.added_at = syncedAt;
+            favorite.sort_order = sortOrder++;
+
+            auto addRes = db.AddFavorite(favorite);
+            if (!vrcsm::core::isOk(addRes))
+            {
+                throw IpcException(vrcsm::core::error(addRes));
+            }
+            imported += 1;
+        }
+    };
+
+    importRows(vrcsm::core::value(avatarsRes), "avatar");
+    importRows(vrcsm::core::value(worldsRes), "world");
+
+    return nlohmann::json{
+        {"ok", true},
+        {"list_name", std::string(kOfficialFavoritesListName)},
+        {"imported", imported},
+        {"avatars", static_cast<int>(vrcsm::core::value(avatarsRes).size())},
+        {"worlds", static_cast<int>(vrcsm::core::value(worldsRes).size())},
+        {"synced_at", syncedAt},
+    };
 }
 
 nlohmann::json IpcBridge::HandleFavoritesExport(const nlohmann::json& params, const std::optional<std::string>&)
