@@ -43,6 +43,10 @@ type FeedTab = "session" | "social";
 
 const PAGE_SIZE = 50;
 
+interface FriendLogPanelProps {
+  embedded?: boolean;
+}
+
 function parseTime(value: string | null | undefined): Date | null {
   if (!value) return null;
   const normalized = value.includes("T")
@@ -316,7 +320,7 @@ function SocialEventRow({ event }: { event: SocialEvent }) {
   );
 }
 
-export default function FriendLog() {
+export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
   const { t } = useTranslation();
   const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
   const [socialEvents, setSocialEvents] = useState<SocialEvent[]>([]);
@@ -405,30 +409,60 @@ export default function FriendLog() {
   const canLoadMore = tab === "session" ? sessionHasMore : socialHasMore;
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] font-semibold leading-none tracking-tight">
-            {t("nav.friendLog")}
-          </h1>
-          <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
-            {t("friendLog.subtitle")}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 text-[12px]"
-          disabled={loading}
-          onClick={() => {
-            void load(true, "session");
-            void load(true, "social");
-          }}
-        >
-          <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-          {t("common.refresh")}
-        </Button>
-      </header>
+    <div className={cn("space-y-4", !embedded && "animate-fade-in")}>
+      {embedded ? null : (
+        <header className="flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-[22px] font-semibold leading-none tracking-tight">
+              {t("nav.friendLog")}
+            </h1>
+            <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
+              {t("friendLog.subtitle")}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-[12px]"
+            disabled={loading}
+            onClick={() => {
+              void load(true, "session");
+              void load(true, "social");
+            }}
+          >
+            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+            {t("common.refresh")}
+          </Button>
+        </header>
+      )}
+
+      {embedded ? (
+        <Card className="border border-[hsl(var(--border)/0.6)] bg-[hsl(var(--canvas))] shadow-sm">
+          <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-[14px] font-semibold text-[hsl(var(--foreground))]">
+                {t("nav.friendLog")}
+              </div>
+              <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+                {t("friendLog.subtitle")}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-[12px]"
+              disabled={loading}
+              onClick={() => {
+                void load(true, "session");
+                void load(true, "social");
+              }}
+            >
+              <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+              {t("common.refresh")}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-3">
         <Card>
@@ -568,4 +602,8 @@ export default function FriendLog() {
       </Card>
     </div>
   );
+}
+
+export default function FriendLog() {
+  return <FriendLogPanel />;
 }
