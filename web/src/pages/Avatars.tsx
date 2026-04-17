@@ -267,18 +267,33 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
       <div className="unity-panel-header">
         {t("avatars.inspectorPaneTitle")}
       </div>
-      <div className="grid gap-4 p-5 md:grid-cols-[160px_1fr]">
-        <div className="flex flex-col items-center gap-2">
+      <div className="grid gap-5 p-5 xl:grid-cols-[300px_1fr]">
+        <div className="flex flex-col gap-3">
           {(() => {
             const windowsAssetUrl = details?.unityPackages?.find(
               (p) => p.platform === "standalonewindows"
             )?.assetUrl;
             const fallbackUrl = details?.imageUrl || details?.thumbnailImageUrl;
-            return <AvatarPreview3D avatarId={selected.avatar_id} assetUrl={windowsAssetUrl} fallbackImageUrl={fallbackUrl} size={140} />;
+            return (
+              <AvatarPreview3D
+                avatarId={selected.avatar_id}
+                assetUrl={windowsAssetUrl}
+                fallbackImageUrl={fallbackUrl}
+                size={280}
+              />
+            );
           })()}
-          <span className="mt-2 text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-            {t("avatars.previewLabel")}
-          </span>
+          <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
+            <div className="font-medium uppercase tracking-[0.08em] text-[hsl(var(--foreground))]">
+              {t("avatars.previewLabel")}
+            </div>
+            <div className="mt-1 leading-relaxed">
+              {t("avatars.previewWorkbench", {
+                defaultValue:
+                  "Scroll to zoom, hold Shift and drag to pan, and use the debug modes to inspect silhouette and large accessories.",
+              })}
+            </div>
+          </div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-3">

@@ -24,7 +24,7 @@ import { useReport } from "@/lib/report-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn, formatBytes, formatDate } from "@/lib/utils";
 import { useVrcProcess } from "@/lib/vrc-context";
-import type { FriendsListResult } from "@/lib/types";
+import type { FriendsListResult, Report } from "@/lib/types";
 import {
   AlertTriangle,
   Camera,
@@ -207,6 +207,7 @@ function Dashboard() {
   const { status: vrcProcessStatus } = useVrcProcess();
   const vrcRunning = vrcProcessStatus.running;
   const [clearingCache, setClearingCache] = useState(false);
+  const [repairingBrokenLinks, setRepairingBrokenLinks] = useState(false);
 
   async function handleClearCache() {
     if (!confirm(t("dashboard.confirmClearCache", "Are you sure you want to completely clear the VRChat cache (Cache-WindowsPlayer)? This will delete all downloaded avatars and worlds."))) return;
@@ -250,6 +251,42 @@ function Dashboard() {
   const repairJunction = (category: string) => {
     navigate(`/migrate?category=${encodeURIComponent(category)}`);
   };
+
+  async function handleRepairBrokenLink(link: Report["broken_links"][number]) {
+    await ipc.call<
+      { source: string; target?: string },
+      { ok: boolean; target: string | null }
+    >("junction.repair", {
+      source: link.source_path,
+      target: link.target_path ?? undefined,
+    });
+  }
+
+  async function handleRepairAllBrokenLinks() {
+    if (!report || report.broken_links.length === 0) return;
+    setRepairingBrokenLinks(true);
+    try {
+      for (const link of report.broken_links) {
+        await handleRepairBrokenLink(link);
+      }
+      toast.success(
+        t("dashboard.repairAllSuccess", {
+          count: report.broken_links.length,
+          defaultValue: "Repaired {{count}} broken cache links",
+        }),
+      );
+      refresh();
+    } catch (e) {
+      toast.error(
+        t("dashboard.repairAllFailed", {
+          error: e instanceof Error ? e.message : String(e),
+          defaultValue: "Repair failed: {{error}}",
+        }),
+      );
+    } finally {
+      setRepairingBrokenLinks(false);
+    }
+  }
 
   // ── Assemble timeline from report logs ──
   const timeline = useMemo<TimelineEntry[]>(() => {
@@ -764,8 +801,23 @@ function Dashboard() {
       {report.broken_links.length > 0 && (
         <Card className="shadow-[inset_0_0_0_1px_hsl(var(--destructive)/0.3)]">
           <CardHeader>
-            <CardTitle>{t("dashboard.brokenTitle")}</CardTitle>
-            <CardDescription>{t("dashboard.brokenDesc")}</CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle>{t("dashboard.brokenTitle")}</CardTitle>
+                <CardDescription>{t("dashboard.brokenDesc")}</CardDescription>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={repairingBrokenLinks}
+                onClick={() => void handleRepairAllBrokenLinks()}
+              >
+                <Wrench className={cn("size-3.5", repairingBrokenLinks && "animate-pulse")} />
+                {repairingBrokenLinks
+                  ? t("dashboard.repairingAll", { defaultValue: "Repairing..." })
+                  : t("dashboard.repairAll", { defaultValue: "Repair all" })}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-2 pt-0">
             {report.broken_links.map((b) => (
@@ -786,17 +838,56 @@ function Dashboard() {
                     </span>
                   </div>
                   <div className="mt-0.5 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                    {b.resolved_path}
+                    {b.source_path}
+                  </div>
+                  {b.target_path ? (
+                    <div className="truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                      → {b.target_path}
+                    </div>
+                  ) : null}
+                  <div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                    {t("dashboard.brokenRepairHint", {
+                      defaultValue:
+                        "Repair will recreate the missing target folder and restore the NTFS junction.",
+                    })}
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => repairJunction(b.category)}
-                >
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void handleRepairBrokenLink(b)
+                        .then(() => {
+                          toast.success(
+                            t("migrate.repairSuccess", {
+                              defaultValue: "Junction repaired successfully",
+                            }),
+                          );
+                          refresh();
+                        })
+                        .catch((e) => {
+                          toast.error(
+                            t("migrate.repairFailed", {
+                              error: e instanceof Error ? e.message : String(e),
+                              defaultValue: "Repair failed: {{error}}",
+                            }),
+                          );
+                        });
+                    }}
+                  >
+                    <Wrench className="size-3" />
+                    {t("common.repair")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => repairJunction(b.category)}
+                  >
                   <Wrench className="size-3" />
-                  {t("common.repair")}
-                </Button>
+                    {t("dashboard.openRepairPage", { defaultValue: "Advanced" })}
+                  </Button>
+                </div>
               </div>
             ))}
           </CardContent>

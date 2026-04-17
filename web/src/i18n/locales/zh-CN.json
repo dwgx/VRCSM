@@ -17,7 +17,8 @@
     "logs": "日志",
     "migrate": "迁移",
     "settings": "设置",
-    "language": "语言"
+    "language": "语言",
+    "friendLog": "好友日志"
   },
   "profile": {
     "title": "我的资料",
@@ -38,7 +39,16 @@
     "save": "保存",
     "cancel": "取消",
     "noneTitle": "未获取到资料",
-    "notSignedIn": "未登录"
+    "notSignedIn": "未登录",
+    "quickActions": "VRChat 网页快捷入口",
+    "quickActionsDesc": "直接从 VRCSM 打开 VRChat 官方网页里的账号、模型和世界管理页。",
+    "openProfileWeb": "打开网页资料页",
+    "openAvatarManager": "打开模型管理",
+    "openWorldManager": "打开世界管理",
+    "openHomePortal": "打开 VRChat 主页",
+    "liveContext": "当前上下文",
+    "liveContextDesc": "把当前关键 ID 和会话目标集中到一处，方便继续跳转。",
+    "liveContextHint": "VRCSM 负责本地编辑和切换；更深层的创作者与账号操作，可以一键跳去 VRChat 官方网页，不打断当前流程。"
   },
   "screenshots": {
     "title": "截图",
@@ -194,7 +204,13 @@
     },
     "idUnknown": "ID 未知，无法加载详细资料",
     "nameCopied": "名字已复制",
-    "copyName": "复制名字"
+    "copyName": "复制名字",
+    "recentHistory": {
+      "title": "近期会话历史",
+      "desc": "从持久化玩家事件数据库中提取。",
+      "open": "打开日志",
+      "empty": "暂时还没有记录到会话事件。"
+    }
   },
   "common": {
     "loading": "加载中…",
@@ -224,7 +240,13 @@
     "subtitle": "VRChat 设置管理器",
     "body": "本项目开发者为dwgx仅一人  入VRC圈第一个人认识的人是 嗯呐！！",
     "version": "版本",
-    "build": "构建"
+    "build": "构建",
+    "developer": "开发者",
+    "developerBody": "产品方向、原生宿主、前端界面与打包发布均在同一套代码中持续维护。",
+    "specialThanks": "特别感谢",
+    "specialThanksBody": "在 VRChat 里最先认识的人，也是这个项目故事的一部分。",
+    "links": "链接",
+    "footer": "围绕本地优先的 VRChat 账号、缓存和会话管理而构建。"
   },
   "toolbar": {
     "rescan": "重新扫描",
@@ -259,6 +281,12 @@
     "topBundlesDesc": "Cache-WindowsPlayer 中最大的条目",
     "brokenTitle": "失效的链接",
     "brokenDesc": "这些分类指向了不存在的目标,点击修复按钮重建 Junction。",
+    "brokenRepairHint": "修复会重新创建缺失的目标文件夹，并恢复 NTFS Junction。",
+    "repairAll": "全部修复",
+    "repairingAll": "修复中…",
+    "repairAllSuccess": "已修复 {{count}} 个失效缓存链接",
+    "repairAllFailed": "修复失败: {{error}}",
+    "openRepairPage": "高级",
     "scanFailed": "扫描失败",
     "entry": "条目",
     "size": "大小",
@@ -398,7 +426,14 @@
       "converter_failed": "转换失败",
       "encrypted": "资源已加密",
       "preview_failed": "无法预览",
-      "missing_avatar_id": "缺少模型 ID"
+      "missing_avatar_id": "缺少模型 ID",
+      "fit": "自适应",
+      "modeTextured": "贴图",
+      "modeClay": "灰模",
+      "modeWireframe": "线框",
+      "controlsTitle": "Blender 式操作",
+      "controlsBody": "左键旋转 · Shift+左键平移 · 滚轮缩放 · 右键平移",
+      "panning": "平移模式"
     },
     "thumbnailNote": "VRChat 的 avatar API 拒绝所有匿名请求(即使是公开模型),所以 VRCSM 用模型 ID 生成一个稳定的彩色立方体来替代真实缩略图。地图用的是公开端点,因此能显示真图。",
     "unknownUser": "未知用户",
@@ -415,7 +450,8 @@
     "unityPackages_other": "{{count}} 个平台变体",
     "pickOne": "选择一个模型",
     "noMatch": "没有匹配的模型。",
-    "nameNote": "模型名字是从 VRChat 输出日志中提取的。只有在本机至少加载过一次的模型才会显示名字。"
+    "nameNote": "模型名字是从 VRChat 输出日志中提取的。只有在本机至少加载过一次的模型才会显示名字。",
+    "previewWorkbench": "滚轮可缩放，按住 Shift 拖拽可平移，并可切换调试视图检查整体轮廓和超大挂件。"
   },
   "worlds": {
     "title": "地图",
@@ -537,6 +573,63 @@
     "pointsTo": "指向",
     "repairSuccess": "Junction 修复成功",
     "repairFailed": "修复失败：{{error}}"
+  },
+  "friendLog": {
+    "subtitle": "保存在本地数据库中的会话相遇历史与社交变化记录。",
+    "searchPlaceholder": "按玩家名、用户 ID、世界 ID 或事件搜索…",
+    "loadFailed": "加载日志数据失败: {{error}}",
+    "loadMore": "加载更多",
+    "tabs": {
+      "session": "会话事件",
+      "social": "好友变化"
+    },
+    "stats": {
+      "sessionEvents": "会话事件",
+      "uniquePlayers": "独立玩家",
+      "socialChanges": "社交变化"
+    },
+    "session": {
+      "title": "会话事件流",
+      "desc": "从本地会话历史里提取的加入与离开记录。",
+      "empty": "暂时还没有记录到会话事件。",
+      "kind": {
+        "joined": "加入",
+        "left": "离开"
+      }
+    },
+    "social": {
+      "title": "好友变化流",
+      "desc": "保存在本地数据库中的长期社交变化记录。",
+      "empty": "暂时还没有好友变化记录。",
+      "unknownUser": "未知用户",
+      "from": "旧值",
+      "to": "新值",
+      "kind": {
+        "friendAdded": "新增好友",
+        "friendRemoved": "移除好友",
+        "statusChanged": "状态变化",
+        "locationChanged": "位置变化",
+        "avatarChanged": "模型变化",
+        "unknown": "变化"
+      }
+    },
+    "note": {
+      "open": "备注",
+      "close": "收起",
+      "loading": "正在加载备注…",
+      "placeholder": "给这个玩家记一条本地备注…",
+      "saved": "备注已保存",
+      "saveFailed": "保存备注失败: {{error}}"
+    },
+    "relative": {
+      "now": "刚刚",
+      "minutes_one": "{{count}} 分钟前",
+      "minutes_other": "{{count}} 分钟前",
+      "hours_one": "{{count}} 小时前",
+      "hours_other": "{{count}} 小时前",
+      "days_one": "{{count}} 天前",
+      "days_other": "{{count}} 天前"
+    }
   },
   "settings": {
     "title": "设置",

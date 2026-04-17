@@ -1,5 +1,6 @@
 import { ipc } from "@/lib/ipc";
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Card,
@@ -27,6 +28,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +38,7 @@ import {
 import { ProfileCard } from "@/components/ProfileCard";
 import { AvatarPopupBadge } from "@/components/AvatarPopupBadge";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { cn } from "@/lib/utils";
 import { useVrcProcess } from "@/lib/vrc-context";
 import { trustRank, trustDotColor } from "@/lib/vrcFriends";
 import type { VrcUserProfile } from "@/components/ProfileCard";
@@ -66,6 +69,15 @@ interface TimelineEntry {
   kind: "joined" | "left" | "avatarSwitch" | "worldSwitch";
   actor: string;
   detail?: string;
+}
+
+interface RecentSessionEvent {
+  id: number;
+  kind: string;
+  display_name: string;
+  user_id?: string | null;
+  world_id?: string | null;
+  occurred_at: string;
 }
 
 function shortId(id: string): string {
@@ -189,6 +201,7 @@ function PlatformIcon({ platform }: { platform: string | null | undefined }) {
 
 function RadarEngine() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [currentWorld, setCurrentWorld] = useState<WorldSwitchEvent | null>(null);
   const [worldNames, setWorldNames] = useState<Record<string, string>>({});
 
@@ -212,6 +225,7 @@ function RadarEngine() {
   const [playerTags, setPlayerTags] = useState<Record<string, string[]>>({});
   // ── Player platform cache ────────────────────────────────────────────
   const [playerPlatform, setPlayerPlatform] = useState<Record<string, string>>({});
+  const [recentSessionEvents, setRecentSessionEvents] = useState<RecentSessionEvent[]>([]);
 
   const addTimelineEntry = useCallback((entry: Omit<TimelineEntry, "id">) => {
     const id = `tl-${++timelineIdCounter.current}`;
@@ -261,6 +275,17 @@ function RadarEngine() {
         .catch(() => {/* silently ignore */});
     }
   }, [activePlayers, playerTags]);
+
+  useEffect(() => {
+    let alive = true;
+    void ipc.dbPlayerEvents(10, 0).then((res) => {
+      if (!alive) return;
+      setRecentSessionEvents(res.items as RecentSessionEvent[]);
+    }).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // ── Stream + Snapshot Hydration ───────────────────────────────────────
   // A ref to queue live events until the initial `scan` snapshot settles.
@@ -678,6 +703,74 @@ function RadarEngine() {
                    ))}
                  </ul>
                )}
+            </CardContent>
+          </Card>
+
+          <Card className="border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--canvas))] shadow-sm">
+            <CardHeader className="py-4 border-b border-[hsl(var(--border)/0.5)]">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="size-3 text-[hsl(var(--muted-foreground))]" />
+                  <CardTitle className="text-xs">
+                    {t("radar.recentHistory.title", { defaultValue: "Recent Session History" })}
+                  </CardTitle>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => navigate("/friend-log")}
+                >
+                  {t("radar.recentHistory.open", { defaultValue: "Open Log" })}
+                </Button>
+              </div>
+              <CardDescription className="text-[11px]">
+                {t("radar.recentHistory.desc", {
+                  defaultValue: "Pulled from the persistent player event database.",
+                })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {recentSessionEvents.length === 0 ? (
+                <div className="p-4 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
+                  {t("radar.recentHistory.empty", { defaultValue: "No recorded session events yet." })}
+                </div>
+              ) : (
+                <div className="divide-y divide-[hsl(var(--border)/0.4)]">
+                  {recentSessionEvents.map((event) => (
+                    <div key={`${event.id}-${event.occurred_at}`} className="flex items-start gap-2.5 px-3 py-2.5">
+                      {event.kind === "joined" ? (
+                        <UserPlus className="mt-0.5 size-3 text-emerald-400" />
+                      ) : (
+                        <UserMinus className="mt-0.5 size-3 text-zinc-400" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-[11px] font-medium text-[hsl(var(--foreground))]">
+                            {event.display_name}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "h-4 border text-[9px] font-mono",
+                              event.kind === "joined"
+                                ? "bg-emerald-500/12 text-emerald-400 border-emerald-500/25"
+                                : "bg-zinc-500/12 text-zinc-300 border-zinc-500/25",
+                            )}
+                          >
+                            {event.kind === "joined"
+                              ? t("friendLog.session.kind.joined")
+                              : t("friendLog.session.kind.left")}
+                          </Badge>
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+                          {event.occurred_at}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

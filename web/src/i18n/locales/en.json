@@ -39,7 +39,16 @@
     "save": "Save",
     "cancel": "Cancel",
     "noneTitle": "Profile unavailable",
-    "notSignedIn": "Not signed in"
+    "notSignedIn": "Not signed in",
+    "quickActions": "VRChat Web Shortcuts",
+    "quickActionsDesc": "Open the official VRChat web panels directly from VRCSM for account, avatar, and world management.",
+    "openProfileWeb": "Open web profile",
+    "openAvatarManager": "Open avatar manager",
+    "openWorldManager": "Open world manager",
+    "openHomePortal": "Open VRChat home",
+    "liveContext": "Live Context",
+    "liveContextDesc": "Important ids and current session targets for quick navigation.",
+    "liveContextHint": "VRCSM keeps editing and switching local, while deeper creator and account actions can jump to the official web panel without leaving your current workflow."
   },
   "screenshots": {
     "title": "Screenshots",
@@ -195,7 +204,13 @@
     },
     "idUnknown": "ID unknown, cannot load profile details",
     "nameCopied": "Name copied",
-    "copyName": "Copy Name"
+    "copyName": "Copy Name",
+    "recentHistory": {
+      "title": "Recent Session History",
+      "desc": "Pulled from the persistent player event database.",
+      "open": "Open Log",
+      "empty": "No recorded session events yet."
+    }
   },
   "common": {
     "loading": "Loading…",
@@ -225,7 +240,13 @@
     "subtitle": "VRChat Settings Manager",
     "body": "本项目开发者为dwgx仅一人  入VRC圈第一个人认识的人是 嗯呐！！",
     "version": "Version",
-    "build": "Build"
+    "build": "Build",
+    "developer": "Developer",
+    "developerBody": "Product direction, native host, frontend shell, and packaging are maintained in one codebase.",
+    "specialThanks": "Special Thanks",
+    "specialThanksBody": "The first friend met in VRChat, and still part of the project's story.",
+    "links": "Links",
+    "footer": "Built for local-first VRChat account, cache, and session management."
   },
   "toolbar": {
     "rescan": "Rescan",
@@ -260,6 +281,12 @@
     "topBundlesDesc": "Largest items in Cache-WindowsPlayer",
     "brokenTitle": "Broken junctions",
     "brokenDesc": "These categories point at missing targets — click Repair to recreate the junction.",
+    "brokenRepairHint": "Repair will recreate the missing target folder and restore the NTFS junction.",
+    "repairAll": "Repair all",
+    "repairingAll": "Repairing...",
+    "repairAllSuccess": "Repaired {{count}} broken cache links",
+    "repairAllFailed": "Repair failed: {{error}}",
+    "openRepairPage": "Advanced",
     "scanFailed": "Scan failed",
     "entry": "Entry",
     "size": "Size",
@@ -399,7 +426,14 @@
       "converter_failed": "Converter failed",
       "encrypted": "Asset encrypted",
       "preview_failed": "Preview unavailable",
-      "missing_avatar_id": "Missing avatar id"
+      "missing_avatar_id": "Missing avatar id",
+      "fit": "Fit",
+      "modeTextured": "Textured",
+      "modeClay": "Clay",
+      "modeWireframe": "Wireframe",
+      "controlsTitle": "Blender-style controls",
+      "controlsBody": "LMB rotate · Shift+LMB pan · wheel zoom · RMB pan",
+      "panning": "Pan mode"
     },
     "thumbnailNote": "VRChat's avatar API refuses anonymous requests — even for public avatars — so VRCSM renders a stable, id-seeded cube instead of a real thumbnail. Worlds use the public endpoint and show real images.",
     "unknownUser": "Unknown user",
@@ -416,7 +450,8 @@
     "unityPackages_other": "{{count}} platform variants",
     "pickOne": "Select an avatar",
     "noMatch": "No avatars match the filter.",
-    "nameNote": "Avatar names are extracted from the VRChat output logs. Names only appear for avatars that have been loaded at least once on this machine."
+    "nameNote": "Avatar names are extracted from the VRChat output logs. Names only appear for avatars that have been loaded at least once on this machine.",
+    "previewWorkbench": "Scroll to zoom, hold Shift and drag to pan, and use the debug modes to inspect silhouette and large accessories."
   },
   "worlds": {
     "title": "Worlds",
@@ -538,6 +573,63 @@
     "pointsTo": "points to",
     "repairSuccess": "Junction repaired successfully",
     "repairFailed": "Repair failed: {{error}}"
+  },
+  "friendLog": {
+    "subtitle": "Session encounter history and social change records kept in the local database.",
+    "searchPlaceholder": "Search by player, user id, world id, or event...",
+    "loadFailed": "Failed to load log data: {{error}}",
+    "loadMore": "Load more",
+    "tabs": {
+      "session": "Session Events",
+      "social": "Friend Changes"
+    },
+    "stats": {
+      "sessionEvents": "Session events",
+      "uniquePlayers": "Unique players",
+      "socialChanges": "Social changes"
+    },
+    "session": {
+      "title": "Session Event Feed",
+      "desc": "Joined and left events captured from your local session history.",
+      "empty": "No session events recorded yet.",
+      "kind": {
+        "joined": "Joined",
+        "left": "Left"
+      }
+    },
+    "social": {
+      "title": "Friend Change Feed",
+      "desc": "Longer-lived social deltas tracked in the local database.",
+      "empty": "No friend change records yet.",
+      "unknownUser": "Unknown user",
+      "from": "From",
+      "to": "To",
+      "kind": {
+        "friendAdded": "Friend Added",
+        "friendRemoved": "Friend Removed",
+        "statusChanged": "Status Changed",
+        "locationChanged": "Location Changed",
+        "avatarChanged": "Avatar Changed",
+        "unknown": "Change"
+      }
+    },
+    "note": {
+      "open": "Note",
+      "close": "Close",
+      "loading": "Loading note...",
+      "placeholder": "Add a personal note for this player...",
+      "saved": "Note saved",
+      "saveFailed": "Failed to save note: {{error}}"
+    },
+    "relative": {
+      "now": "just now",
+      "minutes_one": "{{count}}m ago",
+      "minutes_other": "{{count}}m ago",
+      "hours_one": "{{count}}h ago",
+      "hours_other": "{{count}}h ago",
+      "days_one": "{{count}}d ago",
+      "days_other": "{{count}}d ago"
+    }
   },
   "settings": {
     "title": "Settings",
