@@ -132,6 +132,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "favorites.remove",
         "favorites.note.set",
         "favorites.tags.set",
+        "favorites.syncOfficial",
         "favorites.export",
         "favorites.import",
         "friendLog.recent",
@@ -392,6 +393,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("favorites.remove", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesRemove(p, id); });
     m_handlers.emplace("favorites.note.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesNoteSet(p, id); });
     m_handlers.emplace("favorites.tags.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesTagsSet(p, id); });
+    m_handlers.emplace("favorites.syncOfficial", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesSyncOfficial(p, id); });
     m_handlers.emplace("favorites.export", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesExport(p, id); });
     m_handlers.emplace("favorites.import", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesImport(p, id); });
     m_handlers.emplace("friendLog.recent", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendLogRecent(p, id); });

@@ -7,6 +7,7 @@ import type {
   DryRunResult,
   FavoriteItem,
   FavoriteListSummary,
+  FavoritesSyncResult,
   Friend,
   FriendsListResult,
   IpcEnvelopeEvent,
@@ -843,6 +844,50 @@ class IpcClient {
         }
         return { ok: true, updated_at: updatedAt } as unknown as TResult;
       }
+      case "favorites.syncOfficial": {
+        const listName = "VRChat Official Favorites";
+        const syncedAt = nowIso();
+        const officialItems: FavoriteItem[] = [
+          {
+            type: "world",
+            target_id: "wrld_official_favorite_world_001",
+            list_name: listName,
+            display_name: "Official Favorite World",
+            thumbnail_url: "https://picsum.photos/seed/official-world/512/288",
+            added_at: syncedAt,
+            sort_order: 0,
+            tags: [],
+            note: null,
+            note_updated_at: null,
+          },
+          {
+            type: "avatar",
+            target_id: "avtr_official_favorite_avatar_001",
+            list_name: listName,
+            display_name: "Official Favorite Avatar",
+            thumbnail_url: null,
+            added_at: syncedAt,
+            sort_order: 1,
+            tags: [],
+            note: null,
+            note_updated_at: null,
+          },
+        ];
+        for (let i = mockFavorites.length - 1; i >= 0; i -= 1) {
+          if (mockFavorites[i].list_name === listName) {
+            mockFavorites.splice(i, 1);
+          }
+        }
+        mockFavorites.push(...officialItems);
+        return {
+          ok: true,
+          list_name: listName,
+          imported: officialItems.length,
+          avatars: 1,
+          worlds: 1,
+          synced_at: syncedAt,
+        } satisfies FavoritesSyncResult as unknown as TResult;
+      }
       case "config.read":
         return {
           cache_directory: "D:/VRChatCache/",
@@ -1161,6 +1206,10 @@ class IpcClient {
       "favorites.tags.set",
       params,
     );
+  }
+
+  async favoriteSyncOfficial() {
+    return this.call<undefined, FavoritesSyncResult>("favorites.syncOfficial");
   }
 
   // ── Friend Log ──────────────────────────────────────────────────────

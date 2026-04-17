@@ -20,6 +20,7 @@ import { AboutDialog } from "@/components/AboutDialog";
 import { ReportProvider, useReport } from "@/lib/report-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
+import { getTrueCacheCategoryCount, getTrueCacheLabel } from "@/lib/report-metrics";
 import { formatDate } from "@/lib/utils";
 import { VrcProcessProvider, useVrcProcess } from "@/lib/vrc-context";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
@@ -128,6 +129,8 @@ function AppContent() {
   );
 
   const currentMeta = routeMeta[location.pathname] ?? routeMeta["/"];
+  const trueCacheLabel = getTrueCacheLabel(shellReport);
+  const trueCacheCategoryCount = getTrueCacheCategoryCount(shellReport);
 
   useEffect(() => {
     setSearchQuery("");
@@ -183,7 +186,10 @@ function AppContent() {
                   {t("dashboard.totalCache")}
                 </div>
                 <div className="mt-1 text-[18px] font-semibold">
-                  {shellReport.total_bytes_human}
+                  {trueCacheLabel}
+                </div>
+                <div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                  {t("dashboard.totalCacheHint", { count: trueCacheCategoryCount })}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -288,7 +294,7 @@ function AppContent() {
     }
 
     return null;
-  }, [currentMeta.title, location.pathname, shellReport, t]);
+  }, [currentMeta.title, location.pathname, shellReport, t, trueCacheCategoryCount, trueCacheLabel]);
 
   return (
     <ToolbarSearchProvider
@@ -389,7 +395,7 @@ function AppContent() {
 
                   <StatusBar
                     breadcrumb={currentMeta.breadcrumb}
-                    cacheTotal={shellReport?.total_bytes_human ?? "—"}
+                    cacheTotal={shellReport ? trueCacheLabel : "—"}
                     currentPageLabel={currentMeta.title}
                     version={shellVersion}
                     vrcRunning={vrcRunning}

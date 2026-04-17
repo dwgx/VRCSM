@@ -99,6 +99,8 @@ public:
     // cleanly without guessing from exception strings.
     static Result<nlohmann::json> fetchCurrentUser();
     static Result<std::vector<nlohmann::json>> fetchFriends(bool offline);
+    static Result<std::vector<nlohmann::json>> fetchFavoritedAvatars();
+    static Result<std::vector<nlohmann::json>> fetchFavoritedWorlds();
 
     // Downloads the resource at the specified VRChat Cloudflare URL directly to
     // the filesystem using the active WinHTTP authentication session.
