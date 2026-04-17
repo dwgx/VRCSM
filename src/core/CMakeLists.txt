@@ -5,6 +5,7 @@ add_library(vrcsm_core STATIC
     CacheIndex.cpp
     CacheScanner.cpp
     BundleSniff.cpp
+    Database.cpp
     LogParser.cpp
     LogTailer.cpp
     LogEventClassifier.cpp
@@ -30,10 +31,13 @@ target_include_directories(vrcsm_core PUBLIC
     ${CMAKE_SOURCE_DIR}/src
 )
 
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
+
 target_link_libraries(vrcsm_core PUBLIC
     nlohmann_json::nlohmann_json
     fmt::fmt
     spdlog::spdlog
+    unofficial::sqlite3::sqlite3
 )
 
 if(MSVC)
