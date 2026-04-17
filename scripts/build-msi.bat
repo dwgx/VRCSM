@@ -33,7 +33,14 @@ if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 echo [build-msi] BuildDir=%BUILD_DIR%
 echo [build-msi] Output=%OUT_MSI%
 
-"%WIX%" build "%REPO%\installer\vrcsm.wxs" -arch x64 -d "BuildDir=%BUILD_DIR%" -d "IconFile=%ICON_FILE%" -d "ProductVersion=%APP_VERSION_MSI%" -o "%OUT_MSI%"
+set "WIX_VERSION="
+for /f %%V in ('"%WIX%" --version') do if not defined WIX_VERSION set "WIX_VERSION=%%V"
+set "WIX_MAJOR=%WIX_VERSION:~0,1%"
+set "WIX_EULA_ARG="
+if "%WIX_MAJOR%"=="7" set "WIX_EULA_ARG=-acceptEula wix7"
+if "%WIX_MAJOR%"=="8" set "WIX_EULA_ARG=-acceptEula wix7"
+
+"%WIX%" build %WIX_EULA_ARG% "%REPO%\installer\vrcsm.wxs" -arch x64 -d "BuildDir=%BUILD_DIR%" -d "IconFile=%ICON_FILE%" -d "ProductVersion=%APP_VERSION_MSI%" -o "%OUT_MSI%"
 if errorlevel 1 (
     echo [build-msi] FAILED
     exit /b 1
