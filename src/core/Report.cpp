@@ -107,15 +107,20 @@ nlohmann::json BuildFullReport(const std::filesystem::path& baseDir)
 
         nlohmann::json entry;
         entry["category"] = std::string(def.key);
-        entry["path"] = toUtf8(p.wstring());
+        entry["logical_path"] = std::string(def.rel_path);
+        entry["source_path"] = toUtf8(p.wstring());
+        entry["resolved_path"] = toUtf8(p.wstring());
         if (target.has_value())
         {
+            entry["target_path"] = toUtf8(target->wstring());
             entry["target"] = toUtf8(target->wstring());
         }
         else
         {
+            entry["target_path"] = nullptr;
             entry["target"] = nullptr;
         }
+        entry["reason"] = "junction target missing";
         brokenLinks.push_back(entry);
     }
     report["broken_links"] = brokenLinks;

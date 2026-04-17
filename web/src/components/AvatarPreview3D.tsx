@@ -1,30 +1,54 @@
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { AlertTriangle, Box, Lock, Loader2, RotateCcw } from "lucide-react";
+import {
+  AlertTriangle,
+  Box,
+  Eye,
+  Hand,
+  Loader2,
+  Lock,
+  RotateCcw,
+  ScanSearch,
+  SquareStack,
+} from "lucide-react";
 import { useAvatarPreview } from "@/hooks/useAvatarPreview";
 
-/* ── Error code → UI metadata ──────────────────────────────────────── */
+type PreviewMode = "textured" | "clay" | "wireframe";
+
+interface PreparedSceneMeta {
+  center: THREE.Vector3;
+  size: THREE.Vector3;
+  meshCount: number;
+  materialCount: number;
+  boneCount: number;
+}
 
 const CODE_META: Record<
   string,
   { icon: typeof AlertTriangle; kind: "info" | "warn" }
 > = {
-  cache_missing:     { icon: Box,            kind: "info" },
-  bundle_not_found:  { icon: Box,            kind: "info" },
-  bundle_invalid:    { icon: Box,            kind: "info" },
-  extractor_missing: { icon: Box,            kind: "info" },
-  converter_missing: { icon: Box,            kind: "info" },
-  extractor_failed:  { icon: AlertTriangle,  kind: "warn" },
-  converter_failed:  { icon: AlertTriangle,  kind: "warn" },
-  encrypted:         { icon: Lock,           kind: "warn" },
-  preview_failed:    { icon: AlertTriangle,  kind: "warn" },
-  missing_avatar_id: { icon: AlertTriangle,  kind: "warn" },
+  cache_missing: { icon: Box, kind: "info" },
+  bundle_not_found: { icon: Box, kind: "info" },
+  bundle_invalid: { icon: Box, kind: "info" },
+  extractor_missing: { icon: Box, kind: "info" },
+  converter_missing: { icon: Box, kind: "info" },
+  extractor_failed: { icon: AlertTriangle, kind: "warn" },
+  converter_failed: { icon: AlertTriangle, kind: "warn" },
+  encrypted: { icon: Lock, kind: "warn" },
+  preview_failed: { icon: AlertTriangle, kind: "warn" },
+  missing_avatar_id: { icon: AlertTriangle, kind: "warn" },
 };
-
-/* ── Sub-components ────────────────────────────────────────────────── */
 
 function EmptyState({
   code,
@@ -89,7 +113,7 @@ function LoadingState({ size }: { size: number }) {
     >
       <Loader2 className="size-5 animate-spin text-[hsl(var(--primary))]" />
       <span className="text-[10px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-        {t("avatars.preview3d.loading", { defaultValue: "Extracting\u2026" })}
+        {t("avatars.preview3d.loading", { defaultValue: "Extracting..." })}
       </span>
     </div>
   );
@@ -128,14 +152,6 @@ function FallbackError({
   );
 }
 
-/* ── 3D Scene internals ────────────────────────────────────────────── */
-
-/**
- * Compute a "tight" bounding box by trimming the 2% most extreme
- * vertices from each axis. This is a safety net that eliminates any
- * residual outlier geometry the Python extractor didn't catch
- * (e.g. stray vertices at world origin, edge-case props).
- */
 function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
   const positions: THREE.Vector3[] = [];
 
@@ -148,7 +164,7 @@ function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
     const worldMatrix = child.matrixWorld;
     const v = new THREE.Vector3();
 
-    for (let i = 0; i < posAttr.count; i++) {
+    for (let i = 0; i < posAttr.count; i += 1) {
       v.fromBufferAttribute(posAttr, i);
       v.applyMatrix4(worldMatrix);
       positions.push(v.clone());
@@ -160,7 +176,6 @@ function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
   }
 
   const trim = Math.max(1, Math.floor(positions.length * 0.02));
-
   const xs = positions.map((p) => p.x).sort((a, b) => a - b);
   const ys = positions.map((p) => p.y).sort((a, b) => a - b);
   const zs = positions.map((p) => p.z).sort((a, b) => a - b);
@@ -175,13 +190,82 @@ function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
   );
 }
 
-/**
- * Loads a GLB via drei's useGLTF, then normalizes its origin:
- *   1. Robust bounding box (trim 2% outlier vertices)
- *   2. Center X/Z, plant feet at Y=0
- *   3. Scale to fit ~2m tall
- */
-function GlbModel({ url }: { url: string }) {
+function buildDebugMaterial(
+  original: THREE.Material,
+  mode: Exclude<PreviewMode, "textured">,
+): THREE.Material {
+  if (mode === "wireframe") {
+    return new THREE.MeshStandardMaterial({
+      color: "#D2D7E2",
+      roughness: 0.92,
+      metalness: 0.02,
+      wireframe: true,
+    });
+  }
+
+  return new THREE.MeshStandardMaterial({
+    color: "#C9B8A2",
+    roughness: 0.96,
+    metalness: 0.02,
+    flatShading: original instanceof THREE.MeshNormalMaterial ? true : false,
+  });
+}
+
+function disposeDebugMaterial(material: THREE.Material | THREE.Material[] | undefined) {
+  if (!material) return;
+  if (Array.isArray(material)) {
+    material.forEach((entry) => entry.dispose());
+    return;
+  }
+  material.dispose();
+}
+
+function applyPreviewMode(scene: THREE.Object3D, mode: PreviewMode) {
+  scene.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    const mesh = child as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.Material | THREE.Material[]
+    > & {
+      userData: {
+        __vrcsmOriginalMaterial?: THREE.Material | THREE.Material[];
+        __vrcsmDebugMaterial?: THREE.Material | THREE.Material[];
+      };
+    };
+
+    if (!mesh.userData.__vrcsmOriginalMaterial) {
+      mesh.userData.__vrcsmOriginalMaterial = mesh.material;
+    }
+
+    if (mesh.userData.__vrcsmDebugMaterial) {
+      disposeDebugMaterial(mesh.userData.__vrcsmDebugMaterial);
+      delete mesh.userData.__vrcsmDebugMaterial;
+    }
+
+    if (mode === "textured") {
+      mesh.material = mesh.userData.__vrcsmOriginalMaterial;
+      return;
+    }
+
+    const original = mesh.userData.__vrcsmOriginalMaterial;
+    const debugMaterial = Array.isArray(original)
+      ? original.map((material) => buildDebugMaterial(material, mode))
+      : buildDebugMaterial(original, mode);
+
+    mesh.userData.__vrcsmDebugMaterial = debugMaterial;
+    mesh.material = debugMaterial;
+  });
+}
+
+function GlbModel({
+  url,
+  mode,
+  onPrepared,
+}: {
+  url: string;
+  mode: PreviewMode;
+  onPrepared: (meta: PreparedSceneMeta) => void;
+}) {
   const { scene } = useGLTF(url);
   const groupRef = useRef<THREE.Group>(null);
 
@@ -205,11 +289,51 @@ function GlbModel({ url }: { url: string }) {
       -box.min.y * scale,
       -boxCenter.z * scale,
     );
+    groupRef.current.updateMatrixWorld(true);
+
+    const normalizedBounds = new THREE.Box3().setFromObject(groupRef.current);
+    const normalizedCenter = new THREE.Vector3();
+    const normalizedSize = new THREE.Vector3();
+    normalizedBounds.getCenter(normalizedCenter);
+    normalizedBounds.getSize(normalizedSize);
+
+    let meshCount = 0;
+    let boneCount = 0;
+    const materialIds = new Set<string>();
+    scene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        meshCount += 1;
+        const material = child.material;
+        if (Array.isArray(material)) {
+          material.forEach((entry) => materialIds.add(entry.uuid));
+        } else if (material) {
+          materialIds.add(material.uuid);
+        }
+      }
+      if (child instanceof THREE.Bone) {
+        boneCount += 1;
+      }
+    });
+
+    onPrepared({
+      center: normalizedCenter,
+      size: normalizedSize,
+      meshCount,
+      materialCount: materialIds.size,
+      boneCount,
+    });
 
     return () => {
       useGLTF.clear(url);
     };
-  }, [url, scene]);
+  }, [onPrepared, scene, url]);
+
+  useEffect(() => {
+    applyPreviewMode(scene, mode);
+    return () => {
+      applyPreviewMode(scene, "textured");
+    };
+  }, [mode, scene]);
 
   return (
     <group ref={groupRef}>
@@ -218,47 +342,106 @@ function GlbModel({ url }: { url: string }) {
   );
 }
 
-/** Subtle ground reference grid — only rendered at larger sizes. */
 function GroundGrid({ visible }: { visible: boolean }) {
   if (!visible) return null;
   return (
     <group>
-      <gridHelper
-        args={[3, 12, 0x444444, 0x2a2a2a]}
-        position={[0, 0, 0]}
-      />
-      {/* Faint ground disc for visual grounding */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.002, 0]}
-        receiveShadow
-      >
-        <circleGeometry args={[1.2, 32]} />
-        <meshStandardMaterial
-          color="#1a1a1a"
-          transparent
-          opacity={0.25}
-        />
+      <gridHelper args={[3.5, 14, 0x4e5a67, 0x232a33]} position={[0, 0, 0]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]} receiveShadow>
+        <circleGeometry args={[1.45, 40]} />
+        <meshStandardMaterial color="#12161D" transparent opacity={0.28} />
       </mesh>
     </group>
   );
 }
 
-/* ── Main Export ────────────────────────────────────────────────────── */
+function PreviewCameraRig({
+  sceneMeta,
+  fitTick,
+  shiftPanning,
+}: {
+  sceneMeta: PreparedSceneMeta | null;
+  fitTick: number;
+  shiftPanning: boolean;
+}) {
+  const { camera, invalidate } = useThree();
+  const controlsRef = useRef<any>(null);
 
-/**
- * Dark Unity-style 3D avatar preview.
- *
- * Calls C++ `avatar.preview` IPC (via `useAvatarPreview` hook), which
- * resolves the bundle, runs the Python extractor, and returns a `.glb`
- * URL served via WebView2's `preview.local` virtual host.
- *
- * Camera controls (built into Three.js OrbitControls):
- *   - LMB drag:        Rotate
- *   - Shift+LMB drag:  Pan
- *   - Scroll:          Zoom
- *   - RMB drag:        Pan (alternative)
- */
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    controlsRef.current.mouseButtons.LEFT = shiftPanning
+      ? THREE.MOUSE.PAN
+      : THREE.MOUSE.ROTATE;
+    controlsRef.current.mouseButtons.RIGHT = THREE.MOUSE.PAN;
+    controlsRef.current.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+    controlsRef.current.update();
+  }, [shiftPanning]);
+
+  useEffect(() => {
+    if (!sceneMeta || !controlsRef.current) return;
+
+    const center = sceneMeta.center.clone();
+    const maxDim = Math.max(sceneMeta.size.x, sceneMeta.size.y, sceneMeta.size.z, 0.75);
+    const distance = Math.max(1.6, maxDim * 1.7);
+
+    camera.position.set(
+      center.x + distance * 0.3,
+      center.y + maxDim * 0.12,
+      center.z + distance,
+    );
+    camera.near = 0.01;
+    camera.far = 150;
+    camera.updateProjectionMatrix();
+
+    controlsRef.current.target.copy(center);
+    controlsRef.current.minDistance = Math.max(0.18, maxDim * 0.18);
+    controlsRef.current.maxDistance = Math.max(6, maxDim * 8);
+    controlsRef.current.update();
+    invalidate();
+  }, [camera, fitTick, invalidate, sceneMeta]);
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enablePan
+      enableZoom
+      enableRotate
+      panSpeed={1.25}
+      zoomSpeed={1.45}
+      rotateSpeed={0.82}
+      enableDamping
+      dampingFactor={0.08}
+      screenSpacePanning
+      makeDefault
+    />
+  );
+}
+
+function OverlayButton({
+  active = false,
+  onClick,
+  children,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "inline-flex h-7 items-center gap-1 rounded-[var(--radius-sm)] border px-2 text-[10px] font-medium transition-colors " +
+        (active
+          ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.18)] text-[hsl(var(--primary))]"
+          : "border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.88)] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-raised))]")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
 export function AvatarPreview3D({
   avatarId,
   assetUrl,
@@ -270,15 +453,51 @@ export function AvatarPreview3D({
   fallbackImageUrl?: string;
   size?: number;
 }) {
+  const { t } = useTranslation();
   const { state, retry } = useAvatarPreview(avatarId, assetUrl);
+  const [mode, setMode] = useState<PreviewMode>("textured");
+  const [fitTick, setFitTick] = useState(0);
+  const [shiftPanning, setShiftPanning] = useState(false);
+  const [sceneMeta, setSceneMeta] = useState<PreparedSceneMeta | null>(null);
 
-  const canvasStyle = useMemo<React.CSSProperties>(
+  const canvasStyle = useMemo<CSSProperties>(
     () => ({ width: size, height: size, background: "hsl(var(--canvas))" }),
     [size],
   );
 
-  // Show ground grid only when the preview is large enough to see it
-  const showGrid = size >= 180;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        setShiftPanning(true);
+      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        setShiftPanning(false);
+      }
+    };
+    const onBlur = () => {
+      setShiftPanning(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (state.kind === "ready") {
+      setFitTick((value) => value + 1);
+    }
+  }, [state.kind, state.kind === "ready" ? state.url : ""]);
+
+  const showGrid = size >= 200;
 
   if (state.kind === "loading") {
     return <LoadingState size={size} />;
@@ -306,40 +525,80 @@ export function AvatarPreview3D({
 
   return (
     <div
-      className="overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]"
+      className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
       style={{ width: size, height: size }}
     >
-      <Canvas
-        dpr={[1, 2]}
-        camera={{ position: [0, 1.0, 3.5], fov: 35 }}
-        style={canvasStyle}
-      >
-        <Suspense fallback={null}>
-          {/* 3-point lighting: ambient fill + key + rim */}
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[5, 10, -5]} intensity={1.5} />
-          <directionalLight position={[-5, 5, 5]} intensity={0.5} />
+      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
+        <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
+          <OverlayButton onClick={() => setFitTick((value) => value + 1)}>
+            <ScanSearch className="size-3" />
+            {t("avatars.preview3d.fit", { defaultValue: "Fit" })}
+          </OverlayButton>
+          <OverlayButton active={mode === "textured"} onClick={() => setMode("textured")}>
+            <Eye className="size-3" />
+            {t("avatars.preview3d.modeTextured", { defaultValue: "Textured" })}
+          </OverlayButton>
+          <OverlayButton active={mode === "clay"} onClick={() => setMode("clay")}>
+            <SquareStack className="size-3" />
+            {t("avatars.preview3d.modeClay", { defaultValue: "Clay" })}
+          </OverlayButton>
+          <OverlayButton active={mode === "wireframe"} onClick={() => setMode("wireframe")}>
+            <Box className="size-3" />
+            {t("avatars.preview3d.modeWireframe", { defaultValue: "Wireframe" })}
+          </OverlayButton>
+        </div>
 
-          <group position={[0, -0.05, 0]}>
-            <GlbModel url={state.url} />
+        <div className="pointer-events-auto rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.92)] px-2 py-1 text-right text-[10px] leading-tight text-[hsl(var(--muted-foreground))] shadow-sm">
+          <div className="flex items-center justify-end gap-1 text-[hsl(var(--foreground))]">
+            <Hand className="size-3" />
+            {t("avatars.preview3d.controlsTitle", { defaultValue: "Blender-style controls" })}
+          </div>
+          <div>
+            {t("avatars.preview3d.controlsBody", {
+              defaultValue: "LMB rotate · Shift+LMB pan · wheel zoom · RMB pan",
+            })}
+          </div>
+        </div>
+      </div>
+
+      {sceneMeta ? (
+        <div className="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2">
+          <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.9)] px-2 py-1 text-[10px] text-[hsl(var(--muted-foreground))] shadow-sm">
+            {sceneMeta.meshCount}M / {sceneMeta.materialCount}Mat / {sceneMeta.boneCount}Bone
+          </div>
+          {shiftPanning ? (
+            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.45)] bg-[hsl(var(--primary)/0.16)] px-2 py-1 text-[10px] font-medium text-[hsl(var(--primary))] shadow-sm">
+              {t("avatars.preview3d.panning", { defaultValue: "Pan mode" })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Canvas dpr={[1, 2]} camera={{ position: [0, 1, 3.5], fov: 34 }} style={canvasStyle}>
+        <color attach="background" args={["#0D1218"]} />
+        <fog attach="fog" args={["#0D1218", 6, 18]} />
+
+        <Suspense fallback={null}>
+          <ambientLight intensity={0.62} />
+          <hemisphereLight args={["#E7EEF9", "#11151C", 0.65]} />
+          <directionalLight position={[4.5, 8, 5]} intensity={1.55} />
+          <directionalLight position={[-6, 5, -3]} intensity={0.52} />
+
+          <group position={[0, -0.04, 0]}>
+            <GlbModel
+              url={state.url}
+              mode={mode}
+              onPrepared={(meta) => setSceneMeta(meta)}
+            />
             <GroundGrid visible={showGrid} />
           </group>
-        </Suspense>
 
-        <OrbitControls
-          enablePan
-          enableZoom
-          enableRotate
-          panSpeed={1.5}
-          zoomSpeed={2.5}
-          rotateSpeed={1.0}
-          enableDamping
-          dampingFactor={0.08}
-          minDistance={0.5}
-          maxDistance={10}
-          target={[0, 0.8, 0]}
-          makeDefault
-        />
+          <PreviewCameraRig
+            sceneMeta={sceneMeta}
+            fitTick={fitTick}
+            shiftPanning={shiftPanning}
+          />
+        </Suspense>
       </Canvas>
     </div>
   );

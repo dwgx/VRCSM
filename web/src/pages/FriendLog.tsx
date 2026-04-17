@@ -3,105 +3,147 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
-  ChevronDown,
-  ChevronRight,
   Clock,
   Edit3,
   Loader2,
-  MessageSquare,
   RefreshCw,
   Search,
-  UserCheck,
+  ShieldEllipsis,
   UserMinus,
   UserPlus,
   Users,
-  X,
+  Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
-// ── Types ────────────────────────────────────────────────────────────
-
-interface PlayerEvent {
+interface SessionEvent {
   id: number;
-  kind: string;            // "join" | "leave"
+  kind: string;
   display_name: string;
-  user_id?: string;
-  world_id?: string;
+  user_id?: string | null;
+  world_id?: string | null;
   occurred_at: string;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────
-
-function relativeTime(iso: string): string {
-  const now = Date.now();
-  const then = new Date(iso).getTime();
-  const diff = now - then;
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}d ago`;
-  return new Date(iso).toLocaleDateString();
+interface SocialEvent {
+  id: number;
+  user_id: string | null;
+  event_type: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  occurred_at: string | null;
 }
 
-function eventIcon(kind: string) {
+type FeedTab = "session" | "social";
+
+const PAGE_SIZE = 50;
+
+function parseTime(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const normalized = value.includes("T")
+    ? value
+    : value.replace(/^(\d{4})\.(\d{2})\.(\d{2})/, "$1-$2-$3");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function useRelativeTime() {
+  const { t } = useTranslation();
+  return useCallback((value: string | null | undefined) => {
+    const parsed = parseTime(value);
+    if (!parsed) return "--";
+    const diff = Date.now() - parsed.getTime();
+    if (diff < 60_000) return t("friendLog.relative.now");
+    if (diff < 3_600_000) {
+      return t("friendLog.relative.minutes", {
+        count: Math.floor(diff / 60_000),
+      });
+    }
+    if (diff < 86_400_000) {
+      return t("friendLog.relative.hours", {
+        count: Math.floor(diff / 3_600_000),
+      });
+    }
+    if (diff < 604_800_000) {
+      return t("friendLog.relative.days", {
+        count: Math.floor(diff / 86_400_000),
+      });
+    }
+    return parsed.toLocaleDateString();
+  }, [t]);
+}
+
+function sessionKindTone(kind: string): string {
   switch (kind) {
+    case "joined":
+    case "join":
+      return "bg-emerald-500/12 text-emerald-400 border-emerald-500/25";
+    case "left":
+    case "leave":
+      return "bg-zinc-500/12 text-zinc-300 border-zinc-500/25";
+    default:
+      return "bg-sky-500/12 text-sky-300 border-sky-500/25";
+  }
+}
+
+function sessionKindIcon(kind: string) {
+  switch (kind) {
+    case "joined":
     case "join":
       return <UserPlus className="size-3.5 text-emerald-400" />;
+    case "left":
     case "leave":
-      return <UserMinus className="size-3.5 text-rose-400" />;
-    case "friend_add":
-      return <UserCheck className="size-3.5 text-sky-400" />;
-    case "friend_remove":
-      return <UserMinus className="size-3.5 text-orange-400" />;
-    case "online":
-      return <UserCheck className="size-3.5 text-emerald-400" />;
-    case "offline":
-      return <Clock className="size-3.5 text-zinc-500" />;
+      return <UserMinus className="size-3.5 text-zinc-400" />;
     default:
-      return <Users className="size-3.5 text-zinc-500" />;
+      return <Users className="size-3.5 text-sky-400" />;
   }
 }
 
-function kindLabel(kind: string): string {
-  switch (kind) {
-    case "join":       return "Joined";
-    case "leave":      return "Left";
-    case "friend_add": return "Friend Added";
-    case "friend_remove": return "Friend Removed";
-    case "online":     return "Online";
-    case "offline":    return "Offline";
-    default:           return kind;
+function socialKindTone(eventType: string | null): string {
+  switch (eventType) {
+    case "friend.added":
+      return "bg-emerald-500/12 text-emerald-400 border-emerald-500/25";
+    case "friend.removed":
+      return "bg-orange-500/12 text-orange-400 border-orange-500/25";
+    default:
+      return "bg-sky-500/12 text-sky-300 border-sky-500/25";
   }
 }
 
-function kindColor(kind: string): string {
+function socialKindLabel(eventType: string | null, t: ReturnType<typeof useTranslation>["t"]): string {
+  switch (eventType) {
+    case "friend.added":
+      return t("friendLog.social.kind.friendAdded");
+    case "friend.removed":
+      return t("friendLog.social.kind.friendRemoved");
+    case "status.changed":
+      return t("friendLog.social.kind.statusChanged");
+    case "location.changed":
+      return t("friendLog.social.kind.locationChanged");
+    case "avatar.changed":
+      return t("friendLog.social.kind.avatarChanged");
+    default:
+      return eventType ?? t("friendLog.social.kind.unknown");
+  }
+}
+
+function sessionKindLabel(kind: string, t: ReturnType<typeof useTranslation>["t"]): string {
   switch (kind) {
+    case "joined":
     case "join":
-    case "online":
-    case "friend_add":
-      return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+      return t("friendLog.session.kind.joined");
+    case "left":
     case "leave":
-    case "offline":
-      return "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
-    case "friend_remove":
-      return "bg-orange-500/15 text-orange-400 border-orange-500/30";
+      return t("friendLog.session.kind.left");
     default:
-      return "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
+      return kind;
   }
 }
-
-// ── Note Editor ──────────────────────────────────────────────────────
 
 function NoteEditor({
   userId,
@@ -110,6 +152,7 @@ function NoteEditor({
   userId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -117,66 +160,60 @@ function NoteEditor({
   useEffect(() => {
     let alive = true;
     ipc.friendNoteGet(userId).then((r) => {
-      if (alive) {
-        setNote(r.note ?? "");
-        setLoading(false);
-      }
+      if (!alive) return;
+      setNote(r.note ?? "");
+      setLoading(false);
     }).catch(() => {
       if (alive) setLoading(false);
     });
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [userId]);
 
-  const save = async () => {
+  async function save() {
     setSaving(true);
     try {
       await ipc.friendNoteSet(userId, note);
-      toast.success("Note saved");
+      toast.success(t("friendLog.note.saved"));
       onClose();
     } catch (e) {
-      toast.error(`Failed to save note: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(
+        t("friendLog.note.saveFailed", {
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-3">
       {loading ? (
         <div className="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
-          <Loader2 className="size-3 animate-spin" /> Loading note…
+          <Loader2 className="size-3 animate-spin" />
+          {t("friendLog.note.loading")}
         </div>
       ) : (
         <>
           <textarea
             className={cn(
-              "w-full rounded-[var(--radius-sm)] border border-[hsl(var(--border))]",
-              "bg-[hsl(var(--canvas))] px-3 py-2 text-[12px] text-[hsl(var(--foreground))]",
-              "placeholder:text-[hsl(var(--muted-foreground))]",
-              "focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))]",
-              "resize-none min-h-[80px]",
+              "min-h-[84px] w-full resize-none rounded-[var(--radius-sm)] border border-[hsl(var(--border))]",
+              "bg-[hsl(var(--surface))] px-3 py-2 text-[12px] text-[hsl(var(--foreground))]",
+              "placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))]",
             )}
-            placeholder="Add a personal note about this friend…"
+            placeholder={t("friendLog.note.placeholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
           <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-[11px]"
-              onClick={onClose}
-            >
-              Cancel
+            <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={onClose}>
+              {t("common.cancel")}
             </Button>
-            <Button
-              size="sm"
-              className="h-7 text-[11px]"
-              disabled={saving}
-              onClick={save}
-            >
-              {saving ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
-              Save Note
+            <Button size="sm" className="h-7 text-[11px]" disabled={saving} onClick={() => void save()}>
+              {saving ? <Loader2 className="mr-1 size-3 animate-spin" /> : null}
+              {saving ? t("profile.saving") : t("common.save")}
             </Button>
           </div>
         </>
@@ -185,213 +222,197 @@ function NoteEditor({
   );
 }
 
-// ── Player Event Row ─────────────────────────────────────────────────
-
-function EventRow({ event }: { event: PlayerEvent }) {
-  const [expanded, setExpanded] = useState(false);
+function SessionEventRow({ event }: { event: SessionEvent }) {
+  const { t } = useTranslation();
+  const relativeTime = useRelativeTime();
   const [noteOpen, setNoteOpen] = useState(false);
 
   return (
-    <div
-      className={cn(
-        "group border-b border-[hsl(var(--border)/0.5)]",
-        "hover:bg-[hsl(var(--surface-raised)/0.5)]",
-        "transition-colors",
-      )}
-    >
-      <div
-        className="flex items-center gap-3 px-4 py-2.5 cursor-pointer select-none"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {/* Event icon */}
-        <div className="flex-shrink-0">{eventIcon(event.kind)}</div>
-
-        {/* Name */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-medium text-[hsl(var(--foreground))] truncate">
+    <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.65)] bg-[hsl(var(--surface))] p-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">{sessionKindIcon(event.kind)}</div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-[13px] font-medium text-[hsl(var(--foreground))]">
               {event.display_name}
             </span>
-            <Badge
-              variant="outline"
-              className={cn("text-[10px] px-1.5 py-0 h-4 font-mono", kindColor(event.kind))}
-            >
-              {kindLabel(event.kind)}
+            <Badge variant="outline" className={cn("h-5 border text-[10px] font-mono", sessionKindTone(event.kind))}>
+              {sessionKindLabel(event.kind, t)}
             </Badge>
+            <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              {relativeTime(event.occurred_at)}
+            </span>
           </div>
-          {event.world_id ? (
-            <div className="text-[10px] text-[hsl(var(--muted-foreground))] truncate mt-0.5">
-              {event.world_id}
-            </div>
-          ) : null}
+
+          <div className="mt-1 grid gap-1 text-[10.5px] text-[hsl(var(--muted-foreground))]">
+            {event.user_id ? <div className="font-mono">{event.user_id}</div> : null}
+            {event.world_id ? <div className="font-mono">{event.world_id}</div> : null}
+            <div>{parseTime(event.occurred_at)?.toLocaleString() ?? event.occurred_at}</div>
+          </div>
         </div>
 
-        {/* Time */}
-        <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))] tabular-nums shrink-0">
-          <Clock className="size-3" />
-          {relativeTime(event.occurred_at)}
-        </div>
-
-        {/* Expand chevron */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-          {expanded ? (
-            <ChevronDown className="size-3.5 text-[hsl(var(--muted-foreground))]" />
-          ) : (
-            <ChevronRight className="size-3.5 text-[hsl(var(--muted-foreground))]" />
-          )}
-        </div>
+        {event.user_id ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 text-[10px]"
+            onClick={() => setNoteOpen((value) => !value)}
+          >
+            <Edit3 className="size-3" />
+            {noteOpen ? t("friendLog.note.close") : t("friendLog.note.open")}
+          </Button>
+        ) : null}
       </div>
 
-      {expanded && (
-        <div className="px-4 pb-3 ml-[30px] space-y-2 animate-in fade-in-0 slide-in-from-top-1 duration-150">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-            <div className="text-[hsl(var(--muted-foreground))]">Event</div>
-            <div className="text-[hsl(var(--foreground))] font-mono">{event.kind}</div>
-
-            <div className="text-[hsl(var(--muted-foreground))]">Time</div>
-            <div className="text-[hsl(var(--foreground))] font-mono">
-              {new Date(event.occurred_at).toLocaleString()}
-            </div>
-
-            {event.user_id ? (
-              <>
-                <div className="text-[hsl(var(--muted-foreground))]">User ID</div>
-                <div className="text-[hsl(var(--foreground))] font-mono truncate">{event.user_id}</div>
-              </>
-            ) : null}
-
-            {event.world_id ? (
-              <>
-                <div className="text-[hsl(var(--muted-foreground))]">World</div>
-                <div className="text-[hsl(var(--foreground))] font-mono truncate">{event.world_id}</div>
-              </>
-            ) : null}
-          </div>
-
-          {event.user_id ? (
-            <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 text-[10px] gap-1"
-                onClick={(e) => { e.stopPropagation(); setNoteOpen(!noteOpen); }}
-              >
-                <Edit3 className="size-3" />
-                {noteOpen ? "Close" : "Note"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 text-[10px] gap-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  ipc.dbPlayerEncounters(event.user_id!).then((r) => {
-                    toast.info(`${r.items.length} encounter(s) recorded with ${event.display_name}`);
-                  }).catch(() => {});
-                }}
-              >
-                <Users className="size-3" />
-                Encounters
-              </Button>
-            </div>
-          ) : null}
-
-          {noteOpen && event.user_id ? (
-            <NoteEditor userId={event.user_id} onClose={() => setNoteOpen(false)} />
-          ) : null}
+      {noteOpen && event.user_id ? (
+        <div className="mt-3">
+          <NoteEditor userId={event.user_id} onClose={() => setNoteOpen(false)} />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
-// ── Main FriendLog Page ──────────────────────────────────────────────
-
-const PAGE_SIZE = 50;
-
-function FriendLog() {
+function SocialEventRow({ event }: { event: SocialEvent }) {
   const { t } = useTranslation();
-  const [events, setEvents] = useState<PlayerEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
-  const debouncedFilter = useDebouncedValue(filter, 200);
-  const [kindFilter, setKindFilter] = useState<string>("all");
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-
-  const load = useCallback(async (reset = false) => {
-    const newOffset = reset ? 0 : offset;
-    setLoading(true);
-    try {
-      const result = await ipc.dbPlayerEvents(PAGE_SIZE, newOffset);
-      const items = result.items as PlayerEvent[];
-      if (reset) {
-        setEvents(items);
-        setOffset(items.length);
-      } else {
-        setEvents((prev) => [...prev, ...items]);
-        setOffset((prev) => prev + items.length);
-      }
-      setHasMore(items.length >= PAGE_SIZE);
-    } catch (e) {
-      toast.error(`Failed to load events: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [offset]);
-
-  useEffect(() => {
-    load(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const filtered = useMemo(() => {
-    let items = events;
-    if (kindFilter !== "all") {
-      items = items.filter((e) => e.kind === kindFilter);
-    }
-    if (debouncedFilter) {
-      const q = debouncedFilter.toLowerCase();
-      items = items.filter(
-        (e) =>
-          e.display_name.toLowerCase().includes(q) ||
-          (e.user_id?.toLowerCase().includes(q) ?? false) ||
-          (e.world_id?.toLowerCase().includes(q) ?? false),
-      );
-    }
-    return items;
-  }, [events, debouncedFilter, kindFilter]);
-
-  // Unique player count
-  const uniquePlayers = useMemo(() => {
-    const set = new Set<string>();
-    for (const e of events) {
-      set.add(e.display_name);
-    }
-    return set.size;
-  }, [events]);
-
-  // Kind counts for filter badges
-  const kindCounts = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const e of events) {
-      map[e.kind] = (map[e.kind] ?? 0) + 1;
-    }
-    return map;
-  }, [events]);
-
-  const kinds = Object.keys(kindCounts).sort();
+  const relativeTime = useRelativeTime();
 
   return (
-    <div className="space-y-4 p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.65)] bg-[hsl(var(--surface))] p-3">
+      <div className="flex items-start gap-3">
+        <ShieldEllipsis className="mt-0.5 size-3.5 text-sky-400" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-[13px] font-medium text-[hsl(var(--foreground))]">
+              {event.user_id ?? t("friendLog.social.unknownUser")}
+            </span>
+            <Badge variant="outline" className={cn("h-5 border text-[10px] font-mono", socialKindTone(event.event_type))}>
+              {socialKindLabel(event.event_type, t)}
+            </Badge>
+            <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              {relativeTime(event.occurred_at)}
+            </span>
+          </div>
+
+          {(event.old_value || event.new_value) ? (
+            <div className="mt-2 grid gap-1 text-[10.5px] text-[hsl(var(--muted-foreground))]">
+              <div>
+                {t("friendLog.social.from")}:{" "}
+                <span className="font-mono text-[hsl(var(--foreground))]">
+                  {event.old_value ?? "—"}
+                </span>
+              </div>
+              <div>
+                {t("friendLog.social.to")}:{" "}
+                <span className="font-mono text-[hsl(var(--foreground))]">
+                  {event.new_value ?? "—"}
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function FriendLog() {
+  const { t } = useTranslation();
+  const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
+  const [socialEvents, setSocialEvents] = useState<SocialEvent[]>([]);
+  const [tab, setTab] = useState<FeedTab>("session");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 180);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [sessionOffset, setSessionOffset] = useState(0);
+  const [socialOffset, setSocialOffset] = useState(0);
+  const [sessionHasMore, setSessionHasMore] = useState(true);
+  const [socialHasMore, setSocialHasMore] = useState(true);
+
+  const load = useCallback(async (reset = false, targetTab?: FeedTab) => {
+    const nextTab = targetTab ?? tab;
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      if (nextTab === "session") {
+        const offset = reset ? 0 : sessionOffset;
+        const result = await ipc.dbPlayerEvents(PAGE_SIZE, offset);
+        const items = result.items as SessionEvent[];
+        setSessionEvents((prev) => reset ? items : [...prev, ...items]);
+        setSessionOffset((prev) => reset ? items.length : prev + items.length);
+        setSessionHasMore(items.length >= PAGE_SIZE);
+      } else {
+        const offset = reset ? 0 : socialOffset;
+        const result = await ipc.friendLogRecent(PAGE_SIZE, offset);
+        const items = result.items as SocialEvent[];
+        setSocialEvents((prev) => reset ? items : [...prev, ...items]);
+        setSocialOffset((prev) => reset ? items.length : prev + items.length);
+        setSocialHasMore(items.length >= PAGE_SIZE);
+      }
+    } catch (e) {
+      toast.error(
+        t("friendLog.loadFailed", {
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [sessionOffset, socialOffset, t, tab]);
+
+  useEffect(() => {
+    void load(true, "session");
+    void load(true, "social");
+  }, [load]);
+
+  const filteredSession = useMemo(() => {
+    const query = debouncedSearch.trim().toLowerCase();
+    if (!query) return sessionEvents;
+    return sessionEvents.filter((event) =>
+      event.display_name.toLowerCase().includes(query) ||
+      (event.user_id?.toLowerCase().includes(query) ?? false) ||
+      (event.world_id?.toLowerCase().includes(query) ?? false),
+    );
+  }, [debouncedSearch, sessionEvents]);
+
+  const filteredSocial = useMemo(() => {
+    const query = debouncedSearch.trim().toLowerCase();
+    if (!query) return socialEvents;
+    return socialEvents.filter((event) =>
+      (event.user_id?.toLowerCase().includes(query) ?? false) ||
+      (event.event_type?.toLowerCase().includes(query) ?? false) ||
+      (event.old_value?.toLowerCase().includes(query) ?? false) ||
+      (event.new_value?.toLowerCase().includes(query) ?? false),
+    );
+  }, [debouncedSearch, socialEvents]);
+
+  const sessionUniquePlayers = useMemo(() => {
+    const set = new Set<string>();
+    sessionEvents.forEach((event) => {
+      if (event.user_id) set.add(event.user_id);
+      else set.add(event.display_name);
+    });
+    return set.size;
+  }, [sessionEvents]);
+
+  const activeItems = tab === "session" ? filteredSession : filteredSocial;
+  const canLoadMore = tab === "session" ? sessionHasMore : socialHasMore;
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-[hsl(var(--foreground))]">
-            {t("nav.friendLog", { defaultValue: "Friend Log" })}
+          <h1 className="text-[22px] font-semibold leading-none tracking-tight">
+            {t("nav.friendLog")}
           </h1>
-          <p className="text-[12px] text-[hsl(var(--muted-foreground))] mt-0.5">
-            Player join/leave history from your VRChat sessions
+          <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("friendLog.subtitle")}
           </p>
         </div>
         <Button
@@ -399,159 +420,148 @@ function FriendLog() {
           size="sm"
           className="h-8 gap-1.5 text-[12px]"
           disabled={loading}
-          onClick={() => load(true)}
+          onClick={() => {
+            void load(true, "session");
+            void load(true, "social");
+          }}
         >
           <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-          Refresh
+          {t("common.refresh")}
         </Button>
+      </header>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-3">
+            <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+              {t("friendLog.stats.sessionEvents")}
+            </div>
+            <div className="mt-1 text-xl font-bold tabular-nums text-[hsl(var(--foreground))]">
+              {sessionEvents.length.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+              {t("friendLog.stats.uniquePlayers")}
+            </div>
+            <div className="mt-1 text-xl font-bold tabular-nums text-[hsl(var(--foreground))]">
+              {sessionUniquePlayers.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+              {t("friendLog.stats.socialChanges")}
+            </div>
+            <div className="mt-1 text-xl font-bold tabular-nums text-[hsl(var(--foreground))]">
+              {socialEvents.length.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-[hsl(var(--surface))]">
-          <CardContent className="p-3">
-            <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-              Total Events
-            </div>
-            <div className="text-xl font-bold text-[hsl(var(--foreground))] tabular-nums mt-0.5">
-              {events.length.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-[hsl(var(--surface))]">
-          <CardContent className="p-3">
-            <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-              Unique Players
-            </div>
-            <div className="text-xl font-bold text-[hsl(var(--foreground))] tabular-nums mt-0.5">
-              {uniquePlayers.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-[hsl(var(--surface))]">
-          <CardContent className="p-3">
-            <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-              Filtered
-            </div>
-            <div className="text-xl font-bold text-[hsl(var(--foreground))] tabular-nums mt-0.5">
-              {filtered.length.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filter bar */}
-      <Card className="bg-[hsl(var(--surface))]">
-        <CardContent className="p-3 space-y-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-[hsl(var(--muted-foreground))]" />
-            <Input
-              className="h-8 pl-8 text-[12px]"
-              placeholder="Search by player name, user ID, or world ID…"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            />
-            {filter && (
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                onClick={() => setFilter("")}
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Kind filter pills */}
-          <div className="flex flex-wrap gap-1.5">
+      <Card>
+        <CardContent className="space-y-3 p-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               className={cn(
-                "px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors",
-                kindFilter === "all"
-                  ? "bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.5)]"
-                  : "bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:bg-[hsl(var(--surface-raised))]",
+                "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+                tab === "session"
+                  ? "border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                  : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
               )}
-              onClick={() => setKindFilter("all")}
+              onClick={() => setTab("session")}
             >
-              All ({events.length})
+              <div className="flex items-center gap-1.5">
+                <Wifi className="size-3" />
+                {t("friendLog.tabs.session")}
+              </div>
             </button>
-            {kinds.map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={cn(
-                  "px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors",
-                  kindFilter === k
-                    ? kindColor(k)
-                    : "bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:bg-[hsl(var(--surface-raised))]",
-                )}
-                onClick={() => setKindFilter(kindFilter === k ? "all" : k)}
-              >
-                {kindLabel(k)} ({kindCounts[k]})
-              </button>
-            ))}
+            <button
+              type="button"
+              className={cn(
+                "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+                tab === "social"
+                  ? "border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                  : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
+              )}
+              onClick={() => setTab("social")}
+            >
+              <div className="flex items-center gap-1.5">
+                <ShieldEllipsis className="size-3" />
+                {t("friendLog.tabs.social")}
+              </div>
+            </button>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+            <Input
+              className="h-8 pl-8 text-[12px]"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("friendLog.searchPlaceholder")}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Event list */}
-      <Card className="bg-[hsl(var(--surface))] overflow-hidden">
-        <CardHeader className="pb-0 pt-3 px-4">
-          <CardTitle className="text-[13px] font-medium text-[hsl(var(--foreground))]">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="size-4" />
-              Event Timeline
-            </div>
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-0">
+          <CardTitle className="text-[13px]">
+            {tab === "session" ? t("friendLog.session.title") : t("friendLog.social.title")}
           </CardTitle>
           <CardDescription className="text-[11px]">
-            {loading && events.length === 0
-              ? "Loading events…"
-              : `Showing ${filtered.length} events`}
+            {tab === "session" ? t("friendLog.session.desc") : t("friendLog.social.desc")}
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0 mt-2">
-          {loading && events.length === 0 ? (
+        <CardContent className="mt-3 space-y-3">
+          {loading && activeItems.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-[hsl(var(--muted-foreground))]">
-              <Loader2 className="size-5 animate-spin mr-2" />
-              <span className="text-sm">Loading player events…</span>
+              <Loader2 className="mr-2 size-5 animate-spin" />
+              <span className="text-sm">{t("common.loading")}</span>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : activeItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-[hsl(var(--muted-foreground))]">
-              <Users className="size-8 mb-2 opacity-40" />
+              <Clock className="mb-2 size-8 opacity-40" />
               <span className="text-sm">
-                {events.length === 0
-                  ? "No player events recorded yet. Start VRChat to begin logging!"
-                  : "No events match your filter."}
+                {tab === "session"
+                  ? t("friendLog.session.empty")
+                  : t("friendLog.social.empty")}
               </span>
             </div>
           ) : (
             <>
-              <div className="divide-y divide-[hsl(var(--border)/0.3)]">
-                {filtered.map((event) => (
-                  <EventRow key={`${event.id}-${event.occurred_at}`} event={event} />
-                ))}
+              <div className="space-y-2">
+                {tab === "session"
+                  ? filteredSession.map((event) => (
+                      <SessionEventRow key={`${event.id}-${event.occurred_at}`} event={event} />
+                    ))
+                  : filteredSocial.map((event) => (
+                      <SocialEventRow key={`${event.id}-${event.occurred_at}`} event={event} />
+                    ))}
               </div>
 
-              {/* Load more */}
-              {hasMore && (
-                <div className="flex justify-center py-3 border-t border-[hsl(var(--border)/0.5)]">
+              {canLoadMore ? (
+                <div className="flex justify-center pt-2">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-[11px] gap-1.5"
-                    disabled={loading}
-                    onClick={() => load(false)}
+                    className="h-7 text-[11px]"
+                    disabled={loadingMore}
+                    onClick={() => void load(false, tab)}
                   >
-                    {loading ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <ChevronDown className="size-3" />
-                    )}
-                    Load More
+                    {loadingMore ? (
+                      <Loader2 className="mr-1 size-3 animate-spin" />
+                    ) : null}
+                    {t("friendLog.loadMore")}
                   </Button>
                 </div>
-              )}
+              ) : null}
             </>
           )}
         </CardContent>
@@ -559,5 +569,3 @@ function FriendLog() {
     </div>
   );
 }
-
-export default FriendLog;

@@ -137,7 +137,10 @@ export interface LogReport {
 export interface BrokenLink {
   category: string;
   logical_path: string;
+  source_path: string;
   resolved_path: string;
+  target_path: string | null;
+  target: string | null;
   reason: string;
 }
 

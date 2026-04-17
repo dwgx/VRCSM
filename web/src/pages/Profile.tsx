@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { RefreshCcw, LogIn, Sword } from "lucide-react";
+import { ExternalLink, Globe2, LogIn, RefreshCcw, Shirt, Sword, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileCard, type VrcUserProfile, type VrcStatus } from "@/components/ProfileCard";
@@ -55,6 +55,10 @@ export default function Profile() {
     load();
   }
 
+  function openVrchat(url: string) {
+    void ipc.call("shell.openUrl", { url });
+  }
+
   if (!status.authed) {
     return (
       <div className="flex flex-col gap-4 animate-fade-in">
@@ -102,12 +106,95 @@ export default function Profile() {
           {t("common.loading")}
         </div>
       ) : profile ? (
-        <div className="flex flex-col gap-4 max-w-md">
+        <div className="flex flex-col gap-4 max-w-4xl">
           <ProfileCard
             user={profile}
             editable
             onSave={handleSave}
           />
+
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("profile.quickActions", { defaultValue: "VRChat Web Shortcuts" })}</CardTitle>
+                <CardDescription>
+                  {t("profile.quickActionsDesc", {
+                    defaultValue:
+                      "Open the official VRChat web panels directly from VRCSM for account, avatar, and world management.",
+                  })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  variant="outline"
+                  className="justify-start"
+                  onClick={() => openVrchat(`https://vrchat.com/home/user/${profile.id}`)}
+                >
+                  <UserRound className="size-4" />
+                  {t("profile.openProfileWeb", { defaultValue: "Open web profile" })}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start"
+                  onClick={() => openVrchat("https://vrchat.com/home/avatars")}
+                >
+                  <Shirt className="size-4" />
+                  {t("profile.openAvatarManager", { defaultValue: "Open avatar manager" })}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start"
+                  onClick={() => openVrchat("https://vrchat.com/home/worlds")}
+                >
+                  <Globe2 className="size-4" />
+                  {t("profile.openWorldManager", { defaultValue: "Open world manager" })}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start"
+                  onClick={() => openVrchat("https://vrchat.com/home")}
+                >
+                  <ExternalLink className="size-4" />
+                  {t("profile.openHomePortal", { defaultValue: "Open VRChat home" })}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("profile.liveContext", { defaultValue: "Live Context" })}</CardTitle>
+                <CardDescription>
+                  {t("profile.liveContextDesc", {
+                    defaultValue: "Important ids and current session targets for quick navigation.",
+                  })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-[11px]">
+                <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                    {t("profile.currentAvatar", { defaultValue: "Current avatar" })}
+                  </div>
+                  <div className="mt-1 break-all font-mono text-[hsl(var(--foreground))]">
+                    {profile.currentAvatarId ?? profile.currentAvatarName ?? "—"}
+                  </div>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                    {t("profile.currentWorld", { defaultValue: "Current world" })}
+                  </div>
+                  <div className="mt-1 break-all font-mono text-[hsl(var(--foreground))]">
+                    {profile.worldId ?? profile.location ?? "—"}
+                  </div>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[hsl(var(--muted-foreground))]">
+                  {t("profile.liveContextHint", {
+                    defaultValue:
+                      "VRCSM keeps editing and switching local, while deeper creator and account actions can jump to the official web panel without leaving your current workflow.",
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Avatar switcher hint */}
           <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-3 py-2.5 text-[11px] text-[hsl(var(--muted-foreground))]">

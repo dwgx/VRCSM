@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <system_error>
+#include <system_error>
 #include <vector>
 
 #include <Windows.h>
@@ -164,20 +165,89 @@ Result<std::monostate> JunctionUtil::removeJunction(const std::filesystem::path&
 
 nlohmann::json JunctionUtil::Repair(const nlohmann::json& params)
 {
-    const auto pathStr = params.at("path").get<std::string>();
-    const auto p = utf8Path(pathStr);
+    const auto sourceKey = params.contains("source") ? "source" : "path";
+    if (!params.contains(sourceKey) || !params[sourceKey].is_string())
+    {
+        throw std::runtime_error("junction.repair requires 'source' (or legacy 'path')");
+    }
+
+    const auto sourceStr = params.at(sourceKey).get<std::string>();
+    const auto source = utf8Path(sourceStr);
+
+    std::optional<std::filesystem::path> target;
+    if (params.contains("target") && params["target"].is_string())
+    {
+        target = utf8Path(params.at("target").get<std::string>());
+    }
+    else
+    {
+        target = readJunctionTarget(source);
+    }
+    if (!target.has_value())
+    {
+        throw std::runtime_error("junction.repair could not resolve target path");
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directories(target->parent_path(), ec);
+    if (ec)
+    {
+        throw std::runtime_error("Failed to create target parent: " + ec.message());
+    }
+    std::filesystem::create_directories(*target, ec);
+    if (ec)
+    {
+        throw std::runtime_error("Failed to create target directory: " + ec.message());
+    }
+
+    if (isReparsePoint(source))
+    {
+        auto removeRes = removeJunction(source);
+        if (!isOk(removeRes))
+        {
+            throw std::runtime_error(error(removeRes).message);
+        }
+    }
+    else if (std::filesystem::exists(source, ec) && !ec)
+    {
+        if (std::filesystem::is_directory(source, ec) && !ec)
+        {
+            if (!std::filesystem::is_empty(source, ec) || ec)
+            {
+                throw std::runtime_error(
+                    "Source path exists as a non-empty directory; refusing to replace it");
+            }
+            std::filesystem::remove(source, ec);
+            if (ec)
+            {
+                throw std::runtime_error("Failed to remove empty source directory: " + ec.message());
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Source path exists and is not a junction directory");
+        }
+    }
+
+    auto createRes = createJunction(source, *target);
+    if (!isOk(createRes))
+    {
+        throw std::runtime_error(error(createRes).message);
+    }
 
     nlohmann::json result;
-    result["path"] = pathStr;
-    result["isReparsePoint"] = isReparsePoint(p);
-    if (auto target = readJunctionTarget(p))
+    result["source"] = sourceStr;
+    result["path"] = sourceStr;
+    result["isReparsePoint"] = isReparsePoint(source);
+    if (auto repairedTarget = readJunctionTarget(source))
     {
-        result["target"] = toUtf8(target->wstring());
+        result["target"] = toUtf8(repairedTarget->wstring());
     }
     else
     {
         result["target"] = nullptr;
     }
+    result["createdTarget"] = toUtf8(target->wstring());
     result["ok"] = true;
     return result;
 }
