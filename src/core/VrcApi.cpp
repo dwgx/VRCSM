@@ -360,7 +360,8 @@ struct WinHttpHandleDeleter
 {
     void operator()(HINTERNET h) const noexcept
     {
-        if (h) }
+        if (h) WinHttpCloseHandle(h);
+    }
 };
 using UniqueWinHttpHandle = std::unique_ptr<void, WinHttpHandleDeleter>;
 
@@ -472,7 +473,7 @@ HttpResponse httpRequestOnce(
         body,
         bodySize,
         bodySize,
-        0));
+        0);
     if (ok) ok = WinHttpReceiveResponse(hRequest.get(), nullptr);
     if (!ok)
     {
@@ -1111,12 +1112,12 @@ VerifyResult VrcApi::verifyTwoFactor(const std::string& method, const std::strin
     return out;
 }
 
-std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
+Result<std::vector<nlohmann::json>> VrcApi::fetchFriends(bool offline)
 {
     const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
     if (cookieHeader.empty())
     {
-        return {};
+        return Error{"auth_expired", "Not signed in", 401};
     }
 
     // v0.2.0 keeps this intentionally boring: one page, 100 rows, enough
@@ -1127,23 +1128,15 @@ std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
             "/api/1/auth/user/friends?offline={}&n=100",
             offline ? "true" : "false")),
         std::make_optional(cookieHeader));
-    if (response.error.has_value())
+    if (auto err = checkStandardHttpError(response, "/auth/user/friends"))
     {
-        throw std::runtime_error(*response.error);
-    }
-    if (response.status == 401)
-    {
-        return {};
-    }
-    if (response.status != 200)
-    {
-        throw std::runtime_error(fmt::format("/auth/user/friends returned HTTP {}", response.status));
+        return *err;
     }
 
     const auto doc = parseJsonBody(response, "/auth/user/friends");
     if (!doc.is_array())
     {
-        throw std::runtime_error("/auth/user/friends returned a non-array payload");
+        return Error{"api_error", "/auth/user/friends returned a non-array payload", 0};
     }
 
     std::vector<nlohmann::json> out;
@@ -1153,7 +1146,9 @@ std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
         out.push_back(item);
     }
     return out;
-}bool VrcApi::downloadFile(const std::string& url, const std::filesystem::path& destPath)
+}
+
+bool VrcApi::downloadFile(const std::string& url, const std::filesystem::path& destPath)
 {
     std::wstring wUrl = toWide(url);
     URL_COMPONENTS urlComp = {0};
@@ -1183,7 +1178,7 @@ std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
         headers.emplace_back(L"Cookie", toWide(cookie));
     }
     
-    UniqueWinHttpHandle hSession(WinHttpOpen(kUserAgentW, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    UniqueWinHttpHandle hSession(WinHttpOpen(kUserAgentW, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0));
     if (!hSession) return false;
     WinHttpSetTimeouts(hSession.get(), 60000, 60000, 60000, 300000);
     UniqueWinHttpHandle hConnect(WinHttpConnect(hSession.get(), hostName.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0));
@@ -1205,7 +1200,7 @@ std::vector<nlohmann::json> VrcApi::fetchFriends(bool offline)
     WinHttpQueryHeaders(hRequest.get(), WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX);
     if (status < 200 || status >= 300) {
         spdlog::warn("VrcApi: downloadFile failed with HTTP status {}", status);
-        WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; 
+        return false;
     }
 
     std::ofstream out(destPath, std::ios::binary | std::ios::trunc);

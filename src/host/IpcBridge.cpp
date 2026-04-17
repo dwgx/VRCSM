@@ -11,6 +11,7 @@
 #include "../core/CacheIndex.h"
 #include "../core/BundleSniff.h"
 #include "../core/CacheScanner.h"
+#include "../core/Database.h"
 #include "../core/JunctionUtil.h"
 #include "../core/LogEventClassifier.h"
 #include "../core/Migrator.h"
@@ -38,6 +39,79 @@
 
 namespace
 {
+
+// Tiny thread pool used to run async IPC handlers without blocking the
+// WebView2 UI thread. Fixed size (hardware_concurrency, clamped) — far
+// simpler than a priority/queue system since each IPC already handles
+// its own cancellation (CacheIndex aborts, AvatarPreview TaskQueue).
+// A single global pool is shared across all IpcBridge instances; the
+// process only ever creates one bridge, so this is fine.
+class IpcThreadPool
+{
+public:
+    IpcThreadPool()
+    {
+        unsigned n = std::thread::hardware_concurrency();
+        if (n < 2) n = 2;
+        if (n > 8) n = 8;
+        for (unsigned i = 0; i < n; ++i)
+        {
+            m_workers.emplace_back([this]{ Worker(); });
+        }
+    }
+
+    ~IpcThreadPool()
+    {
+        {
+            std::lock_guard<std::mutex> lk(m_mutex);
+            m_stopping = true;
+        }
+        m_cv.notify_all();
+        for (auto& t : m_workers)
+        {
+            if (t.joinable()) t.join();
+        }
+    }
+
+    void enqueue(std::function<void()> fn)
+    {
+        {
+            std::lock_guard<std::mutex> lk(m_mutex);
+            m_queue.push(std::move(fn));
+        }
+        m_cv.notify_one();
+    }
+
+private:
+    void Worker()
+    {
+        for (;;)
+        {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lk(m_mutex);
+                m_cv.wait(lk, [this]{ return m_stopping || !m_queue.empty(); });
+                if (m_stopping && m_queue.empty()) return;
+                task = std::move(m_queue.front());
+                m_queue.pop();
+            }
+            try { task(); } catch (...) { /* swallow — bridge catches upstream */ }
+        }
+    }
+
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
+    std::queue<std::function<void()>> m_queue;
+    std::vector<std::thread> m_workers;
+    bool m_stopping{false};
+};
+
+IpcThreadPool& GetIpcPool()
+{
+    static IpcThreadPool pool;
+    return pool;
+}
+
 // IPC methods that touch the filesystem, WinHTTP, or the VRChat API.
 // These run on a detached worker so the WebView2 UI thread is never
 // blocked by a multi-second scan/thumbnail-fetch/API call. The UI can
@@ -76,6 +150,22 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "user.updateProfile",
         "screenshots.list",
         "app.factoryReset",
+        "db.worldVisits.list",
+        "db.playerEvents.list",
+        "db.playerEncounters",
+        "db.avatarHistory.list",
+        "db.stats.heatmap",
+        "db.stats.overview",
+        "favorites.lists",
+        "favorites.items",
+        "favorites.add",
+        "favorites.remove",
+        "favorites.export",
+        "favorites.import",
+        "friendLog.recent",
+        "friendLog.forUser",
+        "friendNote.get",
+        "friendNote.set",
     };
     return kMethods;
 }
@@ -307,6 +397,18 @@ IpcBridge::IpcBridge(WebViewHost& host)
     : m_host(host), m_alive(std::make_shared<std::atomic<bool>>(true))
 {
     (void)vrcsm::core::AuthStore::Instance().Load();
+
+    // Open the SQLite store used for history/favorites/friend log. All
+    // db.* / favorites.* / friendLog.* / friendNote.* handlers funnel
+    // through this single connection (serialised inside Database).
+    auto dbRes = vrcsm::core::Database::Instance().Open(vrcsm::core::Database::DefaultDbPath());
+    if (!vrcsm::core::isOk(dbRes))
+    {
+        // Log-only — the UI still boots, db.* handlers will return the
+        // structured error on first call.
+        spdlog::error("Database::Open failed: {}", vrcsm::core::error(dbRes).message);
+    }
+
     RegisterHandlers();
 
     // Kick off the background cache indexer so avatar-preview lookups
@@ -337,6 +439,7 @@ IpcBridge::~IpcBridge()
     // StopWatcher blocks until the polling thread exits, which prevents
     // the captured `this` from being used after destruction.
     vrcsm::core::ProcessGuard::StopWatcher();
+    vrcsm::core::Database::Instance().Close();
 }
 
 void IpcBridge::Dispatch(const std::string& jsonText)
@@ -596,6 +699,71 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("config.write", [this](const nlohmann::json& params, const std::optional<std::string>& id)
     {
         return HandleConfigWrite(params, id);
+    });
+
+    m_handlers.emplace("db.worldVisits.list", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleDbWorldVisits(params, id);
+    });
+    m_handlers.emplace("db.playerEvents.list", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleDbPlayerEvents(params, id);
+    });
+    m_handlers.emplace("db.playerEncounters", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleDbPlayerEncounters(params, id);
+    });
+    m_handlers.emplace("db.avatarHistory.list", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleDbAvatarHistory(params, id);
+    });
+    m_handlers.emplace("db.stats.heatmap", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleDbStatsHeatmap(params, id);
+    });
+    m_handlers.emplace("db.stats.overview", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleDbStatsOverview(params, id);
+    });
+    m_handlers.emplace("favorites.lists", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFavoritesLists(params, id);
+    });
+    m_handlers.emplace("favorites.items", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFavoritesItems(params, id);
+    });
+    m_handlers.emplace("favorites.add", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFavoritesAdd(params, id);
+    });
+    m_handlers.emplace("favorites.remove", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFavoritesRemove(params, id);
+    });
+    m_handlers.emplace("favorites.export", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFavoritesExport(params, id);
+    });
+    m_handlers.emplace("favorites.import", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFavoritesImport(params, id);
+    });
+    m_handlers.emplace("friendLog.recent", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFriendLogRecent(params, id);
+    });
+    m_handlers.emplace("friendLog.forUser", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFriendLogForUser(params, id);
+    });
+    m_handlers.emplace("friendNote.get", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFriendNoteGet(params, id);
+    });
+    m_handlers.emplace("friendNote.set", [this](const nlohmann::json& params, const std::optional<std::string>& id)
+    {
+        return HandleFriendNoteSet(params, id);
     });
 }
 
@@ -906,12 +1074,71 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
             // Logs page live panels. Most lines classify to null (plain
             // noise, Udon chatter, etc.) and produce zero extra traffic.
             nlohmann::json classified = vrcsm::core::ClassifyStreamLine(line);
-            if (!classified.is_null())
+            if (classified.is_null())
             {
-                m_host.PostMessageToWeb(nlohmann::json{
-                    {"event", "logs.stream.event"},
-                    {"data", std::move(classified)}
-                }.dump());
+                return;
+            }
+
+            m_host.PostMessageToWeb(nlohmann::json{
+                {"event", "logs.stream.event"},
+                {"data", classified}
+            }.dump());
+
+            // 3) Persist into SQLite so Dashboard/Friends/Avatars pages
+            // see history across restarts. Log-only on failure — the
+            // live event already went out, the DB miss isn't
+            // user-visible and shouldn't block the stream.
+            try
+            {
+                const std::string kind = classified.value("kind", std::string{});
+                const auto& data = classified.value("data", nlohmann::json::object());
+                const std::string iso = data.value("iso_time", vrcsm::core::nowIso());
+
+                if (kind == "worldSwitch")
+                {
+                    vrcsm::core::Database::WorldVisitInsert v;
+                    v.world_id = data.value("world_id", std::string{});
+                    v.instance_id = data.value("instance_id", std::string{});
+                    if (data.contains("access_type") && data["access_type"].is_string())
+                        v.access_type = data["access_type"].get<std::string>();
+                    if (data.contains("owner_id") && data["owner_id"].is_string())
+                        v.owner_id = data["owner_id"].get<std::string>();
+                    if (data.contains("region") && data["region"].is_string())
+                        v.region = data["region"].get<std::string>();
+                    v.joined_at = iso;
+
+                    if (!v.world_id.empty() && !v.instance_id.empty())
+                    {
+                        (void)vrcsm::core::Database::Instance().InsertWorldVisit(v);
+                        std::lock_guard<std::mutex> lk(m_currentWorldMutex);
+                        m_currentWorldId = v.world_id;
+                    }
+                }
+                else if (kind == "player")
+                {
+                    vrcsm::core::Database::PlayerEventInsert e;
+                    e.kind = data.value("kind", std::string{});
+                    e.display_name = data.value("display_name", std::string{});
+                    if (data.contains("user_id") && data["user_id"].is_string())
+                        e.user_id = data["user_id"].get<std::string>();
+                    {
+                        std::lock_guard<std::mutex> lk(m_currentWorldMutex);
+                        if (!m_currentWorldId.empty()) e.world_id = m_currentWorldId;
+                    }
+                    e.occurred_at = iso;
+                    if (!e.display_name.empty())
+                    {
+                        (void)vrcsm::core::Database::Instance().RecordPlayerEvent(e);
+                    }
+                }
+                // avatarSwitch / screenshot carry no stable id in stream
+                // form — historical backfill via LogParser::parse fills
+                // avatar_history on startup.
+            }
+            catch (...)
+            {
+                // Swallow DB/JSON hiccups; the live event was already
+                // broadcast to the UI.
             }
         });
     m_logTailer->Start();
@@ -1223,9 +1450,9 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
     const auto result = vrcsm::core::VrcApi::fetchFriends(offline);
     if (!vrcsm::core::isOk(result))
     {
-        throw IpcException{vrcsm::core::getError(result)};
+        throw IpcException{vrcsm::core::error(result)};
     }
-    const auto& friends = vrcsm::core::getValue(result);
+    const auto& friends = vrcsm::core::value(result);
 
     nlohmann::json out = nlohmann::json::array();
     for (const auto& item : friends)
@@ -1769,6 +1996,228 @@ nlohmann::json IpcBridge::HandleRadarPoll(const nlohmann::json& params, const st
         {"instanceId", snap.instanceId},
         {"worldId",    snap.worldId},
     };
+}
+
+namespace
+{
+// Pull an optional integer from a JSON params object with a default.
+int ParamInt(const nlohmann::json& p, const char* key, int def)
+{
+    if (p.is_object() && p.contains(key) && p[key].is_number_integer())
+    {
+        return p[key].get<int>();
+    }
+    return def;
+}
+
+// Build a db.* error payload out of Result<T> shapes that don't flow
+// through unwrapResult (those that return typed values rather than
+// Result<nlohmann::json>).
+nlohmann::json RequireJsonField(const nlohmann::json& params, const char* key)
+{
+    if (!params.is_object() || !params.contains(key))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument",
+            fmt::format("Missing field '{}'", key),
+            0,
+        });
+    }
+    return params[key];
+}
+} // namespace
+
+nlohmann::json IpcBridge::HandleDbWorldVisits(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const int limit = ParamInt(params, "limit", 100);
+    const int offset = ParamInt(params, "offset", 0);
+    auto res = vrcsm::core::Database::Instance().RecentWorldVisits(limit, offset);
+    return nlohmann::json{{"items", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleDbPlayerEvents(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const int limit = ParamInt(params, "limit", 100);
+    const int offset = ParamInt(params, "offset", 0);
+    auto res = vrcsm::core::Database::Instance().RecentPlayerEvents(limit, offset);
+    return nlohmann::json{{"items", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleDbPlayerEncounters(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "user_id").value_or("");
+    if (userId.empty())
+    {
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'user_id'", 0});
+    }
+    auto res = vrcsm::core::Database::Instance().EncountersForUser(userId);
+    return nlohmann::json{{"items", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleDbAvatarHistory(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const int limit = ParamInt(params, "limit", 100);
+    const int offset = ParamInt(params, "offset", 0);
+    auto res = vrcsm::core::Database::Instance().RecentAvatarHistory(limit, offset);
+    return nlohmann::json{{"items", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleDbStatsHeatmap(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const int days = ParamInt(params, "days", 30);
+    auto res = vrcsm::core::Database::Instance().ActivityHeatmap(days);
+    return unwrapResult(std::move(res));
+}
+
+nlohmann::json IpcBridge::HandleDbStatsOverview(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto res = vrcsm::core::Database::Instance().StatsOverview();
+    return unwrapResult(std::move(res));
+}
+
+nlohmann::json IpcBridge::HandleFavoritesLists(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto res = vrcsm::core::Database::Instance().FavoriteLists();
+    return nlohmann::json{{"lists", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleFavoritesItems(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto listName = JsonStringField(params, "list_name").value_or("");
+    if (listName.empty())
+    {
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'list_name'", 0});
+    }
+    auto res = vrcsm::core::Database::Instance().FavoriteItems(listName);
+    return nlohmann::json{{"items", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleFavoritesAdd(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    vrcsm::core::Database::FavoriteInsert f;
+    f.type = JsonStringField(params, "type").value_or("");
+    f.target_id = JsonStringField(params, "target_id").value_or("");
+    f.list_name = JsonStringField(params, "list_name").value_or("");
+    if (f.type.empty() || f.target_id.empty() || f.list_name.empty())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument",
+            "favorites.add requires type, target_id, list_name",
+            0,
+        });
+    }
+    f.display_name = JsonStringField(params, "display_name");
+    f.thumbnail_url = JsonStringField(params, "thumbnail_url");
+    f.added_at = JsonStringField(params, "added_at").value_or(vrcsm::core::nowIso());
+    f.sort_order = ParamInt(params, "sort_order", 0);
+
+    auto res = vrcsm::core::Database::Instance().AddFavorite(f);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+nlohmann::json IpcBridge::HandleFavoritesRemove(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto type = JsonStringField(params, "type").value_or("");
+    const auto targetId = JsonStringField(params, "target_id").value_or("");
+    const auto listName = JsonStringField(params, "list_name").value_or("");
+    if (type.empty() || targetId.empty() || listName.empty())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument",
+            "favorites.remove requires type, target_id, list_name",
+            0,
+        });
+    }
+    auto res = vrcsm::core::Database::Instance().RemoveFavorite(type, targetId, listName);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+nlohmann::json IpcBridge::HandleFavoritesExport(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto listName = JsonStringField(params, "list_name").value_or("");
+    if (listName.empty())
+    {
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'list_name'", 0});
+    }
+    auto res = vrcsm::core::Database::Instance().ExportFavoriteList(listName);
+    return unwrapResult(std::move(res));
+}
+
+nlohmann::json IpcBridge::HandleFavoritesImport(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    auto payload = RequireJsonField(params, "payload");
+    auto res = vrcsm::core::Database::Instance().ImportFavoriteList(payload);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    return nlohmann::json{{"imported", vrcsm::core::value(res)}};
+}
+
+nlohmann::json IpcBridge::HandleFriendLogRecent(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const int limit = ParamInt(params, "limit", 100);
+    const int offset = ParamInt(params, "offset", 0);
+    auto res = vrcsm::core::Database::Instance().RecentFriendLog(limit, offset);
+    return nlohmann::json{{"items", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleFriendLogForUser(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "user_id").value_or("");
+    if (userId.empty())
+    {
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'user_id'", 0});
+    }
+    const int limit = ParamInt(params, "limit", 100);
+    const int offset = ParamInt(params, "offset", 0);
+    auto res = vrcsm::core::Database::Instance().FriendLogForUser(userId, limit, offset);
+    return nlohmann::json{{"items", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleFriendNoteGet(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "user_id").value_or("");
+    if (userId.empty())
+    {
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'user_id'", 0});
+    }
+    auto res = vrcsm::core::Database::Instance().GetFriendNote(userId);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    const auto& note = vrcsm::core::value(res);
+    if (note.has_value())
+    {
+        return nlohmann::json{{"note", *note}};
+    }
+    return nlohmann::json{{"note", nullptr}};
+}
+
+nlohmann::json IpcBridge::HandleFriendNoteSet(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "user_id").value_or("");
+    const auto note = JsonStringField(params, "note").value_or("");
+    if (userId.empty())
+    {
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'user_id'", 0});
+    }
+    const auto updatedAt = vrcsm::core::nowIso();
+    auto res = vrcsm::core::Database::Instance().SetFriendNote(userId, note, updatedAt);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    return nlohmann::json{{"ok", true}, {"updated_at", updatedAt}};
 }
 
 void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const
