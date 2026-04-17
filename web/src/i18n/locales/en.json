@@ -16,7 +16,8 @@
     "logs": "Logs",
     "migrate": "Migrate",
     "settings": "Settings",
-    "language": "Language"
+    "language": "Language",
+    "friendLog": "Friend Log"
   },
   "profile": {
     "title": "My Profile",

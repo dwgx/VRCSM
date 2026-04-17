@@ -39,6 +39,7 @@ const Radar = lazy(() => import("@/pages/Radar"));
 const Migrate = lazy(() => import("@/pages/Migrate"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const MemoryRadar = lazy(() => import("@/pages/MemoryRadar"));
+const FriendLog = lazy(() => import("@/pages/FriendLog"));
 
 interface RouteShellMeta {
   breadcrumb: string[];
@@ -94,6 +95,10 @@ function AppContent() {
       "/screenshots": {
         title: t("nav.screenshots"),
         breadcrumb: ["Media", t("nav.screenshots")],
+      },
+      "/friend-log": {
+        title: t("nav.friendLog", "Friend Log"),
+        breadcrumb: ["Social", t("nav.friendLog", "Friend Log")],
       },
       "/logs": {
         title: t("nav.logs"),
@@ -329,6 +334,7 @@ function AppContent() {
                                 <Route path="/friends" element={<Friends />} />
                                 <Route path="/profile" element={<Profile />} />
                                 <Route path="/screenshots" element={<Screenshots />} />
+                                <Route path="/friend-log" element={<FriendLog />} />
                                 <Route path="/logs" element={<Logs />} />
                                 <Route path="/radar" element={<Radar />} />
                                 <Route path="/migrate" element={<Migrate />} />
