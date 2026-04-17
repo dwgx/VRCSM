@@ -18,7 +18,10 @@ import type {
   VrcSettingsWriteRequest,
   VrcSettingsWriteResult,
   VrcSettingsExportResult,
+  SteamVrConfig,
   VrcSettingValueSnapshot,
+  MemoryStatus,
+  RadarSnapshot,
 } from "./types";
 
 interface WebViewBridge {
@@ -91,6 +94,7 @@ function buildMockReport(): Report {
       latest_mtime: nowIso(),
       oldest_mtime: nowIso(),
       bundle_format: "UnityFS",
+      info_url: "",
     };
   });
   entries.sort((a, b) => b.bytes - a.bytes);
@@ -617,15 +621,30 @@ class IpcClient {
       case "friends.list": {
         // Emit a deterministic list so the Friends page shows something
         // in browser dev mode. IDs follow VRChat's real prefix scheme.
+        const mockAvatarNames = [
+          "Taihou",
+          "Manuka",
+          "Selestia",
+          "Karin",
+          null,
+          "Wolferia",
+          null,
+          "Lime",
+          "Rindo",
+          null,
+          "Shinra",
+          "Leefa",
+        ];
         const mockFriends: Friend[] = Array.from({ length: 12 }).map((_, i) => ({
           id: `usr_mock_friend_${i.toString().padStart(3, "0")}`,
           username: `friend_${i}`,
           displayName: `Mock Friend ${i + 1}`,
           currentAvatarImageUrl: null,
-          currentAvatarThumbnailImageUrl: null,
+          currentAvatarThumbnailImageUrl: i % 3 === 0 ? `https://picsum.photos/seed/avtr${i}/128/128` : null,
+          currentAvatarName: mockAvatarNames[i] ?? null,
           statusDescription: i % 3 === 0 ? "In a world" : null,
           status: i % 4 === 0 ? "busy" : i % 4 === 1 ? "join me" : "active",
-          location: i % 3 === 0 ? "wrld_mock:12345" : "offline",
+          location: i % 3 === 0 ? `wrld_aaaabbbb-cccc-dddd-eeee-${i.toString().padStart(12, "0")}:12345~hidden(usr_owner)~region(jp)` : "offline",
           last_platform: i % 2 === 0 ? "standalonewindows" : "android",
           bio: i % 5 === 0 ? "Mock bio for dev mode" : null,
           developerType: null,
@@ -655,6 +674,23 @@ class IpcClient {
           ok: true,
           path: "C:/Users/dev/AppData/Local/Temp/vrcsm-vrc-settings-mock.reg",
         } satisfies VrcSettingsExportResult as unknown as TResult;
+      case "config.read":
+        return {
+          cache_directory: "D:/VRChatCache/",
+          cache_size: 40,
+          camera_res_height: 1080,
+          camera_res_width: 1920,
+          custom_load_screen_logo: "C:/Users/dev/Pictures/logo.png",
+          desktop_reticle: true,
+          enable_head_sync: false,
+          fpv_camera_smoothing: 0.1,
+          fov: 90,
+          fps_limit_desktop: 144,
+          fps_limit_vr: 90,
+          ignore_particles: false,
+        } as unknown as TResult;
+      case "config.write":
+        return { ok: true } as unknown as TResult;
       case "avatar.details": {
         return {
           details: {
@@ -743,6 +779,11 @@ class IpcClient {
       case "screenshots.open":
       case "screenshots.folder":
         return { ok: true } as unknown as TResult;
+      case "screenshots.delete": {
+        const p = (params ?? {}) as { paths?: string[] };
+        const paths = p.paths ?? [];
+        return { deleted: paths.length, failed: [] } as unknown as TResult;
+      }
       case "app.factoryReset":
         return {
           ok: true,
@@ -826,6 +867,30 @@ class IpcClient {
 
   async readVrcSettings(): Promise<VrcSettingsReport> {
     return this.call<undefined, VrcSettingsReport>("settings.readAll");
+  }
+
+  async readConfig(params?: { path?: string }): Promise<any> {
+    return this.call<typeof params, any>("config.read", params);
+  }
+
+  async writeConfig(params: { path?: string; config: any }): Promise<{ ok: boolean }> {
+    return this.call<typeof params, { ok: boolean }>("config.write", params);
+  }
+
+  async readSteamVrConfig(): Promise<SteamVrConfig> {
+    return this.call<undefined, SteamVrConfig>("steamvr.read");
+  }
+
+  async writeSteamVrConfig(config: any): Promise<{ ok: boolean }> {
+    return this.call<{ config: any }, { ok: boolean }>("steamvr.write", { config });
+  }
+
+  async readMemoryStatus(): Promise<MemoryStatus> {
+    return this.call<{}, MemoryStatus>("memory.status", {});
+  }
+
+  async radarPoll(): Promise<RadarSnapshot> {
+    return this.call<{}, RadarSnapshot>("radar.poll", {});
   }
 
   async writeVrcSetting(

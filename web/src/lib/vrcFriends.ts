@@ -164,6 +164,31 @@ export function trustLabelKey(rank: TrustRank): string {
 }
 
 /**
+ * Exact hex color for each trust rank — used for the status-dot ring next
+ * to each friend's avatar. These are VRChat's canonical palette:
+ *   Visitor=#888  New User=#1778FF  User=#2BCF5C  Known=#FF7B42
+ *   Trusted=#8143E6  Veteran/Legend=#FFD000  Troll=red
+ */
+export function trustDotColor(rank: TrustRank): string {
+  switch (rank) {
+    case "troll":
+      return "#EF4444";
+    case "veteran":
+      return "#FFD000";
+    case "trusted":
+      return "#8143E6";
+    case "known":
+      return "#FF7B42";
+    case "user":
+      return "#2BCF5C";
+    case "new":
+      return "#1778FF";
+    default:
+      return "#888888";
+  }
+}
+
+/**
  * Tailwind-friendly color tokens per rank. Kept as hard-coded HSL so we
  * don't need per-rank CSS vars in the theme — trust colors are fixed
  * VRChat-lore colors that shouldn't follow the app's accent hue.

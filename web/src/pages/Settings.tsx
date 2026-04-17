@@ -1,3 +1,4 @@
+import { ipc } from "@/lib/ipc";
 import {
   useCallback,
   useEffect,
@@ -41,10 +42,8 @@ import {
 import { useRightDock, type RightDockDescriptor } from "@/components/RightDock";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
-import { ipc } from "@/lib/ipc";
 import type {
   AppVersion,
-  ProcessStatus,
   VrcSettingEntry,
   VrcSettingsReport,
   VrcSettingType,
@@ -52,6 +51,7 @@ import type {
 } from "@/lib/types";
 import { getSemantic, type SemanticEditor } from "@/lib/vrcSettingsSemantics";
 import { SUPPORTED_LANGUAGES, changeLanguage } from "@/i18n";
+import { useVrcProcess } from "@/lib/vrc-context";
 
 type Draft = Record<string, VrcSettingValueSnapshot>;
 
@@ -129,6 +129,310 @@ function hexBytes(bytes: number[] | undefined): string {
     .join(" ");
 }
 
+function ConfigJsonEditor({ vrcRunning }: { vrcRunning: boolean }) {
+  const [config, setConfig] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const fetchConfig = useCallback(() => {
+    setLoading(true);
+    ipc
+      .readConfig()
+      .then((c) => setConfig(c))
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error("Failed to read config.json: " + msg);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  const setField = (key: string, val: any) => {
+    setConfig((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const setNumberString = (key: string, val: string) => {
+    if (!val) return;
+    const n = Number(val);
+    if (!isNaN(n)) setField(key, n);
+  };
+
+  const saveConfig = async () => {
+    setSaving(true);
+    try {
+      await ipc.writeConfig({ config });
+      toast.success("Successfully updated config.json!");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("Failed to save config.json: " + msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const configKeys = [
+    { key: "cache_directory", type: "string", label: "Cache Directory", hint: "Absolute path to Custom Cache directory" },
+    { key: "cache_size", type: "number", label: "Cache Size (GB)", hint: "Maximum size of VRChat cache in gigabytes" },
+    { key: "custom_load_screen_logo", type: "string", label: "Custom Loading Screen Logo", hint: "Absolute Path to a custom PNG logo for the loading screen" },
+    { key: "camera_res_height", type: "number", label: "Camera Photo Height", hint: "Resolution of camera photos" },
+    { key: "camera_res_width", type: "number", label: "Camera Photo Width", hint: "Resolution of camera photos" },
+    { key: "fps_limit_desktop", type: "number", label: "FPS Limit (Desktop)", hint: "Maximum framerate in Desktop mode (0 = unlimited)" },
+    { key: "fps_limit_vr", type: "number", label: "FPS Limit (VR)", hint: "Maximum framerate in VR mode (0 = unlimited)" },
+    { key: "desktop_reticle", type: "boolean", label: "Desktop Reticle", hint: "Show center dot crosshair in Desktop mode" },
+    { key: "ignore_particles", type: "boolean", label: "Ignore Particles", hint: "Dramatically improves performance in crowded worlds" },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle>App Config (config.json)</CardTitle>
+            <CardDescription className="max-w-[60ch]">
+              Core Engine parameters located in AppData/LocalLow. Make sure to Save changes.
+            </CardDescription>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {vrcRunning ? (
+              <Badge variant="warning" className="gap-1">
+                <Lock className="size-3" />
+                VRChat is Running
+              </Badge>
+            ) : (
+              <Badge variant="success" className="gap-1">
+                <Unlock className="size-3" />
+                VRChat is Idle
+              </Badge>
+            )}
+            <Button size="sm" variant="outline" onClick={fetchConfig} disabled={loading}>
+              <RefreshCw className={loading ? "animate-spin size-3 mr-2" : "size-3 mr-2"} />
+              Reload
+            </Button>
+            <Button size="sm" onClick={saveConfig} disabled={saving || vrcRunning}>
+              {saving ? "Saving..." : "Save Config"}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3 pt-0">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {configKeys.map(({ key, type, label, hint }) => (
+            <SettingRow key={key} label={label} hint={hint}>
+              {type === "boolean" ? (
+                <Button
+                  size="sm"
+                  variant={config[key] ? "default" : "outline"}
+                  disabled={vrcRunning}
+                  onClick={() => setField(key, !config[key])}
+                  className={config[key] ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.25)] border-[hsl(var(--primary)/0.3)]" : ""}
+                >
+                  {config[key] ? "Enabled" : "Disabled"}
+                </Button>
+              ) : type === "string" ? (
+                <Input
+                  className="w-full h-8 text-[12px]"
+                  value={config[key] ?? ""}
+                  disabled={vrcRunning}
+                  placeholder="(default)"
+                  onChange={(e) => setField(key, e.target.value)}
+                />
+              ) : (
+                <Input
+                  className="w-24 h-8 text-[12px]"
+                  type="number"
+                  value={config[key] ?? ""}
+                  disabled={vrcRunning}
+                  placeholder="(default)"
+                  onChange={(e) => setNumberString(key, e.target.value)}
+                />
+              )}
+            </SettingRow>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SteamVrEditor({ vrcRunning }: { vrcRunning: boolean }) {
+  const [config, setConfig] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const fetchConfig = useCallback(() => {
+    setLoading(true);
+    ipc
+      .readSteamVrConfig()
+      .then((c) => {
+        if ((c as any).error) {
+          if ((c as any).error.code !== "not_found") {
+            toast.error("Failed to read steamvr.vrsettings: " + (c as any).error.message);
+          }
+        } else {
+          setConfig(c);
+        }
+      })
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error("Failed to read steamvr.vrsettings: " + msg);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  if (!config || !config.ok) {
+    return null; // Steam/SteamVR not found, hide completely
+  }
+
+  const steamVrProcRunning = config.steamvr_running === true;
+  const locked = vrcRunning || steamVrProcRunning;
+
+  const setField = (section: string, key: string, val: any) => {
+    setConfig((prev: any) => {
+      const next = { ...prev };
+      if (!next[section]) next[section] = {};
+      next[section][key] = val;
+      return next;
+    });
+  };
+
+  const applyPreset = (bandwidth: number, scale: number, refresh: number, smoothing: boolean, autoBandwidth: boolean, allowFiltering: boolean) => {
+    setConfig((prev: any) => {
+      const next = { ...prev };
+      if (!next.driver_vrlink) next.driver_vrlink = {};
+      if (!next.steamvr) next.steamvr = {};
+
+      next.driver_vrlink.targetBandwidth = bandwidth;
+      next.driver_vrlink.automaticBandwidth = autoBandwidth;
+      next.steamvr.supersampleScale = scale;
+      next.steamvr.preferredRefreshRate = refresh;
+      next.steamvr.motionSmoothing = smoothing;
+      next.steamvr.allowSupersampleFiltering = allowFiltering;
+
+      return next;
+    });
+    toast.success("Applied preset.");
+  };
+
+  const saveConfig = async () => {
+    setSaving(true);
+    try {
+      const updates = {
+        driver_vrlink: config.driver_vrlink,
+        steamvr: config.steamvr,
+      };
+      const res = await ipc.writeSteamVrConfig(updates);
+      if ((res as any).error) {
+         toast.error("Failed to save steamvr.vrsettings: " + (res as any).error.message);
+      } else {
+         toast.success("Successfully updated steamvr.vrsettings!");
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("Failed to save steamvr.vrsettings: " + msg);
+    } finally {
+      setSaving(false);
+      fetchConfig();
+    }
+  };
+
+  const link = config.driver_vrlink || {};
+  const steamvr = config.steamvr || {};
+  const hw = config.hardware || {};
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle>VR 串流设置 (SteamVR / Steam Link)</CardTitle>
+            <CardDescription className="max-w-[60ch]">
+              Hardware: {hw.gpuVendor} | {hw.hmdModel} (Driver: {hw.hmdDriver})
+            </CardDescription>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {steamVrProcRunning ? (
+              <Badge variant="warning" className="gap-1">
+                <Lock className="size-3" />
+                SteamVR is Running
+              </Badge>
+            ) : (
+              <Badge variant="success" className="gap-1">
+                <Unlock className="size-3" />
+                SteamVR is Idle
+              </Badge>
+            )}
+            <Button size="sm" variant="outline" onClick={fetchConfig} disabled={loading}>
+              <RefreshCw className={loading ? "animate-spin size-3 mr-2" : "size-3 mr-2"} />
+              Reload
+            </Button>
+            <Button size="sm" onClick={saveConfig} disabled={saving || locked}>
+              {saving ? "Saving..." : "Save Settings"}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3 pt-0">
+        <div className="flex flex-wrap items-center gap-2 mb-2 p-2 rounded bg-[hsl(var(--surface-raised))] border border-[hsl(var(--border))]">
+          <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-2">Quick Presets:</span>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(50, 0.8, 90, true, true, true)} disabled={locked}>Performance (50Mbps)</Button>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(100, 1.0, 72, false, true, true)} disabled={locked}>Balanced (100Mbps)</Button>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(150, 1.5, 72, false, false, true)} disabled={locked}>Quality (150Mbps)</Button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SettingRow label="Target Bandwidth (Mbps)" hint="Bitrate limit for Steam Link. Up to 150-200 for good routers.">
+            <div className="flex items-center gap-2 w-[180px]">
+               <Input type="range" min="20" max="200" step="10" className="w-full"
+                 disabled={locked}
+                 value={link.targetBandwidth ?? 90}
+                 onChange={(e) => setField("driver_vrlink", "targetBandwidth", Number(e.target.value))} />
+               <span className="text-[12px] tabular-nums whitespace-nowrap min-w-[36px]">{link.targetBandwidth ?? 90} M</span>
+            </div>
+          </SettingRow>
+          <SettingRow label="Automatic Bandwidth" hint="Let SteamVR dynamically drop bitrate on poor signal.">
+            <Button size="sm" onClick={() => setField("driver_vrlink", "automaticBandwidth", !link.automaticBandwidth)} disabled={locked} variant={link.automaticBandwidth ? "default" : "outline"} className={link.automaticBandwidth ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]" : ""}>
+               {link.automaticBandwidth ? "Enabled" : "Disabled"}
+            </Button>
+          </SettingRow>
+          <SettingRow label="Supersampling Scale" hint="Render scale (1.0 = native, 1.5 = high clarity, requires good GPU)">
+             <div className="flex items-center gap-2 w-[180px]">
+               <Input type="range" min="0.5" max="2.0" step="0.1" className="w-full"
+                 disabled={locked}
+                 value={steamvr.supersampleScale ?? 1.0}
+                 onChange={(e) => setField("steamvr", "supersampleScale", Number(e.target.value))} />
+               <span className="text-[12px] tabular-nums whitespace-nowrap min-w-[36px]">{parseFloat((steamvr.supersampleScale ?? 1.0).toString()).toFixed(1)}x</span>
+            </div>
+          </SettingRow>
+          <SettingRow label="Supersample Manual Override" hint="Forces custom scale instead of auto-adjusting.">
+            <Button size="sm" onClick={() => setField("steamvr", "supersampleManualOverride", !steamvr.supersampleManualOverride)} disabled={locked} variant={steamvr.supersampleManualOverride ? "default" : "outline"} className={steamvr.supersampleManualOverride ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]" : ""}>
+               {steamvr.supersampleManualOverride ? "Enabled" : "Disabled"}
+            </Button>
+          </SettingRow>
+          <SettingRow label="Refresh Rate (Hz)" hint="Must match the headset's allowed refresh rates (72, 80, 90, 120)">
+             <Input type="number" step="1" className="w-24 h-8 text-[12px]" disabled={locked} value={steamvr.preferredRefreshRate ?? 72} onChange={(e) => setField("steamvr", "preferredRefreshRate", Number(e.target.value))} />
+          </SettingRow>
+          <SettingRow label="Motion Smoothing" hint="Synthesizes frames on lag. Good for poor frametimes, but can cause ghosting artifacts.">
+            <Button size="sm" onClick={() => setField("steamvr", "motionSmoothing", !steamvr.motionSmoothing)} disabled={locked} variant={steamvr.motionSmoothing ? "default" : "outline"} className={steamvr.motionSmoothing ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]" : ""}>
+               {steamvr.motionSmoothing ? "Enabled" : "Disabled"}
+            </Button>
+          </SettingRow>
+          <SettingRow label="Supersample Filtering" hint="Reduces aliasing at the cost of slight blur">
+            <Button size="sm" onClick={() => setField("steamvr", "allowSupersampleFiltering", !steamvr.allowSupersampleFiltering)} disabled={locked} variant={steamvr.allowSupersampleFiltering ? "default" : "outline"} className={steamvr.allowSupersampleFiltering ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]" : ""}>
+               {steamvr.allowSupersampleFiltering ? "Enabled" : "Disabled"}
+            </Button>
+          </SettingRow>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Settings() {
   const { t, i18n } = useTranslation();
 
@@ -147,7 +451,7 @@ function Settings() {
       })
       .catch(() => {
         // Dev-server fallback only — prod reads IpcBridge::HandleAppVersion.
-        if (alive) setVersion({ version: "0.3.0", build: "dev" });
+        if (alive) setVersion({ version: "0.5.0", build: "dev" });
       });
     return () => {
       alive = false;
@@ -163,7 +467,8 @@ function Settings() {
   const [drafts, setDrafts] = useState<Draft>({});
   const [writing, setWriting] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [vrcRunning, setVrcRunning] = useState(false);
+  const { status: vrcProcessStatus } = useVrcProcess();
+  const vrcRunning = vrcProcessStatus.running;
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [page, setPage] = useState(0);
@@ -193,33 +498,6 @@ function Settings() {
     reload();
   }, [reload]);
 
-  useEffect(() => {
-    let alive = true;
-
-    // Initial fetch seeds the "VRChat running — writes disabled" warning
-    // at the top of Settings. After mount, the host pushes transitions
-    // via `process.vrcStatusChanged`, matching the sidebar dot in App.tsx.
-    ipc
-      .call<undefined, ProcessStatus>("process.vrcRunning")
-      .then((status) => {
-        if (alive) setVrcRunning(status.running);
-      })
-      .catch(() => {
-        if (alive) setVrcRunning(false);
-      });
-
-    const unsubscribe = ipc.on<ProcessStatus>(
-      "process.vrcStatusChanged",
-      (status) => {
-        if (alive) setVrcRunning(status.running);
-      },
-    );
-
-    return () => {
-      alive = false;
-      unsubscribe();
-    };
-  }, []);
 
   // ─── Filtering + tab/pagination ──────────────────────────────────────
   // Index by group once per report, respecting GROUP_ORDER so that unknown
@@ -653,7 +931,10 @@ function Settings() {
         </CardContent>
       </Card>
 
-      {/* ─── VRChat game settings ───────────────────────────────── */}
+      <ConfigJsonEditor vrcRunning={vrcRunning} />
+      <SteamVrEditor vrcRunning={vrcRunning} />
+
+      {/* ─── VRChat registry settings ───────────────────────────────── */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">

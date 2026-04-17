@@ -98,7 +98,7 @@ public:
     // "session expired / not logged in" case so callers can sign out
     // cleanly without guessing from exception strings.
     static Result<nlohmann::json> fetchCurrentUser();
-    static std::vector<nlohmann::json> fetchFriends(bool offline);
+    static Result<std::vector<nlohmann::json>> fetchFriends(bool offline);
 
     // Downloads the resource at the specified VRChat Cloudflare URL directly to
     // the filesystem using the active WinHTTP authentication session.

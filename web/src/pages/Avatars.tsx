@@ -244,7 +244,7 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
             const fallbackUrl = details?.imageUrl || details?.thumbnailImageUrl;
             return <AvatarPreview3D avatarId={selected.avatar_id} assetUrl={windowsAssetUrl} fallbackImageUrl={fallbackUrl} size={140} />;
           })()}
-          <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+          <span className="mt-2 text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
             {t("avatars.previewLabel")}
           </span>
         </div>
@@ -278,12 +278,14 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
 
           {/* Local + API-derived badges */}
           <div className="flex flex-wrap gap-1.5">
-            <Badge variant="tonal">
-              <Eye className="size-3" />
-              {t("avatars.eyeHeight", {
-                value: selected.eye_height?.toFixed(2) ?? "—",
-              })}
-            </Badge>
+            {selected.eye_height != null && selected.eye_height > 0 && (
+              <Badge variant="tonal">
+                <Eye className="size-3" />
+                {t("avatars.eyeHeight", {
+                  value: selected.eye_height.toFixed(2),
+                })}
+              </Badge>
+            )}
             <Badge variant="outline">
               <Sliders className="size-3" />
               {t("avatars.params", { count: selected.parameter_count })}
@@ -514,10 +516,9 @@ function Avatars() {
       });
     }
 
-    for (const id of report.logs.recent_avatar_ids ?? []) {
+    for (const [id, n] of Object.entries(names)) {
       if (seen.has(id)) continue;
       seen.add(id);
-      const n = names[id];
       out.push({
         user_id: "",
         avatar_id: id,
@@ -539,6 +540,7 @@ function Avatars() {
     return items.filter(
       (it) =>
         it.avatar_id.toLowerCase().includes(q) ||
+        it.user_id.toLowerCase().includes(q) ||
         (it.display_name?.toLowerCase().includes(q) ?? false) ||
         (it.author?.toLowerCase().includes(q) ?? false),
     );
@@ -597,7 +599,7 @@ function Avatars() {
       ) : (
         <div className="grid min-h-[560px] items-start gap-4 md:grid-cols-[260px_1fr]">
           {/* List pane — Unity hierarchy style */}
-          <Card elevation="flat" className="flex flex-col p-0 border-0 bg-transparent mb-10">
+          <Card elevation="flat" className="flex flex-col p-0 border border-[hsl(var(--border))] h-[calc(100vh-140px)]">
             <div className="unity-panel-header flex items-center justify-between">
               <span>{t("avatars.listPaneTitle")}</span>
               <span className="font-mono text-[10px] normal-case tracking-normal">
@@ -622,7 +624,7 @@ function Avatars() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-px">
-                  {filtered.map((item) => (
+                  {filtered.slice(0, 250).map((item) => (
                     <AvatarRow
                       key={item.avatar_id}
                       item={item}
@@ -630,13 +632,18 @@ function Avatars() {
                       onSelect={() => setSelectedId(item.avatar_id)}
                     />
                   ))}
+                  {filtered.length > 250 && (
+                    <div className="py-4 text-center text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {t("avatars.hiddenCount", { count: filtered.length - 250, defaultValue: `+${filtered.length - 250} more. Use search to filter.` })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </Card>
 
           {/* Inspector pane — 3D preview + metadata */}
-          <div className="sticky top-4">
+          <div className="sticky top-4 h-[calc(100vh-140px)] overflow-y-auto scrollbar-none rounded-[var(--radius-lg)]">
             {selected ? (
               <AvatarInspector selected={selected} />
             ) : (

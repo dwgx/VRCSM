@@ -24,6 +24,7 @@ void to_json(nlohmann::json& j, const BundleEntry& e)
         {"latest_mtime", e.latest_mtime ? nlohmann::json(*e.latest_mtime) : nlohmann::json(nullptr)},
         {"oldest_mtime", e.oldest_mtime ? nlohmann::json(*e.oldest_mtime) : nlohmann::json(nullptr)},
         {"bundle_format", e.bundle_format},
+        {"info_url", e.info_url},
     };
 }
 
@@ -57,6 +58,7 @@ struct EntryStats
     std::optional<std::filesystem::file_time_type> latest;
     std::optional<std::filesystem::file_time_type> oldest;
     std::optional<std::filesystem::path> dataFile;
+    std::optional<std::filesystem::path> infoFile;
 };
 
 void aggregate(const std::filesystem::path& root, EntryStats& stats)
@@ -80,6 +82,10 @@ void aggregate(const std::filesystem::path& root, EntryStats& stats)
                 {
                     stats.dataFile = it->path();
                 }
+                if (it->path().filename() == "__info" && !stats.infoFile)
+                {
+                    stats.infoFile = it->path();
+                }
                 if (auto t = safeLastWriteTime(it->path()))
                 {
                     if (!stats.latest || *t > *stats.latest) stats.latest = t;
@@ -90,6 +96,19 @@ void aggregate(const std::filesystem::path& root, EntryStats& stats)
         it.increment(stepEc);
         if (stepEc) break;
     }
+}
+
+std::string readFirstLine(const std::filesystem::path& infoFile)
+{
+    std::ifstream f(infoFile);
+    if (!f) return {};
+    std::string line;
+    std::getline(f, line);
+    // __info first line is typically a URL like https://api.vrchat.cloud/api/1/file/...
+    // Trim whitespace/carriage returns.
+    while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' '))
+        line.pop_back();
+    return line;
 }
 
 std::string readMagic(const std::filesystem::path& dataFile)
@@ -177,6 +196,14 @@ std::vector<BundleEntry> BundleSniff::scanCacheWindowsPlayer(const std::filesyst
             row.be.bytes_human = formatBytesHuman(stats.bytes);
             if (stats.latest) row.be.latest_mtime = isoTimestamp(*stats.latest);
             if (stats.oldest) row.be.oldest_mtime = isoTimestamp(*stats.oldest);
+
+            // Read the first line of __info (the asset URL). This is one
+            // extra fopen per bundle but the file is tiny (usually ~200 B)
+            // so it adds negligible overhead to the parallel scan.
+            if (stats.infoFile)
+            {
+                row.be.info_url = readFirstLine(*stats.infoFile);
+            }
 
             // Leave bundle_format unknown here. readMagic opens a file
             // per bundle; with thousands of bundles that used to be

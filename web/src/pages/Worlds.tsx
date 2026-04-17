@@ -16,7 +16,7 @@ import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { ipc } from "@/lib/ipc";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
-import { type WorldSwitchEvent } from "@/lib/types";
+import { type WorldSwitchEvent, type PlayerEvent } from "@/lib/types";
 import { Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff } from "lucide-react";
 
 /**
@@ -129,8 +129,12 @@ function WorldTile({
 
 function WorldHistoryPanel({
   switches,
+  allSwitches,
+  playerEvents,
 }: {
   switches: WorldSwitchEvent[];
+  allSwitches: WorldSwitchEvent[];
+  playerEvents: PlayerEvent[];
 }) {
   const { t } = useTranslation();
   if (switches.length === 0) return null;
@@ -166,6 +170,33 @@ function WorldHistoryPanel({
                 minute: "2-digit",
               }).format(new Date(ev.iso_time.replace(/\./g, "-")))
             : "Unknown time";
+
+          let sessionPlayers: { displayName: string; userId: string | null }[] = [];
+          if (ev.iso_time) {
+            const evTime = ev.iso_time;
+            const nextSwitchTime = allSwitches.reduce((closest, s) => {
+              if (s.iso_time && s.iso_time > evTime) {
+                if (!closest || s.iso_time < closest) return s.iso_time;
+              }
+              return closest;
+            }, null as string | null);
+
+            const pMap = new Map<string, { displayName: string; userId: string | null }>();
+            for (const p of playerEvents) {
+              if (p.iso_time && p.iso_time >= evTime) {
+                if (!nextSwitchTime || p.iso_time < nextSwitchTime) {
+                  // Only track joined events, ignoring left events to form a roster of anyone who was present
+                  if (p.kind === "joined") {
+                    const key = p.user_id || p.display_name;
+                    pMap.set(key, { displayName: p.display_name, userId: p.user_id });
+                  }
+                }
+              }
+            }
+            sessionPlayers = Array.from(pMap.values());
+            // Optionally, sort alphabetically
+            sessionPlayers.sort((a, b) => a.displayName.localeCompare(b.displayName));
+          }
 
           return (
             <div key={i} className="group relative flex flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 transition-colors hover:bg-[hsl(var(--accent))]">
@@ -215,7 +246,7 @@ function WorldHistoryPanel({
                         onClick={(e) => {
                           e.stopPropagation();
                           ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                            url: `vrchat://launch?id=${ev.instance_id}`,
+                            url: `vrchat://launch?id=${ev.world_id}:${ev.instance_id}`,
                           }).catch(console.error);
                         }}
                       >
@@ -223,6 +254,24 @@ function WorldHistoryPanel({
                       </Button>
                     )}
                   </div>
+                </div>
+              )}
+
+              {sessionPlayers.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1 border-t border-[hsl(var(--border)/0.5)] pt-2">
+                  <div className="w-full text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-0.5">
+                    {t("worlds.playersSeen", { defaultValue: "Players in Room" })} ({sessionPlayers.length})
+                  </div>
+                  {sessionPlayers.map((sp) => (
+                    <Badge
+                      key={sp.userId || sp.displayName}
+                      variant="outline"
+                      className="h-[20px] px-1.5 text-[9.5px] font-normal text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--border-strong))] transition-colors"
+                      title={sp.userId || undefined}
+                    >
+                      {sp.displayName}
+                    </Badge>
+                  ))}
                 </div>
               )}
             </div>
@@ -459,7 +508,11 @@ function Worlds() {
                   </Button>
                 </div>
 
-                <WorldHistoryPanel switches={selectedSwitches} />
+                <WorldHistoryPanel 
+                  switches={selectedSwitches} 
+                  allSwitches={logs.world_switches || []} 
+                  playerEvents={logs.player_events || []} 
+                />
               </div>
             </Card>
           ) : (

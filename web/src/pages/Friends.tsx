@@ -21,7 +21,8 @@ import {
 import { IdBadge } from "@/components/IdBadge";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
-import type { Friend, FriendsListResult } from "@/lib/types";
+import { useIpcQuery } from "@/hooks/useIpcQuery";
+import type { Friend, FriendsListResult, WorldDetails } from "@/lib/types";
 import {
   instanceTypeLabel,
   parseLocation,
@@ -30,6 +31,7 @@ import {
   STATUS_BUCKET_ORDER,
   statusBucket,
   trustColorClass,
+  trustDotColor,
   trustLabelKey,
   trustRank,
   type StatusBucket,
@@ -77,22 +79,35 @@ function FriendAvatar({ friend }: { friend: Friend }) {
     friend.profilePicOverride ||
     friend.currentAvatarThumbnailImageUrl ||
     friend.currentAvatarImageUrl;
+  const rank = trustRank(friend.tags);
+  const dotColor = trustDotColor(rank);
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
-      {thumb ? (
-        <img
-          src={thumb}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
-      ) : (
-        <Users className="size-5 text-[hsl(var(--muted-foreground))]" />
-      )}
+    <div className="relative shrink-0">
+      <div
+        className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--canvas))]"
+        style={{ boxShadow: `0 0 0 2px ${dotColor}` }}
+      >
+        {thumb ? (
+          <img
+            src={thumb}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : (
+          <Users className="size-5 text-[hsl(var(--muted-foreground))]" />
+        )}
+      </div>
+      {/* Trust rank status dot */}
+      <span
+        className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-[hsl(var(--surface-raised))]"
+        style={{ backgroundColor: dotColor }}
+        title={rank}
+      />
     </div>
   );
 }
@@ -126,6 +141,21 @@ const FriendRow = memo(function FriendRow({
       return pieces.length > 0 ? pieces.join(" · ") : "In world";
     }
     return t(`friends.location.${loc.kind}`);
+  })();
+
+  const { data: worldData } = useIpcQuery<{ id: string }, { details: WorldDetails | null }>(
+    "world.details",
+    { id: loc.worldId ?? "" },
+    { enabled: loc.kind === "world" && !!loc.worldId, staleTime: 300_000 }
+  );
+
+  // World name: use worldId truncated when there's a world location
+  const worldLabel = (() => {
+    if (loc.kind !== "world" || !loc.worldId) return null;
+    if (worldData?.details?.name) return worldData.details.name;
+    // Show a truncated world ID (wrld_xxxx...)
+    const wid = loc.worldId;
+    return wid.length > 20 ? wid.slice(0, 18) + "..." : wid;
   })();
 
   const lastSeen = relativeTime(friend.last_login || friend.last_activity);
@@ -167,6 +197,14 @@ const FriendRow = memo(function FriendRow({
           <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
             <PlatformIcon className="size-3 shrink-0" />
             <span className="truncate">{locCell}</span>
+            {worldLabel ? (
+              <>
+                <span>·</span>
+                <span className="max-w-[140px] truncate font-mono text-[10px] opacity-70" title={loc.worldId}>
+                  {worldLabel}
+                </span>
+              </>
+            ) : null}
             {friend.statusDescription ? (
               <>
                 <span>·</span>
@@ -198,6 +236,36 @@ const FriendRow = memo(function FriendRow({
             <span className={trustColorClass(rank)}>
               {t(trustLabelKey(rank))}
             </span>
+
+            {/* Avatar preview chip */}
+            {friend.currentAvatarName || friend.currentAvatarThumbnailImageUrl ? (
+              <>
+                <span className="text-[hsl(var(--muted-foreground))]">
+                  {t("friends.fields.avatar", { defaultValue: "Avatar" })}
+                </span>
+                <div className="flex items-center gap-2">
+                  {friend.currentAvatarThumbnailImageUrl ? (
+                    <div className="size-7 shrink-0 overflow-hidden rounded border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
+                      <img
+                        src={friend.currentAvatarThumbnailImageUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                  {friend.currentAvatarName ? (
+                    <span className="truncate text-[11px]">
+                      {friend.currentAvatarName}
+                    </span>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
 
             {friend.developerType && friend.developerType !== "none" ? (
               <>
@@ -298,7 +366,7 @@ const FriendRow = memo(function FriendRow({
                 onClick={(e) => {
                   e.stopPropagation();
                   ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                    url: `vrchat://launch?id=${loc.worldId}:${loc.instanceId}`,
+                    url: `vrchat://launch?id=${friend.location}`,
                   }).catch(console.error);
                 }}
               >
@@ -340,6 +408,7 @@ function friendToProfile(friend: Friend): VrcUserProfile {
     statusDescription: nn(friend.statusDescription),
     currentAvatarImageUrl: nn(friend.currentAvatarImageUrl),
     currentAvatarThumbnailImageUrl: nn(friend.currentAvatarThumbnailImageUrl),
+    currentAvatarName: nn(friend.currentAvatarName),
     profilePicOverride: nn(friend.profilePicOverride),
     developerType: nn(friend.developerType),
     last_login: nn(friend.last_login),
@@ -464,13 +533,26 @@ export default function Friends() {
     if (!data) return [];
     const q = debouncedFilter.trim().toLowerCase();
     if (!q) return data.friends;
-    return data.friends.filter(
-      (f) =>
-        f.displayName.toLowerCase().includes(q) ||
-        (f.statusDescription?.toLowerCase().includes(q) ?? false) ||
-        (f.bio?.toLowerCase().includes(q) ?? false),
-    );
-  }, [data, debouncedFilter]);
+    return data.friends.filter((f) => {
+      // Display name, status description, bio (original filters)
+      if (f.displayName.toLowerCase().includes(q)) return true;
+      if (f.statusDescription?.toLowerCase().includes(q)) return true;
+      if (f.bio?.toLowerCase().includes(q)) return true;
+      // User ID
+      if (f.id.toLowerCase().includes(q)) return true;
+      // Trust rank name (e.g. typing "trusted" matches Trusted Users)
+      const rank = trustRank(f.tags);
+      if (t(trustLabelKey(rank)).toLowerCase().includes(q)) return true;
+      // World ID / location
+      if (f.location && f.location !== "offline" && f.location !== "private") {
+        const loc = parseLocation(f.location);
+        if (loc.worldId?.toLowerCase().includes(q)) return true;
+      }
+      // Avatar name
+      if (f.currentAvatarName?.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [data, debouncedFilter, t]);
 
   // Group filtered friends into status buckets. Sort within each bucket by
   // display name so the order stays stable across refreshes (VRChat's list
@@ -658,9 +740,12 @@ export default function Friends() {
                         <ChevronDown className="size-3" />
                       )}
                       <span>{t(`friends.bucket.${bucket}`)}</span>
-                      <span className="font-mono text-[10px] normal-case tracking-normal">
+                      <Badge
+                        variant={statusColor(bucket)}
+                        className="h-4 rounded-full px-1.5 text-[9px] font-mono normal-case tracking-normal"
+                      >
                         {rows.length}
-                      </span>
+                      </Badge>
                     </button>
                     {!collapsed ? (
                       <div className="flex flex-col gap-1.5">
@@ -705,6 +790,20 @@ export default function Friends() {
               </button>
             </div>
             <ProfileCard user={selectedFriend} />
+            {selectedFriend.location && selectedFriend.location !== "offline" && selectedFriend.location !== "private" ? (
+              <Button
+                variant="default"
+                className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => {
+                  ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                    url: `vrchat://launch?id=${selectedFriend.location}`,
+                  }).catch(console.error);
+                }}
+              >
+                <Play className="mr-2 size-4" />
+                {t("worlds.instanceBadge", { defaultValue: "加入房间" })}
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}
