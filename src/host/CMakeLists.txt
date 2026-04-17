@@ -26,6 +26,12 @@ set(VRCSM_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
 set(VRCSM_ICON_PATH "${CMAKE_SOURCE_DIR}/resources/icons/vrcsm.ico")
 set(VRCSM_EXTRACTOR_PATH "${CMAKE_SOURCE_DIR}/dist/vrcsm_extractor.exe")
 set(VRCSM_MANIFEST_PATH "${CMAKE_SOURCE_DIR}/resources/app.manifest")
+if(EXISTS "${VRCSM_EXTRACTOR_PATH}")
+    set(VRCSM_EXTRACTOR_RESOURCE "IDR_EXTRACTOR_EXE RCDATA \"${VRCSM_EXTRACTOR_PATH}\"")
+else()
+    message(STATUS "vrcsm_extractor.exe not found at ${VRCSM_EXTRACTOR_PATH}; building without embedded extractor resource")
+    set(VRCSM_EXTRACTOR_RESOURCE "/* extractor resource omitted in this build */")
+endif()
 file(MAKE_DIRECTORY "${VRCSM_GENERATED_DIR}")
 configure_file(
     "${CMAKE_SOURCE_DIR}/resources/app.rc"
