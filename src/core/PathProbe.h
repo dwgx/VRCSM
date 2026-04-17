@@ -15,6 +15,7 @@ struct PathProbeResult
     std::optional<std::filesystem::path> vrchatExe;
     std::optional<std::filesystem::path> configJson;
     std::optional<std::filesystem::path> melonLoaderCfg;
+    std::optional<std::filesystem::path> steamVrSettings;
     bool baseDirExists = false;
 };
 

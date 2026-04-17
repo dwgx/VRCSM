@@ -1,0 +1,50 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'web/package.json'
+        
+    - name: Build Web
+      run: |
+        cd web
+        npm ci
+        npm run build
+        
+    - name: Setup VS/CMake
+      uses: ilammy/msvc-dev-cmd@v1
+        
+    - name: Build Host Console
+      run: |
+        scripts\build-host.bat release
+        
+    - name: Setup WiX Toolset
+      run: dotnet tool install --global wix
+        
+    - name: Build MSI Installer
+      run: |
+        mkdir -p build/msi
+        scripts\build-msi.bat
+        
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: VRCSM-Release
+        path: |
+          build/msi/*.msi
+          build/x64-release/src/host/*.exe
