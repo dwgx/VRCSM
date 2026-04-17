@@ -909,6 +909,94 @@ class IpcClient {
       outPath ? { outPath } : {},
     );
   }
+
+  // ── Database / History ──────────────────────────────────────────────
+
+  async dbWorldVisits(limit = 100, offset = 0) {
+    return this.call<{ limit: number; offset: number }, { items: any[] }>(
+      "db.worldVisits.list", { limit, offset },
+    );
+  }
+
+  async dbPlayerEvents(limit = 100, offset = 0) {
+    return this.call<{ limit: number; offset: number }, { items: any[] }>(
+      "db.playerEvents.list", { limit, offset },
+    );
+  }
+
+  async dbPlayerEncounters(userId: string) {
+    return this.call<{ user_id: string }, { items: any[] }>(
+      "db.playerEncounters", { user_id: userId },
+    );
+  }
+
+  async dbAvatarHistory(limit = 100, offset = 0) {
+    return this.call<{ limit: number; offset: number }, { items: any[] }>(
+      "db.avatarHistory.list", { limit, offset },
+    );
+  }
+
+  async dbStatsHeatmap(days = 30) {
+    return this.call<{ days: number }, any>("db.stats.heatmap", { days });
+  }
+
+  async dbStatsOverview() {
+    return this.call<undefined, any>("db.stats.overview");
+  }
+
+  // ── Favorites ───────────────────────────────────────────────────────
+
+  async favoriteLists() {
+    return this.call<undefined, { lists: any[] }>("favorites.lists");
+  }
+
+  async favoriteItems(listName: string) {
+    return this.call<{ list_name: string }, { items: any[] }>(
+      "favorites.items", { list_name: listName },
+    );
+  }
+
+  async favoriteAdd(params: {
+    type: string; target_id: string; list_name: string;
+    display_name?: string; thumbnail_url?: string;
+  }) {
+    return this.call<typeof params, { ok: boolean }>("favorites.add", params);
+  }
+
+  async favoriteRemove(type: string, targetId: string, listName: string) {
+    return this.call<
+      { type: string; target_id: string; list_name: string },
+      { ok: boolean }
+    >("favorites.remove", { type, target_id: targetId, list_name: listName });
+  }
+
+  // ── Friend Log ──────────────────────────────────────────────────────
+
+  async friendLogRecent(limit = 100, offset = 0) {
+    return this.call<{ limit: number; offset: number }, { items: any[] }>(
+      "friendLog.recent", { limit, offset },
+    );
+  }
+
+  async friendLogForUser(userId: string, limit = 100, offset = 0) {
+    return this.call<
+      { user_id: string; limit: number; offset: number },
+      { items: any[] }
+    >("friendLog.forUser", { user_id: userId, limit, offset });
+  }
+
+  async friendNoteGet(userId: string) {
+    return this.call<{ user_id: string }, { note: string | null }>(
+      "friendNote.get", { user_id: userId },
+    );
+  }
+
+  async friendNoteSet(userId: string, note: string) {
+    return this.call<
+      { user_id: string; note: string },
+      { ok: boolean; updated_at: string }
+    >("friendNote.set", { user_id: userId, note });
+  }
 }
 
 export interface PickFolderResult {
