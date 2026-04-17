@@ -534,7 +534,7 @@ class IpcClient {
     await new Promise((r) => setTimeout(r, 180));
     switch (method) {
       case "app.version":
-        return { version: "0.4.0", build: "mock" } as unknown as TResult;
+        return { version: "0.5.0", build: "mock" } as unknown as TResult;
       case "scan":
         return buildMockReport() as unknown as TResult;
       case "bundle.preview":
