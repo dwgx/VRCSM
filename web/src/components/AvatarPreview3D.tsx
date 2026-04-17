@@ -1,5 +1,6 @@
 import {
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -322,11 +323,13 @@ function GlbModel({
       materialCount: materialIds.size,
       boneCount,
     });
+  }, [onPrepared, scene]);
 
+  useEffect(() => {
     return () => {
       useGLTF.clear(url);
     };
-  }, [onPrepared, scene, url]);
+  }, [url]);
 
   useEffect(() => {
     applyPreviewMode(scene, mode);
@@ -429,6 +432,7 @@ function OverlayButton({
   return (
     <button
       type="button"
+      onPointerDown={(event) => event.stopPropagation()}
       onClick={onClick}
       className={
         "inline-flex h-7 items-center gap-1 rounded-[var(--radius-sm)] border px-2 text-[10px] font-medium transition-colors " +
@@ -459,11 +463,39 @@ export function AvatarPreview3D({
   const [fitTick, setFitTick] = useState(0);
   const [shiftPanning, setShiftPanning] = useState(false);
   const [sceneMeta, setSceneMeta] = useState<PreparedSceneMeta | null>(null);
+  const lastPreparedKey = useRef<string>("");
+
+  const handlePrepared = useCallback((meta: PreparedSceneMeta) => {
+    const key = [
+      meta.center.x.toFixed(4),
+      meta.center.y.toFixed(4),
+      meta.center.z.toFixed(4),
+      meta.size.x.toFixed(4),
+      meta.size.y.toFixed(4),
+      meta.size.z.toFixed(4),
+      meta.meshCount,
+      meta.materialCount,
+      meta.boneCount,
+    ].join("|");
+
+    if (lastPreparedKey.current === key) {
+      return;
+    }
+    lastPreparedKey.current = key;
+    setSceneMeta(meta);
+  }, []);
 
   const canvasStyle = useMemo<CSSProperties>(
     () => ({ width: size, height: size, background: "hsl(var(--canvas))" }),
     [size],
   );
+
+  useEffect(() => {
+    if (state.kind === "ready") {
+      lastPreparedKey.current = "";
+      setSceneMeta(null);
+    }
+  }, [state.kind, state.kind === "ready" ? state.url : ""]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -525,7 +557,7 @@ export function AvatarPreview3D({
 
   return (
     <div
-      className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
+      className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] select-none"
       style={{ width: size, height: size }}
     >
       <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
@@ -548,7 +580,10 @@ export function AvatarPreview3D({
           </OverlayButton>
         </div>
 
-        <div className="pointer-events-auto rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.92)] px-2 py-1 text-right text-[10px] leading-tight text-[hsl(var(--muted-foreground))] shadow-sm">
+        <div
+          className="pointer-events-auto rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.92)] px-2 py-1 text-right text-[10px] leading-tight text-[hsl(var(--muted-foreground))] shadow-sm"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
           <div className="flex items-center justify-end gap-1 text-[hsl(var(--foreground))]">
             <Hand className="size-3" />
             {t("avatars.preview3d.controlsTitle", { defaultValue: "Blender-style controls" })}
@@ -563,11 +598,17 @@ export function AvatarPreview3D({
 
       {sceneMeta ? (
         <div className="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2">
-          <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.9)] px-2 py-1 text-[10px] text-[hsl(var(--muted-foreground))] shadow-sm">
+          <div
+            className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.9)] px-2 py-1 text-[10px] text-[hsl(var(--muted-foreground))] shadow-sm"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
             {sceneMeta.meshCount}M / {sceneMeta.materialCount}Mat / {sceneMeta.boneCount}Bone
           </div>
           {shiftPanning ? (
-            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.45)] bg-[hsl(var(--primary)/0.16)] px-2 py-1 text-[10px] font-medium text-[hsl(var(--primary))] shadow-sm">
+            <div
+              className="rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.45)] bg-[hsl(var(--primary)/0.16)] px-2 py-1 text-[10px] font-medium text-[hsl(var(--primary))] shadow-sm"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
               {t("avatars.preview3d.panning", { defaultValue: "Pan mode" })}
             </div>
           ) : null}
@@ -588,7 +629,7 @@ export function AvatarPreview3D({
             <GlbModel
               url={state.url}
               mode={mode}
-              onPrepared={(meta) => setSceneMeta(meta)}
+              onPrepared={handlePrepared}
             />
             <GroundGrid visible={showGrid} />
           </group>
