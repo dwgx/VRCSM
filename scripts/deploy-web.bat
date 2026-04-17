@@ -4,8 +4,9 @@ setlocal
 set "PRESET=%~1"
 if "%PRESET%"=="" set "PRESET=x64-debug"
 
-set "EXE_DIR=D:\Project\VRCSM\build\%PRESET%\src\host"
-set "WEB_DIST=D:\Project\VRCSM\web\dist"
+set "REPO=%~dp0.."
+set "EXE_DIR=%REPO%\build\%PRESET%\src\host"
+set "WEB_DIST=%REPO%\web\dist"
 set "WEB_OUT=%EXE_DIR%\web"
 
 if not exist "%WEB_DIST%\index.html" (

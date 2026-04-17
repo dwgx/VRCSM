@@ -14,7 +14,6 @@ import {
   Globe2,
   Users,
   Radio,
-  FileClock,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -34,7 +33,6 @@ const items: NavItem[] = [
   { to: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { to: "/profile", labelKey: "nav.profile", icon: UserCircle2 },
   { to: "/friends", labelKey: "nav.friends", icon: Users },
-  { to: "/friend-log", labelKey: "nav.friendLog", icon: FileClock },
   { to: "/radar", labelKey: "nav.radar", icon: Radio },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
   { to: "/library", labelKey: "nav.library", icon: Heart },

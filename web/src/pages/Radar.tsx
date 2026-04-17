@@ -1,6 +1,5 @@
 import { ipc } from "@/lib/ipc";
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Card,
@@ -26,6 +25,8 @@ import {
   ArrowRightLeft,
   Monitor,
   Smartphone,
+  FileClock,
+  Radio,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { cn } from "@/lib/utils";
 import { useVrcProcess } from "@/lib/vrc-context";
 import { trustRank, trustDotColor } from "@/lib/vrcFriends";
+import { FriendLogPanel } from "@/pages/FriendLog";
 import type { VrcUserProfile } from "@/components/ProfileCard";
 import type {
   PlayerEvent,
@@ -79,6 +81,8 @@ interface RecentSessionEvent {
   world_id?: string | null;
   occurred_at: string;
 }
+
+type RadarTab = "live" | "history";
 
 function shortId(id: string): string {
   if (!id) return "";
@@ -199,9 +203,8 @@ function PlatformIcon({ platform }: { platform: string | null | undefined }) {
 }
 
 
-function RadarEngine() {
+function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [currentWorld, setCurrentWorld] = useState<WorldSwitchEvent | null>(null);
   const [worldNames, setWorldNames] = useState<Record<string, string>>({});
 
@@ -523,7 +526,7 @@ function RadarEngine() {
   };
 
   return (
-    <div className="flex flex-col gap-4 animate-fade-in pb-12">
+    <div className="flex flex-col gap-4 animate-fade-in">
       <header className="flex items-end justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-[22px] font-semibold leading-none tracking-tight">
@@ -719,7 +722,7 @@ function RadarEngine() {
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2 text-[10px]"
-                  onClick={() => navigate("/friend-log")}
+                  onClick={() => onOpenHistory?.()}
                 >
                   {t("radar.recentHistory.open", { defaultValue: "Open Log" })}
                 </Button>
@@ -934,34 +937,65 @@ export default function Radar() {
   const { t } = useTranslation();
   const { status: vrcProcessStatus, loading } = useVrcProcess();
   const vrcRunning = loading ? null : vrcProcessStatus.running;
+  const [tab, setTab] = useState<RadarTab>("live");
 
-  if (vrcRunning === false) {
-    return (
-      <div className="flex flex-col gap-4 animate-fade-in pb-12 h-full">
-        <header className="flex items-end justify-between gap-4 shrink-0">
-          <div>
-            <h1 className="text-[22px] font-semibold leading-none tracking-tight">
-              {t("radar.title", { defaultValue: "Live Instance Radar" })}
-            </h1>
-            <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
-              {t("radar.subtitle", { defaultValue: "Real-time player monitoring via log tailing" })}
-            </p>
-          </div>
-        </header>
-        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[hsl(var(--border))] rounded-xl bg-[hsl(var(--muted)/0.1)] text-[hsl(var(--muted-foreground))] opacity-70 p-8 text-center min-h-[400px]">
-           <div className="size-12 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center mb-4">
-              <Globe className="size-6 text-[hsl(var(--muted-foreground)/0.5)]" />
-           </div>
-           <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] mb-1">VRChat 未运行</h3>
-           <p className="text-xs">游戏启动后在此实时监测房间与玩家动向</p>
+  return (
+    <div className="flex flex-col gap-4 animate-fade-in pb-12">
+      <header className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-[22px] font-semibold leading-none tracking-tight">
+            {t("nav.radar")}
+          </h1>
+          <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("radar.subtitle", {
+              defaultValue: "Real-time player monitoring via log tailing",
+            })}
+          </p>
         </div>
-      </div>
-    );
-  }
 
-  if (vrcRunning === null) {
-    return null;
-  }
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+              tab === "live"
+                ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
+            )}
+            onClick={() => setTab("live")}
+          >
+            <Radio className="size-3.5" />
+            {t("radar.title", { defaultValue: "Live Instance Radar" })}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+              tab === "history"
+                ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
+            )}
+            onClick={() => setTab("history")}
+          >
+            <FileClock className="size-3.5" />
+            {t("nav.friendLog")}
+          </button>
+        </div>
+      </header>
 
-  return <RadarEngine />;
+      {tab === "history" ? (
+        <FriendLogPanel embedded />
+      ) : vrcRunning === false ? (
+        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.1)] p-8 text-center text-[hsl(var(--muted-foreground))] opacity-70">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-[hsl(var(--muted))]">
+            <Globe className="size-6 text-[hsl(var(--muted-foreground)/0.5)]" />
+          </div>
+          <h3 className="mb-1 text-sm font-semibold text-[hsl(var(--foreground))]">VRChat 未运行</h3>
+          <p className="text-xs">游戏启动后在此实时监测房间与玩家动向</p>
+        </div>
+      ) : vrcRunning === null ? null : (
+        <RadarEngine onOpenHistory={() => setTab("history")} />
+      )}
+    </div>
+  );
 }
