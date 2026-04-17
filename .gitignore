@@ -20,3 +20,27 @@ logs/
 *.log
 __pycache__/
 *.pyc
+
+# Dev scratch scripts (one-off fixup utilities, not part of the project)
+fix.py
+fix[0-9]*.py
+fix_*.py
+test_*.py
+web/fix.js
+web/fix*.mjs
+
+# Build artifacts not under build/
+dist/
+*.wixpdb
+*.wixobj
+tools/extractor/*.exe
+tools/extractor/*.pdb
+
+# Local scratch state
+sqlite_mcp_server.db
+*.db-journal
+.claude/
+
+# Personal dev launcher (hardcodes vcvars path — not portable)
+build.bat
+
