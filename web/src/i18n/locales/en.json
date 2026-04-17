@@ -428,12 +428,16 @@
       "preview_failed": "Preview unavailable",
       "missing_avatar_id": "Missing avatar id",
       "fit": "Fit",
-      "modeTextured": "Textured",
+      "expand": "Expand",
+      "modeTextured": "Original",
       "modeClay": "Clay",
       "modeWireframe": "Wireframe",
       "controlsTitle": "Blender-style controls",
       "controlsBody": "LMB rotate · Shift+LMB pan · wheel zoom · RMB pan",
-      "panning": "Pan mode"
+      "panning": "Pan mode",
+      "textureNote": "The current extractor keeps mesh and UV data only; embedded textures are not exported to the GLB yet.",
+      "expandedTitle": "Expanded avatar preview",
+      "expandedBody": "Use the larger viewport to inspect silhouette, bones, and materials. Shift plus left drag pans, right drag also pans, and middle-click is disabled to avoid WebView glitches."
     },
     "thumbnailNote": "VRChat's avatar API refuses anonymous requests — even for public avatars — so VRCSM renders a stable, id-seeded cube instead of a real thumbnail. Worlds use the public endpoint and show real images.",
     "unknownUser": "Unknown user",
@@ -451,7 +455,7 @@
     "pickOne": "Select an avatar",
     "noMatch": "No avatars match the filter.",
     "nameNote": "Avatar names are extracted from the VRChat output logs. Names only appear for avatars that have been loaded at least once on this machine.",
-    "previewWorkbench": "Scroll to zoom, hold Shift and drag to pan, and use the debug modes to inspect silhouette and large accessories."
+    "previewWorkbench": "The inspector preview is now intentionally compact, and the top-right expand button opens a larger centered viewer. The current extractor still does not embed textures into the GLB, so Original mode can only show the raw exported material state for now; scroll to zoom, hold Shift and drag to pan, and right drag also pans."
   },
   "worlds": {
     "title": "Worlds",

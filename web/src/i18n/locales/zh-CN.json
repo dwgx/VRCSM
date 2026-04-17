@@ -428,12 +428,16 @@
       "preview_failed": "无法预览",
       "missing_avatar_id": "缺少模型 ID",
       "fit": "自适应",
-      "modeTextured": "贴图",
+      "expand": "放大",
+      "modeTextured": "原始",
       "modeClay": "灰模",
       "modeWireframe": "线框",
       "controlsTitle": "Blender 式操作",
       "controlsBody": "左键旋转 · Shift+左键平移 · 滚轮缩放 · 右键平移",
-      "panning": "平移模式"
+      "panning": "平移模式",
+      "textureNote": "当前解包链路只保留网格与 UV，贴图尚未写入 GLB。",
+      "expandedTitle": "放大 3D 预览",
+      "expandedBody": "用更大的视口检查轮廓、骨骼和材质。Shift+左键可平移，右键也可平移，中键按压已禁用以避免异常。"
     },
     "thumbnailNote": "VRChat 的 avatar API 拒绝所有匿名请求(即使是公开模型),所以 VRCSM 用模型 ID 生成一个稳定的彩色立方体来替代真实缩略图。地图用的是公开端点,因此能显示真图。",
     "unknownUser": "未知用户",
@@ -451,7 +455,7 @@
     "pickOne": "选择一个模型",
     "noMatch": "没有匹配的模型。",
     "nameNote": "模型名字是从 VRChat 输出日志中提取的。只有在本机至少加载过一次的模型才会显示名字。",
-    "previewWorkbench": "滚轮可缩放，按住 Shift 拖拽可平移，并可切换调试视图检查整体轮廓和超大挂件。"
+    "previewWorkbench": "默认检视器改为更紧凑的尺寸，可点右上角放大查看。当前解包链路仍未把贴图嵌入 GLB，所以“原始”模式暂时只能显示原始材质结果；滚轮缩放，Shift+拖拽平移，右键也可平移。"
   },
   "worlds": {
     "title": "地图",

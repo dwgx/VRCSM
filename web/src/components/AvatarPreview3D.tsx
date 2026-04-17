@@ -19,11 +19,18 @@ import {
   Hand,
   Loader2,
   Lock,
+  Maximize2,
   RotateCcw,
   ScanSearch,
   SquareStack,
 } from "lucide-react";
 import { useAvatarPreview } from "@/hooks/useAvatarPreview";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type PreviewMode = "textured" | "clay" | "wireframe";
 
@@ -34,6 +41,8 @@ interface PreparedSceneMeta {
   materialCount: number;
   boneCount: number;
 }
+
+const DISABLED_MOUSE_BUTTON = -1 as THREE.MOUSE;
 
 const CODE_META: Record<
   string,
@@ -94,8 +103,9 @@ function EmptyState({
       ) : null}
       {onRetry && code !== "encrypted" && code !== "extractor_missing" ? (
         <button
+          type="button"
           onClick={onRetry}
-          className="mt-1 flex items-center gap-1 rounded px-2 py-0.5 text-[9px] font-medium text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.1)] transition-colors"
+          className="mt-1 flex items-center gap-1 rounded px-2 py-0.5 text-[9px] font-medium text-[hsl(var(--primary))] transition-colors hover:bg-[hsl(var(--primary)/0.1)]"
         >
           <RotateCcw className="size-3" />
           {t("avatars.preview3d.retry", { defaultValue: "Retry" })}
@@ -208,11 +218,13 @@ function buildDebugMaterial(
     color: "#C9B8A2",
     roughness: 0.96,
     metalness: 0.02,
-    flatShading: original instanceof THREE.MeshNormalMaterial ? true : false,
+    flatShading: original instanceof THREE.MeshNormalMaterial,
   });
 }
 
-function disposeDebugMaterial(material: THREE.Material | THREE.Material[] | undefined) {
+function disposeDebugMaterial(
+  material: THREE.Material | THREE.Material[] | undefined,
+) {
   if (!material) return;
   if (Array.isArray(material)) {
     material.forEach((entry) => entry.dispose());
@@ -282,7 +294,7 @@ function GlbModel({
     box.getCenter(boxCenter);
 
     const maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z);
-    const scale = maxDim > 0 ? 2.0 / maxDim : 1;
+    const scale = maxDim > 0 ? 1.6 / maxDim : 1;
 
     groupRef.current.scale.setScalar(scale);
     groupRef.current.position.set(
@@ -350,7 +362,11 @@ function GroundGrid({ visible }: { visible: boolean }) {
   return (
     <group>
       <gridHelper args={[3.5, 14, 0x4e5a67, 0x232a33]} position={[0, 0, 0]} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]} receiveShadow>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.002, 0]}
+        receiveShadow
+      >
         <circleGeometry args={[1.45, 40]} />
         <meshStandardMaterial color="#12161D" transparent opacity={0.28} />
       </mesh>
@@ -376,7 +392,7 @@ function PreviewCameraRig({
       ? THREE.MOUSE.PAN
       : THREE.MOUSE.ROTATE;
     controlsRef.current.mouseButtons.RIGHT = THREE.MOUSE.PAN;
-    controlsRef.current.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+    controlsRef.current.mouseButtons.MIDDLE = DISABLED_MOUSE_BUTTON;
     controlsRef.current.update();
   }, [shiftPanning]);
 
@@ -385,11 +401,11 @@ function PreviewCameraRig({
 
     const center = sceneMeta.center.clone();
     const maxDim = Math.max(sceneMeta.size.x, sceneMeta.size.y, sceneMeta.size.z, 0.75);
-    const distance = Math.max(1.6, maxDim * 1.7);
+    const distance = Math.max(2.1, maxDim * 2.1);
 
     camera.position.set(
       center.x + distance * 0.3,
-      center.y + maxDim * 0.12,
+      center.y + maxDim * 0.16,
       center.z + distance,
     );
     camera.near = 0.01;
@@ -397,8 +413,8 @@ function PreviewCameraRig({
     camera.updateProjectionMatrix();
 
     controlsRef.current.target.copy(center);
-    controlsRef.current.minDistance = Math.max(0.18, maxDim * 0.18);
-    controlsRef.current.maxDistance = Math.max(6, maxDim * 8);
+    controlsRef.current.minDistance = Math.max(0.24, maxDim * 0.2);
+    controlsRef.current.maxDistance = Math.max(8, maxDim * 9);
     controlsRef.current.update();
     invalidate();
   }, [camera, fitTick, invalidate, sceneMeta]);
@@ -409,9 +425,9 @@ function PreviewCameraRig({
       enablePan
       enableZoom
       enableRotate
-      panSpeed={1.25}
+      panSpeed={1.15}
       zoomSpeed={1.45}
-      rotateSpeed={0.82}
+      rotateSpeed={0.78}
       enableDamping
       dampingFactor={0.08}
       screenSpacePanning
@@ -446,23 +462,192 @@ function OverlayButton({
   );
 }
 
-export function AvatarPreview3D({
-  avatarId,
-  assetUrl,
-  fallbackImageUrl,
-  size = 140,
+function PreviewViewport({
+  url,
+  size,
+  mode,
+  setMode,
+  fitTick,
+  onFit,
+  shiftPanning,
+  sceneMeta,
+  onPrepared,
+  onPointerDownCapture,
+  onPointerUpCapture,
+  onAuxClickCapture,
+  onExpand,
+  showExpand,
 }: {
-  avatarId: string;
-  assetUrl?: string;
-  fallbackImageUrl?: string;
-  size?: number;
+  url: string;
+  size: number;
+  mode: PreviewMode;
+  setMode: (mode: PreviewMode) => void;
+  fitTick: number;
+  onFit: () => void;
+  shiftPanning: boolean;
+  sceneMeta: PreparedSceneMeta | null;
+  onPrepared: (meta: PreparedSceneMeta) => void;
+  onPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUpCapture: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onAuxClickCapture: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onExpand?: () => void;
+  showExpand: boolean;
 }) {
   const { t } = useTranslation();
-  const { state, retry } = useAvatarPreview(avatarId, assetUrl);
+  const canvasStyle = useMemo<CSSProperties>(
+    () => ({ width: size, height: size, background: "hsl(var(--canvas))" }),
+    [size],
+  );
+  const tiny = size < 140;
+  const compact = size < 240;
+  const showGrid = size >= 180;
+  const showStats = size >= 180;
+  const showModes = !compact;
+  const showControls = !compact;
+  const showTextureNote = size >= 280;
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] select-none"
+      style={{ width: size, height: size }}
+      onContextMenu={(event) => event.preventDefault()}
+      onPointerDownCapture={onPointerDownCapture}
+      onPointerUpCapture={onPointerUpCapture}
+      onAuxClickCapture={onAuxClickCapture}
+    >
+      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
+        <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
+          <OverlayButton onClick={onFit}>
+            <ScanSearch className="size-3" />
+            {t("avatars.preview3d.fit", { defaultValue: "Fit" })}
+          </OverlayButton>
+          {showExpand && onExpand ? (
+            <OverlayButton onClick={onExpand}>
+              <Maximize2 className="size-3" />
+              {t("avatars.preview3d.expand", { defaultValue: "Expand" })}
+            </OverlayButton>
+          ) : null}
+          {showModes ? (
+            <>
+              <OverlayButton
+                active={mode === "textured"}
+                onClick={() => setMode("textured")}
+              >
+                <Eye className="size-3" />
+                {t("avatars.preview3d.modeTextured", { defaultValue: "Original" })}
+              </OverlayButton>
+              <OverlayButton active={mode === "clay"} onClick={() => setMode("clay")}>
+                <SquareStack className="size-3" />
+                {t("avatars.preview3d.modeClay", { defaultValue: "Clay" })}
+              </OverlayButton>
+              <OverlayButton
+                active={mode === "wireframe"}
+                onClick={() => setMode("wireframe")}
+              >
+                <Box className="size-3" />
+                {t("avatars.preview3d.modeWireframe", { defaultValue: "Wireframe" })}
+              </OverlayButton>
+            </>
+          ) : null}
+        </div>
+
+        {showControls ? (
+          <div
+            className="pointer-events-auto rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.92)] px-2 py-1 text-right text-[10px] leading-tight text-[hsl(var(--muted-foreground))] shadow-sm"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-end gap-1 text-[hsl(var(--foreground))]">
+              <Hand className="size-3" />
+              {t("avatars.preview3d.controlsTitle", {
+                defaultValue: "Blender-style controls",
+              })}
+            </div>
+            <div>
+              {t("avatars.preview3d.controlsBody", {
+                defaultValue: "LMB rotate · Shift+LMB pan · wheel zoom · RMB pan",
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {showTextureNote ? (
+        <div className="pointer-events-none absolute left-2 right-2 top-11 z-10">
+          <div className="w-fit max-w-full rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.9)] px-2 py-1 text-[10px] leading-tight text-[hsl(var(--muted-foreground))] shadow-sm">
+            {t("avatars.preview3d.textureNote", {
+              defaultValue:
+                "Current extractor keeps mesh and UV data only; embedded texture export is still pending.",
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {(showStats && sceneMeta) || shiftPanning ? (
+        <div className="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2">
+          {showStats && sceneMeta ? (
+            <div
+              className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.9)] px-2 py-1 text-[10px] text-[hsl(var(--muted-foreground))] shadow-sm"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              {sceneMeta.meshCount}M / {sceneMeta.materialCount}Mat / {sceneMeta.boneCount}Bone
+            </div>
+          ) : (
+            <span />
+          )}
+          {shiftPanning && !tiny ? (
+            <div
+              className="rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.45)] bg-[hsl(var(--primary)/0.16)] px-2 py-1 text-[10px] font-medium text-[hsl(var(--primary))] shadow-sm"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              {t("avatars.preview3d.panning", { defaultValue: "Pan mode" })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Canvas dpr={[1, 2]} camera={{ position: [0, 1, 3.5], fov: 34 }} style={canvasStyle}>
+        <color attach="background" args={["#0D1218"]} />
+        <fog attach="fog" args={["#0D1218", 6, 18]} />
+
+        <Suspense fallback={null}>
+          <ambientLight intensity={0.62} />
+          <hemisphereLight args={["#E7EEF9", "#11151C", 0.65]} />
+          <directionalLight position={[4.5, 8, 5]} intensity={1.55} />
+          <directionalLight position={[-6, 5, -3]} intensity={0.52} />
+
+          <group position={[0, -0.04, 0]}>
+            <GlbModel url={url} mode={mode} onPrepared={onPrepared} />
+            <GroundGrid visible={showGrid} />
+          </group>
+
+          <PreviewCameraRig
+            sceneMeta={sceneMeta}
+            fitTick={fitTick}
+            shiftPanning={shiftPanning}
+          />
+        </Suspense>
+      </Canvas>
+    </div>
+  );
+}
+
+function AvatarPreviewSurface({
+  url,
+  size,
+  enableExpand = true,
+  expandedSize = 620,
+}: {
+  url: string;
+  size: number;
+  enableExpand?: boolean;
+  expandedSize?: number;
+}) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<PreviewMode>("textured");
   const [fitTick, setFitTick] = useState(0);
   const [shiftPanning, setShiftPanning] = useState(false);
   const [sceneMeta, setSceneMeta] = useState<PreparedSceneMeta | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const lastPreparedKey = useRef<string>("");
 
   const handlePrepared = useCallback((meta: PreparedSceneMeta) => {
@@ -485,17 +670,11 @@ export function AvatarPreview3D({
     setSceneMeta(meta);
   }, []);
 
-  const canvasStyle = useMemo<CSSProperties>(
-    () => ({ width: size, height: size, background: "hsl(var(--canvas))" }),
-    [size],
-  );
-
   useEffect(() => {
-    if (state.kind === "ready") {
-      lastPreparedKey.current = "";
-      setSceneMeta(null);
-    }
-  }, [state.kind, state.kind === "ready" ? state.url : ""]);
+    lastPreparedKey.current = "";
+    setSceneMeta(null);
+    setFitTick((value) => value + 1);
+  }, [url]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -523,13 +702,120 @@ export function AvatarPreview3D({
     };
   }, []);
 
-  useEffect(() => {
-    if (state.kind === "ready") {
-      setFitTick((value) => value + 1);
-    }
-  }, [state.kind, state.kind === "ready" ? state.url : ""]);
+  const handlePointerDownCapture = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button === 1) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
 
-  const showGrid = size >= 200;
+      if (event.button === 0) {
+        setShiftPanning(event.shiftKey);
+      }
+    },
+    [],
+  );
+
+  const handlePointerUpCapture = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button === 0) {
+        setShiftPanning(event.shiftKey);
+      }
+    },
+    [],
+  );
+
+  const handleAuxClickCapture = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.button === 1) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    [],
+  );
+
+  const preview = (
+    <PreviewViewport
+      url={url}
+      size={size}
+      mode={mode}
+      setMode={setMode}
+      fitTick={fitTick}
+      onFit={() => setFitTick((value) => value + 1)}
+      shiftPanning={shiftPanning}
+      sceneMeta={sceneMeta}
+      onPrepared={handlePrepared}
+      onPointerDownCapture={handlePointerDownCapture}
+      onPointerUpCapture={handlePointerUpCapture}
+      onAuxClickCapture={handleAuxClickCapture}
+      onExpand={enableExpand ? () => setExpanded(true) : undefined}
+      showExpand={enableExpand}
+    />
+  );
+
+  if (!enableExpand) {
+    return preview;
+  }
+
+  return (
+    <Dialog open={expanded} onOpenChange={setExpanded}>
+      <>
+        {preview}
+        <DialogContent className="max-w-[760px] gap-3 border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-4">
+          <div className="pr-8">
+            <DialogTitle>
+              {t("avatars.preview3d.expandedTitle", {
+                defaultValue: "Expanded avatar preview",
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("avatars.preview3d.expandedBody", {
+                defaultValue:
+                  "Use the larger viewport for close inspection. Shift plus left drag pans, right drag also pans, and the middle mouse button is disabled to avoid WebView glitches.",
+              })}
+            </DialogDescription>
+          </div>
+          <div className="flex justify-center">
+            <PreviewViewport
+              url={url}
+              size={expandedSize}
+              mode={mode}
+              setMode={setMode}
+              fitTick={fitTick}
+              onFit={() => setFitTick((value) => value + 1)}
+              shiftPanning={shiftPanning}
+              sceneMeta={sceneMeta}
+              onPrepared={handlePrepared}
+              onPointerDownCapture={handlePointerDownCapture}
+              onPointerUpCapture={handlePointerUpCapture}
+              onAuxClickCapture={handleAuxClickCapture}
+              showExpand={false}
+            />
+          </div>
+        </DialogContent>
+      </>
+    </Dialog>
+  );
+}
+
+export function AvatarPreview3D({
+  avatarId,
+  assetUrl,
+  fallbackImageUrl,
+  size = 140,
+  enableExpand = true,
+  expandedSize = 620,
+}: {
+  avatarId: string;
+  assetUrl?: string;
+  fallbackImageUrl?: string;
+  size?: number;
+  enableExpand?: boolean;
+  expandedSize?: number;
+}) {
+  const { state, retry } = useAvatarPreview(avatarId, assetUrl);
 
   if (state.kind === "loading") {
     return <LoadingState size={size} />;
@@ -556,91 +842,11 @@ export function AvatarPreview3D({
   }
 
   return (
-    <div
-      className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] select-none"
-      style={{ width: size, height: size }}
-    >
-      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
-        <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
-          <OverlayButton onClick={() => setFitTick((value) => value + 1)}>
-            <ScanSearch className="size-3" />
-            {t("avatars.preview3d.fit", { defaultValue: "Fit" })}
-          </OverlayButton>
-          <OverlayButton active={mode === "textured"} onClick={() => setMode("textured")}>
-            <Eye className="size-3" />
-            {t("avatars.preview3d.modeTextured", { defaultValue: "Textured" })}
-          </OverlayButton>
-          <OverlayButton active={mode === "clay"} onClick={() => setMode("clay")}>
-            <SquareStack className="size-3" />
-            {t("avatars.preview3d.modeClay", { defaultValue: "Clay" })}
-          </OverlayButton>
-          <OverlayButton active={mode === "wireframe"} onClick={() => setMode("wireframe")}>
-            <Box className="size-3" />
-            {t("avatars.preview3d.modeWireframe", { defaultValue: "Wireframe" })}
-          </OverlayButton>
-        </div>
-
-        <div
-          className="pointer-events-auto rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.92)] px-2 py-1 text-right text-[10px] leading-tight text-[hsl(var(--muted-foreground))] shadow-sm"
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <div className="flex items-center justify-end gap-1 text-[hsl(var(--foreground))]">
-            <Hand className="size-3" />
-            {t("avatars.preview3d.controlsTitle", { defaultValue: "Blender-style controls" })}
-          </div>
-          <div>
-            {t("avatars.preview3d.controlsBody", {
-              defaultValue: "LMB rotate · Shift+LMB pan · wheel zoom · RMB pan",
-            })}
-          </div>
-        </div>
-      </div>
-
-      {sceneMeta ? (
-        <div className="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2">
-          <div
-            className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.9)] px-2 py-1 text-[10px] text-[hsl(var(--muted-foreground))] shadow-sm"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            {sceneMeta.meshCount}M / {sceneMeta.materialCount}Mat / {sceneMeta.boneCount}Bone
-          </div>
-          {shiftPanning ? (
-            <div
-              className="rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.45)] bg-[hsl(var(--primary)/0.16)] px-2 py-1 text-[10px] font-medium text-[hsl(var(--primary))] shadow-sm"
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              {t("avatars.preview3d.panning", { defaultValue: "Pan mode" })}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <Canvas dpr={[1, 2]} camera={{ position: [0, 1, 3.5], fov: 34 }} style={canvasStyle}>
-        <color attach="background" args={["#0D1218"]} />
-        <fog attach="fog" args={["#0D1218", 6, 18]} />
-
-        <Suspense fallback={null}>
-          <ambientLight intensity={0.62} />
-          <hemisphereLight args={["#E7EEF9", "#11151C", 0.65]} />
-          <directionalLight position={[4.5, 8, 5]} intensity={1.55} />
-          <directionalLight position={[-6, 5, -3]} intensity={0.52} />
-
-          <group position={[0, -0.04, 0]}>
-            <GlbModel
-              url={state.url}
-              mode={mode}
-              onPrepared={handlePrepared}
-            />
-            <GroundGrid visible={showGrid} />
-          </group>
-
-          <PreviewCameraRig
-            sceneMeta={sceneMeta}
-            fitTick={fitTick}
-            shiftPanning={shiftPanning}
-          />
-        </Suspense>
-      </Canvas>
-    </div>
+    <AvatarPreviewSurface
+      url={state.url}
+      size={size}
+      enableExpand={enableExpand}
+      expandedSize={expandedSize}
+    />
   );
 }

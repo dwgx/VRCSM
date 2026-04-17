@@ -279,7 +279,8 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
                 avatarId={selected.avatar_id}
                 assetUrl={windowsAssetUrl}
                 fallbackImageUrl={fallbackUrl}
-                size={280}
+                size={224}
+                expandedSize={640}
               />
             );
           })()}
