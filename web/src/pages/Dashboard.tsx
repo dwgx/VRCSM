@@ -40,7 +40,9 @@ import {
   Wifi,
   WifiOff,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ── Palette ────────────────────────────────────────────────────────────
 // Unity editor-ish categorical palette — muted, no purple, no neon glow.
@@ -203,6 +205,22 @@ function Dashboard() {
   // ── VRChat process status (via context) ──
   const { status: vrcProcessStatus } = useVrcProcess();
   const vrcRunning = vrcProcessStatus.running;
+  const [clearingCache, setClearingCache] = useState(false);
+
+  async function handleClearCache() {
+    if (!confirm(t("dashboard.confirmClearCache", "Are you sure you want to completely clear the VRChat cache (Cache-WindowsPlayer)? This will delete all downloaded avatars and worlds."))) return;
+    setClearingCache(true);
+    try {
+      const res = await ipc.call<{ category: string }, { deleted?: number; error?: any }>("delete.execute", { category: "cache_windows_player" });
+      if (res.error) throw new Error(res.error.message || res.error.code);
+      toast.success(t("dashboard.clearCacheSuccess", `Successfully cleared ${res.deleted || 0} files`));
+      refresh();
+    } catch (e: any) {
+      toast.error(t("dashboard.clearCacheError", `Failed to clear cache: ${e.message || e}`));
+    } finally {
+      setClearingCache(false);
+    }
+  }
 
   // ── Friends online count (fire-and-forget, non-blocking) ──
   const [friendsOnline, setFriendsOnline] = useState<number | null>(null);
@@ -395,9 +413,21 @@ function Dashboard() {
             {report.base_dir}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={refresh}>
-          {t("common.rescan")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearCache}
+            disabled={clearingCache || !report}
+            className="text-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] border-[hsl(var(--destructive)/0.3)] transition-colors"
+          >
+            <Trash2 className="size-3.5 mr-1" />
+            {t("dashboard.clearCache", "一键清理缓存")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={refresh}>
+            {t("common.rescan")}
+          </Button>
+        </div>
       </header>
 
       {/* ── Current / Last Session Card ── */}

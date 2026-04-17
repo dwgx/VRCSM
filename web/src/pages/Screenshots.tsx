@@ -171,20 +171,26 @@ function ScreenshotTile({
 /*  ContextMenu                                                        */
 /* ------------------------------------------------------------------ */
 
+import { createPortal } from "react-dom";
+
 function ContextMenu({
   state,
+  selectionCount,
   onClose,
   onOpen,
   onShowInExplorer,
   onCopyPath,
   onDelete,
+  onDeleteSelected,
 }: {
   state: ContextMenuState;
+  selectionCount: number;
   onClose: () => void;
   onOpen: (s: Screenshot) => void;
   onShowInExplorer: (s: Screenshot) => void;
   onCopyPath: (s: Screenshot) => void;
   onDelete: (s: Screenshot) => void;
+  onDeleteSelected: () => void;
 }) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -198,11 +204,11 @@ function ContextMenu({
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("mousedown", handleClickOutside, true);
+    document.addEventListener("keydown", handleEscape, true);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("mousedown", handleClickOutside, true);
+      document.removeEventListener("keydown", handleEscape, true);
     };
   }, [onClose]);
 
@@ -212,6 +218,8 @@ function ContextMenu({
   const x = Math.min(state.x, window.innerWidth - menuWidth - 8);
   const y = Math.min(state.y, window.innerHeight - menuHeight - 8);
 
+  const isMulti = selectionCount > 1;
+
   const items: Array<{
     label: string;
     icon: React.ReactNode;
@@ -219,7 +227,9 @@ function ContextMenu({
     destructive?: boolean;
   }> = [
     {
-      label: t("screenshots.open", { defaultValue: "Open" }),
+      label: isMulti
+        ? t("screenshots.openSelected", { defaultValue: "Open ({{count}})", count: selectionCount })
+        : t("screenshots.open", { defaultValue: "Open" }),
       icon: <Eye className="size-3.5" />,
       action: () => {
         onOpen(state.shot);
@@ -237,7 +247,9 @@ function ContextMenu({
       },
     },
     {
-      label: t("screenshots.copyPath", { defaultValue: "Copy path" }),
+      label: isMulti
+        ? t("screenshots.copyPaths", { defaultValue: "Copy paths" })
+        : t("screenshots.copyPath", { defaultValue: "Copy path" }),
       icon: <Copy className="size-3.5" />,
       action: () => {
         onCopyPath(state.shot);
@@ -245,17 +257,23 @@ function ContextMenu({
       },
     },
     {
-      label: t("screenshots.delete", { defaultValue: "Delete" }),
+      label: isMulti
+        ? t("screenshots.deleteSelected", { defaultValue: "Delete ({{count}})", count: selectionCount })
+        : t("screenshots.delete", { defaultValue: "Delete" }),
       icon: <Trash2 className="size-3.5" />,
       destructive: true,
       action: () => {
-        onDelete(state.shot);
+        if (isMulti) {
+          onDeleteSelected();
+        } else {
+          onDelete(state.shot);
+        }
         onClose();
       },
     },
   ];
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       className={cn(
@@ -287,7 +305,8 @@ function ContextMenu({
           {item.label}
         </button>
       ))}
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -716,11 +735,13 @@ export default function Screenshots() {
       {contextMenu && (
         <ContextMenu
           state={contextMenu}
+          selectionCount={selectionCount}
           onClose={closeContextMenu}
           onOpen={openShot}
           onShowInExplorer={showInExplorer}
           onCopyPath={copyPath}
           onDelete={deleteShot}
+          onDeleteSelected={deleteSelected}
         />
       )}
 
