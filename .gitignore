@@ -33,6 +33,8 @@ web/fix*.mjs
 dist/
 *.wixpdb
 *.wixobj
+*.zip
+VRCSM_v*_Installer.msi
 tools/extractor/*.exe
 tools/extractor/*.pdb
 
