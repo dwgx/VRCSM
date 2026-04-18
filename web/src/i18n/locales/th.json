@@ -47,9 +47,12 @@
     "openAvatarManager": "เปิดตัวจัดการอวาตาร์",
     "openWorldManager": "เปิดตัวจัดการโลก",
     "openHomePortal": "เปิดหน้าแรก VRChat",
+    "openNativeWorkspace": "เปิดพื้นที่ทำงาน",
     "liveContext": "บริบทปัจจุบัน",
     "liveContextDesc": "id สำคัญและเป้าหมายเซสชันปัจจุบันสำหรับการนำทางอย่างรวดเร็ว",
-    "liveContextHint": "ใช้ live id เหล่านี้เป็นจุดยึดสำหรับโฟลว์เพื่อน อวาตาร์ โลก และรายการโปรดแบบเนทีฟภายใน VRCSM"
+    "liveContextHint": "ใช้ live id เหล่านี้เป็นจุดยึดสำหรับโฟลว์เพื่อน อวาตาร์ โลก และรายการโปรดแบบเนทีฟภายใน VRCSM",
+    "openFriendsManager": "จอยเพื่อน",
+    "openLibrary": "เปิดคลัง"
   },
   "screenshots": {
     "title": "ภาพหน้าจอ",
@@ -73,7 +76,14 @@
     "clearSelection": "ล้างการเลือก",
     "selectionCount": "เลือกแล้ว {{count}} รายการ",
     "openSelected": "เปิด ({{count}})",
-    "copyPaths": "คัดลอกพาธ"
+    "copyPaths": "คัดลอกพาธ",
+    "deleteSelected": "ลบ ({{count}})",
+    "deleteSuccess": "ลบสำเร็จ",
+    "deleteBulkSuccess": "ลบสกรีนช็อต {{count}} รูปแล้ว",
+    "deletePartial": "ไม่สามารถลบไฟล์บางส่วนได้",
+    "deleteFailed": "ลบล้มเหลว",
+    "confirmDelete": "แน่ใจไหมว่าจะลบสกรีนช็อตนี้?",
+    "confirmDeleteBulk": "แน่ใจไหมว่าจะลบสกรีนช็อต {{count}} รูป?"
   },
   "avatars_extra": {
     "selectAvatar": "สลับเป็นอวาตาร์นี้",
@@ -105,10 +115,65 @@
       "verify": "ยืนยัน",
       "verifying": "กำลังยืนยัน…",
       "invalidCode": "กรุณากรอกรหัส 6 หลัก"
-    }
+    },
+    "username": "ชื่อผู้ใช้"
   },
   "vrchatWorkspace": {
-    "title": "พื้นที่ทำงาน VRChat"
+    "title": "พื้นที่ทำงาน VRChat",
+    "joinFriend": "เข้าร่วมกับเพื่อน",
+    "requestInvite": "ขอรับคำเชิญ",
+    "openFriendProfile": "เปิดโปรไฟล์",
+    "noSubscriptionSignals": "ไม่มีฟิลด์เฉพาะสำหรับตรวจสอบสถานะการสมัครสมาชิกในเซสชันนี้",
+    "block": "บล็อก",
+    "mute": "ปิดเสียง",
+    "pickDownloadFolder": "เลือกโฟลเดอร์สำหรับโหลดอวตาร",
+    "downloadAssetMissing": "อวตารนี้ไม่มีลิงก์โหลดไฟล์ Windows ให้ใช้งาน",
+    "downloadSuccess": "โหลดลง {{path}} แล้ว",
+    "downloadFailed": "โหลดล้มเหลว: {{error}}",
+    "noJoinable": "ตอนนี้ไม่มีเพื่อนที่เปิดอินสแตนซ์ให้จอยได้",
+    "saveToLibrary": "เซฟลงคลัง",
+    "groupsTitle": "กลุ่ม",
+    "groupsBody": "กลุ่ม VRChat จากบัญชีที่ล็อกอินอยู่ ดูได้ที่นี่เลย",
+    "groupCount": "{{count}} กลุ่ม",
+    "representing": "ตัวแทน",
+    "noGroups": "ไม่พบกลุ่มสำหรับบัญชีนี้",
+    "verified": "ยืนยันแล้ว",
+    "blocksMutesTitle": "บล็อก & ปิดเสียง",
+    "blocksMutesBody": "รายชื่อคนที่ถูกจัดการจากเซสชัน VRChat ของคุณ",
+    "blocked": "บล็อกแล้ว",
+    "muted": "ปิดเสียงแล้ว",
+    "noModerations": "ไม่พบรายการบล็อกหรือปิดเสียง",
+    "inventoryTitle": "คลัง",
+    "inventoryBody": "อวตารที่พบล่าสุดจากแคช, ล็อก และประวัติใน VRCSM",
+    "localAvatarData": "ข้อมูลอวตารในเครื่อง",
+    "avatarHistory": "ประวัติอวตาร",
+    "noInventory": "ยังไม่มีประวัติอวตาร ลองใส่อวตารหรือส่องดูเพื่อให้ VRCSM เก็บข้อมูลไว้",
+    "downloadBundle": "โหลดบันเดิล",
+    "downloadTitle": "ดาวน์โหลด",
+    "downloadBody": "โหลดไฟล์อวตารล่าสุดจาก VRChat ลงโฟลเดอร์ในเครื่องได้เลย",
+    "noDownloadCandidates": "ยังไม่มีอวตารล่าสุดให้โหลดได้",
+    "marketplaceTitle": "ร้านค้า",
+    "marketplaceBody": "ข้อมูลการเป็นเจ้าของจากอวตารที่ชอบ, คลังในเครื่อง, ไฟล์ที่โหลดล่าสุด และข้อมูลจากเซสชัน VRChat",
+    "favoriteAvatars": "อวตารโปรด",
+    "favoriteWorlds": "เวิลด์โปรด",
+    "downloadReady": "พร้อมโหลด",
+    "downloadFolder": "โฟลเดอร์ดาวน์โหลด",
+    "topCreators": "ผู้สร้างยอดฮิตในเครื่อง",
+    "inventoryCount": "{{count}} อวตาร",
+    "noMarketplaceSignals": "ยังไม่มีข้อมูล ลองกดชอบ ส่อง หรือโหลดอวตารให้ VRCSM เก็บข้อมูลดูก่อน",
+    "accountLinkTitle": "ผูกบัญชี",
+    "accountLinkBody": "แพลตฟอร์มที่ผูกไว้กับเซสชัน VRChat ดูได้ที่นี่โดยไม่ต้องเปิดเว็บ",
+    "linkedProviders": "บริการที่ผูกไว้",
+    "notLinked": "ไม่ได้ผูก",
+    "linked": "ผูกแล้ว",
+    "subscriptionsTitle": "การซับ",
+    "subscriptionsBody": "สถานะสมาชิกจากบัญชีที่ล็อกอิน และข้อมูลตั้งค่า VRChat ในเครื่อง",
+    "subscriptionStatus": "สถานะ",
+    "subscriptionActive": "ใช้งานอยู่",
+    "subscriptionInactive": "ไม่ได้ใช้งาน",
+    "subscriptionSignals": "สัญญาณ",
+    "lastExpiredSubscription": "หมดอายุล่าสุด",
+    "liveSignal": "เรียลไทม์"
   },
   "friends": {
     "title": "เพื่อน",
@@ -163,21 +228,54 @@
       "avatarName": "ชื่ออวาตาร์"
     },
     "alsoInInstance": "เพื่อนในอินสแตนซ์เดียวกัน",
-    "detailPaneTitle": "รายละเอียด"
+    "detailPaneTitle": "รายละเอียด",
+    "platform": "แพลตฟอร์ม"
   },
   "menu": {
     "file": "ไฟล์",
     "edit": "แก้ไข",
+    "view": "มุมมอง",
+    "go": "ไปยัง",
+    "tools": "เครื่องมือ",
     "assets": "ทรัพยากร",
     "window": "หน้าต่าง",
     "help": "ช่วยเหลือ",
     "fileRescan": "สแกนใหม่",
     "fileExportReport": "ส่งออกรายงาน",
+    "fileOpenCacheFolder": "เปิดโฟลเดอร์แคช",
+    "fileOpenLogFolder": "เปิดโฟลเดอร์ล็อก",
+    "fileOpenDataFolder": "เปิดโฟลเดอร์ข้อมูล",
     "fileExit": "ออก",
+    "editFind": "ค้นหา…",
+    "editPreferences": "ค่ากำหนด",
+    "editClearHistory": "ล้างประวัติเซสชัน",
+    "viewToggleSidebar": "สลับแถบด้านข้าง",
+    "viewToggleDock": "สลับแถบด้านล่าง",
+    "viewResetLayout": "รีเซ็ตเลย์เอาต์",
+    "viewZoomIn": "ขยาย",
+    "viewZoomOut": "ย่อ",
+    "viewZoomReset": "ขนาดจริง",
+    "goDashboard": "แดชบอร์ด",
+    "goRadar": "เรดาร์",
+    "goLogs": "ล็อก",
+    "goBundles": "บันเดิล",
+    "goLibrary": "คลัง",
+    "goAvatars": "อวตาร",
+    "goWorlds": "เวิลด์",
+    "goFriends": "เพื่อน",
+    "goScreenshots": "สกรีนช็อต",
+    "goProfile": "โปรไฟล์",
+    "goVrchat": "VRChat Workspace",
+    "toolsMigrate": "ย้ายแคช",
+    "toolsSettings": "ตั้งค่า",
+    "toolsSteamVR": "ตั้งค่า SteamVR",
+    "toolsConfig": "การตั้งค่าแอป",
     "windowResetLayout": "รีเซ็ตเลย์เอาต์",
     "helpAbout": "เกี่ยวกับ VRCSM",
     "helpDocs": "เอกสาร",
-    "helpCheckUpdates": "ตรวจสอบอัปเดต"
+    "helpCheckUpdates": "ตรวจสอบอัปเดต",
+    "helpReportIssue": "รายงานปัญหา",
+    "helpKeyboard": "แป้นพิมพ์ลัด"
   },
   "radar": {
     "title": "เรดาร์อินสแตนซ์แบบสด",
@@ -244,7 +342,11 @@
     "created": "สร้างเมื่อ",
     "updated": "อัปเดตเมื่อ",
     "friend": "เพื่อน",
-    "player": "ผู้เล่น"
+    "player": "ผู้เล่น",
+    "hide": "ซ่อน",
+    "show": "แสดง",
+    "unknown": "ไม่ทราบ",
+    "sidebar": "แถบข้าง"
   },
   "about": {
     "title": "เกี่ยวกับ VRCSM",
@@ -253,17 +355,33 @@
     "version": "เวอร์ชัน",
     "build": "บิลด์",
     "developer": "ผู้พัฒนา",
-    "developerBody": "ทิศทางผลิตภัณฑ์ โฮสต์เนทีฟ เชลล์ส่วนหน้า และการแพ็กเกจถูกรักษาไว้ในโค้ดเบสเดียว",
+    "developerBody": "นักพัฒนาคนเดียวนั่งเขียนโค้ดกับกาแฟถ้วยเดียว~ โฮสต์เนทีฟ UI และแพ็กเกจทั้งหมดอยู่ในโค้ดเบสเล็ก ๆ เดียวกัน ขอให้ใช้สนุกนะ (｡•ㅅ•｡)♡",
     "specialThanks": "ขอบคุณเป็นพิเศษ",
-    "specialThanksBody": "เพื่อนคนแรกที่พบใน VRChat และยังเป็นส่วนหนึ่งของเรื่องราวโครงการนี้",
+    "specialThanksBody": "เพื่อนคนแรกที่ได้เจอใน VRChat — ยังแอบอยู่ในโปรเจกต์นี้เสมอ~",
     "links": "ลิงก์",
     "footer": "สร้างขึ้นเพื่อการจัดการบัญชี แคช และเซสชัน VRChat แบบ local-first"
   },
   "toolbar": {
     "rescan": "สแกนใหม่",
     "search": "ค้นหา",
+    "searchPrompt": "ค้นหาใน {{page}} หรือไปยังที่ใดก็ได้…",
     "vrcRunning": "VRChat กำลังทำงาน",
     "vrcIdle": "VRChat ไม่ได้ทำงาน"
+  },
+  "cmd": {
+    "title": "พาเลตคำสั่ง",
+    "placeholder": "พิมพ์คำสั่ง หรือค้นหาล็อก ผู้เล่น เวิลด์…",
+    "empty": "ไม่มีคำสั่งที่ตรง",
+    "loading": "กำลังโหลดล็อกเซสชัน…",
+    "navigate": "เลื่อน",
+    "select": "เลือก",
+    "dismiss": "ปิด",
+    "footer": "{{count}} รายการ",
+    "sections": {
+      "navigate": "ไปยัง",
+      "actions": "การกระทำ",
+      "logs": "ล็อกเซสชัน"
+    }
   },
   "dock": {
     "console": "คอนโซล",
@@ -315,7 +433,9 @@
     "screenshotsHint": "ไฟล์ที่พบในดิสก์",
     "recentActivity": "กิจกรรมล่าสุด",
     "recentActivityDesc": "เข้าร่วมโลก เหตุการณ์ผู้เล่น และการสลับอวาตาร์",
-    "noActivity": "ไม่มีความเคลื่อนไหวล่าสุดในบันทึก"
+    "noActivity": "ไม่มีความเคลื่อนไหวล่าสุดในบันทึก",
+    "lastSession": "เซสชันล่าสุด",
+    "playersLastSeen": "ผู้เล่น {{count}} คน (เจอล่าสุด)"
   },
   "bundles": {
     "title": "บันเดิล",
@@ -449,7 +569,8 @@
       "panning": "โหมดแพน",
       "textureNote": "extractor ปัจจุบันเก็บเฉพาะ mesh และ UV เท่านั้น ยังไม่ส่งออก texture ที่ฝังอยู่ไปยัง GLB",
       "expandedTitle": "ดูตัวอย่างอวาตาร์แบบขยาย",
-      "expandedBody": "ใช้ viewport ที่ใหญ่ขึ้นเพื่อตรวจสอบทรง โครงกระดูก และวัสดุ Shift+ลากซ้ายและลากขวาใช้แพนได้ และปิดการกดปุ่มกลางเพื่อหลีกเลี่ยงปัญหา WebView"
+      "expandedBody": "ใช้ viewport ที่ใหญ่ขึ้นเพื่อตรวจสอบทรง โครงกระดูก และวัสดุ Shift+ลากซ้ายและลากขวาใช้แพนได้ และปิดการกดปุ่มกลางเพื่อหลีกเลี่ยงปัญหา WebView",
+      "retry": "ลองใหม่"
     },
     "thumbnailNote": "VRChat avatar API ไม่ยอมรับคำขอแบบ anonymous แม้สำหรับอวาตาร์สาธารณะ ดังนั้น VRCSM จึงแสดงคิวบ์ที่อิงตาม id แทนภาพจริง ส่วนโลกใช้ endpoint สาธารณะจึงแสดงรูปจริงได้",
     "unknownUser": "ผู้ใช้ไม่ทราบ",
@@ -467,7 +588,9 @@
     "pickOne": "เลือกอวาตาร์",
     "noMatch": "ไม่มีอวาตาร์ที่ตรงกับตัวกรอง",
     "nameNote": "ชื่ออวาตาร์ถูกดึงมาจาก output log ของ VRChat ชื่อจะแสดงเฉพาะอวาตาร์ที่เคยถูกโหลดอย่างน้อยหนึ่งครั้งบนเครื่องนี้",
-    "previewWorkbench": "ตัวอย่างใน inspector ถูกออกแบบให้กะทัดรัด และปุ่มขยายด้านขวาบนจะเปิด viewer ขนาดใหญ่ตรงกลาง ขณะนี้ extractor ยังไม่ฝัง texture ลงใน GLB ดังนั้นโหมด Original จะแสดงเพียงสถานะวัสดุที่ส่งออกได้ ใช้ล้อเมาส์ซูม และใช้ Shift+ลากหรือคลิกขวาลากเพื่อแพน"
+    "previewWorkbench": "ตัวอย่างใน inspector ถูกออกแบบให้กะทัดรัด และปุ่มขยายด้านขวาบนจะเปิด viewer ขนาดใหญ่ตรงกลาง ขณะนี้ extractor ยังไม่ฝัง texture ลงใน GLB ดังนั้นโหมด Original จะแสดงเพียงสถานะวัสดุที่ส่งออกได้ ใช้ล้อเมาส์ซูม และใช้ Shift+ลากหรือคลิกขวาลากเพื่อแพน",
+    "unityPackages": "{{count}} แพลตฟอร์ม",
+    "hiddenCount": "ซ่อนอยู่อีก {{count}} รายการ ใช้ค้นหาเพื่อกรอง"
   },
   "worlds": {
     "title": "โลก",
@@ -534,7 +657,12 @@
     "joined": "เข้า",
     "left": "ออก",
     "eventCount": "{{count}} เหตุการณ์",
-    "filterEvents": "กรองตามชื่อ…"
+    "filterEvents": "กรองตามชื่อ…",
+    "clearFilesSkippedActive": " ข้ามไฟล์ {{count}} ไฟล์เพราะ VRChat เปิดอยู่",
+    "clearFilesSuccess": "ลบไฟล์ล็อก {{count}} ไฟล์แล้ว",
+    "clearFilesFailed": "ลบไฟล์ล้มเหลว: {{error}}",
+    "clearFiles": "ล้างไฟล์ล็อก",
+    "clearFilesConfirm": "แน่ใจไหมว่าจะลบไฟล์ output_log ของ VRChat ที่เก็บไว้? ถ้า VRChat เปิดอยู่ไฟล์ปัจจุบันจะไม่ถูกลบ"
   },
   "migrate": {
     "title": "ย้ายข้อมูล",
@@ -650,7 +778,11 @@
       "hours_other": "{{count}} ชั่วโมงที่แล้ว",
       "days_one": "{{count}} วันที่แล้ว",
       "days_other": "{{count}} วันที่แล้ว"
-    }
+    },
+    "clearHistorySuccess": "ล้างประวัติแล้ว หมายเหตุเพื่อนยังอยู่",
+    "clearHistoryFailed": "ล้างประวัติล้มเหลว: {{error}}",
+    "clearHistory": "ล้างประวัติ",
+    "clearHistoryConfirm": "แน่ใจไหมว่าจะล้างประวัติเซสชันและการเปลี่ยนแปลงของเพื่อน? (หมายเหตุเพื่อนจะไม่ถูกลบ)"
   },
   "settings": {
     "title": "การตั้งค่า",
@@ -774,6 +906,21 @@
         "page": "หน้า {{page}} / {{total}}",
         "range": "{{from}}–{{to}} จาก {{total}}"
       }
+    },
+    "general": {
+      "runtimeVr": "VR",
+      "runtimeStandalone": "สแตนด์อโลน",
+      "runtimeDesktop": "เดสก์ท็อป",
+      "radarTimeline": "ไทม์ไลน์เรดาร์",
+      "radarTimelineHint": "แสดงแถบไทม์ไลน์สดในหน้าเรดาร์และล็อก",
+      "friendsDetail": "หน้าต่างรายละเอียดเพื่อน",
+      "friendsDetailHint": "แสดงหน้าต่างรายละเอียดเพื่อนทางด้านขวาในหน้าเพื่อน",
+      "vrchatSidebar": "แถบข้าง VRChat",
+      "vrchatSidebarHint": "ถ้าปิด แถบขวาจะไปอยู่ด้านล่างแทนที่จะอยู่ข้างๆ",
+      "runtimeTitle": "ตรวจสอบระบบ",
+      "runtimeDesc": "ข้อมูลสรุประบบที่อ่านจากล็อก VRChat ในเครื่องนี้",
+      "runtimeMode": "โหมดระบบ",
+      "runtimeDetail": "รายละเอียดที่พบ"
     }
   },
   "profileCard": {

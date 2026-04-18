@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { IdBadge } from "./IdBadge";
 import { ipc } from "@/lib/ipc";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -12,6 +13,7 @@ import {
 import { Users, Globe2, Play } from "lucide-react";
 
 export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worldId: string }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useIpcQuery<{ id: string }, { details: WorldDetails | null }>(
     "world.details",
     { id: worldId },
@@ -101,11 +103,11 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worl
                {/* Body Stats */}
                <div className="grid grid-cols-2 gap-2 mt-4 text-[11px]">
                   <div className="flex flex-col bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.4)] rounded-md px-3 py-2">
-                     <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">VISITS</span>
+                     <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">{t("world.popup.visits", { defaultValue: "VISITS" })}</span>
                      <span className="font-mono text-[hsl(var(--foreground))] font-semibold">{details.visits || 0}</span>
                   </div>
                   <div className="flex flex-col bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.4)] rounded-md px-3 py-2">
-                     <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">FAVORITES</span>
+                     <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">{t("world.popup.favorites", { defaultValue: "FAVORITES" })}</span>
                      <span className="font-mono text-[hsl(var(--foreground))] font-semibold">{details.favorites || 0}</span>
                   </div>
                </div>
@@ -117,7 +119,7 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worl
                      {details.description}
                    </p>
                  ) : (
-                   <p className="text-[11px] italic text-[hsl(var(--muted-foreground)/0.5)]">无介绍...</p>
+                   <p className="text-[11px] italic text-[hsl(var(--muted-foreground)/0.5)]">{t("common.noDescription", { defaultValue: "No description..." })}</p>
                  )}
                </div>
 
@@ -130,7 +132,7 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worl
                        onClick={() => ipc.call("shell.openUrl", { url: `https://vrchat.com/home/world/${worldId}` })}
                      >
                         <Play className="size-3.5 fill-current" />
-                        在网页中打开
+                        {t("common.openInBrowser", { defaultValue: "Open in browser" })}
                      </button>
                   </div>
                </div>

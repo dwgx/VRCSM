@@ -47,9 +47,12 @@
     "openAvatarManager": "अवतार मैनेजर खोलें",
     "openWorldManager": "वर्ल्ड मैनेजर खोलें",
     "openHomePortal": "VRChat होम खोलें",
+    "openNativeWorkspace": "वर्कस्पेस खोलें",
     "liveContext": "लाइव कॉन्टेक्स्ट",
     "liveContextDesc": "तेज़ नेविगेशन के लिए महत्वपूर्ण id और मौजूदा सेशन टारगेट।",
-    "liveContextHint": "इन लाइव id को एंकर की तरह उपयोग करें ताकि VRCSM के अंदर मित्र, अवतार, वर्ल्ड और फेवरेट्स वर्कफ़्लो तक सीधे जा सकें।"
+    "liveContextHint": "इन लाइव id को एंकर की तरह उपयोग करें ताकि VRCSM के अंदर मित्र, अवतार, वर्ल्ड और फेवरेट्स वर्कफ़्लो तक सीधे जा सकें।",
+    "openFriendsManager": "दोस्तों से जुड़ें",
+    "openLibrary": "लाइब्रेरी खोलें"
   },
   "screenshots": {
     "title": "स्क्रीनशॉट",
@@ -73,7 +76,14 @@
     "clearSelection": "चयन हटाएं",
     "selectionCount": "{{count}} चुने गए",
     "openSelected": "खोलें ({{count}})",
-    "copyPaths": "पाथ कॉपी करें"
+    "copyPaths": "पाथ कॉपी करें",
+    "deleteSelected": "हटाएं ({{count}})",
+    "deleteSuccess": "सफलतापूर्वक हटा दिया गया",
+    "deleteBulkSuccess": "{{count}} स्क्रीनशॉट हटा दिए गए",
+    "deletePartial": "कुछ फ़ाइलें हटाई नहीं जा सकीं",
+    "deleteFailed": "हटाना विफल रहा",
+    "confirmDelete": "क्या आप वाकई इस स्क्रीनशॉट को हटाना चाहते हैं?",
+    "confirmDeleteBulk": "क्या आप वाकई {{count}} स्क्रीनशॉट हटाना चाहते हैं?"
   },
   "avatars_extra": {
     "selectAvatar": "इस अवतार पर स्विच करें",
@@ -105,10 +115,65 @@
       "verify": "सत्यापित करें",
       "verifying": "सत्यापित हो रहा है…",
       "invalidCode": "6-अंकीय कोड दर्ज करें।"
-    }
+    },
+    "username": "यूज़रनेम"
   },
   "vrchatWorkspace": {
-    "title": "VRChat वर्कस्पेस"
+    "title": "VRChat वर्कस्पेस",
+    "joinFriend": "मित्र से जुड़ें",
+    "requestInvite": "आमंत्रण अनुरोध करें",
+    "openFriendProfile": "प्रोफ़ाइल खोलें",
+    "noSubscriptionSignals": "इस सत्र में सदस्यता की जानकारी देने वाले विशेष फ़ील्ड उपलब्ध नहीं थे।",
+    "block": "ब्लॉक",
+    "mute": "म्यूट",
+    "pickDownloadFolder": "अवतार बंडल के लिए फ़ोल्डर चुनें",
+    "downloadAssetMissing": "यह अवतार डाउनलोड करने योग्य Windows एसेट URL नहीं दिखाता है।",
+    "downloadSuccess": "बंडल {{path}} में सेव किया गया",
+    "downloadFailed": "डाउनलोड विफल रहा: {{error}}",
+    "noJoinable": "वर्तमान में कोई भी जुड़ने योग्य दोस्त किसी इंस्टेंस को नहीं दिखा रहा है।",
+    "saveToLibrary": "लाइब्रेरी में सेव करें",
+    "groupsTitle": "ग्रुप्स",
+    "groupsBody": "साइन-इन किए गए सेशन से आपके VRChat ग्रुप्स, वर्कस्पेस के अंदर नेटिव रूप से दिखाए गए हैं।",
+    "groupCount": "{{count}} ग्रुप्स",
+    "representing": "सक्रिय का प्रतिनिधित्व",
+    "noGroups": "इस अकाउंट के लिए कोई ग्रुप्स नहीं मिले।",
+    "verified": "वेरीफाइड",
+    "blocksMutesTitle": "ब्लॉक्स और म्यूट",
+    "blocksMutesBody": "आपके साइन-इन किए गए VRChat सेशन से ली गई वर्तमान खिलाड़ी मॉडरेशन प्रविष्टियाँ।",
+    "blocked": "ब्लॉक किया गया",
+    "muted": "म्यूट किया गया",
+    "noModerations": "इस अकाउंट के लिए कोई ब्लॉक या म्यूट प्रविष्टियां नहीं मिलीं।",
+    "inventoryTitle": "इन्वेंट्री",
+    "inventoryBody": "स्थानीय कैश, लॉग पार्सिंग और VRCSM द्वारा बनाए गए अवतार इतिहास में देखे गए हाल के अवतार।",
+    "localAvatarData": "स्थानीय अवतार डेटा",
+    "avatarHistory": "अवतार इतिहास",
+    "noInventory": "अभी तक कोई अवतार इतिहास नहीं है। VRCSM को इन्वेंट्री बनाने देने के लिए अवतार पहनें या उनका निरीक्षण करें।",
+    "downloadBundle": "बंडल डाउनलोड करें",
+    "downloadTitle": "डाउनलोड",
+    "downloadBody": "सीधे साइन-इन किए गए VRChat सेशन से हाल ही के अवतार बंडल को अपने चुने हुए स्थानीय फ़ोल्डर में डाउनलोड करें।",
+    "noDownloadCandidates": "कोई भी हालिया अवतार अभी डाउनलोड के लिए उपलब्ध नहीं है।",
+    "marketplaceTitle": "मार्केटप्लेस",
+    "marketplaceBody": "आधिकारिक पसंदीदा, स्थानीय अवतार इन्वेंट्री, हाल के बंडल लक्ष्य और सक्रिय VRChat सेशन द्वारा प्रदर्शित किसी भी वाणिज्य-संबंधित क्षेत्रों से खींचे गए स्वामित्व और अधिग्रहण संकेत।",
+    "favoriteAvatars": "पसंदीदा अवतार",
+    "favoriteWorlds": "पसंदीदा दुनिया",
+    "downloadReady": "डाउनलोड के लिए तैयार",
+    "downloadFolder": "डाउनलोड फ़ोल्डर",
+    "topCreators": "स्थानीय इन्वेंट्री में शीर्ष निर्माता",
+    "inventoryCount": "{{count}} अवतार",
+    "noMarketplaceSignals": "अभी तक कोई स्थानीय स्वामित्व संकेत नहीं। VRCSM को यह सतह बनाने देने के लिए अवतारों को पसंदीदा बनाएं, उनका निरीक्षण करें या डाउनलोड करें।",
+    "accountLinkTitle": "अकाउंट लिंक",
+    "accountLinkBody": "साइन-इन किए गए VRChat सेशन से हल किए गए लिंक किए गए प्लैटफ़ॉर्म और पहचान फ़ील्ड, वेब पैनल पर बाउंस किए बिना स्थानीय रूप से सामने आए।",
+    "linkedProviders": "लिंक किए गए प्रदाता",
+    "notLinked": "लिंक्ड नहीं है",
+    "linked": "लिंक्ड",
+    "subscriptionsTitle": "सब्सक्रिप्शन",
+    "subscriptionsBody": "इस मशीन पर संग्रहीत स्थानीय VRChat सेटिंग्स संकेतों के साथ-साथ प्रमाणित उपयोगकर्ता पेलोड से अनुमानित समर्थक और सब्सक्रिप्शन स्थिति।",
+    "subscriptionStatus": "स्टेटस",
+    "subscriptionActive": "एक्टिव",
+    "subscriptionInactive": "इनएक्टिव",
+    "subscriptionSignals": "सिग्नल",
+    "lastExpiredSubscription": "पिछला समाप्त",
+    "liveSignal": "लाइव सिग्नल"
   },
   "friends": {
     "title": "मित्र",
@@ -163,21 +228,54 @@
       "avatarName": "अवतार नाम"
     },
     "alsoInInstance": "उसी इंस्टेंस में अन्य मित्र",
-    "detailPaneTitle": "विवरण"
+    "detailPaneTitle": "विवरण",
+    "platform": "प्लेटफ़ॉर्म"
   },
   "menu": {
     "file": "फ़ाइल",
     "edit": "संपादन",
+    "view": "व्यू",
+    "go": "जाएँ",
+    "tools": "टूल्स",
     "assets": "एसेट्स",
     "window": "विंडो",
     "help": "मदद",
     "fileRescan": "दोबारा स्कैन",
     "fileExportReport": "रिपोर्ट एक्सपोर्ट करें",
+    "fileOpenCacheFolder": "कैश फ़ोल्डर खोलें",
+    "fileOpenLogFolder": "लॉग फ़ोल्डर खोलें",
+    "fileOpenDataFolder": "डेटा फ़ोल्डर खोलें",
     "fileExit": "बंद करें",
+    "editFind": "खोजें…",
+    "editPreferences": "प्राथमिकताएँ",
+    "editClearHistory": "सेशन हिस्ट्री साफ़ करें",
+    "viewToggleSidebar": "साइडबार टॉगल",
+    "viewToggleDock": "नीचे का डॉक टॉगल",
+    "viewResetLayout": "लेआउट रीसेट करें",
+    "viewZoomIn": "ज़ूम इन",
+    "viewZoomOut": "ज़ूम आउट",
+    "viewZoomReset": "वास्तविक आकार",
+    "goDashboard": "डैशबोर्ड",
+    "goRadar": "रडार",
+    "goLogs": "लॉग्स",
+    "goBundles": "बंडल्स",
+    "goLibrary": "लाइब्रेरी",
+    "goAvatars": "अवतार",
+    "goWorlds": "वर्ल्ड्स",
+    "goFriends": "दोस्त",
+    "goScreenshots": "स्क्रीनशॉट्स",
+    "goProfile": "प्रोफ़ाइल",
+    "goVrchat": "VRChat Workspace",
+    "toolsMigrate": "कैश माइग्रेशन",
+    "toolsSettings": "सेटिंग्स",
+    "toolsSteamVR": "SteamVR सेटिंग्स",
+    "toolsConfig": "ऐप कॉन्फ़िग",
     "windowResetLayout": "लेआउट रीसेट करें",
     "helpAbout": "VRCSM के बारे में",
     "helpDocs": "दस्तावेज़",
-    "helpCheckUpdates": "अपडेट जांचें"
+    "helpCheckUpdates": "अपडेट जांचें",
+    "helpReportIssue": "समस्या रिपोर्ट करें",
+    "helpKeyboard": "कीबोर्ड शॉर्टकट"
   },
   "radar": {
     "title": "लाइव इंस्टेंस रडार",
@@ -244,7 +342,11 @@
     "created": "बनाया गया",
     "updated": "अपडेट किया गया",
     "friend": "मित्र",
-    "player": "खिलाड़ी"
+    "player": "खिलाड़ी",
+    "hide": "छिपाएं",
+    "show": "दिखाएं",
+    "unknown": "अज्ञात",
+    "sidebar": "साइडबार"
   },
   "about": {
     "title": "VRCSM के बारे में",
@@ -253,17 +355,33 @@
     "version": "संस्करण",
     "build": "बिल्ड",
     "developer": "डेवलपर",
-    "developerBody": "प्रोडक्ट दिशा, native host, frontend shell और packaging एक ही कोडबेस में मेंटेन किए जाते हैं।",
+    "developerBody": "अकेला डेवलपर, कॉफी हाथ में लिए~ native host, UI और packaging सब एक ही प्यारी सी codebase में लिखे हैं। आशा है VRChat थोड़ा और cozy हो जाए (｡•ㅅ•｡)♡",
     "specialThanks": "विशेष धन्यवाद",
-    "specialThanksBody": "VRChat में मिले पहले मित्र को, जो अब भी इस प्रोजेक्ट की कहानी का हिस्सा है।",
+    "specialThanksBody": "VRChat में मिला पहला दोस्त — अब भी चुपचाप इस project के अंदर रहता है~",
     "links": "लिंक",
     "footer": "लोकल-फर्स्ट VRChat अकाउंट, कैश और सेशन प्रबंधन के लिए बनाया गया।"
   },
   "toolbar": {
     "rescan": "दोबारा स्कैन",
     "search": "खोज",
+    "searchPrompt": "{{page}} में खोजें या कहीं भी जाएँ…",
     "vrcRunning": "VRChat चल रहा है",
     "vrcIdle": "VRChat बंद है"
+  },
+  "cmd": {
+    "title": "कमांड पैलेट",
+    "placeholder": "कमांड टाइप करें या लॉग, प्लेयर, वर्ल्ड खोजें…",
+    "empty": "कोई मिलती कमांड नहीं।",
+    "loading": "सेशन लॉग्स लोड हो रहे हैं…",
+    "navigate": "नेविगेट",
+    "select": "चुनें",
+    "dismiss": "बंद",
+    "footer": "{{count}} परिणाम",
+    "sections": {
+      "navigate": "जाएँ",
+      "actions": "क्रियाएँ",
+      "logs": "सेशन लॉग्स"
+    }
   },
   "dock": {
     "console": "कंसोल",
@@ -315,7 +433,9 @@
     "screenshotsHint": "डिस्क पर मिली फ़ाइलें",
     "recentActivity": "हाल की गतिविधि",
     "recentActivityDesc": "वर्ल्ड जॉइन, player event और avatar switch",
-    "noActivity": "लॉग में हाल की गतिविधि नहीं है"
+    "noActivity": "लॉग में हाल की गतिविधि नहीं है",
+    "lastSession": "पिछला सेशन",
+    "playersLastSeen": "{{count}} खिलाड़ी (पिछली बार देखे गए)"
   },
   "bundles": {
     "title": "बंडल",
@@ -449,7 +569,8 @@
       "panning": "Pan मोड",
       "textureNote": "वर्तमान extractor केवल mesh और UV डेटा रखता है; embedded textures अभी GLB में export नहीं होते।",
       "expandedTitle": "विस्तारित अवतार पूर्वावलोकन",
-      "expandedBody": "बड़े viewport का उपयोग silhouette, bones और materials देखने के लिए करें। Shift+left drag pan करता है, right drag भी pan करता है, और WebView glitches से बचने के लिए middle-click बंद है।"
+      "expandedBody": "बड़े viewport का उपयोग silhouette, bones और materials देखने के लिए करें। Shift+left drag pan करता है, right drag भी pan करता है, और WebView glitches से बचने के लिए middle-click बंद है।",
+      "retry": "रीट्राई"
     },
     "thumbnailNote": "VRChat avatar API anonymous requests को मना कर देता है, भले ही avatar public हो, इसलिए VRCSM वास्तविक thumbnail की जगह id-seeded स्थिर cube दिखाता है। Worlds के लिए public endpoint उपलब्ध है, इसलिए वहाँ असली इमेज दिखाई जाती है।",
     "unknownUser": "अज्ञात यूज़र",
@@ -467,7 +588,9 @@
     "pickOne": "एक अवतार चुनें",
     "noMatch": "फ़िल्टर से मेल खाने वाला कोई अवतार नहीं।",
     "nameNote": "अवतार नाम VRChat output log से निकाले जाते हैं। नाम केवल उन्हीं अवतारों पर दिखता है जो इस मशीन पर कम से कम एक बार लोड हुए हों।",
-    "previewWorkbench": "इंस्पेक्टर preview जानबूझकर compact रखा गया है, और ऊपर दाईं तरफ expand बटन बड़ा centered viewer खोलता है। वर्तमान extractor अभी textures को GLB में embed नहीं करता, इसलिए Original mode में केवल raw exported material state ही दिख सकती है। wheel से zoom करें, Shift+drag से pan करें, और right drag भी pan करता है।"
+    "previewWorkbench": "इंस्पेक्टर preview जानबूझकर compact रखा गया है, और ऊपर दाईं तरफ expand बटन बड़ा centered viewer खोलता है। वर्तमान extractor अभी textures को GLB में embed नहीं करता, इसलिए Original mode में केवल raw exported material state ही दिख सकती है। wheel से zoom करें, Shift+drag से pan करें, और right drag भी pan करता है।",
+    "unityPackages": "{{count}} प्लैटफ़ॉर्म वर्ज़न",
+    "hiddenCount": "+{{count}} और। फ़िल्टर करने के लिए खोजें।"
   },
   "worlds": {
     "title": "वर्ल्ड",
@@ -534,7 +657,12 @@
     "joined": "जुड़ा",
     "left": "छोड़ा",
     "eventCount": "{{count}} इवेंट",
-    "filterEvents": "नाम से फ़िल्टर करें…"
+    "filterEvents": "नाम से फ़िल्टर करें…",
+    "clearFilesSkippedActive": "{{count}} सक्रिय लॉग फ़ाइल रखी गई क्योंकि VRChat चल रहा है।",
+    "clearFilesSuccess": "{{count}} लॉग फ़ाइलें हटा दी गईं।",
+    "clearFilesFailed": "लॉग फ़ाइलें मिटाने में विफल: {{error}}",
+    "clearFiles": "लॉग फ़ाइलें मिटाएं",
+    "clearFilesConfirm": "संग्रहीत VRChat output_log फ़ाइलें हटाएं? यदि VRChat चल रहा है, तो वर्तमान सक्रिय लॉग रखा जाएगा।"
   },
   "migrate": {
     "title": "माइग्रेट",
@@ -650,7 +778,11 @@
       "hours_other": "{{count}}घं पहले",
       "days_one": "{{count}}दिन पहले",
       "days_other": "{{count}}दिन पहले"
-    }
+    },
+    "clearHistorySuccess": "हिस्ट्री मिटा दी गई। दोस्तों के नोट्स सुरक्षित रखे गए।",
+    "clearHistoryFailed": "हिस्ट्री मिटाने में विफल: {{error}}",
+    "clearHistory": "हिस्ट्री मिटाएं",
+    "clearHistoryConfirm": "संग्रहीत सेशन हिस्ट्री और सामाजिक बदलाव की हिस्ट्री मिटाएं? दोस्तों के नोट्स सुरक्षित रहेंगे।"
   },
   "settings": {
     "title": "सेटिंग्स",
@@ -774,6 +906,21 @@
         "page": "पेज {{page}} / {{total}}",
         "range": "{{from}}–{{to}} / {{total}}"
       }
+    },
+    "general": {
+      "runtimeVr": "VR",
+      "runtimeStandalone": "स्टैंडअलोन",
+      "runtimeDesktop": "डेस्कटॉप",
+      "radarTimeline": "रडार टाइमलाइन",
+      "radarTimelineHint": "रडार और लॉग पर लाइव टाइमलाइन डॉक को दृश्यमान रखें।",
+      "friendsDetail": "दोस्त विवरण पेन",
+      "friendsDetailHint": "दोस्तों के पेज पर दाईं ओर प्रोफ़ाइल विवरण पेन दिखाएं।",
+      "vrchatSidebar": "VRChat वर्कस्पेस साइड स्टैक",
+      "vrchatSidebarHint": "अक्षम होने पर, दायां कॉलम अगल-बगल रहने के बजाय मुख्य VRChat वर्कस्पेस के नीचे फोल्ड हो जाता है।",
+      "runtimeTitle": "रनटाइम डिटेक्शन",
+      "runtimeDesc": "इस मशीन पर VRChat लॉग से पार्स किया गया अनुमानित पर्यावरण सारांश।",
+      "runtimeMode": "रनटाइम मोड",
+      "runtimeDetail": "डिटेक्ट किया गया विवरण"
     }
   },
   "profileCard": {

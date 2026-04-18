@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { IdBadge } from "./IdBadge";
 import { AvatarPreview3D } from "./AvatarPreview3D";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -13,6 +14,7 @@ import { Box, User, AlertTriangle, CloudSun } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { avatarId: string }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useIpcQuery<{ id: string }, { details: AvatarDetails | null }>(
     "avatar.details",
     { id: avatarId },
@@ -104,13 +106,13 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
                {/* System Info */}
                <div className="grid grid-cols-2 gap-2 mt-4 text-[11px]">
                   <div className="flex flex-col bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.4)] rounded-md px-3 py-2">
-                     <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center gap-1"><CloudSun className="size-3" />PLATFORMS</span>
+                     <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center gap-1"><CloudSun className="size-3" />{t("avatar.popup.platforms", { defaultValue: "PLATFORMS" })}</span>
                      <span className="font-mono text-[hsl(var(--foreground))] font-semibold mt-1">
                        {details.unityPackages ? details.unityPackages.map((p: UnityPackage) => p.platform).join(" / ") : "Unspecified"}
                      </span>
                   </div>
                   <div className="flex flex-col bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.4)] rounded-md px-3 py-2">
-                     <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center gap-1"><Box className="size-3" />FILE SIZE</span>
+                     <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center gap-1"><Box className="size-3" />{t("avatar.popup.fileSize", { defaultValue: "FILE SIZE" })}</span>
                      <span className="font-mono text-[hsl(var(--foreground))] font-semibold mt-1 flex flex-wrap gap-1">
                         {details.unityPackages ? details.unityPackages.map((p: UnityPackage) => p.platform === "android" ? "Quest: " : "PC: " + (p.assetUrl ? "Valid" : "None")).join(" ") : "Unknown"}
                      </span>
@@ -118,7 +120,7 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
                </div>
                {details.assetUrl && (
                  <div className="mt-2 text-[10px] flex gap-1.5 items-center text-amber-500/80">
-                   <AlertTriangle className="size-3" /> Contains valid asset URL
+                   <AlertTriangle className="size-3" /> {t("avatar.popup.containsAssetUrl", { defaultValue: "Contains valid asset URL" })}
                  </div>
                )}
 
@@ -129,7 +131,7 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
                      {details.description}
                    </p>
                  ) : (
-                   <p className="text-[11px] italic text-[hsl(var(--muted-foreground)/0.5)]">无介绍...</p>
+                   <p className="text-[11px] italic text-[hsl(var(--muted-foreground)/0.5)]">{t("common.noDescription", { defaultValue: "No description..." })}</p>
                  )}
                </div>
 

@@ -8,7 +8,6 @@ import { Activity, RefreshCcw, Search } from "lucide-react";
 import { AuthChip } from "@/components/AuthChip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { APP_ICON_URL } from "@/lib/assets";
 
 interface ToolbarSearchContextValue {
@@ -26,6 +25,7 @@ interface ToolbarProps {
   isRescanning: boolean;
   vrcRunning: boolean;
   onRescan?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 const fallbackContext: ToolbarSearchContextValue = {
@@ -60,9 +60,9 @@ export function Toolbar({
   isRescanning,
   vrcRunning,
   onRescan,
+  onOpenCommandPalette,
 }: ToolbarProps) {
   const { t } = useTranslation();
-  const { searchQuery, setSearchQuery } = useToolbarSearch();
 
   return (
     <div className="unity-toolbar flex h-9 items-center gap-2 px-3">
@@ -98,16 +98,23 @@ export function Toolbar({
         {t("toolbar.rescan")}
       </Button>
 
-      <div className="relative ml-1 min-w-[240px] max-w-[420px] flex-1">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
-        <Input
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          className="h-7 bg-[hsl(var(--canvas))] pl-8"
-          placeholder={`${t("toolbar.search")}  ${currentPageLabel}`}
-          aria-label={t("toolbar.search")}
-        />
-      </div>
+      <button
+        type="button"
+        onClick={() => onOpenCommandPalette?.()}
+        className="group relative ml-1 flex h-7 min-w-[240px] max-w-[420px] flex-1 items-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] pl-2.5 pr-2 text-left text-[12px] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/0.5)] hover:text-[hsl(var(--foreground))]"
+        aria-label={t("toolbar.search")}
+      >
+        <Search className="size-3.5" />
+        <span className="flex-1 truncate">
+          {t("toolbar.searchPrompt", {
+            defaultValue: "Search {{page}} and jump anywhere…",
+            page: currentPageLabel,
+          })}
+        </span>
+        <span className="shrink-0 rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1.5 py-0.5 font-mono text-[10px]">
+          Ctrl K
+        </span>
+      </button>
 
       <div className="ml-auto flex items-center gap-2">
         <AuthChip />

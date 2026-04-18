@@ -18,11 +18,13 @@ import {
 import { StatusBar } from "@/components/StatusBar";
 import { ToolbarSearchProvider } from "@/components/Toolbar";
 import { AboutDialog } from "@/components/AboutDialog";
+import { CommandPalette, useCommandPalette } from "@/components/CommandPalette";
 import { ReportProvider, useReport } from "@/lib/report-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
 import { getTrueCacheCategoryCount, getTrueCacheLabel } from "@/lib/report-metrics";
 import { formatDate } from "@/lib/utils";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { VrcProcessProvider, useVrcProcess } from "@/lib/vrc-context";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { Download } from "lucide-react";
@@ -70,60 +72,63 @@ function AppContent() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [shellVersion, setShellVersion] = useState("…");
   const { updateAvailable } = useUpdateCheck();
+  const { open: commandOpen, setOpen: setCommandOpen } = useCommandPalette();
+  const [sidebarHidden] = useUiPrefBoolean("vrcsm.layout.sidebar.hidden", false);
+  const [dockHidden] = useUiPrefBoolean("vrcsm.layout.dock.hidden", false);
 
   const routeMeta = useMemo<Record<string, RouteShellMeta>>(
     () => ({
       "/": {
         title: t("nav.dashboard"),
-        breadcrumb: ["Workspace", t("nav.dashboard")],
+        breadcrumb: [t("nav.category.workspace", { defaultValue: "Workspace" }), t("nav.dashboard")],
       },
       "/bundles": {
         title: t("nav.bundles"),
-        breadcrumb: ["Assets", t("nav.bundles")],
+        breadcrumb: [t("nav.category.assets", { defaultValue: "Assets" }), t("nav.bundles")],
       },
       "/library": {
         title: t("nav.library"),
-        breadcrumb: ["Assets", t("nav.library")],
+        breadcrumb: [t("nav.category.assets", { defaultValue: "Assets" }), t("nav.library")],
       },
       "/avatars": {
         title: t("nav.avatars"),
-        breadcrumb: ["Assets", t("nav.avatars")],
+        breadcrumb: [t("nav.category.assets", { defaultValue: "Assets" }), t("nav.avatars")],
       },
       "/worlds": {
         title: t("nav.worlds"),
-        breadcrumb: ["Assets", t("nav.worlds")],
+        breadcrumb: [t("nav.category.assets", { defaultValue: "Assets" }), t("nav.worlds")],
       },
       "/friends": {
         title: t("nav.friends"),
-        breadcrumb: ["Social", t("nav.friends")],
+        breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.friends")],
       },
       "/profile": {
         title: t("nav.profile"),
-        breadcrumb: ["Social", t("nav.profile")],
+        breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.profile")],
       },
       "/vrchat": {
         title: t("nav.vrchat"),
-        breadcrumb: ["Social", t("nav.vrchat")],
+        breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.vrchat")],
       },
       "/screenshots": {
         title: t("nav.screenshots"),
-        breadcrumb: ["Media", t("nav.screenshots")],
+        breadcrumb: [t("nav.category.media", { defaultValue: "Media" }), t("nav.screenshots")],
       },
       "/logs": {
         title: t("nav.logs"),
-        breadcrumb: ["Diagnostics", t("nav.logs")],
+        breadcrumb: [t("nav.category.diagnostics", { defaultValue: "Diagnostics" }), t("nav.logs")],
       },
       "/radar": {
         title: t("nav.radar"),
-        breadcrumb: ["Social", t("nav.radar")],
+        breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.radar")],
       },
       "/migrate": {
         title: t("nav.migrate"),
-        breadcrumb: ["Maintenance", t("nav.migrate")],
+        breadcrumb: [t("nav.category.maintenance", { defaultValue: "Maintenance" }), t("nav.migrate")],
       },
       "/settings": {
         title: t("nav.settings"),
-        breadcrumb: ["Project", t("nav.settings")],
+        breadcrumb: [t("nav.category.project", { defaultValue: "Project" }), t("nav.settings")],
       },
     }),
     [t],
@@ -262,19 +267,23 @@ function AppContent() {
     >
       <div className="flex h-screen w-screen overflow-hidden bg-[hsl(var(--canvas))] text-[hsl(var(--foreground))]">
         <PanelGroup orientation="horizontal">
-            {/* ── Resizable Sidebar ── */}
-            <Panel
-              defaultSize={15}
-              minSize={5}
-              collapsible
-              collapsedSize={0}
-            >
-              <Sidebar />
-            </Panel>
-            <PanelResizeHandle className="w-[3px] bg-[hsl(var(--border)/0.3)] hover:bg-[hsl(var(--primary)/0.5)] active:bg-[hsl(var(--primary))] transition-colors cursor-col-resize" />
+            {sidebarHidden ? null : (
+              <>
+                {/* ── Resizable Sidebar ── */}
+                <Panel
+                  defaultSize={15}
+                  minSize={5}
+                  collapsible
+                  collapsedSize={0}
+                >
+                  <Sidebar />
+                </Panel>
+                <PanelResizeHandle className="w-[3px] bg-[hsl(var(--border)/0.3)] hover:bg-[hsl(var(--primary)/0.5)] active:bg-[hsl(var(--primary))] transition-colors cursor-col-resize" />
+              </>
+            )}
 
             {/* ── Main content area ── */}
-            <Panel defaultSize={85} minSize={20}>
+            <Panel defaultSize={sidebarHidden ? 100 : 85} minSize={20}>
               <div className="flex min-w-0 h-full flex-col overflow-hidden">
                 <TitleBar
                   currentPageLabel={currentMeta.title}
@@ -282,6 +291,7 @@ function AppContent() {
                   onRescan={refresh}
                   onResetLayout={() => setLayoutResetToken((value) => value + 1)}
                   onOpenAbout={() => setAboutOpen(true)}
+                  onOpenCommandPalette={() => setCommandOpen(true)}
                   vrcRunning={vrcRunning}
                 />
 
@@ -362,7 +372,9 @@ function AppContent() {
                     ) : null}
                   </PanelGroup>
 
-                  <BottomDock report={shellReport} resetToken={layoutResetToken} />
+                  {dockHidden ? null : (
+                    <BottomDock report={shellReport} resetToken={layoutResetToken} />
+                  )}
 
                   <StatusBar
                     breadcrumb={currentMeta.breadcrumb}
@@ -376,6 +388,12 @@ function AppContent() {
             </Panel>
         </PanelGroup>
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+        <CommandPalette
+          open={commandOpen}
+          onOpenChange={setCommandOpen}
+          onRescan={refresh}
+          onOpenAbout={() => setAboutOpen(true)}
+        />
         <Toaster />
       </div>
     </ToolbarSearchProvider>

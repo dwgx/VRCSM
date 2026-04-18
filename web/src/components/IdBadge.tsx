@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Copy, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -72,6 +73,7 @@ interface IdBadgeProps {
  * - If no known prefix, falls back to a plain monospace display.
  */
 export function IdBadge({ id, name, className, size = "xs" }: IdBadgeProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -87,9 +89,9 @@ export function IdBadge({ id, name, className, size = "xs" }: IdBadgeProps) {
       await navigator.clipboard.writeText(id);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-      toast.success("已复制");
+      toast.success(t("common.copied", { defaultValue: "Copied" }));
     } catch {
-      toast.error("复制失败");
+      toast.error(t("common.copyFailed", { defaultValue: "Copy failed" }));
     }
   }
 
@@ -150,7 +152,7 @@ export function IdBadge({ id, name, className, size = "xs" }: IdBadgeProps) {
             type="button"
             onClick={handleCopy}
             className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-            title="复制 ID"
+            title={t("common.copyId", { defaultValue: "Copy ID" })}
           >
             {copied ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
           </button>
@@ -159,7 +161,7 @@ export function IdBadge({ id, name, className, size = "xs" }: IdBadgeProps) {
               type="button"
               onClick={handleOpen}
               className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-              title="在 VRChat 网站打开"
+              title={t("common.openOnVrchat", { defaultValue: "Open on VRChat website" })}
             >
               <ExternalLink className="size-3" />
             </button>

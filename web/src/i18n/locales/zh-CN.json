@@ -19,7 +19,16 @@
     "migrate": "迁移",
     "settings": "设置",
     "language": "语言",
-    "friendLog": "好友日志"
+    "friendLog": "好友日志",
+    "category": {
+      "workspace": "工作区",
+      "assets": "资产",
+      "social": "社交",
+      "media": "媒体",
+      "diagnostics": "诊断",
+      "maintenance": "维护",
+      "project": "项目"
+    }
   },
   "profile": {
     "title": "我的资料",
@@ -47,7 +56,7 @@
     "openNativeWorkspace": "打开工作区",
     "openAvatarManager": "打开模型管理",
     "openFriendsManager": "加入好友",
-    "openLibrary": "打开资料库",
+    "openLibrary": "打开库",
     "openWorldManager": "打开世界管理",
     "openHomePortal": "打开 VRChat 主页",
     "liveContext": "当前上下文",
@@ -76,7 +85,14 @@
     "clearSelection": "取消选择",
     "selectionCount": "已选 {{count}} 张",
     "openSelected": "打开 ({{count}})",
-    "copyPaths": "复制路径"
+    "copyPaths": "复制路径",
+    "confirmDelete": "确定要删除这张截图吗？",
+    "confirmDeleteBulk": "确定要删除选中的 {{count}} 张截图吗？",
+    "deleteBulkSuccess": "已删除 {{count}} 张截图",
+    "deleteFailed": "删除失败",
+    "deletePartial": "部分文件无法删除",
+    "deleteSelected": "删除 ({{count}})",
+    "deleteSuccess": "已成功删除"
   },
   "avatars_extra": {
     "selectAvatar": "切换为此模型",
@@ -108,63 +124,65 @@
       "verify": "验证",
       "verifying": "验证中…",
       "invalidCode": "请输入 6 位数字验证码。"
-    }
+    },
+    "username": "用户名"
   },
   "vrchatWorkspace": {
     "title": "VRChat 工作区",
-    "block": "屏蔽",
+    "block": "拉黑",
     "mute": "静音",
-    "saveToLibrary": "收藏到资料库",
-    "pickDownloadFolder": "选择模型包保存目录",
-    "downloadAssetMissing": "这个模型没有可下载的 Windows 资源地址。",
-    "downloadSuccess": "模型包已保存到 {{path}}",
+    "saveToLibrary": "保存到库",
+    "pickDownloadFolder": "选择存放模型包的文件夹",
+    "downloadAssetMissing": "该模型未暴露可下载的 Windows 资源地址。",
+    "downloadSuccess": "包已保存到 {{path}}",
     "downloadFailed": "下载失败：{{error}}",
-    "groupsTitle": "分组",
-    "groupsBody": "当前登录会话下的 VRChat 分组，直接在内置工作区里查看。",
-    "groupCount": "{{count}} 个分组",
-    "representing": "代表中",
-    "verified": "已认证",
-    "noGroups": "这个账号当前没有返回任何分组。",
+    "groupsTitle": "团体",
+    "groupsBody": "从 VRChat 登录会话拉取的团体列表，原生在工作台内展示。",
+    "groupCount": "{{count}} 个团体",
+    "representing": "正在代表",
+    "verified": "已验证",
+    "noGroups": "该账号没有返回任何团体。",
     "blocksMutesTitle": "屏蔽与静音",
-    "blocksMutesBody": "从当前登录会话实时拉取的屏蔽和静音记录。",
-    "blocked": "已屏蔽",
+    "blocksMutesBody": "从当前登录的 VRChat 会话拉取的玩家管控名单。",
+    "blocked": "已拉黑",
     "muted": "已静音",
-    "noModerations": "这个账号当前没有返回屏蔽或静音记录。",
-    "inventoryTitle": "库存",
-    "inventoryBody": "基于本地缓存、日志解析和 VRCSM 持久化模型历史汇总出的最近模型库存。",
-    "localAvatarData": "本地模型缓存",
+    "noModerations": "该账号没有返回任何屏蔽或静音记录。",
+    "inventoryTitle": "模型库存",
+    "inventoryBody": "汇总本地缓存、日志解析与 VRCSM 持久化的模型历史得到的最近模型清单。",
+    "localAvatarData": "本地模型数据",
     "avatarHistory": "模型历史",
-    "noInventory": "还没有持久化模型历史。穿戴或检查模型后，VRCSM 会逐步建立库存。",
-    "downloadBundle": "下载模型包",
+    "noInventory": "尚未积累模型历史。穿上或查看模型即可让 VRCSM 持续构建这里的库存。",
+    "downloadBundle": "下载包",
     "downloadTitle": "下载",
-    "downloadBody": "直接通过当前登录的 VRChat 会话，把最近模型的 bundle 下载到你选择的本地目录。",
+    "downloadBody": "直接从登录的 VRChat 会话将最近模型包下载到你选择的本地文件夹。",
     "noDownloadCandidates": "暂时没有可下载的最近模型。",
-    "marketplaceTitle": "市场",
-    "marketplaceBody": "根据官方收藏、本地模型库存、最近下载目标，以及当前登录会话里暴露出的交易相关字段，汇总所有权与获取信号。",
+    "marketplaceTitle": "商店",
+    "marketplaceBody": "综合官方收藏、本地模型库存、最近下载目标，以及活跃 VRChat 会话暴露的交易相关字段，给出拥有与获取信号。",
     "favoriteAvatars": "收藏模型",
-    "favoriteWorlds": "收藏地图",
+    "favoriteWorlds": "收藏世界",
     "downloadReady": "可下载",
-    "downloadFolder": "下载目录",
-    "topCreators": "本地库存里的常见作者",
+    "downloadFolder": "下载文件夹",
+    "topCreators": "本地库中的热门作者",
     "inventoryCount": "{{count}} 个模型",
-    "noMarketplaceSignals": "暂时还没有足够的本地所有权信号。先收藏、检查或下载模型，VRCSM 才能把这一块补全。",
+    "noMarketplaceSignals": "还没有本地拥有信号。收藏、查看或下载模型后 VRCSM 会在这里汇总展示。",
     "accountLinkTitle": "账号绑定",
-    "accountLinkBody": "直接从当前登录会话解析已绑定的平台与身份字段，不再跳出到网页面板。",
-    "linkedProviders": "已绑定提供方",
+    "accountLinkBody": "来自 VRChat 登录会话的已绑定平台与身份字段，原生展示，无需跳转到网页面板。",
+    "linkedProviders": "已绑定的服务",
     "notLinked": "未绑定",
     "linked": "已绑定",
     "subscriptionsTitle": "订阅",
-    "subscriptionsBody": "根据认证用户 payload 与本机 VRChat 设置里的信号，推断支持者与订阅状态。",
+    "subscriptionsBody": "根据登录账号数据以及本机 VRChat 设置信号推断的赞助与订阅状态。",
     "subscriptionStatus": "状态",
-    "subscriptionActive": "有效",
-    "subscriptionInactive": "无效",
-    "subscriptionSignals": "信号数",
-    "lastExpiredSubscription": "上次过期",
+    "subscriptionActive": "生效中",
+    "subscriptionInactive": "未生效",
+    "subscriptionSignals": "信号",
+    "lastExpiredSubscription": "最后到期",
     "liveSignal": "实时信号",
     "noSubscriptionSignals": "当前会话没有暴露可判断订阅状态的专用字段。",
     "joinFriend": "加入此好友",
     "requestInvite": "申请加入",
-    "openFriendProfile": "打开资料"
+    "openFriendProfile": "打开资料",
+    "noJoinable": "当前没有可加入的好友实例。"
   },
   "friends": {
     "title": "好友",
@@ -219,21 +237,54 @@
       "avatarName": "模型名称"
     },
     "alsoInInstance": "同行好友",
-    "detailPaneTitle": "好友详情"
+    "detailPaneTitle": "好友详情",
+    "platform": "平台"
   },
   "menu": {
     "file": "文件",
     "edit": "编辑",
+    "view": "视图",
+    "go": "跳转",
+    "tools": "工具",
     "assets": "资源",
     "window": "窗口",
     "help": "帮助",
     "fileRescan": "重新扫描",
     "fileExportReport": "导出报告",
+    "fileOpenCacheFolder": "打开缓存目录",
+    "fileOpenLogFolder": "打开日志目录",
+    "fileOpenDataFolder": "打开数据目录",
     "fileExit": "退出",
+    "editFind": "查找…",
+    "editPreferences": "偏好设置",
+    "editClearHistory": "清空会话历史",
+    "viewToggleSidebar": "切换侧边栏",
+    "viewToggleDock": "切换底部停靠栏",
+    "viewResetLayout": "重置布局",
+    "viewZoomIn": "放大",
+    "viewZoomOut": "缩小",
+    "viewZoomReset": "实际大小",
+    "goDashboard": "仪表盘",
+    "goRadar": "雷达",
+    "goLogs": "日志",
+    "goBundles": "Bundle",
+    "goLibrary": "素材库",
+    "goAvatars": "模型",
+    "goWorlds": "世界",
+    "goFriends": "好友",
+    "goScreenshots": "截图",
+    "goProfile": "个人主页",
+    "goVrchat": "VRChat 工作台",
+    "toolsMigrate": "缓存迁移",
+    "toolsSettings": "设置",
+    "toolsSteamVR": "SteamVR 设置",
+    "toolsConfig": "应用配置",
     "windowResetLayout": "重置布局",
     "helpAbout": "关于 VRCSM",
     "helpDocs": "文档",
-    "helpCheckUpdates": "检查更新"
+    "helpCheckUpdates": "检查更新",
+    "helpReportIssue": "反馈问题",
+    "helpKeyboard": "键盘快捷键"
   },
   "radar": {
     "title": "实例探测雷达",
@@ -270,7 +321,9 @@
       "desc": "从持久化玩家事件数据库中提取。",
       "open": "打开日志",
       "empty": "暂时还没有记录到会话事件。"
-    }
+    },
+    "vrcNotRunning": "VRChat 未运行",
+    "vrcNotRunningHint": "游戏启动后在此实时监测房间与玩家动向"
   },
   "common": {
     "loading": "加载中…",
@@ -300,7 +353,17 @@
     "created": "创建于",
     "updated": "更新于",
     "friend": "好友",
-    "player": "玩家"
+    "player": "玩家",
+    "copied": "已复制",
+    "copyFailed": "复制失败",
+    "copyId": "复制 ID",
+    "openOnVrchat": "在 VRChat 网站打开",
+    "noDescription": "暂无介绍...",
+    "openInBrowser": "在网页中打开",
+    "hide": "隐藏",
+    "show": "显示",
+    "sidebar": "侧边栏",
+    "unknown": "未知"
   },
   "about": {
     "title": "关于 VRCSM",
@@ -309,17 +372,33 @@
     "version": "版本",
     "build": "构建",
     "developer": "开发者",
-    "developerBody": "产品方向、原生宿主、前端界面与打包发布均在同一套代码中持续维护。",
+    "developerBody": "一个人从夜里肝到天亮～原生宿主、前端界面、打包发布全都自己抱着写的，希望你用得开心 (｡•ㅅ•｡)♡",
     "specialThanks": "特别感谢",
-    "specialThanksBody": "在 VRChat 里最先认识的人，也是这个项目故事的一部分。",
+    "specialThanksBody": "在 VRChat 里最先认识的那个小可爱，现在也偷偷住在这个项目里面~",
     "links": "链接",
     "footer": "围绕本地优先的 VRChat 账号、缓存和会话管理而构建。"
   },
   "toolbar": {
     "rescan": "重新扫描",
     "search": "搜索",
+    "searchPrompt": "搜索 {{page}}，或跳转到任意位置…",
     "vrcRunning": "VRChat 运行中",
     "vrcIdle": "VRChat 未运行"
+  },
+  "cmd": {
+    "title": "命令面板",
+    "placeholder": "输入命令，或搜索日志、玩家、世界…",
+    "empty": "没有匹配的命令。",
+    "loading": "正在加载会话日志…",
+    "navigate": "导航",
+    "select": "选择",
+    "dismiss": "关闭",
+    "footer": "{{count}} 条结果",
+    "sections": {
+      "navigate": "跳转",
+      "actions": "操作",
+      "logs": "会话日志"
+    }
   },
   "dock": {
     "console": "控制台",
@@ -371,7 +450,9 @@
     "screenshotsHint": "磁盘中检测到的截图",
     "recentActivity": "最近动态",
     "recentActivityDesc": "世界切换、玩家事件和模型更换",
-    "noActivity": "日志中暂无近期活动"
+    "noActivity": "日志中暂无近期活动",
+    "lastSession": "最近一次会话",
+    "playersLastSeen": "最近遇到的 {{count}} 位玩家"
   },
   "bundles": {
     "title": "资源包",
@@ -483,7 +564,7 @@
     "preview": "预览",
     "previewLabel": "3D 预览",
     "previewPrivate": "过程生成预览",
-    "duplicateNameHint": "同名不同 ID",
+    "duplicateNameHint": "同名",
     "preview3d": {
       "loading": "解包中…",
       "cache_missing": "找不到缓存目录",
@@ -505,7 +586,8 @@
       "panning": "平移模式",
       "textureNote": "“原始”模式会尽量使用解包后保留下来的材质和贴图结果；如果材质异常，可切换到灰模或线框继续检查。",
       "expandedTitle": "放大 3D 预览",
-      "expandedBody": "用更大的视口检查轮廓、骨骼和材质。Shift+左键可平移，右键也可平移，中键按压已禁用以避免异常。"
+      "expandedBody": "用更大的视口检查轮廓、骨骼和材质。Shift+左键可平移，右键也可平移，中键按压已禁用以避免异常。",
+      "retry": "重试"
     },
     "thumbnailNote": "VRChat 的 avatar API 拒绝所有匿名请求(即使是公开模型),所以 VRCSM 用模型 ID 生成一个稳定的彩色立方体来替代真实缩略图。地图用的是公开端点,因此能显示真图。",
     "unknownUser": "未知用户",
@@ -518,13 +600,14 @@
     "nameFromLogOnly": "名字来自日志匹配",
     "loadingDetails": "正在加载详情…",
     "signInForDetails": "登录后可查看完整元数据",
-    "duplicateNameHint": "同名",
     "unityPackages_one": "{{count}} 个平台变体",
     "unityPackages_other": "{{count}} 个平台变体",
     "pickOne": "选择一个模型",
     "noMatch": "没有匹配的模型。",
     "nameNote": "模型名字是从 VRChat 输出日志中提取的。只有在本机至少加载过一次的模型才会显示名字。",
-    "previewWorkbench": "默认检视器改为更紧凑的尺寸，可点右上角放大查看。当前解包链路仍未把贴图嵌入 GLB，所以“原始”模式暂时只能显示原始材质结果；滚轮缩放，Shift+拖拽平移，右键也可平移。"
+    "previewWorkbench": "默认检视器改为更紧凑的尺寸，可点右上角放大查看。当前解包链路仍未把贴图嵌入 GLB，所以“原始”模式暂时只能显示原始材质结果；滚轮缩放，Shift+拖拽平移，右键也可平移。",
+    "hiddenCount": "另有 {{count}} 条被隐藏，使用搜索可进一步筛选。",
+    "unityPackages": "{{count}} 个平台包"
   },
   "worlds": {
     "title": "地图",
@@ -591,7 +674,12 @@
     "joined": "加入",
     "left": "离开",
     "eventCount": "{{count}} 条事件",
-    "filterEvents": "按名称过滤…"
+    "filterEvents": "按名称过滤…",
+    "clearFiles": "清理日志文件",
+    "clearFilesConfirm": "确认删除已归档的 VRChat output_log 吗？如果 VRChat 正在运行，当前活动日志会被保留。",
+    "clearFilesFailed": "清理日志失败：{{error}}",
+    "clearFilesSkippedActive": "已保留 {{count}} 个正在使用的日志文件（VRChat 运行中）。",
+    "clearFilesSuccess": "已删除 {{count}} 个日志文件。"
   },
   "migrate": {
     "title": "迁移",
@@ -707,7 +795,11 @@
       "hours_other": "{{count}} 小时前",
       "days_one": "{{count}} 天前",
       "days_other": "{{count}} 天前"
-    }
+    },
+    "clearHistory": "清空历史",
+    "clearHistoryConfirm": "确认清空会话与社交变化历史吗？朋友备注会保留。",
+    "clearHistoryFailed": "清空失败：{{error}}",
+    "clearHistorySuccess": "历史已清空，朋友备注已保留。"
   },
   "settings": {
     "title": "设置",
@@ -2624,6 +2716,144 @@
           "description": "首选时区 2"
         }
       }
+    },
+    "tabs": {
+      "general": "通用",
+      "config": "应用配置 (config.json)",
+      "steamvr": "SteamVR",
+      "registry": "VRChat 注册表"
+    },
+    "general": {
+      "layoutTitle": "工作区布局",
+      "layoutDesc": "控制各侧边面板在应用中默认是否保持显示。",
+      "worldInspector": "地图检查器",
+      "worldInspectorHint": "在地图列表旁始终显示可调整大小的地图检查器。",
+      "profileContext": "个人主页实时上下文",
+      "profileContextHint": "在「我的资料」右侧显示实时模型和当前世界上下文。",
+      "friendsDetail": "好友详情面板",
+      "friendsDetailHint": "在好友页面右侧显示所选好友的详细资料面板。",
+      "radarTimeline": "雷达时间线",
+      "radarTimelineHint": "在雷达与日志页面常驻实时时间线吸底栏。",
+      "runtimeDesc": "根据本机 VRChat 日志推断出的运行环境概览。",
+      "runtimeDesktop": "桌面",
+      "runtimeDetail": "识别到的详情",
+      "runtimeMode": "运行模式",
+      "runtimeStandalone": "独立版",
+      "runtimeTitle": "运行环境识别",
+      "runtimeVr": "VR",
+      "vrchatSidebar": "VRChat 工作台侧栏",
+      "vrchatSidebarHint": "关闭后，右侧栏将折叠到 VRChat 工作台下方，不再并排显示。"
+    },
+    "configJson": {
+      "title": "应用配置 (config.json)",
+      "description": "AppData/LocalLow 中的核心引擎参数，修改后请点击保存。",
+      "vrcRunning": "VRChat 运行中",
+      "vrcIdle": "VRChat 空闲",
+      "reload": "刷新",
+      "save": "保存配置",
+      "saving": "保存中...",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "successSave": "成功更新 config.json！",
+      "errorSave": "保存 config.json 失败：{{msg}}",
+      "errorRead": "读取 config.json 失败：{{msg}}",
+      "cacheDirectory": {
+        "label": "缓存目录",
+        "hint": "自定义缓存目录的绝对路径"
+      },
+      "cacheSize": {
+        "label": "缓存大小 (GB)",
+        "hint": "VRChat 缓存的最大容量（以 GB 为单位）"
+      },
+      "customLoadScreenLogo": {
+        "label": "自定义加载界面 Logo",
+        "hint": "加载界面自定义 PNG 图片的绝对路径"
+      },
+      "cameraResHeight": {
+        "label": "相机照片高度",
+        "hint": "相机照片分辨率"
+      },
+      "cameraResWidth": {
+        "label": "相机照片宽度",
+        "hint": "相机照片分辨率"
+      },
+      "fpsLimitDesktop": {
+        "label": "FPS 上限（桌面模式）",
+        "hint": "桌面模式最高帧率（0 = 不限制）"
+      },
+      "fpsLimitVr": {
+        "label": "FPS 上限（VR 模式）",
+        "hint": "VR 模式最高帧率（0 = 不限制）"
+      },
+      "desktopReticle": {
+        "label": "桌面准心",
+        "hint": "在桌面模式下显示中央十字准星"
+      },
+      "ignoreParticles": {
+        "label": "忽略粒子特效",
+        "hint": "在人多的世界中显著提升性能"
+      }
+    },
+    "steamvr": {
+      "title": "VR 串流设置 (SteamVR / Steam Link)",
+      "quickPresets": "快速预设：",
+      "presetPerformance": "流畅 (50Mbps)",
+      "presetBalanced": "均衡 (100Mbps)",
+      "presetQuality": "高画质 (150Mbps)",
+      "presetApplied": "预设已应用。",
+      "steamvrRunning": "SteamVR 运行中",
+      "steamvrIdle": "SteamVR 空闲",
+      "reload": "刷新",
+      "save": "保存设置",
+      "saving": "保存中...",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "successSave": "成功更新 steamvr.vrsettings！",
+      "errorSave": "保存 steamvr.vrsettings 失败：{{msg}}",
+      "errorRead": "读取 steamvr.vrsettings 失败：{{msg}}",
+      "targetBandwidth": {
+        "label": "目标带宽 (Mbps)",
+        "hint": "Steam Link 的码率上限，好路由可设 150-200。"
+      },
+      "automaticBandwidth": {
+        "label": "自动带宽",
+        "hint": "信号差时 SteamVR 自动降低码率。"
+      },
+      "supersampleScale": {
+        "label": "超级采样倍率",
+        "hint": "渲染倍率（1.0 = 原生，1.5 = 高清晰度，需要好显卡）"
+      },
+      "supersampleManualOverride": {
+        "label": "手动超采样覆盖",
+        "hint": "强制使用自定义倍率而非自动调节。"
+      },
+      "refreshRate": {
+        "label": "刷新率 (Hz)",
+        "hint": "必须匹配头显支持的刷新率（72、80、90、120）"
+      },
+      "motionSmoothing": {
+        "label": "运动平滑",
+        "hint": "掉帧时自动插帧，适合帧时波动大的情况，但可能出现鬼影。"
+      },
+      "supersampleFiltering": {
+        "label": "超采样滤波",
+        "hint": "以轻微模糊为代价减少锯齿"
+      }
+    }
+  },
+  "world": {
+    "popup": {
+      "visits": "访问量",
+      "favorites": "收藏数"
+    }
+  },
+  "avatar": {
+    "popup": {
+      "platforms": "支持平台",
+      "fileSize": "文件大小",
+      "containsAssetUrl": "包含有效资产链接",
+      "unspecified": "未指定",
+      "unknown": "未知"
     }
   },
   "profileCard": {

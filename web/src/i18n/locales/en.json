@@ -19,7 +19,16 @@
     "migrate": "Migrate",
     "settings": "Settings",
     "language": "Language",
-    "friendLog": "Friend Log"
+    "friendLog": "Friend Log",
+    "category": {
+      "workspace": "Workspace",
+      "assets": "Assets",
+      "social": "Social",
+      "media": "Media",
+      "diagnostics": "Diagnostics",
+      "maintenance": "Maintenance",
+      "project": "Project"
+    }
   },
   "profile": {
     "title": "My Profile",
@@ -50,7 +59,9 @@
     "openHomePortal": "Open VRChat home",
     "liveContext": "Live Context",
     "liveContextDesc": "Important ids and current session targets for quick navigation.",
-    "liveContextHint": "Use these live ids as anchors for the native friends, avatars, worlds, and favorites workflows inside VRCSM."
+    "liveContextHint": "Use these live ids as anchors for the native friends, avatars, worlds, and favorites workflows inside VRCSM.",
+    "openFriendsManager": "Join Friends",
+    "openLibrary": "Open library"
   },
   "screenshots": {
     "title": "Screenshots",
@@ -74,7 +85,14 @@
     "clearSelection": "Clear",
     "selectionCount": "{{count}} selected",
     "openSelected": "Open ({{count}})",
-    "copyPaths": "Copy paths"
+    "copyPaths": "Copy paths",
+    "deleteSelected": "Delete ({{count}})",
+    "deleteSuccess": "Deleted successfully",
+    "deleteBulkSuccess": "Deleted {{count}} screenshots",
+    "deletePartial": "Some files could not be deleted",
+    "deleteFailed": "Delete failed",
+    "confirmDelete": "Are you sure you want to delete this screenshot?",
+    "confirmDeleteBulk": "Are you sure you want to delete {{count}} screenshots?"
   },
   "avatars_extra": {
     "selectAvatar": "Switch to this avatar",
@@ -106,14 +124,65 @@
       "verify": "Verify",
       "verifying": "Verifying…",
       "invalidCode": "Enter the 6-digit code."
-    }
+    },
+    "username": "Username"
   },
   "vrchatWorkspace": {
     "title": "VRChat Workspace",
     "joinFriend": "Join friend",
     "requestInvite": "Request invite",
     "openFriendProfile": "Open profile",
-    "noSubscriptionSignals": "No dedicated subscription fields were exposed by this session."
+    "noSubscriptionSignals": "No dedicated subscription fields were exposed by this session.",
+    "block": "Block",
+    "mute": "Mute",
+    "pickDownloadFolder": "Choose a folder for avatar bundles",
+    "downloadAssetMissing": "This avatar does not expose a downloadable Windows asset URL.",
+    "downloadSuccess": "Bundle saved to {{path}}",
+    "downloadFailed": "Download failed: {{error}}",
+    "noJoinable": "No joinable friends are currently exposing an instance.",
+    "saveToLibrary": "Save to library",
+    "groupsTitle": "Groups",
+    "groupsBody": "Your VRChat groups from the signed-in session, surfaced natively inside the workspace.",
+    "groupCount": "{{count}} groups",
+    "representing": "Representing active",
+    "noGroups": "No groups were returned for this account.",
+    "verified": "Verified",
+    "blocksMutesTitle": "Blocks & Mutes",
+    "blocksMutesBody": "Current player moderation entries pulled from your signed-in VRChat session.",
+    "blocked": "Blocked",
+    "muted": "Muted",
+    "noModerations": "No block or mute entries were returned for this account.",
+    "inventoryTitle": "Inventory",
+    "inventoryBody": "Recent avatars seen across local cache, log parsing, and avatar history persisted by VRCSM.",
+    "localAvatarData": "Local avatar data",
+    "avatarHistory": "Avatar history",
+    "noInventory": "No persisted avatar history yet. Wear avatars or inspect them to let VRCSM build inventory.",
+    "downloadBundle": "Download bundle",
+    "downloadTitle": "Download",
+    "downloadBody": "Download recent avatar bundles directly from the signed-in VRChat session into a local folder you choose.",
+    "noDownloadCandidates": "No recent avatars are available as download candidates yet.",
+    "marketplaceTitle": "Marketplace",
+    "marketplaceBody": "Ownership and acquisition signals pulled from official favorites, local avatar inventory, recent bundle targets, and any commerce-related fields exposed by the active VRChat session.",
+    "favoriteAvatars": "Favorite avatars",
+    "favoriteWorlds": "Favorite worlds",
+    "downloadReady": "Download-ready",
+    "downloadFolder": "Download folder",
+    "topCreators": "Top creators in local inventory",
+    "inventoryCount": "{{count}} avatars",
+    "noMarketplaceSignals": "No local ownership signals yet. Favorite, inspect, or download avatars to let VRCSM build this surface.",
+    "accountLinkTitle": "Account Link",
+    "accountLinkBody": "Linked platform and identity fields resolved from the signed-in VRChat session, surfaced locally without bouncing out to the web panel.",
+    "linkedProviders": "Linked providers",
+    "notLinked": "Not linked",
+    "linked": "Linked",
+    "subscriptionsTitle": "Subscriptions",
+    "subscriptionsBody": "Supporter and subscription state inferred from the authenticated user payload plus local VRChat settings signals stored on this machine.",
+    "subscriptionStatus": "Status",
+    "subscriptionActive": "Active",
+    "subscriptionInactive": "Inactive",
+    "subscriptionSignals": "Signals",
+    "lastExpiredSubscription": "Last expired",
+    "liveSignal": "Live signal"
   },
   "friends": {
     "title": "Friends",
@@ -168,21 +237,54 @@
       "avatarName": "Avatar name"
     },
     "alsoInInstance": "Also in instance",
-    "detailPaneTitle": "Details"
+    "detailPaneTitle": "Details",
+    "platform": "Platform"
   },
   "menu": {
     "file": "File",
     "edit": "Edit",
+    "view": "View",
+    "go": "Go",
+    "tools": "Tools",
     "assets": "Assets",
     "window": "Window",
     "help": "Help",
     "fileRescan": "Rescan",
-    "fileExportReport": "Export report",
+    "fileExportReport": "Export Report",
+    "fileOpenCacheFolder": "Open Cache Folder",
+    "fileOpenLogFolder": "Open Log Folder",
+    "fileOpenDataFolder": "Open Data Folder",
     "fileExit": "Exit",
-    "windowResetLayout": "Reset layout",
+    "editFind": "Find…",
+    "editPreferences": "Preferences",
+    "editClearHistory": "Clear Session History",
+    "viewToggleSidebar": "Toggle Sidebar",
+    "viewToggleDock": "Toggle Bottom Dock",
+    "viewResetLayout": "Reset Layout",
+    "viewZoomIn": "Zoom In",
+    "viewZoomOut": "Zoom Out",
+    "viewZoomReset": "Actual Size",
+    "goDashboard": "Dashboard",
+    "goRadar": "Radar",
+    "goLogs": "Logs",
+    "goBundles": "Bundles",
+    "goLibrary": "Library",
+    "goAvatars": "Avatars",
+    "goWorlds": "Worlds",
+    "goFriends": "Friends",
+    "goScreenshots": "Screenshots",
+    "goProfile": "Profile",
+    "goVrchat": "VRChat Workspace",
+    "toolsMigrate": "Cache Migration",
+    "toolsSettings": "Settings",
+    "toolsSteamVR": "SteamVR Settings",
+    "toolsConfig": "App Config",
+    "windowResetLayout": "Reset Layout",
     "helpAbout": "About VRCSM",
     "helpDocs": "Documentation",
-    "helpCheckUpdates": "Check for Updates"
+    "helpCheckUpdates": "Check for Updates",
+    "helpReportIssue": "Report an Issue",
+    "helpKeyboard": "Keyboard Shortcuts"
   },
   "radar": {
     "title": "Live Instance Radar",
@@ -219,7 +321,9 @@
       "desc": "Pulled from the persistent player event database.",
       "open": "Open Log",
       "empty": "No recorded session events yet."
-    }
+    },
+    "vrcNotRunning": "VRChat is not running",
+    "vrcNotRunningHint": "Start VRChat to monitor rooms and players in real time"
   },
   "common": {
     "loading": "Loading…",
@@ -249,7 +353,17 @@
     "created": "Created",
     "updated": "Updated",
     "friend": "Friend",
-    "player": "Player"
+    "player": "Player",
+    "copied": "Copied",
+    "copyFailed": "Copy failed",
+    "copyId": "Copy ID",
+    "openOnVrchat": "Open on VRChat website",
+    "noDescription": "No description...",
+    "openInBrowser": "Open in browser",
+    "hide": "Hide",
+    "show": "Show",
+    "unknown": "Unknown",
+    "sidebar": "Sidebar"
   },
   "about": {
     "title": "About VRCSM",
@@ -258,17 +372,33 @@
     "version": "Version",
     "build": "Build",
     "developer": "Developer",
-    "developerBody": "Product direction, native host, frontend shell, and packaging are maintained in one codebase.",
+    "developerBody": "Solo dev, coffee in hand — the native host, the UI, and the packaging all live in one little codebase. Hope it makes your VRChat life comfier (｡•ㅅ•｡)♡",
     "specialThanks": "Special Thanks",
-    "specialThanksBody": "The first friend met in VRChat, and still part of the project's story.",
+    "specialThanksBody": "The very first friend I made in VRChat — still quietly tucked inside this project, always.",
     "links": "Links",
     "footer": "Built for local-first VRChat account, cache, and session management."
   },
   "toolbar": {
     "rescan": "Rescan",
     "search": "Search",
+    "searchPrompt": "Search {{page}} and jump anywhere…",
     "vrcRunning": "VRChat Running",
     "vrcIdle": "VRChat Idle"
+  },
+  "cmd": {
+    "title": "Command Palette",
+    "placeholder": "Type a command or search logs, players, worlds…",
+    "empty": "No matching commands.",
+    "loading": "Loading session logs…",
+    "navigate": "navigate",
+    "select": "select",
+    "dismiss": "dismiss",
+    "footer": "{{count}} results",
+    "sections": {
+      "navigate": "Navigate",
+      "actions": "Actions",
+      "logs": "Session Logs"
+    }
   },
   "dock": {
     "console": "Console",
@@ -320,7 +450,9 @@
     "screenshotsHint": "files detected on disk",
     "recentActivity": "Recent Activity",
     "recentActivityDesc": "World joins, player events, and avatar switches",
-    "noActivity": "No recent activity in logs"
+    "noActivity": "No recent activity in logs",
+    "lastSession": "Last Session",
+    "playersLastSeen": "{{count}} players (last seen)"
   },
   "bundles": {
     "title": "Bundles",
@@ -454,7 +586,8 @@
       "panning": "Pan mode",
       "textureNote": "The current extractor keeps mesh and UV data only; embedded textures are not exported to the GLB yet.",
       "expandedTitle": "Expanded avatar preview",
-      "expandedBody": "Use the larger viewport to inspect silhouette, bones, and materials. Shift plus left drag pans, right drag also pans, and middle-click is disabled to avoid WebView glitches."
+      "expandedBody": "Use the larger viewport to inspect silhouette, bones, and materials. Shift plus left drag pans, right drag also pans, and middle-click is disabled to avoid WebView glitches.",
+      "retry": "Retry"
     },
     "thumbnailNote": "VRChat's avatar API refuses anonymous requests — even for public avatars — so VRCSM renders a stable, id-seeded cube instead of a real thumbnail. Worlds use the public endpoint and show real images.",
     "unknownUser": "Unknown user",
@@ -472,7 +605,9 @@
     "pickOne": "Select an avatar",
     "noMatch": "No avatars match the filter.",
     "nameNote": "Avatar names are extracted from the VRChat output logs. Names only appear for avatars that have been loaded at least once on this machine.",
-    "previewWorkbench": "The inspector preview is now intentionally compact, and the top-right expand button opens a larger centered viewer. The current extractor still does not embed textures into the GLB, so Original mode can only show the raw exported material state for now; scroll to zoom, hold Shift and drag to pan, and right drag also pans."
+    "previewWorkbench": "The inspector preview is now intentionally compact, and the top-right expand button opens a larger centered viewer. The current extractor still does not embed textures into the GLB, so Original mode can only show the raw exported material state for now; scroll to zoom, hold Shift and drag to pan, and right drag also pans.",
+    "unityPackages": "{{count}} platform variants",
+    "hiddenCount": "+{{count}} more. Use search to filter."
   },
   "worlds": {
     "title": "Worlds",
@@ -539,7 +674,12 @@
     "joined": "joined",
     "left": "left",
     "eventCount": "{{count}} events",
-    "filterEvents": "Filter by name…"
+    "filterEvents": "Filter by name…",
+    "clearFilesSkippedActive": " Kept {{count}} active log file because VRChat is running.",
+    "clearFilesSuccess": "Deleted {{count}} log files.",
+    "clearFilesFailed": "Failed to clear log files: {{error}}",
+    "clearFiles": "Clear Log Files",
+    "clearFilesConfirm": "Delete stored VRChat output_log files? If VRChat is running, the current active log will be kept."
   },
   "migrate": {
     "title": "Migrate",
@@ -655,7 +795,11 @@
       "hours_other": "{{count}}h ago",
       "days_one": "{{count}}d ago",
       "days_other": "{{count}}d ago"
-    }
+    },
+    "clearHistorySuccess": "History cleared. Friend notes were kept.",
+    "clearHistoryFailed": "Failed to clear history: {{error}}",
+    "clearHistory": "Clear History",
+    "clearHistoryConfirm": "Clear stored session history and social change history? Friend notes will be kept."
   },
   "settings": {
     "title": "Settings",
@@ -679,7 +823,7 @@
       "factoryResetFailed": "Factory reset failed: {{error}}",
       "factoryResetConfirmTitle": "Factory reset VRCSM?",
       "factoryResetConfirmBody": "This wipes VRCSM's saved VRChat session, thumbnail cache and logs under %LocalAppData%\\VRCSM. VRChat's own avatars, cache and registry settings are NOT affected. This action cannot be undone.",
-      "factoryResetting": "Wiping\u2026",
+      "factoryResetting": "Wiping…",
       "factoryResetConfirm": "Wipe VRCSM data",
       "factoryResetOkToast": "VRCSM has been reset. Wait a moment...",
       "clearVrcCacheLabel": "Clear VRC Cache",
@@ -779,6 +923,144 @@
         "page": "Page {{page}} / {{total}}",
         "range": "{{from}}–{{to}} of {{total}}"
       }
+    },
+    "tabs": {
+      "general": "General",
+      "config": "App Config (config.json)",
+      "steamvr": "SteamVR",
+      "registry": "VRChat Registry"
+    },
+    "general": {
+      "layoutTitle": "Workspace Layout",
+      "layoutDesc": "Control which side panels stay visible by default across the app.",
+      "worldInspector": "Worlds inspector",
+      "worldInspectorHint": "Keep the resizable world inspector open beside the map list.",
+      "profileContext": "Profile live context",
+      "profileContextHint": "Show the right-side live avatar and world context on My Profile.",
+      "runtimeVr": "VR",
+      "runtimeStandalone": "Standalone",
+      "runtimeDesktop": "Desktop",
+      "radarTimeline": "Radar timeline",
+      "radarTimelineHint": "Keep the live timeline dock visible on Radar & Log.",
+      "friendsDetail": "Friends detail pane",
+      "friendsDetailHint": "Show the right-side profile detail pane on the Friends page.",
+      "vrchatSidebar": "VRChat workspace side stack",
+      "vrchatSidebarHint": "When disabled, the right column folds below the main VRChat workspace instead of staying side-by-side.",
+      "runtimeTitle": "Runtime Detection",
+      "runtimeDesc": "Heuristic environment summary parsed from VRChat logs on this machine.",
+      "runtimeMode": "Runtime mode",
+      "runtimeDetail": "Detected detail"
+    },
+    "configJson": {
+      "title": "App Config (config.json)",
+      "description": "Core Engine parameters located in AppData/LocalLow. Make sure to Save changes.",
+      "vrcRunning": "VRChat is Running",
+      "vrcIdle": "VRChat is Idle",
+      "reload": "Reload",
+      "save": "Save Config",
+      "saving": "Saving...",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "successSave": "Successfully updated config.json!",
+      "errorSave": "Failed to save config.json: {{msg}}",
+      "errorRead": "Failed to read config.json: {{msg}}",
+      "cacheDirectory": {
+        "label": "Cache Directory",
+        "hint": "Absolute path to Custom Cache directory"
+      },
+      "cacheSize": {
+        "label": "Cache Size (GB)",
+        "hint": "Maximum size of VRChat cache in gigabytes"
+      },
+      "customLoadScreenLogo": {
+        "label": "Custom Loading Screen Logo",
+        "hint": "Absolute Path to a custom PNG logo for the loading screen"
+      },
+      "cameraResHeight": {
+        "label": "Camera Photo Height",
+        "hint": "Resolution of camera photos"
+      },
+      "cameraResWidth": {
+        "label": "Camera Photo Width",
+        "hint": "Resolution of camera photos"
+      },
+      "fpsLimitDesktop": {
+        "label": "FPS Limit (Desktop)",
+        "hint": "Maximum framerate in Desktop mode (0 = unlimited)"
+      },
+      "fpsLimitVr": {
+        "label": "FPS Limit (VR)",
+        "hint": "Maximum framerate in VR mode (0 = unlimited)"
+      },
+      "desktopReticle": {
+        "label": "Desktop Reticle",
+        "hint": "Show center dot crosshair in Desktop mode"
+      },
+      "ignoreParticles": {
+        "label": "Ignore Particles",
+        "hint": "Dramatically improves performance in crowded worlds"
+      }
+    },
+    "steamvr": {
+      "title": "VR Streaming Settings (SteamVR / Steam Link)",
+      "quickPresets": "Quick Presets:",
+      "presetPerformance": "Performance (50Mbps)",
+      "presetBalanced": "Balanced (100Mbps)",
+      "presetQuality": "Quality (150Mbps)",
+      "presetApplied": "Applied preset.",
+      "steamvrRunning": "SteamVR is Running",
+      "steamvrIdle": "SteamVR is Idle",
+      "reload": "Reload",
+      "save": "Save Settings",
+      "saving": "Saving...",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "successSave": "Successfully updated steamvr.vrsettings!",
+      "errorSave": "Failed to save steamvr.vrsettings: {{msg}}",
+      "errorRead": "Failed to read steamvr.vrsettings: {{msg}}",
+      "targetBandwidth": {
+        "label": "Target Bandwidth (Mbps)",
+        "hint": "Bitrate limit for Steam Link. Up to 150-200 for good routers."
+      },
+      "automaticBandwidth": {
+        "label": "Automatic Bandwidth",
+        "hint": "Let SteamVR dynamically drop bitrate on poor signal."
+      },
+      "supersampleScale": {
+        "label": "Supersampling Scale",
+        "hint": "Render scale (1.0 = native, 1.5 = high clarity, requires good GPU)"
+      },
+      "supersampleManualOverride": {
+        "label": "Supersample Manual Override",
+        "hint": "Forces custom scale instead of auto-adjusting."
+      },
+      "refreshRate": {
+        "label": "Refresh Rate (Hz)",
+        "hint": "Must match the headset's allowed refresh rates (72, 80, 90, 120)"
+      },
+      "motionSmoothing": {
+        "label": "Motion Smoothing",
+        "hint": "Synthesizes frames on lag. Good for poor frametimes, but can cause ghosting artifacts."
+      },
+      "supersampleFiltering": {
+        "label": "Supersample Filtering",
+        "hint": "Reduces aliasing at the cost of slight blur"
+      }
+    }
+  },
+  "world": {
+    "popup": {
+      "visits": "VISITS",
+      "favorites": "FAVORITES"
+    }
+  },
+  "avatar": {
+    "popup": {
+      "platforms": "PLATFORMS",
+      "fileSize": "FILE SIZE",
+      "containsAssetUrl": "Contains valid asset URL",
+      "unspecified": "Unspecified",
+      "unknown": "Unknown"
     }
   },
   "profileCard": {

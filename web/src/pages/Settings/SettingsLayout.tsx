@@ -54,25 +54,25 @@ export default function SettingsLayout() {
             onClick={() => setActiveTab("general")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "general" && "unity-tab-active")}
           >
-            General
+            {t("settings.tabs.general", { defaultValue: "General" })}
           </button>
           <button
             onClick={() => setActiveTab("config")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "config" && "unity-tab-active")}
           >
-            App Config (config.json)
+            {t("settings.tabs.config", { defaultValue: "App Config (config.json)" })}
           </button>
           <button
             onClick={() => setActiveTab("steamvr")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "steamvr" && "unity-tab-active")}
           >
-            SteamVR
+            {t("settings.tabs.steamvr", { defaultValue: "SteamVR" })}
           </button>
           <button
             onClick={() => setActiveTab("registry")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "registry" && "unity-tab-active")}
           >
-            VRChat Registry
+            {t("settings.tabs.registry", { defaultValue: "VRChat Registry" })}
           </button>
         </div>
       </header>
