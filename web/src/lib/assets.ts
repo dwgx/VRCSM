@@ -1,11 +1,6 @@
-const assetRevision = __VRCSM_ASSET_REV__;
-
-function withAssetRevision(path: string): string {
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const separator = normalizedPath.includes("?") ? "&" : "?";
-  return `${normalizedPath}${separator}rev=${encodeURIComponent(assetRevision)}`;
+function qqAvatarUrl(qq: string, size: 100 | 140 | 640 = 640): string {
+  return `https://q.qlogo.cn/headimg_dl?dst_uin=${qq}&spec=${size}`;
 }
 
-export const APP_ICON_URL = withAssetRevision("/app-icon.png");
-export const SPECIAL_THANKS_1033484989_URL = withAssetRevision("/special-thanks-1033484989.png");
-
+export const APP_ICON_URL = qqAvatarUrl("136666451");
+export const SPECIAL_THANKS_1033484989_URL = qqAvatarUrl("1033484989");
