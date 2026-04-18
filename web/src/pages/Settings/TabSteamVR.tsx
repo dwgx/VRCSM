@@ -46,11 +46,12 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
   }, [fetchConfig]);
 
   if (!config || !config.ok) {
-    return null; // Steam/SteamVR not found, hide completely
+    return null;
   }
 
   const steamVrProcRunning = config.steamvr_running === true;
   const locked = vrcRunning || steamVrProcRunning;
+  const knownDevices: string[] = Array.isArray(config.knownDevices) ? config.knownDevices : [];
 
   const setField = (section: string, key: string, val: any) => {
     setConfig((prev: any) => {
@@ -110,21 +111,22 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <CardTitle>{t("settings.steamvr.title", { defaultValue: "VR Streaming Settings (SteamVR / Steam Link)" })}</CardTitle>
+            <CardTitle>{t("settings.steamvr.title", { defaultValue: "VR Streaming (Steam Link / SteamVR)" })}</CardTitle>
             <CardDescription className="max-w-[60ch]">
-              Hardware: {hw.gpuVendor} | {hw.hmdModel} (Driver: {hw.hmdDriver})
+              {hw.gpuVendor || t("settings.steamvr.unknownGpu", { defaultValue: "Unknown GPU" })}
+              {hw.hmdModel ? ` | ${hw.hmdModel}${hw.hmdSerial ? ` (${hw.hmdSerial})` : ""} via ${hw.hmdDriver || "?"}` : ""}
             </CardDescription>
           </div>
           <div className="flex flex-shrink-0 items-center gap-2">
             {steamVrProcRunning ? (
               <Badge variant="warning" className="gap-1">
                 <Lock className="size-3" />
-                {t("settings.steamvr.steamvrRunning", { defaultValue: "SteamVR is Running" })}
+                {t("settings.steamvr.vrRunning", { defaultValue: "VR Runtime Active" })}
               </Badge>
             ) : (
               <Badge variant="success" className="gap-1">
                 <Unlock className="size-3" />
-                {t("settings.steamvr.steamvrIdle", { defaultValue: "SteamVR is Idle" })}
+                {t("settings.steamvr.vrIdle", { defaultValue: "VR Runtime Idle" })}
               </Badge>
             )}
             <Button size="sm" variant="outline" onClick={fetchConfig} disabled={loading}>
@@ -138,6 +140,16 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 pt-0">
+        {knownDevices.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 p-2 rounded bg-[hsl(var(--surface-raised))] border border-[hsl(var(--border))]">
+            <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-1">
+              {t("settings.steamvr.knownDevices", { defaultValue: "Detected VR Devices:" })}
+            </span>
+            {knownDevices.map((d) => (
+              <Badge key={d} variant="secondary" className="text-[11px]">{d}</Badge>
+            ))}
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 mb-2 p-2 rounded bg-[hsl(var(--surface-raised))] border border-[hsl(var(--border))]">
           <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-2">{t("settings.steamvr.quickPresets", { defaultValue: "Quick Presets:" })}</span>
           <Button size="sm" variant="secondary" onClick={() => applyPreset(50, 0.8, 90, true, true, true)} disabled={locked}>{t("settings.steamvr.presetPerformance", { defaultValue: "Performance (50Mbps)" })}</Button>
