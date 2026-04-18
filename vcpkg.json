@@ -7,6 +7,9 @@
     "spdlog",
     "wil",
     "webview2",
-    "sqlite3"
+    "sqlite3",
+    "lz4",
+    "liblzma",
+    "tinygltf"
   ]
 }

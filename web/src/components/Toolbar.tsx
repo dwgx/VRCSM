@@ -9,6 +9,7 @@ import { AuthChip } from "@/components/AuthChip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { APP_ICON_URL } from "@/lib/assets";
 
 interface ToolbarSearchContextValue {
   searchQuery: string;
@@ -67,7 +68,7 @@ export function Toolbar({
     <div className="unity-toolbar flex h-9 items-center gap-2 px-3">
       <div className="flex items-center gap-2 border-r border-[hsl(var(--border))] pr-3">
         <img
-          src="/app-icon.png"
+          src={APP_ICON_URL}
           alt=""
           width={18}
           height={18}

@@ -97,6 +97,8 @@ void to_json(nlohmann::json& j, const PlayerEvent& e)
         {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
         {"display_name", e.display_name},
         {"user_id", e.user_id ? nlohmann::json(*e.user_id) : nlohmann::json(nullptr)},
+        {"world_id", e.world_id ? nlohmann::json(*e.world_id) : nlohmann::json(nullptr)},
+        {"instance_id", e.instance_id ? nlohmann::json(*e.instance_id) : nlohmann::json(nullptr)},
     };
 }
 
@@ -106,6 +108,8 @@ void to_json(nlohmann::json& j, const AvatarSwitchEvent& e)
         {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
         {"actor", e.actor},
         {"avatar_name", e.avatar_name},
+        {"world_id", e.world_id ? nlohmann::json(*e.world_id) : nlohmann::json(nullptr)},
+        {"instance_id", e.instance_id ? nlohmann::json(*e.instance_id) : nlohmann::json(nullptr)},
     };
 }
 
@@ -322,6 +326,8 @@ struct ParseState
 
     // World pairing state: most recent in-flight world id.
     std::string pendingWorldId;
+    std::string currentWorldId;
+    std::string currentInstanceId;
 
     // Avatar pairing state: most recent local-player switch name + author.
     std::string pendingLocalAvatarName;
@@ -414,13 +420,14 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
     {
         const std::string worldId = stripTrailing(m[1]);
         const std::string instanceIdStr = stripTrailing(m[2]);
+        const std::string fullInstanceId = worldId + ":" + instanceIdStr;
 
         if (report.world_switches.size() < kMaxEventsPerKind)
         {
             WorldSwitchEvent ev;
             ev.iso_time = st.lastTimestamp;
             ev.world_id = worldId;
-            ev.instance_id = worldId + ":" + instanceIdStr;
+            ev.instance_id = fullInstanceId;
             
             // Parse tags
             ev.access_type = "public"; // default
@@ -453,6 +460,9 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             
             report.world_switches.push_back(std::move(ev));
         }
+
+        st.currentWorldId = worldId;
+        st.currentInstanceId = fullInstanceId;
     }
 
     // Avatar switch — remember the name if it was OUR switch, and record it
@@ -471,6 +481,14 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             ev.iso_time = st.lastTimestamp;
             ev.actor = player;
             ev.avatar_name = name;
+            if (!st.currentWorldId.empty())
+            {
+                ev.world_id = st.currentWorldId;
+            }
+            if (!st.currentInstanceId.empty())
+            {
+                ev.instance_id = st.currentInstanceId;
+            }
             report.avatar_switches.push_back(std::move(ev));
         }
 
@@ -494,6 +512,14 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             {
                 ev.user_id = stripTrailing(m[2]);
             }
+            if (!st.currentWorldId.empty())
+            {
+                ev.world_id = st.currentWorldId;
+            }
+            if (!st.currentInstanceId.empty())
+            {
+                ev.instance_id = st.currentInstanceId;
+            }
             report.player_events.push_back(std::move(ev));
         }
     }
@@ -508,6 +534,14 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             if (m.size() > 2 && m[2].matched)
             {
                 ev.user_id = stripTrailing(m[2]);
+            }
+            if (!st.currentWorldId.empty())
+            {
+                ev.world_id = st.currentWorldId;
+            }
+            if (!st.currentInstanceId.empty())
+            {
+                ev.instance_id = st.currentInstanceId;
             }
             report.player_events.push_back(std::move(ev));
         }

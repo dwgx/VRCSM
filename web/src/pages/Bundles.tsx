@@ -483,7 +483,7 @@ function Bundles() {
               {/* Path footer */}
               <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 font-mono text-[10.5px]">
                 <span className="text-[hsl(var(--muted-foreground))]">
-                  path:{" "}
+                  {t("common.path", { defaultValue: "Path" })}:{" "}
                 </span>
                 <span className="break-all text-[hsl(var(--foreground))]">
                   {preview.entry.path}

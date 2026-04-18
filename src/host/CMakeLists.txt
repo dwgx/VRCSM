@@ -8,6 +8,7 @@ add_executable(vrcsm WIN32
     WebViewHost.cpp
     IpcBridge.cpp
     StringUtil.cpp
+    VrchatPaths.cpp
 
     # Domain-specific IPC handler implementations (split from IpcBridge.cpp)
     bridges/AuthBridge.cpp
@@ -23,16 +24,17 @@ add_executable(vrcsm WIN32
 )
 
 set(VRCSM_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
-set(VRCSM_ICON_PATH "${CMAKE_SOURCE_DIR}/resources/icons/vrcsm.ico")
-set(VRCSM_EXTRACTOR_PATH "${CMAKE_SOURCE_DIR}/dist/vrcsm_extractor.exe")
+set(VRCSM_ICON_SOURCE_PATH "${CMAKE_SOURCE_DIR}/resources/icons/vrcsm.ico")
+set(VRCSM_ICON_PATH "${VRCSM_GENERATED_DIR}/vrcsm.ico")
 set(VRCSM_MANIFEST_PATH "${CMAKE_SOURCE_DIR}/resources/app.manifest")
-if(EXISTS "${VRCSM_EXTRACTOR_PATH}")
-    set(VRCSM_EXTRACTOR_RESOURCE "IDR_EXTRACTOR_EXE RCDATA \"${VRCSM_EXTRACTOR_PATH}\"")
-else()
-    message(STATUS "vrcsm_extractor.exe not found at ${VRCSM_EXTRACTOR_PATH}; building without embedded extractor resource")
-    set(VRCSM_EXTRACTOR_RESOURCE "/* extractor resource omitted in this build */")
-endif()
+# Legacy PyInstaller extractor resource retired in v0.5.1 — the in-process
+# UnityFS → glTF pipeline (src/core/UnityPreview.cpp) replaces it.
 file(MAKE_DIRECTORY "${VRCSM_GENERATED_DIR}")
+configure_file(
+    "${VRCSM_ICON_SOURCE_PATH}"
+    "${VRCSM_ICON_PATH}"
+    COPYONLY
+)
 configure_file(
     "${CMAKE_SOURCE_DIR}/resources/app.rc"
     "${VRCSM_GENERATED_DIR}/app.rc"
@@ -82,6 +84,14 @@ add_custom_command(TARGET vrcsm POST_BUILD
         -DDEST=$<TARGET_FILE_DIR:vrcsm>/web
         -P ${CMAKE_SOURCE_DIR}/cmake/sync-web-dist.cmake
     COMMENT "Syncing web/dist to $<TARGET_FILE_DIR:vrcsm>/web"
+    VERBATIM
+)
+
+add_custom_command(TARGET vrcsm POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${VRCSM_ICON_SOURCE_PATH}
+        $<TARGET_FILE_DIR:vrcsm>/VRCSM.ico
+    COMMENT "Syncing app icon to $<TARGET_FILE_DIR:vrcsm>/VRCSM.ico"
     VERBATIM
 )
 

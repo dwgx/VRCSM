@@ -6,8 +6,9 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "radar": "Instance Radar",
+    "radar": "Radar & Log",
     "profile": "My Profile",
+    "vrchat": "VRChat",
     "friends": "Friends",
     "bundles": "Bundles",
     "library": "Library",
@@ -40,15 +41,16 @@
     "cancel": "Cancel",
     "noneTitle": "Profile unavailable",
     "notSignedIn": "Not signed in",
-    "quickActions": "VRChat Web Shortcuts",
-    "quickActionsDesc": "Open the official VRChat web panels directly from VRCSM for account, avatar, and world management.",
+    "quickActions": "Native Workspace",
+    "quickActionsDesc": "Open the built-in VRCSM workspace for friends, avatars, worlds, and favorites without bouncing out to the VRChat website.",
     "openProfileWeb": "Open web profile",
+    "openNativeWorkspace": "Open workspace",
     "openAvatarManager": "Open avatar manager",
     "openWorldManager": "Open world manager",
     "openHomePortal": "Open VRChat home",
     "liveContext": "Live Context",
     "liveContextDesc": "Important ids and current session targets for quick navigation.",
-    "liveContextHint": "VRCSM keeps editing and switching local, while deeper creator and account actions can jump to the official web panel without leaving your current workflow."
+    "liveContextHint": "Use these live ids as anchors for the native friends, avatars, worlds, and favorites workflows inside VRCSM."
   },
   "screenshots": {
     "title": "Screenshots",
@@ -105,6 +107,13 @@
       "verifying": "Verifying…",
       "invalidCode": "Enter the 6-digit code."
     }
+  },
+  "vrchatWorkspace": {
+    "title": "VRChat Workspace",
+    "joinFriend": "Join friend",
+    "requestInvite": "Request invite",
+    "openFriendProfile": "Open profile",
+    "noSubscriptionSignals": "No dedicated subscription fields were exposed by this session."
   },
   "friends": {
     "title": "Friends",
@@ -177,7 +186,7 @@
   },
   "radar": {
     "title": "Live Instance Radar",
-    "subtitle": "Real-time player monitoring via log tailing",
+    "subtitle": "Unified live instance radar and session history workspace",
     "experimental": "Experimental — log analysis only",
     "currentInstance": "Current Instance",
     "waitingJoin": "Waiting for world join event...",
@@ -233,12 +242,19 @@
     "no": "No",
     "browse": "Browse…",
     "repair": "Repair",
-    "copy": "Copy"
+    "copy": "Copy",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "path": "Path",
+    "created": "Created",
+    "updated": "Updated",
+    "friend": "Friend",
+    "player": "Player"
   },
   "about": {
     "title": "About VRCSM",
     "subtitle": "VRChat Settings Manager",
-    "body": "本项目开发者为dwgx仅一人  入VRC圈第一个人认识的人是 嗯呐！！",
+    "body": "VRCSM is maintained as a local-first VRChat workspace with native tooling, cache controls, and session utilities in one desktop app.",
     "version": "Version",
     "build": "Build",
     "developer": "Developer",
@@ -301,7 +317,7 @@
     "friendsOnlineHint": "from VRChat API",
     "signInForFriends": "sign in to view",
     "screenshots": "Screenshots",
-    "screenshotsHint": "captured in logs",
+    "screenshotsHint": "files detected on disk",
     "recentActivity": "Recent Activity",
     "recentActivityDesc": "World joins, player events, and avatar switches",
     "noActivity": "No recent activity in logs"
@@ -416,6 +432,7 @@
     "preview": "Preview",
     "previewLabel": "3D preview",
     "previewPrivate": "Procedural preview",
+    "duplicateNameHint": "Same name, different ID",
     "preview3d": {
       "loading": "Extracting…",
       "cache_missing": "Cache unreachable",
@@ -535,7 +552,7 @@
     "pathConfigDesc": "Source is the current cache location. Pick or type a target on another drive.",
     "source": "Source",
     "target": "Target",
-    "targetPlaceholder": "D:\\VRChatCache\\…",
+    "targetPlaceholder": "VRChatCache\\…",
     "advancedOptions": "Advanced options",
     "advancedHint": "The migration pipeline runs: preflight check, file copy, hash verification, source removal, and NTFS junction creation. All phases are mandatory for data safety.",
     "runPreflight": "Run preflight",
@@ -577,6 +594,11 @@
     "pointsTo": "points to",
     "repairSuccess": "Junction repaired successfully",
     "repairFailed": "Repair failed: {{error}}"
+  },
+  "updates": {
+    "availableTitle": "Update Available",
+    "availableBody": "VRCSM {{version}} is now available.",
+    "download": "Download"
   },
   "friendLog": {
     "subtitle": "Session encounter history and social change records kept in the local database.",
@@ -658,7 +680,37 @@
       "factoryResetConfirmTitle": "Factory reset VRCSM?",
       "factoryResetConfirmBody": "This wipes VRCSM's saved VRChat session, thumbnail cache and logs under %LocalAppData%\\VRCSM. VRChat's own avatars, cache and registry settings are NOT affected. This action cannot be undone.",
       "factoryResetting": "Wiping\u2026",
-      "factoryResetConfirm": "Wipe VRCSM data"
+      "factoryResetConfirm": "Wipe VRCSM data",
+      "factoryResetOkToast": "VRCSM has been reset. Wait a moment...",
+      "clearVrcCacheLabel": "Clear VRC Cache",
+      "clearVrcCacheHint": "Selectively wipe VRChat caches like Avatars, Worlds, and Textures.",
+      "clearCacheTitle": "Clear VRC Cache",
+      "clearCacheBody": "Select which VRChat cache categories you want to safely wipe. Useful if the cache is taking up a massive amount of space or you want a fresh start.",
+      "executeClear": "Clear Selected",
+      "clearCacheSuccess": "Successfully cleared {{count}} cache categories.",
+      "clearCacheError": "Clear failed: {{error}}",
+      "cacheCategories": {
+        "cacheWindowsPlayer": {
+          "name": "Avatars & Worlds (Cache-WindowsPlayer)",
+          "desc": "Main VRChat cache folder taking up the most space."
+        },
+        "httpCache": {
+          "name": "Image Cache (HTTPCache)",
+          "desc": "Thumbnails and UI images."
+        },
+        "textureCache": {
+          "name": "Texture Cache",
+          "desc": "Cached textures for avatars and worlds."
+        },
+        "localAvatarData": {
+          "name": "Local Avatar Data",
+          "desc": "Local avatar configuration files."
+        },
+        "localPlayerModerations": {
+          "name": "Local Moderations",
+          "desc": "Local instance mutes, blocks, and show-avatar toggles."
+        }
+      }
     },
     "social": {
       "sectionTitle": "Social & Tracking",
@@ -728,5 +780,18 @@
         "range": "{{from}}–{{to}} of {{total}}"
       }
     }
+  },
+  "profileCard": {
+    "home": "Home",
+    "addFriend": "Add Friend",
+    "joinInstance": "Join Instance",
+    "logoutFailed": "Sign out failed",
+    "wearAvatar": "Wear",
+    "wearing": "Wearing…",
+    "woreAvatar": "Now wearing: {{name}}",
+    "wearFailed": "Failed to wear avatar. This avatar may not be public or available.",
+    "wearAvatarTitle": "Wear {{name}}",
+    "copyAvatarId": "Copy Avatar ID",
+    "avatarIdCopied": "Avatar ID copied"
   }
 }

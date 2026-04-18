@@ -46,6 +46,7 @@
     <ComponentGroup Id="HostFiles" Directory="VRCSMINSTALLDIR">
       <Files Include="$(var.BuildDir)\VRCSM.exe" />
       <Files Include="$(var.BuildDir)\*.dll" />
+      <Files Include="$(var.BuildDir)\VRCSM.ico" />
     </ComponentGroup>
 
     <ComponentGroup Id="WebFiles" Directory="VRCSMWebDir">

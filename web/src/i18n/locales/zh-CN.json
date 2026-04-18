@@ -6,8 +6,9 @@
   },
   "nav": {
     "dashboard": "概览",
-    "radar": "雷达监测",
+    "radar": "雷达日志",
     "profile": "我的资料",
+    "vrchat": "VRChat",
     "friends": "好友",
     "bundles": "资源包",
     "library": "资料库",
@@ -40,15 +41,18 @@
     "cancel": "取消",
     "noneTitle": "未获取到资料",
     "notSignedIn": "未登录",
-    "quickActions": "VRChat 网页快捷入口",
-    "quickActionsDesc": "直接从 VRCSM 打开 VRChat 官方网页里的账号、模型和世界管理页。",
+    "quickActions": "原生工作区",
+    "quickActionsDesc": "直接进入 VRCSM 内置的 VRChat 工作区，在程序里完成好友、模型、地图与收藏管理，不再跳网页。",
     "openProfileWeb": "打开网页资料页",
+    "openNativeWorkspace": "打开工作区",
     "openAvatarManager": "打开模型管理",
+    "openFriendsManager": "加入好友",
+    "openLibrary": "打开资料库",
     "openWorldManager": "打开世界管理",
     "openHomePortal": "打开 VRChat 主页",
     "liveContext": "当前上下文",
     "liveContextDesc": "把当前关键 ID 和会话目标集中到一处，方便继续跳转。",
-    "liveContextHint": "VRCSM 负责本地编辑和切换；更深层的创作者与账号操作，可以一键跳去 VRChat 官方网页，不打断当前流程。"
+    "liveContextHint": "这些实时 ID 会作为锚点，直接衔接 VRCSM 里的好友、模型、地图和收藏工作流。"
   },
   "screenshots": {
     "title": "截图",
@@ -105,6 +109,62 @@
       "verifying": "验证中…",
       "invalidCode": "请输入 6 位数字验证码。"
     }
+  },
+  "vrchatWorkspace": {
+    "title": "VRChat 工作区",
+    "block": "屏蔽",
+    "mute": "静音",
+    "saveToLibrary": "收藏到资料库",
+    "pickDownloadFolder": "选择模型包保存目录",
+    "downloadAssetMissing": "这个模型没有可下载的 Windows 资源地址。",
+    "downloadSuccess": "模型包已保存到 {{path}}",
+    "downloadFailed": "下载失败：{{error}}",
+    "groupsTitle": "分组",
+    "groupsBody": "当前登录会话下的 VRChat 分组，直接在内置工作区里查看。",
+    "groupCount": "{{count}} 个分组",
+    "representing": "代表中",
+    "verified": "已认证",
+    "noGroups": "这个账号当前没有返回任何分组。",
+    "blocksMutesTitle": "屏蔽与静音",
+    "blocksMutesBody": "从当前登录会话实时拉取的屏蔽和静音记录。",
+    "blocked": "已屏蔽",
+    "muted": "已静音",
+    "noModerations": "这个账号当前没有返回屏蔽或静音记录。",
+    "inventoryTitle": "库存",
+    "inventoryBody": "基于本地缓存、日志解析和 VRCSM 持久化模型历史汇总出的最近模型库存。",
+    "localAvatarData": "本地模型缓存",
+    "avatarHistory": "模型历史",
+    "noInventory": "还没有持久化模型历史。穿戴或检查模型后，VRCSM 会逐步建立库存。",
+    "downloadBundle": "下载模型包",
+    "downloadTitle": "下载",
+    "downloadBody": "直接通过当前登录的 VRChat 会话，把最近模型的 bundle 下载到你选择的本地目录。",
+    "noDownloadCandidates": "暂时没有可下载的最近模型。",
+    "marketplaceTitle": "市场",
+    "marketplaceBody": "根据官方收藏、本地模型库存、最近下载目标，以及当前登录会话里暴露出的交易相关字段，汇总所有权与获取信号。",
+    "favoriteAvatars": "收藏模型",
+    "favoriteWorlds": "收藏地图",
+    "downloadReady": "可下载",
+    "downloadFolder": "下载目录",
+    "topCreators": "本地库存里的常见作者",
+    "inventoryCount": "{{count}} 个模型",
+    "noMarketplaceSignals": "暂时还没有足够的本地所有权信号。先收藏、检查或下载模型，VRCSM 才能把这一块补全。",
+    "accountLinkTitle": "账号绑定",
+    "accountLinkBody": "直接从当前登录会话解析已绑定的平台与身份字段，不再跳出到网页面板。",
+    "linkedProviders": "已绑定提供方",
+    "notLinked": "未绑定",
+    "linked": "已绑定",
+    "subscriptionsTitle": "订阅",
+    "subscriptionsBody": "根据认证用户 payload 与本机 VRChat 设置里的信号，推断支持者与订阅状态。",
+    "subscriptionStatus": "状态",
+    "subscriptionActive": "有效",
+    "subscriptionInactive": "无效",
+    "subscriptionSignals": "信号数",
+    "lastExpiredSubscription": "上次过期",
+    "liveSignal": "实时信号",
+    "noSubscriptionSignals": "当前会话没有暴露可判断订阅状态的专用字段。",
+    "joinFriend": "加入此好友",
+    "requestInvite": "申请加入",
+    "openFriendProfile": "打开资料"
   },
   "friends": {
     "title": "好友",
@@ -177,7 +237,7 @@
   },
   "radar": {
     "title": "实例探测雷达",
-    "subtitle": "通过日志实时追踪房间内玩家进出",
+    "subtitle": "把实时房间雷达和会话历史统一到一个工作区",
     "experimental": "实验性功能 — 仅依赖日志分析",
     "currentInstance": "当前世界",
     "waitingJoin": "等待进入世界…",
@@ -233,12 +293,19 @@
     "no": "否",
     "browse": "浏览…",
     "repair": "修复",
-    "copy": "复制"
+    "copy": "复制",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "path": "路径",
+    "created": "创建于",
+    "updated": "更新于",
+    "friend": "好友",
+    "player": "玩家"
   },
   "about": {
     "title": "关于 VRCSM",
     "subtitle": "VRChat 设置管理器",
-    "body": "本项目开发者为dwgx仅一人  入VRC圈第一个人认识的人是 嗯呐！！",
+    "body": "VRCSM 是一个本地优先的 VRChat 桌面工作区,把原生工具、缓存控制与会话管理整合在同一个应用里。",
     "version": "版本",
     "build": "构建",
     "developer": "开发者",
@@ -301,7 +368,7 @@
     "friendsOnlineHint": "来自 VRChat API",
     "signInForFriends": "登录后查看",
     "screenshots": "截图",
-    "screenshotsHint": "日志中记录的截图",
+    "screenshotsHint": "磁盘中检测到的截图",
     "recentActivity": "最近动态",
     "recentActivityDesc": "世界切换、玩家事件和模型更换",
     "noActivity": "日志中暂无近期活动"
@@ -416,6 +483,7 @@
     "preview": "预览",
     "previewLabel": "3D 预览",
     "previewPrivate": "过程生成预览",
+    "duplicateNameHint": "同名不同 ID",
     "preview3d": {
       "loading": "解包中…",
       "cache_missing": "找不到缓存目录",
@@ -435,7 +503,7 @@
       "controlsTitle": "Blender 式操作",
       "controlsBody": "左键旋转 · Shift+左键平移 · 滚轮缩放 · 右键平移",
       "panning": "平移模式",
-      "textureNote": "当前解包链路只保留网格与 UV，贴图尚未写入 GLB。",
+      "textureNote": "“原始”模式会尽量使用解包后保留下来的材质和贴图结果；如果材质异常，可切换到灰模或线框继续检查。",
       "expandedTitle": "放大 3D 预览",
       "expandedBody": "用更大的视口检查轮廓、骨骼和材质。Shift+左键可平移，右键也可平移，中键按压已禁用以避免异常。"
     },
@@ -450,6 +518,7 @@
     "nameFromLogOnly": "名字来自日志匹配",
     "loadingDetails": "正在加载详情…",
     "signInForDetails": "登录后可查看完整元数据",
+    "duplicateNameHint": "同名",
     "unityPackages_one": "{{count}} 个平台变体",
     "unityPackages_other": "{{count}} 个平台变体",
     "pickOne": "选择一个模型",
@@ -535,7 +604,7 @@
     "pathConfigDesc": "源路径为当前缓存位置。在另一个盘上选择或输入目标路径。",
     "source": "源路径",
     "target": "目标路径",
-    "targetPlaceholder": "D:\\VRChatCache\\…",
+    "targetPlaceholder": "VRChatCache\\…",
     "advancedOptions": "高级选项",
     "advancedHint": "迁移流程依次执行：预检查、文件复制、哈希校验、删除源文件、创建 NTFS Junction。所有步骤均为强制执行以确保数据安全。",
     "runPreflight": "开始预检查",
@@ -577,6 +646,11 @@
     "pointsTo": "指向",
     "repairSuccess": "Junction 修复成功",
     "repairFailed": "修复失败：{{error}}"
+  },
+  "updates": {
+    "availableTitle": "发现新版本",
+    "availableBody": "VRCSM {{version}} 已可下载。",
+    "download": "下载"
   },
   "friendLog": {
     "subtitle": "保存在本地数据库中的会话相遇历史与社交变化记录。",
@@ -658,7 +732,37 @@
       "factoryResetConfirmTitle": "确定恢复出厂设置？",
       "factoryResetConfirmBody": "此操作将清除 VRCSM 在 %LocalAppData%\\VRCSM 下保存的 VRChat 会话、缩略图缓存和日志。VRChat 自身的模型、缓存和注册表设置不受影响。此操作无法撤销。",
       "factoryResetting": "正在清除…",
-      "factoryResetConfirm": "清除 VRCSM 数据"
+      "factoryResetConfirm": "清除 VRCSM 数据",
+      "factoryResetOkToast": "VRCSM 已重置，请稍等片刻…",
+      "clearVrcCacheLabel": "清理 VRC 缓存",
+      "clearVrcCacheHint": "按分类清理 VRChat 的模型、地图、贴图等缓存。",
+      "clearCacheTitle": "清理 VRC 缓存",
+      "clearCacheBody": "选择需要安全清理的 VRChat 缓存分类。适合缓存体积过大，或者你想重新开始时使用。",
+      "executeClear": "清理所选项",
+      "clearCacheSuccess": "已成功清理 {{count}} 个缓存分类。",
+      "clearCacheError": "清理失败：{{error}}",
+      "cacheCategories": {
+        "cacheWindowsPlayer": {
+          "name": "模型与地图 (Cache-WindowsPlayer)",
+          "desc": "体积最大、最核心的 VRChat 缓存目录。"
+        },
+        "httpCache": {
+          "name": "图片缓存 (HTTPCache)",
+          "desc": "缩略图和界面图片缓存。"
+        },
+        "textureCache": {
+          "name": "贴图缓存",
+          "desc": "模型和地图用到的贴图缓存。"
+        },
+        "localAvatarData": {
+          "name": "本地模型数据",
+          "desc": "本地保存的模型配置文件。"
+        },
+        "localPlayerModerations": {
+          "name": "本地屏蔽控制",
+          "desc": "本地实例中的静音、屏蔽以及显示模型切换记录。"
+        }
+      }
     },
     "social": {
       "sectionTitle": "社交与追踪",
@@ -2521,5 +2625,18 @@
         }
       }
     }
+  },
+  "profileCard": {
+    "home": "主页",
+    "addFriend": "添加好友",
+    "joinInstance": "加入同房",
+    "logoutFailed": "退出登录失败",
+    "wearAvatar": "穿上",
+    "wearing": "穿戴中…",
+    "woreAvatar": "已穿上：{{name}}",
+    "wearFailed": "穿戴模型失败，该模型可能不是公开或可用模型。",
+    "wearAvatarTitle": "穿上 {{name}}",
+    "copyAvatarId": "复制模型 ID",
+    "avatarIdCopied": "模型 ID 已复制"
   }
 }

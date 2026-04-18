@@ -12,6 +12,7 @@ import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import {
   RightDock,
   RightDockProvider,
+  useResolvedRightDock,
   type RightDockDescriptor,
 } from "@/components/RightDock";
 import { StatusBar } from "@/components/StatusBar";
@@ -36,6 +37,7 @@ const Avatars = lazy(() => import("@/pages/Avatars"));
 const Worlds = lazy(() => import("@/pages/Worlds"));
 const Friends = lazy(() => import("@/pages/Friends"));
 const Profile = lazy(() => import("@/pages/Profile"));
+const VrchatWorkspace = lazy(() => import("@/pages/VrchatWorkspace"));
 const Screenshots = lazy(() => import("@/pages/Screenshots"));
 const Logs = lazy(() => import("@/pages/Logs"));
 const Radar = lazy(() => import("@/pages/Radar"));
@@ -99,6 +101,10 @@ function AppContent() {
         title: t("nav.profile"),
         breadcrumb: ["Social", t("nav.profile")],
       },
+      "/vrchat": {
+        title: t("nav.vrchat"),
+        breadcrumb: ["Social", t("nav.vrchat")],
+      },
       "/screenshots": {
         title: t("nav.screenshots"),
         breadcrumb: ["Media", t("nav.screenshots")],
@@ -154,9 +160,7 @@ function AppContent() {
     if (!shellReport) {
       if (
         location.pathname === "/" ||
-        location.pathname === "/bundles" ||
-        location.pathname === "/avatars" ||
-        location.pathname === "/worlds"
+        location.pathname === "/bundles"
       ) {
         return {
           title: currentMeta.title,
@@ -242,63 +246,22 @@ function AppContent() {
       };
     }
 
-    if (location.pathname === "/avatars") {
-      return {
-        title: t("avatars.inspectorPaneTitle"),
-        body: (
-          <div className="space-y-2 text-[12px]">
-            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2">
-              <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                {t("avatars.totalCount_other", {
-                  count: shellReport.local_avatar_data.item_count,
-                })}
-              </div>
-              <div className="mt-1 text-[15px] font-medium">
-                {shellReport.local_avatar_data.item_count}
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-3 py-2 text-[11px] text-[hsl(var(--muted-foreground))]">
-              {t("common.none")}
-            </div>
-          </div>
-        ),
-      };
-    }
-
-    if (location.pathname === "/worlds") {
-      return {
-        title: t("worlds.inspectorPaneTitle"),
-        body: (
-          <div className="space-y-2 text-[12px]">
-            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2">
-              <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                {t("worlds.totalCount_other", {
-                  count: shellReport.logs.recent_world_ids.length,
-                })}
-              </div>
-              <div className="mt-1 text-[15px] font-medium">
-                {shellReport.logs.recent_world_ids.length}
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-3 py-2 text-[11px] text-[hsl(var(--muted-foreground))]">
-              {t("common.none")}
-            </div>
-          </div>
-        ),
-      };
-    }
-
     return null;
   }, [currentMeta.title, location.pathname, shellReport, t, trueCacheCategoryCount, trueCacheLabel]);
+  const resolvedRightDock = useResolvedRightDock(rightDockFallback);
+  const routeAllowsRightDock =
+    location.pathname === "/" ||
+    location.pathname === "/bundles" ||
+    location.pathname === "/settings";
+  const showRightDock = routeAllowsRightDock && Boolean(resolvedRightDock);
 
   return (
     <ToolbarSearchProvider
       searchQuery={searchQuery}
       onSearchQueryChange={setSearchQuery}
     >
-      <RightDockProvider>
-        <div className="flex h-screen w-screen overflow-hidden bg-[hsl(var(--canvas))] text-[hsl(var(--foreground))]">
-          <PanelGroup orientation="horizontal">
+      <div className="flex h-screen w-screen overflow-hidden bg-[hsl(var(--canvas))] text-[hsl(var(--foreground))]">
+        <PanelGroup orientation="horizontal">
             {/* ── Resizable Sidebar ── */}
             <Panel
               defaultSize={15}
@@ -326,7 +289,12 @@ function AppContent() {
                   <div className="flex items-center gap-3 bg-[hsl(var(--primary)/0.15)] px-4 py-2 border-b border-[hsl(var(--primary)/0.3)]">
                     <Download className="size-4 shrink-0 text-primary" />
                     <div className="flex-1 text-sm text-[hsl(var(--foreground))]">
-                      <strong>Update Available</strong> — VRCSM {updateAvailable.version} is now available!
+                      <strong>{t("updates.availableTitle", { defaultValue: "Update Available" })}</strong>
+                      {" — "}
+                      {t("updates.availableBody", {
+                        defaultValue: "VRCSM {{version}} is now available.",
+                        version: updateAvailable.version,
+                      })}
                     </div>
                     <a
                       href={updateAvailable.url}
@@ -334,13 +302,16 @@ function AppContent() {
                       rel="noreferrer"
                       className="inline-flex h-7 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                     >
-                      Download
+                      {t("updates.download", { defaultValue: "Download" })}
                     </a>
                   </div>
                 )}
 
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <PanelGroup orientation="horizontal">
+                  <PanelGroup
+                    key={showRightDock ? "with-right-dock" : "without-right-dock"}
+                    orientation="horizontal"
+                  >
                     <Panel defaultSize={75} minSize={20}>
                       <section className="unity-dock flex h-full flex-col overflow-hidden">
                         <div className="flex h-8 items-end gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 pt-1">
@@ -359,6 +330,7 @@ function AppContent() {
                                 <Route path="/worlds" element={<Worlds />} />
                                 <Route path="/friends" element={<Friends />} />
                                 <Route path="/profile" element={<Profile />} />
+                                <Route path="/vrchat" element={<VrchatWorkspace />} />
                                 <Route path="/screenshots" element={<Screenshots />} />
                                 <Route path="/friend-log" element={<Navigate to="/radar" replace />} />
                                 <Route path="/logs" element={<Logs />} />
@@ -373,17 +345,21 @@ function AppContent() {
                         </main>
                       </section>
                     </Panel>
-                    <PanelResizeHandle className="w-[3px] bg-[hsl(var(--border)/0.3)] hover:bg-[hsl(var(--primary)/0.5)] active:bg-[hsl(var(--primary))] transition-colors cursor-col-resize" />
+                    {showRightDock ? (
+                      <>
+                        <PanelResizeHandle className="w-[3px] bg-[hsl(var(--border)/0.3)] hover:bg-[hsl(var(--primary)/0.5)] active:bg-[hsl(var(--primary))] transition-colors cursor-col-resize" />
 
-                    {/* ── Resizable Right Dock ── */}
-                    <Panel
-                      defaultSize={25}
-                      minSize={5}
-                      collapsible
-                      collapsedSize={0}
-                    >
-                      <RightDock fallback={rightDockFallback} />
-                    </Panel>
+                        {/* ── Resizable Right Dock ── */}
+                        <Panel
+                          defaultSize={25}
+                          minSize={5}
+                          collapsible
+                          collapsedSize={0}
+                        >
+                          <RightDock fallback={rightDockFallback} />
+                        </Panel>
+                      </>
+                    ) : null}
                   </PanelGroup>
 
                   <BottomDock report={shellReport} resetToken={layoutResetToken} />
@@ -398,11 +374,10 @@ function AppContent() {
                 </div>
               </div>
             </Panel>
-          </PanelGroup>
-          <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
-          <Toaster />
-        </div>
-      </RightDockProvider>
+        </PanelGroup>
+        <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+        <Toaster />
+      </div>
     </ToolbarSearchProvider>
   );
 }
@@ -413,7 +388,9 @@ function App() {
       <AuthProvider>
         <VrcProcessProvider>
           <ReportProvider>
-            <AppContent />
+            <RightDockProvider>
+              <AppContent />
+            </RightDockProvider>
           </ReportProvider>
         </VrcProcessProvider>
       </AuthProvider>

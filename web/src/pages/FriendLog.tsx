@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Search,
   ShieldEllipsis,
+  Trash2,
   UserMinus,
   UserPlus,
   Users,
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
@@ -333,6 +335,8 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
   const [socialOffset, setSocialOffset] = useState(0);
   const [sessionHasMore, setSessionHasMore] = useState(true);
   const [socialHasMore, setSocialHasMore] = useState(true);
+  const [clearingHistory, setClearingHistory] = useState(false);
+  const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
 
   const load = useCallback(async (reset = false, targetTab?: FeedTab) => {
     const nextTab = targetTab ?? tab;
@@ -374,6 +378,33 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
     void load(true, "session");
     void load(true, "social");
   }, [load]);
+
+  async function handleClearHistory() {
+    setClearingHistory(true);
+    try {
+      await ipc.dbHistoryClear(false);
+      setSessionEvents([]);
+      setSocialEvents([]);
+      setSessionOffset(0);
+      setSocialOffset(0);
+      setSessionHasMore(false);
+      setSocialHasMore(false);
+      await Promise.all([load(true, "session"), load(true, "social")]);
+      toast.success(t("friendLog.clearHistorySuccess", {
+        defaultValue: "History cleared. Friend notes were kept.",
+      }));
+    } catch (e) {
+      toast.error(
+        t("friendLog.clearHistoryFailed", {
+          error: e instanceof Error ? e.message : String(e),
+          defaultValue: "Failed to clear history: {{error}}",
+        }),
+      );
+    } finally {
+      setClearingHistory(false);
+      setClearHistoryOpen(false);
+    }
+  }
 
   const filteredSession = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
@@ -433,6 +464,16 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
             {t("common.refresh")}
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-[12px] text-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive))]"
+            disabled={clearingHistory}
+            onClick={() => setClearHistoryOpen(true)}
+          >
+            <Trash2 className={cn("size-3.5", clearingHistory && "animate-pulse")} />
+            {t("friendLog.clearHistory", { defaultValue: "Clear History" })}
+          </Button>
         </header>
       )}
 
@@ -459,6 +500,16 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
             >
               <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
               {t("common.refresh")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-[12px] text-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive))]"
+              disabled={clearingHistory}
+              onClick={() => setClearHistoryOpen(true)}
+            >
+              <Trash2 className={cn("size-3.5", clearingHistory && "animate-pulse")} />
+              {t("friendLog.clearHistory", { defaultValue: "Clear History" })}
             </Button>
           </CardContent>
         </Card>
@@ -600,6 +651,20 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={clearHistoryOpen}
+        onOpenChange={setClearHistoryOpen}
+        title={t("friendLog.clearHistory", { defaultValue: "Clear History" })}
+        description={t("friendLog.clearHistoryConfirm", {
+          defaultValue: "Clear stored session history and social change history? Friend notes will be kept.",
+        })}
+        confirmLabel={t("friendLog.clearHistory", { defaultValue: "Clear History" })}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => void handleClearHistory()}
+        loading={clearingHistory}
+        tone="destructive"
+      />
     </div>
   );
 }

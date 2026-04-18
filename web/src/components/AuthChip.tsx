@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { LogIn, LogOut, User } from "lucide-react";
@@ -23,11 +22,7 @@ export function AuthChip() {
   const { status, loading, logout } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{
-    top: number;
-    left: number;
-    minWidth: number;
-  } | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
@@ -43,31 +38,17 @@ export function AuthChip() {
     clearCloseTimer();
     closeTimerRef.current = window.setTimeout(() => {
       setMenuOpen(false);
-    }, 140);
-  }
-
-  function updateMenuPosition() {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const minWidth = Math.max(Math.ceil(rect.width), 176);
-    const left = Math.max(8, Math.round(rect.right - minWidth));
-    setMenuPosition({
-      top: Math.round(rect.bottom + 6),
-      left,
-      minWidth,
-    });
+    }, 220);
   }
 
   useEffect(() => {
     if (!menuOpen) return;
-    updateMenuPosition();
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (
         !menuRef.current?.contains(target) &&
-        !triggerRef.current?.contains(target)
+        !containerRef.current?.contains(target)
       ) {
         setMenuOpen(false);
       }
@@ -77,19 +58,12 @@ export function AuthChip() {
         setMenuOpen(false);
       }
     };
-    const handleLayout = () => {
-      updateMenuPosition();
-    };
 
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("resize", handleLayout);
-    window.addEventListener("scroll", handleLayout, true);
     return () => {
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("resize", handleLayout);
-      window.removeEventListener("scroll", handleLayout, true);
     };
   }, [menuOpen]);
 
@@ -126,6 +100,7 @@ export function AuthChip() {
 
   return (
     <div
+      ref={containerRef}
       className="relative z-20"
       onMouseEnter={() => {
         clearCloseTimer();
@@ -148,46 +123,34 @@ export function AuthChip() {
         <User className="size-3.5" />
         {status.displayName ?? t("auth.signedIn")}
       </button>
-      {menuOpen && menuPosition && typeof document !== "undefined"
-        ? createPortal(
-            <div className="pointer-events-none fixed inset-0 z-[140]">
-              <div
-                className="absolute h-2"
-                style={{
-                  top: Math.max(0, menuPosition.top - 6),
-                  left: menuPosition.left,
-                  width: menuPosition.minWidth,
-                }}
-              />
-              <div
-                ref={menuRef}
-                className="pointer-events-auto absolute rounded-[var(--radius-md)] border border-[hsl(var(--border-strong))] bg-[hsl(var(--surface-raised))] p-1 shadow-[0_10px_30px_rgba(0,0,0,0.28)]"
-                style={{
-                  top: menuPosition.top,
-                  left: menuPosition.left,
-                  minWidth: menuPosition.minWidth,
-                }}
-                onMouseEnter={clearCloseTimer}
-                onMouseLeave={queueClose}
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    clearCloseTimer();
-                    setMenuOpen(false);
-                    void logout().then(() => toast.success(t("auth.signedOut")));
-                  }}
-                >
-                  <LogOut />
-                  {t("auth.signOut")}
-                </Button>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+      {menuOpen ? (
+        <>
+          <div
+            aria-hidden
+            className="absolute right-0 top-full h-2 min-w-[176px]"
+          />
+          <div
+            ref={menuRef}
+            className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-[max(176px,100%)] rounded-[var(--radius-md)] border border-[hsl(var(--border-strong))] bg-[hsl(var(--surface-raised))] p-1 shadow-[0_10px_30px_rgba(0,0,0,0.28)]"
+            onMouseEnter={clearCloseTimer}
+            onMouseLeave={queueClose}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+              onClick={() => {
+                clearCloseTimer();
+                setMenuOpen(false);
+                void logout().then(() => toast.success(t("auth.signedOut")));
+              }}
+            >
+              <LogOut />
+              {t("auth.signOut")}
+            </Button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -15,7 +15,26 @@ if errorlevel 1 (
   if exist "%VSWHERE%" (
     for /f "usebackq tokens=*" %%I in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSINSTALL=%%I"
   )
-  if not defined VSINSTALL if exist "D:\Software\MS\Microsoft Visual Studio\18\Community" set "VSINSTALL=D:\Software\MS\Microsoft Visual Studio\18\Community"
+  if not defined VSINSTALL (
+    for %%D in ("%ProgramFiles%\Microsoft Visual Studio" "%ProgramFiles(x86)%\Microsoft Visual Studio") do (
+      for %%E in (Enterprise Professional Community BuildTools) do (
+        for /d %%V in ("%%~fD\2022\%%E" "%%~fD\2019\%%E" "%%~fD\18\%%E" "%%~fD\17\%%E") do (
+          if not defined VSINSTALL if exist "%%~fV\Common7\Tools\VsDevCmd.bat" set "VSINSTALL=%%~fV"
+        )
+      )
+    )
+  )
+  if not defined VSINSTALL (
+    for %%L in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
+      for %%D in ("%%L:\Microsoft Visual Studio" "%%L:\Program Files\Microsoft Visual Studio" "%%L:\Program Files (x86)\Microsoft Visual Studio" "%%L:\Software\MS\Microsoft Visual Studio") do (
+        for %%E in (Enterprise Professional Community BuildTools) do (
+          for /d %%V in ("%%~fD\2022\%%E" "%%~fD\2019\%%E" "%%~fD\18\%%E" "%%~fD\17\%%E") do (
+            if not defined VSINSTALL if exist "%%~fV\Common7\Tools\VsDevCmd.bat" set "VSINSTALL=%%~fV"
+          )
+        )
+      )
+    )
+  )
   if not defined VSINSTALL (
     echo [build-host] Visual Studio build tools not found.
     exit /b 1
@@ -32,8 +51,20 @@ if errorlevel 1 (
 )
 
 cd /d "%REPO%"
+call pnpm --dir web build
+if errorlevel 1 exit /b 1
+
 cmake --preset %PRESET%
 if errorlevel 1 exit /b 1
 
 cmake --build --preset %PRESET%
-exit /b %errorlevel%
+if errorlevel 1 exit /b %errorlevel%
+
+set "HOST_DIR=%REPO%\build\%PRESET%\src\host"
+cmake -DSOURCE=%REPO%\web\dist -DDEST=%HOST_DIR%\web -P %REPO%\cmake\sync-web-dist.cmake
+if errorlevel 1 exit /b %errorlevel%
+
+cmake -E copy_if_different %REPO%\resources\icons\vrcsm.ico %HOST_DIR%\VRCSM.ico
+if errorlevel 1 exit /b %errorlevel%
+
+exit /b 0

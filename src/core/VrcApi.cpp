@@ -114,15 +114,7 @@ std::int64_t unixNow()
 
 std::filesystem::path resolveCacheFile()
 {
-    PWSTR raw = nullptr;
-    if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &raw)) || raw == nullptr)
-    {
-        if (raw) CoTaskMemFree(raw);
-        return std::filesystem::path{L"thumb-cache.json"}; // degraded fallback — cwd
-    }
-    std::filesystem::path base(raw);
-    CoTaskMemFree(raw);
-    return base / L"VRCSM" / L"thumb-cache.json";
+    return getAppDataRoot() / L"thumb-cache.json";
 }
 
 void loadCacheUnlocked(CacheState& state)
@@ -321,6 +313,12 @@ std::optional<std::string> jsonStringField(const nlohmann::json& doc, const char
     return std::nullopt;
 }
 
+bool hasTwoFactorChallenge(const nlohmann::json& doc)
+{
+    const auto it = doc.find("requiresTwoFactorAuth");
+    return it != doc.end() && it->is_array() && !it->empty();
+}
+
 std::optional<std::string> extractApiErrorMessage(const std::string& body)
 {
     if (body.empty())
@@ -353,6 +351,18 @@ std::optional<std::string> extractApiErrorMessage(const std::string& body)
     }
 
     return std::nullopt;
+}
+
+std::string getLoadedCookieHeader()
+{
+    auto cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    if (!cookieHeader.empty())
+    {
+        return cookieHeader;
+    }
+
+    (void)AuthStore::Instance().Load();
+    return AuthStore::Instance().BuildCookieHeader();
 }
 
 namespace
@@ -666,7 +676,7 @@ Result<std::vector<nlohmann::json>> fetchPagedAuthedArray(
     std::string_view endpointLabel,
     const std::function<std::wstring(int limit, int offset)>& buildPath)
 {
-    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    const std::string cookieHeader = getLoadedCookieHeader();
     if (cookieHeader.empty())
     {
         return Error{"auth_expired", "Not signed in", 401};
@@ -852,7 +862,7 @@ std::vector<ThumbnailResult> VrcApi::fetchThumbnails(const std::vector<std::stri
 
 Result<nlohmann::json> VrcApi::fetchCurrentUser()
 {
-    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    const std::string cookieHeader = getLoadedCookieHeader();
     if (cookieHeader.empty())
     {
         return Error{"auth_expired", "No session cookie", 401};
@@ -879,7 +889,21 @@ Result<nlohmann::json> VrcApi::fetchCurrentUser()
         return Error{"api_error", fmt::format("/auth/user returned HTTP {}", response.status), response.status};
     }
 
-    return parseJsonBody(response, "/auth/user");
+    const auto doc = parseJsonBody(response, "/auth/user");
+    if (hasTwoFactorChallenge(doc))
+    {
+        return Error{"two_factor_required", "Two-factor verification required", 401};
+    }
+    if (!doc.is_object())
+    {
+        return Error{"api_error", "/auth/user returned a non-object payload", 0};
+    }
+    if (!jsonStringField(doc, "id").has_value())
+    {
+        return Error{"api_error", "/auth/user returned no id field", 0};
+    }
+
+    return doc;
 }
 
 Result<nlohmann::json> VrcApi::fetchAvatarDetails(const std::string& avatarId)
@@ -889,7 +913,7 @@ Result<nlohmann::json> VrcApi::fetchAvatarDetails(const std::string& avatarId)
         return Error{"not_found", "Empty avatar id", 404};
     }
 
-    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    const std::string cookieHeader = getLoadedCookieHeader();
     if (cookieHeader.empty())
     {
         return Error{"auth_expired", "No session cookie", 401};
@@ -1163,7 +1187,7 @@ VerifyResult VrcApi::verifyTwoFactor(const std::string& method, const std::strin
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchFriends(bool offline)
 {
-    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    const std::string cookieHeader = getLoadedCookieHeader();
     if (cookieHeader.empty())
     {
         return Error{"auth_expired", "Not signed in", 401};
@@ -1195,6 +1219,32 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchFriends(bool offline)
         out.push_back(item);
     }
     return out;
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchGroups()
+{
+    return fetchPagedAuthedArray(
+        "/auth/user/groups",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/auth/user/groups?n={}&offset={}",
+                limit,
+                offset));
+        });
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchPlayerModerations()
+{
+    return fetchPagedAuthedArray(
+        "/auth/user/playermoderations",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/auth/user/playermoderations?n={}&offset={}",
+                limit,
+                offset));
+        });
 }
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchFavoritedAvatars()
@@ -1247,7 +1297,7 @@ bool VrcApi::downloadFile(const std::string& url, const std::filesystem::path& d
     urlPath.resize(urlComp.dwUrlPathLength);
 
     std::vector<std::pair<std::wstring, std::wstring>> headers;
-    const auto cookie = AuthStore::Instance().BuildCookieHeader();
+    const auto cookie = getLoadedCookieHeader();
     if (!cookie.empty())
     {
         headers.emplace_back(L"Cookie", toWide(cookie));
@@ -1305,7 +1355,7 @@ Result<nlohmann::json> VrcApi::fetchUser(const std::string& userId)
         return Error{"not_found", "Empty user id", 404};
     }
 
-    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    const std::string cookieHeader = getLoadedCookieHeader();
     if (cookieHeader.empty())
     {
         return Error{"auth_expired", "No session cookie", 401};
@@ -1330,7 +1380,7 @@ Result<nlohmann::json> VrcApi::selectAvatar(const std::string& avatarId)
         return Error{"not_found", "Empty avatar id", 400};
     }
 
-    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    const std::string cookieHeader = getLoadedCookieHeader();
     if (cookieHeader.empty())
     {
         return Error{"auth_expired", "No session cookie", 401};
@@ -1360,7 +1410,7 @@ Result<nlohmann::json> VrcApi::selectAvatar(const std::string& avatarId)
 
 Result<nlohmann::json> VrcApi::updateAuthUser(const nlohmann::json& patch)
 {
-    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    const std::string cookieHeader = getLoadedCookieHeader();
     if (cookieHeader.empty())
     {
         return Error{"auth_expired", "No session cookie", 401};
@@ -1411,7 +1461,7 @@ Result<nlohmann::json> VrcApi::fetchWorldDetails(const std::string& worldId)
         return Error{"not_found", "Empty world id", 404};
     }
 
-    const std::string cookieHeader = AuthStore::Instance().BuildCookieHeader();
+    const std::string cookieHeader = getLoadedCookieHeader();
     std::optional<std::string> authHeader = cookieHeader.empty() ? std::nullopt : std::make_optional(cookieHeader);
 
     const std::wstring path = toWide(fmt::format("/api/1/worlds/{}?apiKey={}", worldId, kApiKey));

@@ -594,26 +594,7 @@ bool Database::IsOpen() const noexcept
 
 std::filesystem::path Database::DefaultDbPath()
 {
-    PWSTR raw = nullptr;
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &raw)) && raw != nullptr)
-    {
-        std::filesystem::path base(raw);
-        CoTaskMemFree(raw);
-        return base / L"VRCSM" / L"vrcsm.db";
-    }
-
-    if (raw != nullptr)
-    {
-        CoTaskMemFree(raw);
-    }
-
-    std::error_code ec;
-    auto temp = std::filesystem::temp_directory_path(ec);
-    if (ec)
-    {
-        temp = std::filesystem::path(L".");
-    }
-    return temp / L"VRCSM" / L"vrcsm.db";
+    return getAppDataRoot() / L"vrcsm.db";
 }
 
 Result<std::int64_t> Database::InsertWorldVisit(const WorldVisitInsert& v)
@@ -667,6 +648,25 @@ Result<std::monostate> Database::MarkVisitLeft(const std::string& world_id,
         if (BindText(stmt, 1, left_at) != SQLITE_OK ||
             BindText(stmt, 2, world_id) != SQLITE_OK ||
             BindText(stmt, 3, instance_id) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
+Result<std::monostate> Database::CloseOpenWorldVisits(const std::string& left_at)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    const char* sql =
+        "UPDATE world_visits "
+        "SET left_at = ? "
+        "WHERE left_at IS NULL;";
+
+    return RunOnce(sql, [this, &left_at](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, left_at) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }
@@ -745,8 +745,8 @@ Result<std::monostate> Database::RecordPlayerEvent(const PlayerEventInsert& e)
     }
 
     const char* insertEventSql =
-        "INSERT INTO player_events (kind, user_id, display_name, world_id, occurred_at) "
-        "VALUES (?, ?, ?, ?, ?);";
+        "INSERT INTO player_events (kind, user_id, display_name, world_id, instance_id, occurred_at) "
+        "VALUES (?, ?, ?, ?, ?, ?);";
 
     const auto insertEventResult =
         RunOnce(insertEventSql, [this, &e](sqlite3_stmt* stmt) -> Result<std::monostate>
@@ -755,7 +755,8 @@ Result<std::monostate> Database::RecordPlayerEvent(const PlayerEventInsert& e)
             BindOptionalText(stmt, 2, e.user_id) != SQLITE_OK ||
             BindText(stmt, 3, e.display_name) != SQLITE_OK ||
             BindOptionalText(stmt, 4, e.world_id) != SQLITE_OK ||
-            BindText(stmt, 5, e.occurred_at) != SQLITE_OK)
+            BindOptionalText(stmt, 5, e.instance_id) != SQLITE_OK ||
+            BindText(stmt, 6, e.occurred_at) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }
@@ -808,7 +809,13 @@ Result<std::monostate> Database::RecordPlayerEvent(const PlayerEventInsert& e)
     return std::monostate{};
 }
 
-Result<nlohmann::json> Database::RecentPlayerEvents(int limit, int offset)
+Result<nlohmann::json> Database::RecentPlayerEvents(
+    int limit,
+    int offset,
+    std::optional<std::string> world_id,
+    std::optional<std::string> instance_id,
+    std::optional<std::string> occurred_after,
+    std::optional<std::string> occurred_before)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -822,10 +829,14 @@ Result<nlohmann::json> Database::RecentPlayerEvents(int limit, int offset)
     }
 
     const char* sql =
-        "SELECT id, kind, user_id, display_name, world_id, occurred_at "
+        "SELECT id, kind, user_id, display_name, world_id, instance_id, occurred_at "
         "FROM player_events "
+        "WHERE (?1 IS NULL OR world_id = ?2) "
+        "  AND (?3 IS NULL OR instance_id = ?4) "
+        "  AND (?5 IS NULL OR occurred_at >= ?6) "
+        "  AND (?7 IS NULL OR occurred_at < ?8) "
         "ORDER BY occurred_at DESC "
-        "LIMIT ? OFFSET ?;";
+        "LIMIT ?9 OFFSET ?10;";
 
     sqlite3_stmt* rawStmt = nullptr;
     if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
@@ -834,7 +845,16 @@ Result<nlohmann::json> Database::RecentPlayerEvents(int limit, int offset)
     }
     StatementGuard stmt(rawStmt);
 
-    if (BindInt(rawStmt, 1, limit) != SQLITE_OK || BindInt(rawStmt, 2, offset) != SQLITE_OK)
+    if (BindOptionalText(rawStmt, 1, world_id) != SQLITE_OK
+        || BindOptionalText(rawStmt, 2, world_id) != SQLITE_OK
+        || BindOptionalText(rawStmt, 3, instance_id) != SQLITE_OK
+        || BindOptionalText(rawStmt, 4, instance_id) != SQLITE_OK
+        || BindOptionalText(rawStmt, 5, occurred_after) != SQLITE_OK
+        || BindOptionalText(rawStmt, 6, occurred_after) != SQLITE_OK
+        || BindOptionalText(rawStmt, 7, occurred_before) != SQLITE_OK
+        || BindOptionalText(rawStmt, 8, occurred_before) != SQLITE_OK
+        || BindInt(rawStmt, 9, limit) != SQLITE_OK
+        || BindInt(rawStmt, 10, offset) != SQLITE_OK)
     {
         return MakeError("db_bind_failed");
     }
@@ -849,7 +869,8 @@ Result<nlohmann::json> Database::RecentPlayerEvents(int limit, int offset)
         row["user_id"] = ColumnTextOrNull(rawStmt, 2);
         row["display_name"] = ColumnTextOrNull(rawStmt, 3);
         row["world_id"] = ColumnTextOrNull(rawStmt, 4);
-        row["occurred_at"] = ColumnTextOrNull(rawStmt, 5);
+        row["instance_id"] = ColumnTextOrNull(rawStmt, 5);
+        row["occurred_at"] = ColumnTextOrNull(rawStmt, 6);
         rows.push_back(std::move(row));
     }
 
@@ -1176,6 +1197,82 @@ Result<std::monostate> Database::SetFriendNote(const std::string& user_id,
         }
         return std::monostate{};
     });
+}
+
+Result<nlohmann::json> Database::ClearHistory(bool include_friend_notes)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    const auto beginResult = ExecSimple("BEGIN;");
+    if (std::holds_alternative<Error>(beginResult))
+    {
+        return std::get<Error>(beginResult);
+    }
+
+    nlohmann::json cleared = nlohmann::json::object();
+    const auto deleteTable = [this, &cleared](const char* tableName) -> Result<std::monostate>
+    {
+        const std::string sql = std::string("DELETE FROM ") + tableName + ";";
+        char* errorMessage = nullptr;
+        const int rc = sqlite3_exec(m_db, sql.c_str(), nullptr, nullptr, &errorMessage);
+        if (rc != SQLITE_OK)
+        {
+            std::string detail = errorMessage != nullptr ? errorMessage : sqlite3_errmsg(m_db);
+            if (errorMessage != nullptr)
+            {
+                sqlite3_free(errorMessage);
+            }
+            return MakeError("db_exec_failed", detail);
+        }
+        cleared[tableName] = static_cast<std::int64_t>(sqlite3_changes(m_db));
+        return std::monostate{};
+    };
+
+    for (const auto* table : {"player_events", "player_encounters", "world_visits", "avatar_history", "friend_log"})
+    {
+        const auto deleteResult = deleteTable(table);
+        if (std::holds_alternative<Error>(deleteResult))
+        {
+            RollbackIfNeeded(m_db);
+            return std::get<Error>(deleteResult);
+        }
+    }
+
+    if (include_friend_notes)
+    {
+        const auto deleteResult = deleteTable("friend_notes");
+        if (std::holds_alternative<Error>(deleteResult))
+        {
+            RollbackIfNeeded(m_db);
+            return std::get<Error>(deleteResult);
+        }
+    }
+
+    const auto resetSequenceResult = ExecSimple(
+        "DELETE FROM sqlite_sequence "
+        "WHERE name IN ('world_visits', 'player_events', 'friend_log');");
+    if (std::holds_alternative<Error>(resetSequenceResult))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(resetSequenceResult);
+    }
+
+    const auto commitResult = ExecSimple("COMMIT;");
+    if (std::holds_alternative<Error>(commitResult))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(commitResult);
+    }
+
+    return nlohmann::json{
+        {"cleared", std::move(cleared)},
+        {"include_friend_notes", include_friend_notes},
+    };
 }
 
 Result<std::monostate> Database::AddFavorite(const FavoriteInsert& f)
@@ -1801,7 +1898,6 @@ Result<std::monostate> Database::InitSchema()
     static constexpr const char* kSchemaSql = R"SQL(
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
-PRAGMA user_version = 2;
 
 CREATE TABLE IF NOT EXISTS world_visits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1822,6 +1918,7 @@ CREATE TABLE IF NOT EXISTS player_events (
     user_id TEXT,
     display_name TEXT NOT NULL,
     world_id TEXT,
+    instance_id TEXT,
     occurred_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_player_events_time ON player_events(occurred_at);
@@ -1900,7 +1997,59 @@ CREATE TABLE IF NOT EXISTS local_favorite_tags (
 CREATE INDEX IF NOT EXISTS idx_local_favorite_tags_lookup ON local_favorite_tags(list_name, tag);
 )SQL";
 
-    return ExecSimple(kSchemaSql);
+    const auto schemaResult = ExecSimple(kSchemaSql);
+    if (std::holds_alternative<Error>(schemaResult))
+    {
+        return std::get<Error>(schemaResult);
+    }
+
+    bool hasInstanceId = false;
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, "PRAGMA table_info(player_events);", -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        const auto columnName = ColumnOptionalText(rawStmt, 1);
+        if (columnName.has_value() && *columnName == "instance_id")
+        {
+            hasInstanceId = true;
+            break;
+        }
+    }
+    if (rc != SQLITE_ROW && rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+
+    if (!hasInstanceId)
+    {
+        const auto alterResult = ExecSimple("ALTER TABLE player_events ADD COLUMN instance_id TEXT;");
+        if (std::holds_alternative<Error>(alterResult))
+        {
+            return std::get<Error>(alterResult);
+        }
+    }
+
+    const auto indexResult = ExecSimple(
+        "CREATE INDEX IF NOT EXISTS idx_player_events_instance_time "
+        "ON player_events(instance_id, occurred_at);");
+    if (std::holds_alternative<Error>(indexResult))
+    {
+        return std::get<Error>(indexResult);
+    }
+
+    const auto versionResult = ExecSimple("PRAGMA user_version = 3;");
+    if (std::holds_alternative<Error>(versionResult))
+    {
+        return std::get<Error>(versionResult);
+    }
+
+    return std::monostate{};
 }
 
 Result<std::monostate> Database::ExecSimple(const char* sql)

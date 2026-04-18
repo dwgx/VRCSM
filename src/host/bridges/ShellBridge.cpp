@@ -2,6 +2,7 @@
 #include "BridgeCommon.h"
 
 #include "../../core/AuthStore.h"
+#include "../../core/Common.h"
 #include "../../core/PathProbe.h"
 #include "../../core/ProcessGuard.h"
 
@@ -142,19 +143,7 @@ nlohmann::json IpcBridge::HandleAppFactoryReset(const nlohmann::json&, const std
 
     m_host.ClearVrcCookies();
 
-    wchar_t buffer[MAX_PATH]{};
-    DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer, MAX_PATH);
-    if (length == 0 || length >= MAX_PATH)
-    {
-        return nlohmann::json{
-            {"ok", false},
-            {"error", "LOCALAPPDATA is not set"},
-            {"removed", std::move(removed)},
-            {"skipped", std::move(skipped)},
-        };
-    }
-
-    const std::filesystem::path dataRoot = std::filesystem::path(buffer) / L"VRCSM";
+    const std::filesystem::path dataRoot = vrcsm::core::getAppDataRoot();
     std::error_code ec;
     if (!std::filesystem::exists(dataRoot, ec))
     {

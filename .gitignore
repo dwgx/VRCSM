@@ -44,3 +44,10 @@ sqlite_mcp_server.db
 # Personal dev launcher (hardcodes vcvars path — not portable)
 build.bat
 
+# Local scratch area (hand-tested glb outputs, resized icons, etc.)
+tmp/
+
+# One-off force-rebuild helpers (hardcode vcvars path — not portable)
+tools/build-*-force.bat
+tools/build-test-extract.bat
+

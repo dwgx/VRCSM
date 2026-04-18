@@ -22,9 +22,9 @@ interface ReportContextValue {
   loading: boolean;
   error: string | null;
   /** Force a fresh scan, ignoring any in-flight request. */
-  refresh: () => void;
+  refresh: () => Promise<void>;
   /** Lazy ensure — no-op if we already have a report or one is in flight. */
-  ensure: () => void;
+  ensure: () => Promise<void>;
 }
 
 const ReportContext = createContext<ReportContextValue | null>(null);
@@ -34,13 +34,16 @@ export function ReportProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inflight = useRef(false);
+  const pending = useRef<Promise<void> | null>(null);
 
-  const run = useCallback(() => {
-    if (inflight.current) return;
+  const run = useCallback((): Promise<void> => {
+    if (pending.current) {
+      return pending.current;
+    }
     inflight.current = true;
     setLoading(true);
     setError(null);
-    ipc
+    const job = ipc
       .scan()
       .then((r) => {
         setReport(r);
@@ -51,25 +54,30 @@ export function ReportProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => {
         inflight.current = false;
+        pending.current = null;
         setLoading(false);
       });
+    pending.current = job;
+    return job;
   }, []);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((): Promise<void> => {
     // Clear any current report so consumers can show a fresh-loading state
     // if they want — but the most common pattern is "keep showing the old
     // data until the new one arrives" so we leave `report` untouched.
-    run();
+    return run();
   }, [run]);
 
-  const ensure = useCallback(() => {
-    if (report || inflight.current) return;
-    run();
+  const ensure = useCallback((): Promise<void> => {
+    if (report || pending.current) {
+      return pending.current ?? Promise.resolve();
+    }
+    return run();
   }, [report, run]);
 
   // Kick off the initial scan once, at mount.
   useEffect(() => {
-    ensure();
+    void ensure();
   }, [ensure]);
 
   const value = useMemo<ReportContextValue>(

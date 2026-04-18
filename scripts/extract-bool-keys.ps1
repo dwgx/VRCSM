@@ -1,4 +1,14 @@
-$src = Get-Content 'C:\Users\dwgx1\.claude\projects\D--Project-VRCSM\9ba2b9b7-cb4a-46d6-b3cb-3092c8d41993\tool-results\toolu_0158ckWSW4u1rFYaDz6W9hmv.txt'
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$InputPath,
+    [string]$OutputPath = (Join-Path $PSScriptRoot 'bool-keys.txt')
+)
+
+if (-not (Test-Path -LiteralPath $InputPath)) {
+    throw "Input file not found: $InputPath"
+}
+
+$src = Get-Content -LiteralPath $InputPath
 $keys = $src | ForEach-Object {
     $line = $_
     # Strip "NN:" line-number prefix emitted by ripgrep
@@ -9,5 +19,5 @@ $keys = $src | ForEach-Object {
     }
 } | Where-Object { $_ } | Sort-Object -Unique
 Write-Host ('count: ' + $keys.Count)
-$keys | Out-File -Encoding utf8 'D:\Project\VRCSM\scripts\bool-keys.txt'
-Get-Content 'D:\Project\VRCSM\scripts\bool-keys.txt' | Select-Object -First 15
+$keys | Out-File -Encoding utf8 -LiteralPath $OutputPath
+Get-Content -LiteralPath $OutputPath | Select-Object -First 15

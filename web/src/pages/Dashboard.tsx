@@ -41,7 +41,6 @@ import {
   Wifi,
   WifiOff,
   ChevronRight,
-  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -75,6 +74,27 @@ interface TimelineEntry {
   time: string;
   label: string;
   detail?: string;
+}
+
+interface DbWorldVisit {
+  id: number;
+  world_id: string | null;
+  instance_id: string | null;
+  access_type: string | null;
+  owner_id: string | null;
+  region: string | null;
+  joined_at: string | null;
+  left_at: string | null;
+}
+
+interface DbPlayerEvent {
+  id: number;
+  kind: string | null;
+  user_id: string | null;
+  display_name: string | null;
+  world_id: string | null;
+  instance_id: string | null;
+  occurred_at: string | null;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────
@@ -182,6 +202,28 @@ function elapsedSince(iso: string | null | undefined): string | null {
   return `${hrs}h ${rem}m`;
 }
 
+function elapsedBetween(
+  startIso: string | null | undefined,
+  endIso: string | null | undefined,
+): string | null {
+  if (!startIso || !endIso) return null;
+  const start = parseLogTime(startIso);
+  const end = parseLogTime(endIso);
+  if (start === null || end === null || end < start) return null;
+  const mins = Math.floor((end - start) / 60_000);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return `${hrs}h ${rem}m`;
+}
+
+function parseLogTime(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const normalized = iso.replace(/^(\d{4})\.(\d{2})\.(\d{2})/, "$1-$2-$3");
+  const parsed = new Date(normalized).getTime();
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 const timelineIconMap: Record<
   TimelineEntry["kind"],
   { icon: typeof Globe2; colorClass: string }
@@ -206,23 +248,10 @@ function Dashboard() {
   // ── VRChat process status (via context) ──
   const { status: vrcProcessStatus } = useVrcProcess();
   const vrcRunning = vrcProcessStatus.running;
-  const [clearingCache, setClearingCache] = useState(false);
   const [repairingBrokenLinks, setRepairingBrokenLinks] = useState(false);
-
-  async function handleClearCache() {
-    if (!confirm(t("dashboard.confirmClearCache", "Are you sure you want to completely clear the VRChat cache (Cache-WindowsPlayer)? This will delete all downloaded avatars and worlds."))) return;
-    setClearingCache(true);
-    try {
-      const res = await ipc.call<{ category: string }, { deleted?: number; error?: any }>("delete.execute", { category: "cache_windows_player" });
-      if (res.error) throw new Error(res.error.message || res.error.code);
-      toast.success(t("dashboard.clearCacheSuccess", `Successfully cleared ${res.deleted || 0} files`));
-      refresh();
-    } catch (e: any) {
-      toast.error(t("dashboard.clearCacheError", `Failed to clear cache: ${e.message || e}`));
-    } finally {
-      setClearingCache(false);
-    }
-  }
+  const [screenshotCount, setScreenshotCount] = useState<number | null>(null);
+  const [dbVisits, setDbVisits] = useState<DbWorldVisit[]>([]);
+  const [dbSessionEvents, setDbSessionEvents] = useState<DbPlayerEvent[]>([]);
 
   // ── Friends online count (fire-and-forget, non-blocking) ──
   const [friendsOnline, setFriendsOnline] = useState<number | null>(null);
@@ -246,6 +275,85 @@ function Dashboard() {
       alive = false;
     };
   }, [authStatus.authed]);
+
+  useEffect(() => {
+    let alive = true;
+    ipc
+      .call<undefined, { screenshots: Array<unknown> }>("screenshots.list", undefined)
+      .then((result) => {
+        if (!alive) return;
+        setScreenshotCount(result.screenshots.length);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setScreenshotCount(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [report?.generated_at]);
+
+  useEffect(() => {
+    let alive = true;
+    ipc.dbWorldVisits(20, 0)
+      .then((result) => {
+        if (!alive) return;
+        setDbVisits((result.items ?? []) as DbWorldVisit[]);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setDbVisits([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [report?.generated_at]);
+
+  const selectedDbVisit = useMemo(() => {
+    if (dbVisits.length === 0) {
+      return null;
+    }
+
+    if (vrcRunning) {
+      return dbVisits[0] ?? null;
+    }
+
+    return dbVisits.find((visit) => Boolean(visit.left_at)) ?? null;
+  }, [dbVisits, vrcRunning]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!selectedDbVisit?.world_id || !selectedDbVisit.instance_id || !selectedDbVisit.joined_at) {
+      setDbSessionEvents([]);
+      return () => {
+        alive = false;
+      };
+    }
+
+    ipc.dbPlayerEvents(500, 0, {
+      worldId: selectedDbVisit.world_id,
+      instanceId: selectedDbVisit.instance_id,
+      occurredAfter: selectedDbVisit.joined_at,
+      occurredBefore: selectedDbVisit.left_at ?? undefined,
+    })
+      .then((result) => {
+        if (!alive) return;
+        setDbSessionEvents((result.items ?? []) as DbPlayerEvent[]);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setDbSessionEvents([]);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [
+    selectedDbVisit?.world_id,
+    selectedDbVisit?.instance_id,
+    selectedDbVisit?.joined_at,
+    selectedDbVisit?.left_at,
+  ]);
 
   // ── "Repair" shortcut ──
   const repairJunction = (category: string) => {
@@ -341,36 +449,120 @@ function Dashboard() {
   const currentSession = useMemo(() => {
     if (!report) return null;
     const logs = report.logs;
-    const latestWorldId = logs.recent_world_ids[0] ?? null;
-    if (!latestWorldId) return null;
-    const worldName = logs.world_names[latestWorldId] ?? null;
 
-    // Find the latest world switch for this world
-    const latestSwitch = logs.world_switches.find(
-      (ws) => ws.world_id === latestWorldId,
-    );
+    if (selectedDbVisit?.world_id && selectedDbVisit.joined_at) {
+      const activeMap = new Map<string, string>();
+      const seenMap = new Map<string, string>();
 
-    // Players in the current session: after the last world join, who
-    // joined and hasn't left yet
-    const sessionStart = latestSwitch?.iso_time ?? "";
-    const relevantEvents = logs.player_events.filter(
-      (pe) => (pe.iso_time ?? "") >= sessionStart,
-    );
-    const present = new Set<string>();
-    for (const pe of relevantEvents) {
-      if (pe.kind === "joined") present.add(pe.display_name);
-      else present.delete(pe.display_name);
+      const relevantDbEvents = dbSessionEvents
+        .map((entry) => ({
+          entry,
+          time: parseLogTime(entry.occurred_at),
+        }))
+        .filter(({ entry, time }) => {
+          if (time === null) {
+            return false;
+          }
+          if (entry.world_id !== selectedDbVisit.world_id) {
+            return false;
+          }
+          if (entry.instance_id !== selectedDbVisit.instance_id) {
+            return false;
+          }
+          return true;
+        })
+        .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+
+      for (const { entry } of relevantDbEvents) {
+        const displayName = entry.display_name?.trim();
+        if (!displayName) {
+          continue;
+        }
+        const key = entry.user_id || displayName;
+        if (entry.kind === "joined") {
+          activeMap.set(key, displayName);
+          seenMap.set(key, displayName);
+        } else if (entry.kind === "left") {
+          activeMap.delete(key);
+        }
+      }
+
+      const players = Array.from(
+        (vrcRunning
+          ? (activeMap.size > 0 ? activeMap : seenMap)
+          : seenMap).values(),
+      )
+        .sort((a, b) => a.localeCompare(b));
+
+      return {
+        worldId: selectedDbVisit.world_id,
+        worldName:
+          logs.world_names[selectedDbVisit.world_id] ??
+          selectedDbVisit.world_id.slice(0, 20) + "...",
+        players,
+        accessType: selectedDbVisit.access_type ?? null,
+        region: selectedDbVisit.region ?? null,
+        joinTime: selectedDbVisit.joined_at,
+        endTime: selectedDbVisit.left_at ?? null,
+      };
     }
+
+    const orderedSwitches = [...logs.world_switches]
+      .map((entry) => ({
+        entry,
+        time: parseLogTime(entry.iso_time),
+      }))
+      .filter((entry) => entry.time !== null)
+      .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+    const latestSwitch = orderedSwitches.at(-1)?.entry ?? null;
+    if (!latestSwitch) return null;
+
+    const latestWorldId = latestSwitch.world_id;
+    const worldName = logs.world_names[latestWorldId] ?? null;
+    const sessionStart = parseLogTime(latestSwitch.iso_time);
+    const activeMap = new Map<string, string>();
+    const seenMap = new Map<string, string>();
+
+    const relevantEvents = logs.player_events
+      .map((entry) => ({
+        entry,
+        time: parseLogTime(entry.iso_time),
+      }))
+      .filter(({ time }) => {
+        if (time === null || sessionStart === null) {
+          return false;
+        }
+        return time >= sessionStart;
+      })
+      .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+
+    for (const { entry } of relevantEvents) {
+      const displayName = entry.display_name?.trim();
+      if (!displayName) {
+        continue;
+      }
+      const key = entry.user_id || displayName;
+      if (entry.kind === "joined") {
+        activeMap.set(key, displayName);
+        seenMap.set(key, displayName);
+      } else {
+        activeMap.delete(key);
+      }
+    }
+
+    const players = Array.from((activeMap.size > 0 ? activeMap : seenMap).values())
+      .sort((a, b) => a.localeCompare(b));
 
     return {
       worldId: latestWorldId,
       worldName,
-      players: Array.from(present),
+      players,
       accessType: latestSwitch?.access_type ?? null,
       region: latestSwitch?.region ?? null,
       joinTime: latestSwitch?.iso_time ?? null,
+      endTime: null,
     };
-  }, [report]);
+  }, [dbSessionEvents, report, selectedDbVisit, vrcRunning]);
 
   // ── Ranked storage data ──
   const ranked = useMemo(() => {
@@ -414,7 +606,7 @@ function Dashboard() {
     );
   }
 
-  const screenshotCount = report.logs.screenshots.length;
+  const visibleScreenshotCount = screenshotCount ?? report.logs.screenshots.length;
   const top = report.cache_windows_player.largest_entries.slice(0, 8);
   const trueCacheBytes = getTrueCacheBytes(report);
   const trueCacheCategoryCount = getTrueCacheCategoryCount(report);
@@ -454,16 +646,6 @@ function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearCache}
-            disabled={clearingCache || !report}
-            className="text-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] border-[hsl(var(--destructive)/0.3)] transition-colors"
-          >
-            <Trash2 className="size-3.5 mr-1" />
-            {t("dashboard.clearCache", "一键清理缓存")}
-          </Button>
           <Button variant="outline" size="sm" onClick={refresh}>
             {t("common.rescan")}
           </Button>
@@ -511,8 +693,11 @@ function Dashboard() {
                 {currentSession.joinTime && (
                   <div className="flex items-center gap-1 text-[11px] text-[hsl(var(--muted-foreground))]">
                     <Clock className="size-3" />
-                    {elapsedSince(currentSession.joinTime) ??
-                      shortTime(currentSession.joinTime)}
+                    {vrcRunning
+                      ? (elapsedSince(currentSession.joinTime) ??
+                        shortTime(currentSession.joinTime))
+                      : (elapsedBetween(currentSession.joinTime, currentSession.endTime) ??
+                        shortTime(currentSession.joinTime))}
                   </div>
                 )}
               </div>
@@ -619,9 +804,9 @@ function Dashboard() {
           title={t("dashboard.screenshots", {
             defaultValue: "Screenshots",
           })}
-          value={String(screenshotCount)}
+          value={String(visibleScreenshotCount)}
           hint={t("dashboard.screenshotsHint", {
-            defaultValue: "captured in logs",
+            defaultValue: "files detected on disk",
           })}
           icon={<Camera className="size-5" />}
           onClick={() => navigate("/screenshots")}
@@ -657,8 +842,6 @@ function Dashboard() {
               </div>
             ) : (
               <div className="relative space-y-0">
-                {/* Vertical connecting line */}
-                <div className="absolute top-3.5 bottom-3.5 left-[13px] w-px bg-[hsl(var(--border))]" />
                 {timeline.map((entry, idx) => {
                   const meta = timelineIconMap[entry.kind];
                   const Icon = meta.icon;

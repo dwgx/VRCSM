@@ -5,9 +5,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const assetRevision = new Date().toISOString();
 
 export default defineConfig({
   base: "./",
+  define: {
+    __VRCSM_ASSET_REV__: JSON.stringify(assetRevision),
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

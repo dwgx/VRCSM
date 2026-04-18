@@ -47,8 +47,6 @@ public:
     void ClearVrcCookies() const;
 
 private:
-    std::filesystem::path GetLocalAppDataPath() const;
-    std::filesystem::path GetExecutableDirectory() const;
     HRESULT OnEnvironmentCreated(HRESULT result, ICoreWebView2Environment* environment);
     HRESULT OnControllerCreated(HRESULT result, ICoreWebView2Controller* controller);
     void ConfigureWebView();

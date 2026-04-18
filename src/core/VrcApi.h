@@ -99,6 +99,8 @@ public:
     // cleanly without guessing from exception strings.
     static Result<nlohmann::json> fetchCurrentUser();
     static Result<std::vector<nlohmann::json>> fetchFriends(bool offline);
+    static Result<std::vector<nlohmann::json>> fetchGroups();
+    static Result<std::vector<nlohmann::json>> fetchPlayerModerations();
     static Result<std::vector<nlohmann::json>> fetchFavoritedAvatars();
     static Result<std::vector<nlohmann::json>> fetchFavoritedWorlds();
 

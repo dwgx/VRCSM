@@ -1,9 +1,11 @@
 #include "../../pch.h"
 #include "BridgeCommon.h"
 
+#include "../../core/Common.h"
+#include "../VrchatPaths.h"
+
 #include <KnownFolders.h>
 #include <shellapi.h>
-#include <shlobj.h>
 
 #include <wil/com.h>
 #include <wil/resource.h>
@@ -36,27 +38,19 @@ std::string UrlEncodeSegment(std::string_view input)
     return out;
 }
 
-std::filesystem::path ScreenshotsRootDir()
+bool IsSupportedScreenshotExtension(const std::filesystem::path& path)
 {
-    wil::unique_cotaskmem_string picturesPath;
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, picturesPath.put())))
-    {
-        return std::filesystem::path(picturesPath.get()) / L"VRChat";
-    }
-    wchar_t buffer[MAX_PATH]{};
-    const DWORD length = GetEnvironmentVariableW(L"USERPROFILE", buffer, MAX_PATH);
-    if (length > 0 && length < MAX_PATH)
-    {
-        return std::filesystem::path(buffer) / L"Pictures" / L"VRChat";
-    }
-    return {};
+    const auto ext = path.extension().wstring();
+    return _wcsicmp(ext.c_str(), L".png") == 0
+        || _wcsicmp(ext.c_str(), L".jpg") == 0
+        || _wcsicmp(ext.c_str(), L".jpeg") == 0;
 }
 
 } // namespace
 
 nlohmann::json IpcBridge::HandleScreenshotsList(const nlohmann::json&, const std::optional<std::string>&)
 {
-    const auto folder = ScreenshotsRootDir();
+    const auto folder = DetectPrimaryVrchatScreenshotRoot();
     nlohmann::json screenshots = nlohmann::json::array();
 
     std::error_code ec;
@@ -77,23 +71,39 @@ nlohmann::json IpcBridge::HandleScreenshotsList(const nlohmann::json&, const std
     std::vector<Entry> entries;
     entries.reserve(256);
 
-    for (auto it = std::filesystem::recursive_directory_iterator(folder, ec);
+    for (auto it = std::filesystem::recursive_directory_iterator(
+             folder,
+             std::filesystem::directory_options::skip_permission_denied,
+             ec);
          it != std::filesystem::recursive_directory_iterator();
          it.increment(ec))
     {
-        if (ec) break;
-        if (!it->is_regular_file(ec)) continue;
-        const auto& p = it->path();
-        const auto ext = p.extension().wstring();
-        if (ext != L".png" && ext != L".PNG" && ext != L".jpg" && ext != L".jpeg"
-            && ext != L".JPG" && ext != L".JPEG")
+        if (ec)
+        {
+            ec.clear();
+            continue;
+        }
+
+        std::error_code fileEc;
+        if (!it->is_regular_file(fileEc) || fileEc)
         {
             continue;
         }
+        const auto& p = it->path();
+        if (!IsSupportedScreenshotExtension(p))
+        {
+            continue;
+        }
+
         std::error_code sizeEc;
         const auto size = std::filesystem::file_size(p, sizeEc);
         std::error_code timeEc;
         const auto mtime = std::filesystem::last_write_time(p, timeEc);
+        if (timeEc)
+        {
+            continue;
+        }
+
         entries.push_back({p, mtime, sizeEc ? 0 : size});
     }
 
@@ -154,7 +164,7 @@ nlohmann::json IpcBridge::HandleScreenshotsOpen(const nlohmann::json& params, co
         throw std::runtime_error("screenshots.open: missing 'path'");
     }
     const std::filesystem::path target = Utf8ToWide(*pathStr);
-    const auto root = ScreenshotsRootDir();
+    const auto root = DetectPrimaryVrchatScreenshotRoot();
     if (root.empty())
     {
         throw std::runtime_error("screenshots.open: screenshots folder unavailable");
@@ -162,20 +172,16 @@ nlohmann::json IpcBridge::HandleScreenshotsOpen(const nlohmann::json& params, co
 
     std::error_code ec;
     const auto absTarget = std::filesystem::weakly_canonical(target, ec);
-    const auto absRoot = std::filesystem::weakly_canonical(root, ec);
-    const auto targetStr = absTarget.wstring();
-    const auto rootStr = absRoot.wstring();
-    if (targetStr.rfind(rootStr, 0) != 0)
+    if (ec || !vrcsm::core::ensureWithinBase(root, absTarget))
     {
         throw std::runtime_error("screenshots.open: path escapes screenshots root");
     }
-    const auto ext = target.extension().wstring();
-    if (ext != L".png" && ext != L".PNG" && ext != L".jpg" && ext != L".jpeg"
-        && ext != L".JPG" && ext != L".JPEG")
+    if (!IsSupportedScreenshotExtension(absTarget))
     {
         throw std::runtime_error("screenshots.open: unsupported file type");
     }
 
+    const auto targetStr = absTarget.wstring();
     const HINSTANCE h = ShellExecuteW(nullptr, L"open", targetStr.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     if (reinterpret_cast<INT_PTR>(h) <= 32)
     {
@@ -187,7 +193,7 @@ nlohmann::json IpcBridge::HandleScreenshotsOpen(const nlohmann::json& params, co
 nlohmann::json IpcBridge::HandleScreenshotsFolder(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto pathStr = JsonStringField(params, "path");
-    const auto root = ScreenshotsRootDir();
+    const auto root = DetectPrimaryVrchatScreenshotRoot();
     if (root.empty())
     {
         throw std::runtime_error("screenshots.folder: screenshots folder unavailable");
@@ -207,8 +213,7 @@ nlohmann::json IpcBridge::HandleScreenshotsFolder(const nlohmann::json& params, 
     const std::filesystem::path target = Utf8ToWide(*pathStr);
     std::error_code ec;
     const auto absTarget = std::filesystem::weakly_canonical(target, ec);
-    const auto absRoot = std::filesystem::weakly_canonical(root, ec);
-    if (absTarget.wstring().rfind(absRoot.wstring(), 0) != 0)
+    if (ec || !vrcsm::core::ensureWithinBase(root, absTarget))
     {
         throw std::runtime_error("screenshots.folder: path escapes screenshots root");
     }
@@ -229,7 +234,7 @@ nlohmann::json IpcBridge::HandleScreenshotsDelete(const nlohmann::json& params, 
     int deleted = 0;
     std::vector<std::string> failed;
 
-    const auto root = ScreenshotsRootDir();
+    const auto root = DetectPrimaryVrchatScreenshotRoot();
     if (root.empty())
     {
         throw std::runtime_error("screenshots.delete: screenshots folder unavailable");
@@ -237,7 +242,10 @@ nlohmann::json IpcBridge::HandleScreenshotsDelete(const nlohmann::json& params, 
 
     std::error_code rootEc;
     const auto absRoot = std::filesystem::weakly_canonical(root, rootEc);
-    const auto rootStr = absRoot.wstring();
+    if (rootEc)
+    {
+        throw std::runtime_error("screenshots.delete: failed to resolve screenshots root");
+    }
 
     for (const auto& pathStr : paths)
     {
@@ -245,15 +253,13 @@ nlohmann::json IpcBridge::HandleScreenshotsDelete(const nlohmann::json& params, 
         const std::filesystem::path target = Utf8ToWide(pathStr);
         const auto absTarget = std::filesystem::weakly_canonical(target, ec);
 
-        if (absTarget.wstring().rfind(rootStr, 0) != 0)
+        if (ec || !vrcsm::core::ensureWithinBase(absRoot, absTarget))
         {
             failed.push_back(pathStr);
             continue;
         }
 
-        const auto ext = target.extension().wstring();
-        if (ext != L".png" && ext != L".PNG" && ext != L".jpg" && ext != L".jpeg"
-            && ext != L".JPG" && ext != L".JPEG")
+        if (!IsSupportedScreenshotExtension(absTarget))
         {
             failed.push_back(pathStr);
             continue;

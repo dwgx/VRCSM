@@ -228,25 +228,7 @@ std::string AuthStore::BuildCookieHeader() const
 
 std::filesystem::path AuthStore::ResolveSessionPath() const
 {
-    std::wstring buffer(static_cast<std::size_t>(MAX_PATH), L'\0');
-    DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer.data(), static_cast<DWORD>(buffer.size()));
-    if (length == 0)
-    {
-        return std::filesystem::path(L"session.dat");
-    }
-
-    if (length >= buffer.size())
-    {
-        buffer.resize(static_cast<std::size_t>(length));
-        length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer.data(), static_cast<DWORD>(buffer.size()));
-        if (length == 0 || length >= buffer.size())
-        {
-            return std::filesystem::path(L"session.dat");
-        }
-    }
-
-    buffer.resize(static_cast<std::size_t>(length));
-    return std::filesystem::path(buffer) / L"VRCSM" / L"session.dat";
+    return getAppDataRoot() / L"session.dat";
 }
 
 } // namespace vrcsm::core

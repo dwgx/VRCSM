@@ -74,6 +74,8 @@ struct PlayerEvent
     std::optional<std::string> iso_time;
     std::string display_name;
     std::optional<std::string> user_id;
+    std::optional<std::string> world_id;
+    std::optional<std::string> instance_id;
 };
 
 void to_json(nlohmann::json& j, const PlayerEvent& e);
@@ -88,6 +90,8 @@ struct AvatarSwitchEvent
     std::optional<std::string> iso_time;
     std::string actor;
     std::string avatar_name;
+    std::optional<std::string> world_id;
+    std::optional<std::string> instance_id;
 };
 
 void to_json(nlohmann::json& j, const AvatarSwitchEvent& e);

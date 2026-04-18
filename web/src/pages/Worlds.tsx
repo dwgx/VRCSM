@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 import {
   Card,
   CardContent,
@@ -20,11 +21,66 @@ import {
   useFavoriteActions,
   useFavoriteItems,
 } from "@/lib/library";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { type WorldSwitchEvent, type PlayerEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff, Heart } from "lucide-react";
+import { Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff, Heart, PanelRightClose, PanelRightOpen } from "lucide-react";
+
+interface DbWorldVisit {
+  id: number;
+  world_id: string | null;
+  instance_id: string | null;
+  access_type: string | null;
+  owner_id: string | null;
+  region: string | null;
+  joined_at: string | null;
+  left_at: string | null;
+}
+
+interface DbPlayerEvent {
+  id: number;
+  kind: string | null;
+  user_id: string | null;
+  display_name: string | null;
+  world_id: string | null;
+  instance_id: string | null;
+  occurred_at: string | null;
+}
+
+function SessionPlayerList({
+  players,
+}: {
+  players: Array<{ displayName: string; userId: string | null }>;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="mt-1 border-t border-[hsl(var(--border)/0.5)] pt-2">
+      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+        {t("worlds.playersSeen", { defaultValue: "Players in Room" })} ({players.length})
+      </div>
+      <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
+        {players.map((player) => (
+          <div
+            key={player.userId || player.displayName}
+            className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-1.5"
+            title={player.userId || undefined}
+          >
+            {player.userId?.startsWith("usr_") ? (
+              <UserPopupBadge userId={player.userId} />
+            ) : (
+              <div className="min-w-0 truncate text-[11px] text-[hsl(var(--foreground))]">
+                {player.displayName}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Stable string hash used to seed the world tile gradient so each
@@ -48,6 +104,68 @@ function shortenId(id: string, head = 10, tail = 6): string {
   const clean = id.replace(/^wrld_/, "");
   if (clean.length <= head + tail + 3) return clean;
   return `${clean.slice(0, head)}…${clean.slice(-tail)}`;
+}
+
+function parseLogTime(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.includes("T")
+    ? value
+    : value.replace(/^(\d{4})\.(\d{2})\.(\d{2})/, "$1-$2-$3");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+function chooseBestVisitForSwitch(
+  visits: DbWorldVisit[],
+  instanceId: string,
+  switchTime: number | null,
+  nextSwitchTime: number | null,
+): DbWorldVisit | null {
+  const candidates = visits.filter(
+    (visit) => Boolean(visit.instance_id) && visit.instance_id === instanceId,
+  );
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (switchTime === null) {
+    return candidates[0] ?? null;
+  }
+
+  const scored = candidates
+    .map((visit) => {
+      const join = parseLogTime(visit.joined_at);
+      const rawLeft = parseLogTime(visit.left_at);
+      const effectiveLeft =
+        rawLeft !== null && nextSwitchTime !== null
+          ? Math.min(rawLeft, nextSwitchTime)
+          : rawLeft ?? nextSwitchTime;
+      const containsSwitch =
+        join !== null &&
+        join <= switchTime &&
+        (effectiveLeft === null || effectiveLeft > switchTime);
+      const distance =
+        join === null ? Number.POSITIVE_INFINITY : Math.abs(join - switchTime);
+      return {
+        visit,
+        join,
+        containsSwitch,
+        distance,
+      };
+    })
+    .sort((a, b) => {
+      if (a.containsSwitch !== b.containsSwitch) {
+        return a.containsSwitch ? -1 : 1;
+      }
+      if ((a.join ?? -Infinity) !== (b.join ?? -Infinity)) {
+        return (b.join ?? -Infinity) - (a.join ?? -Infinity);
+      }
+      return a.distance - b.distance;
+    });
+
+  return scored[0]?.visit ?? null;
 }
 
 function WorldThumb({
@@ -169,13 +287,25 @@ function WorldHistoryPanel({
   switches,
   allSwitches,
   playerEvents,
+  dbVisits,
+  dbPlayerEvents,
 }: {
   switches: WorldSwitchEvent[];
   allSwitches: WorldSwitchEvent[];
   playerEvents: PlayerEvent[];
+  dbVisits: DbWorldVisit[];
+  dbPlayerEvents: DbPlayerEvent[];
 }) {
   const { t } = useTranslation();
   if (switches.length === 0) return null;
+  const orderedSwitches = [...allSwitches]
+    .map((entry, index) => ({
+      entry,
+      index,
+      time: parseLogTime(entry.iso_time),
+    }))
+    .filter((entry) => entry.time !== null)
+    .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
 
   return (
     <div className="flex flex-col gap-3 mt-4">
@@ -210,29 +340,105 @@ function WorldHistoryPanel({
             : "Unknown time";
 
           let sessionPlayers: { displayName: string; userId: string | null }[] = [];
-          if (ev.iso_time) {
-            const evTime = ev.iso_time;
-            const nextSwitchTime = allSwitches.reduce((closest, s) => {
-              if (s.iso_time && s.iso_time > evTime) {
-                if (!closest || s.iso_time < closest) return s.iso_time;
-              }
-              return closest;
-            }, null as string | null);
+          const orderedIndex = orderedSwitches.findIndex((entry) => entry.entry === ev);
+          const nextSwitchTime =
+            orderedIndex >= 0 ? orderedSwitches[orderedIndex + 1]?.time ?? null : null;
+          const matchedDbVisit = chooseBestVisitForSwitch(
+            dbVisits,
+            ev.instance_id,
+            parseLogTime(ev.iso_time),
+            nextSwitchTime,
+          );
 
-            const pMap = new Map<string, { displayName: string; userId: string | null }>();
-            for (const p of playerEvents) {
-              if (p.iso_time && p.iso_time >= evTime) {
-                if (!nextSwitchTime || p.iso_time < nextSwitchTime) {
-                  // Only track joined events, ignoring left events to form a roster of anyone who was present
-                  if (p.kind === "joined") {
-                    const key = p.user_id || p.display_name;
-                    pMap.set(key, { displayName: p.display_name, userId: p.user_id });
-                  }
+          if (matchedDbVisit?.joined_at && ev.instance_id) {
+            const visitStart = parseLogTime(matchedDbVisit.joined_at);
+            const rawVisitEnd = parseLogTime(matchedDbVisit.left_at);
+            const visitEnd =
+              rawVisitEnd !== null && nextSwitchTime !== null
+                ? Math.min(rawVisitEnd, nextSwitchTime)
+                : rawVisitEnd ?? nextSwitchTime;
+            const seenMap = new Map<string, { displayName: string; userId: string | null }>();
+            const activeMap = new Map<string, { displayName: string; userId: string | null }>();
+
+            const relevantDbEvents = dbPlayerEvents
+              .map((entry) => ({
+                entry,
+                time: parseLogTime(entry.occurred_at),
+              }))
+              .filter(({ entry, time }) => {
+                if (time === null || visitStart === null) {
+                  return false;
                 }
+                if (entry.world_id !== ev.world_id || entry.instance_id !== ev.instance_id) {
+                  return false;
+                }
+                if (time < visitStart) {
+                  return false;
+                }
+                if (visitEnd !== null && time >= visitEnd) {
+                  return false;
+                }
+                return true;
+              })
+              .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+
+            for (const { entry } of relevantDbEvents) {
+              const displayName = entry.display_name?.trim();
+              if (!displayName) {
+                continue;
+              }
+              const key = entry.user_id || displayName;
+              const value = { displayName, userId: entry.user_id };
+              if (entry.kind === "joined") {
+                activeMap.set(key, value);
+                seenMap.set(key, value);
+              } else if (entry.kind === "left") {
+                activeMap.delete(key);
               }
             }
-            sessionPlayers = Array.from(pMap.values());
-            // Optionally, sort alphabetically
+
+            const dbPlayers = Array.from((activeMap.size > 0 ? activeMap : seenMap).values());
+            dbPlayers.sort((a, b) => a.displayName.localeCompare(b.displayName));
+            if (dbPlayers.length > 0) {
+              sessionPlayers = dbPlayers;
+            }
+          }
+
+          const sessionStart = parseLogTime(ev.iso_time);
+          if (sessionPlayers.length === 0 && sessionStart !== null) {
+            const activeMap = new Map<string, { displayName: string; userId: string | null }>();
+            const seenMap = new Map<string, { displayName: string; userId: string | null }>();
+            const relevantEvents = playerEvents
+              .map((entry) => ({
+                entry,
+                time: parseLogTime(entry.iso_time),
+              }))
+              .filter((entry) => {
+                if (entry.time === null) {
+                  return false;
+                }
+                if (entry.time < sessionStart) {
+                  return false;
+                }
+                if (nextSwitchTime !== null && entry.time >= nextSwitchTime) {
+                  return false;
+                }
+                return true;
+              })
+              .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+
+            for (const { entry } of relevantEvents) {
+              const key = entry.user_id || entry.display_name;
+              if (entry.kind === "joined") {
+                const value = { displayName: entry.display_name, userId: entry.user_id };
+                activeMap.set(key, value);
+                seenMap.set(key, value);
+              } else {
+                activeMap.delete(key);
+              }
+            }
+
+            sessionPlayers = Array.from((activeMap.size > 0 ? activeMap : seenMap).values());
             sessionPlayers.sort((a, b) => a.displayName.localeCompare(b.displayName));
           }
 
@@ -284,7 +490,7 @@ function WorldHistoryPanel({
                         onClick={(e) => {
                           e.stopPropagation();
                           ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                            url: `vrchat://launch?id=${ev.world_id}:${ev.instance_id}`,
+                            url: `vrchat://launch?id=${ev.instance_id}`,
                           }).catch(console.error);
                         }}
                       >
@@ -295,23 +501,7 @@ function WorldHistoryPanel({
                 </div>
               )}
 
-              {sessionPlayers.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1 border-t border-[hsl(var(--border)/0.5)] pt-2">
-                  <div className="w-full text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-0.5">
-                    {t("worlds.playersSeen", { defaultValue: "Players in Room" })} ({sessionPlayers.length})
-                  </div>
-                  {sessionPlayers.map((sp) => (
-                    <Badge
-                      key={sp.userId || sp.displayName}
-                      variant="outline"
-                      className="h-[20px] px-1.5 text-[9.5px] font-normal text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--border-strong))] transition-colors"
-                      title={sp.userId || undefined}
-                    >
-                      {sp.displayName}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+              {sessionPlayers.length > 0 ? <SessionPlayerList players={sessionPlayers} /> : null}
             </div>
           );
         })}
@@ -327,6 +517,9 @@ function Worlds() {
   const logs = report?.logs ?? null;
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showInspector, setShowInspector] = useUiPrefBoolean("vrcsm.layout.worlds.inspector.visible", true);
+  const [dbVisits, setDbVisits] = useState<DbWorldVisit[]>([]);
+  const [dbPlayerEvents, setDbPlayerEvents] = useState<DbPlayerEvent[]>([]);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
   const { toggleFavorite } = useFavoriteActions();
 
@@ -354,15 +547,15 @@ function Worlds() {
     if (!selectedId) return filtered[0];
     return filtered.find((id) => id === selectedId) ?? filtered[0];
   }, [filtered, selectedId]);
+  const shouldShowInspector = showInspector && Boolean(selected);
 
   const selectedSwitches = useMemo(() => {
     if (!selected || !logs?.world_switches) return [];
     const hits = logs.world_switches.filter((s) => s.world_id === selected);
-    // Sort descending by time
     hits.sort((a, b) => {
-      if (!a.iso_time) return 1;
-      if (!b.iso_time) return -1;
-      return a.iso_time < b.iso_time ? 1 : -1;
+      const aTime = parseLogTime(a.iso_time) ?? 0;
+      const bTime = parseLogTime(b.iso_time) ?? 0;
+      return bTime - aTime;
     });
     return hits;
   }, [selected, logs?.world_switches]);
@@ -375,6 +568,55 @@ function Worlds() {
       prefetchThumbnails(ids);
     }
   }, [ids]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void ipc.dbWorldVisits(500, 0)
+      .then((result) => {
+        if (!cancelled) {
+          setDbVisits((result.items ?? []) as DbWorldVisit[]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDbVisits([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [logs?.world_switches]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selected) {
+      setDbPlayerEvents([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+    const earliestSelectedTime =
+      selectedSwitches.length > 0
+        ? selectedSwitches[selectedSwitches.length - 1]?.iso_time ?? undefined
+        : undefined;
+    void ipc.dbPlayerEvents(1000, 0, {
+      worldId: selected,
+      occurredAfter: earliestSelectedTime,
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setDbPlayerEvents((result.items ?? []) as DbPlayerEvent[]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDbPlayerEvents([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, selectedSwitches]);
 
   async function handleToggleFavorite(
     worldId: string,
@@ -404,6 +646,192 @@ function Worlds() {
       toast.error(t("library.toggleFailed", { error: message }));
     }
   }
+
+  const worldListPane = (
+    <Card elevation="flat" className="flex h-full flex-col overflow-hidden p-0">
+      <div className="unity-panel-header flex items-center justify-between">
+        <span>{t("worlds.gridPaneTitle")}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] normal-case tracking-normal">
+            {filtered.length}
+          </span>
+          {!shouldShowInspector && selected ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-2 text-[10px]"
+              onClick={() => setShowInspector(true)}
+            >
+              <PanelRightOpen className="size-3.5" />
+              {t("worlds.inspectorPaneTitle")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-1.5">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+          <Input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder={t("worlds.filterPlaceholder")}
+            className="h-7 pl-7 text-[12px]"
+          />
+        </div>
+      </div>
+      <div className="scrollbar-thin flex-1 overflow-y-auto p-3">
+        {filtered.length === 0 ? (
+          <div className="py-6 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
+            {t("worlds.noMatch")}
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((id) => (
+              <WorldTile
+                key={id}
+                id={id}
+                name={logs?.world_names[id] ?? null}
+                isSelected={selected === id}
+                isFavorited={favoriteIds.world.has(id)}
+                onSelect={() => setSelectedId(id)}
+                onToggleFavorite={(thumbnailUrl) =>
+                  handleToggleFavorite(id, thumbnailUrl)
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+
+  const inspectorPane = selected ? (
+    <Card elevation="flat" className="flex h-full flex-col overflow-hidden p-0">
+      <div className="unity-panel-header flex items-center justify-between gap-2">
+        <span>{t("worlds.inspectorPaneTitle")}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 gap-1 px-2 text-[10px]"
+          onClick={() => setShowInspector(false)}
+        >
+          <PanelRightClose className="size-3.5" />
+          {t("common.close", { defaultValue: "Close" })}
+        </Button>
+      </div>
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 scrollbar-thin">
+        <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]">
+          <WorldThumb
+            id={selected}
+            className="h-36 w-full"
+            label
+            isFavorited={favoriteIds.world.has(selected)}
+            onToggleFavorite={(thumbnailUrl) =>
+              handleToggleFavorite(selected, thumbnailUrl)
+            }
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="text-[16px] font-semibold leading-tight text-[hsl(var(--foreground))]">
+            {logs?.world_names[selected] ?? t("worlds.unknownName")}
+          </div>
+          {!logs?.world_names[selected] ? (
+            <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+              {t("worlds.nameFromLogOnly")}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <Badge variant="outline">
+            <Globe2 className="size-3" />
+            {t("worlds.instanceBadge")}
+          </Badge>
+        </div>
+
+        <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[11px]">
+          <WorldPopupBadge worldId={selected} />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="justify-start"
+            onClick={() => {
+              navigator.clipboard
+                .writeText(selected)
+                .then(() => {
+                  toast.success(t("worlds.copiedToast"));
+                })
+                .catch((e: unknown) => {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  toast.error(t("worlds.copyFailed", { error: msg }));
+                });
+            }}
+          >
+            <Copy />
+            {t("worlds.copyId")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="justify-start"
+            onClick={() => {
+              ipc
+                .call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                  url: `https://vrchat.com/home/world/${selected}`,
+                })
+                .catch((e: unknown) => {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  toast.error(t("worlds.openFailed", { error: msg }));
+                });
+            }}
+          >
+            <ExternalLink />
+            {t("worlds.openExternal")}
+          </Button>
+          <Button
+            variant="tonal"
+            size="sm"
+            className="justify-start"
+            onClick={() => {
+              ipc
+                .call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                  url: `vrchat://launch?id=${selected}`,
+                })
+                .catch((e: unknown) => {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  toast.error(t("worlds.launchFailed", { error: msg }));
+                });
+            }}
+          >
+            <Play />
+            {t("worlds.launchInVrc")}
+          </Button>
+        </div>
+
+        <WorldHistoryPanel
+          switches={selectedSwitches}
+          allSwitches={logs?.world_switches || []}
+          playerEvents={logs?.player_events || []}
+          dbVisits={dbVisits.filter((visit) => visit.world_id === selected)}
+          dbPlayerEvents={dbPlayerEvents}
+        />
+      </div>
+    </Card>
+  ) : (
+    <Card
+      elevation="flat"
+      className="flex h-full items-center justify-center p-0"
+    >
+      <div className="flex flex-col items-center gap-2 py-10 text-[12px] text-[hsl(var(--muted-foreground))]">
+        <Globe2 className="size-6" />
+        {t("worlds.pickOne")}
+      </div>
+    </Card>
+  );
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
@@ -443,179 +871,25 @@ function Worlds() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid min-h-[560px] gap-4 md:grid-cols-[1fr_280px]">
-          <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
-            <div className="unity-panel-header flex items-center justify-between">
-              <span>{t("worlds.gridPaneTitle")}</span>
-              <span className="font-mono text-[10px] normal-case tracking-normal">
-                {filtered.length}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-1.5">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
-                <Input
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  placeholder={t("worlds.filterPlaceholder")}
-                  className="h-7 pl-7 text-[12px]"
-                />
+        shouldShowInspector ? (
+          <PanelGroup orientation="horizontal" className="min-h-[560px]">
+            <Panel defaultSize={66} minSize={34}>
+              <div className="h-full pr-2">
+                {worldListPane}
               </div>
-            </div>
-            <div className="scrollbar-thin flex-1 overflow-y-auto p-3">
-              {filtered.length === 0 ? (
-                <div className="py-6 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
-                  {t("worlds.noMatch")}
-                </div>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {filtered.map((id) => (
-                    <WorldTile
-                      key={id}
-                      id={id}
-                      name={logs.world_names[id] ?? null}
-                      isSelected={selected === id}
-                      isFavorited={favoriteIds.world.has(id)}
-                      onSelect={() => setSelectedId(id)}
-                      onToggleFavorite={(thumbnailUrl) =>
-                        handleToggleFavorite(id, thumbnailUrl)
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {selected ? (
-            <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
-              <div className="unity-panel-header">
-                {t("worlds.inspectorPaneTitle")}
+            </Panel>
+            <PanelResizeHandle className="unity-splitter w-[3px] cursor-col-resize rounded-full" />
+            <Panel defaultSize={34} minSize={24}>
+              <div className="h-full pl-2">
+                {inspectorPane}
               </div>
-              <div className="flex flex-col gap-3 p-4">
-                <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]">
-                  <WorldThumb
-                    id={selected}
-                    className="h-36 w-full"
-                    label
-                    isFavorited={favoriteIds.world.has(selected)}
-                    onToggleFavorite={(thumbnailUrl) =>
-                      handleToggleFavorite(selected, thumbnailUrl)
-                    }
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="text-[16px] font-semibold leading-tight text-[hsl(var(--foreground))]">
-                    {logs.world_names[selected] ?? t("worlds.unknownName")}
-                  </div>
-                  {!logs.world_names[selected] ? (
-                    <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                      {t("worlds.nameFromLogOnly")}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="outline">
-                    <Globe2 className="size-3" />
-                    {t("worlds.instanceBadge")}
-                  </Badge>
-                </div>
-
-                <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[11px]">
-                  <WorldPopupBadge worldId={selected} />
-                </div>
-
-                {/*
-                  Action row. These buttons are the only handles we have for
-                  a world short of implementing a full vrcx-style client —
-                  Copy ID is always safe, the two links go through the host
-                  `shell.openUrl` IPC which whitelists http(s) + vrchat://
-                  schemes so the browser/VRChat do the rest of the work.
-                */}
-                <div className="flex flex-col gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="justify-start"
-                    onClick={() => {
-                      navigator.clipboard
-                        .writeText(selected)
-                        .then(() => {
-                          toast.success(t("worlds.copiedToast"));
-                        })
-                        .catch((e: unknown) => {
-                          const msg = e instanceof Error ? e.message : String(e);
-                          toast.error(t("worlds.copyFailed", { error: msg }));
-                        });
-                    }}
-                  >
-                    <Copy />
-                    {t("worlds.copyId")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="justify-start"
-                    onClick={() => {
-                      ipc
-                        .call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                          url: `https://vrchat.com/home/world/${selected}`,
-                        })
-                        .catch((e: unknown) => {
-                          const msg = e instanceof Error ? e.message : String(e);
-                          toast.error(t("worlds.openFailed", { error: msg }));
-                        });
-                    }}
-                  >
-                    <ExternalLink />
-                    {t("worlds.openExternal")}
-                  </Button>
-                  <Button
-                    variant="tonal"
-                    size="sm"
-                    className="justify-start"
-                    onClick={() => {
-                      // `vrchat://launch?id=<worldId>` is VRChat's own URI
-                      // scheme. When VRChat is already running it pops a
-                      // "join this world" toast in-game; when it isn't,
-                      // Windows starts VRChat via Steam / the shim exe.
-                      // Either way the OS shell handler does the work.
-                      ipc
-                        .call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                          url: `vrchat://launch?id=${selected}`,
-                        })
-                        .catch((e: unknown) => {
-                          const msg = e instanceof Error ? e.message : String(e);
-                          toast.error(t("worlds.launchFailed", { error: msg }));
-                        });
-                    }}
-                  >
-                    <Play />
-                    {t("worlds.launchInVrc")}
-                  </Button>
-                </div>
-
-                <WorldHistoryPanel 
-                  switches={selectedSwitches} 
-                  allSwitches={logs.world_switches || []} 
-                  playerEvents={logs.player_events || []} 
-                />
-              </div>
-            </Card>
-          ) : (
-            <Card
-              elevation="flat"
-              className="flex items-center justify-center p-0"
-            >
-              <div className="flex flex-col items-center gap-2 py-10 text-[12px] text-[hsl(var(--muted-foreground))]">
-                <Globe2 className="size-6" />
-                {t("worlds.pickOne")}
-              </div>
-            </Card>
-          )}
-        </div>
+            </Panel>
+          </PanelGroup>
+        ) : (
+          <div className="min-h-[560px]">
+            {worldListPane}
+          </div>
+        )
       )}
     </div>
   );

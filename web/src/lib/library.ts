@@ -6,6 +6,7 @@ import { ipc } from "@/lib/ipc";
 import type { FavoriteItem, FavoriteListSummary } from "@/lib/types";
 
 export const LIBRARY_LIST_NAME = "Library";
+export const OFFICIAL_FAVORITES_LIST_NAME = "VRChat Official Favorites";
 
 export type FavoriteEntityType = "avatar" | "world" | "user" | "other";
 

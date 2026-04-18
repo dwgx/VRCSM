@@ -29,6 +29,7 @@ import { ipc } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
 import { trustRank, trustColorClass, trustLabelKey } from "@/lib/vrcFriends";
 import { useAuth } from "@/lib/auth-context";
+import { useTranslation } from "react-i18next";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -58,20 +59,24 @@ export interface VrcUserProfile {
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS: { value: VrcStatus; label: string; color: string }[] = [
-  { value: "active",    label: "Online",    color: "text-emerald-400" },
-  { value: "join me",   label: "Join Me",   color: "text-blue-400" },
-  { value: "ask me",    label: "Ask Me",    color: "text-yellow-400" },
-  { value: "busy",      label: "Busy",      color: "text-red-400" },
-  { value: "offline",   label: "Offline",   color: "text-[hsl(var(--muted-foreground))]" },
+const STATUS_OPTIONS: { value: VrcStatus; key: string; color: string }[] = [
+  { value: "active", key: "friends.bucket.active", color: "text-emerald-400" },
+  { value: "join me", key: "friends.bucket.joinMe", color: "text-blue-400" },
+  { value: "ask me", key: "friends.bucket.askMe", color: "text-yellow-400" },
+  { value: "busy", key: "friends.bucket.busy", color: "text-red-400" },
+  { value: "offline", key: "friends.bucket.offline", color: "text-[hsl(var(--muted-foreground))]" },
 ];
 
 function statusColor(s: VrcStatus): string {
   return STATUS_OPTIONS.find((o) => o.value === s)?.color ?? "text-[hsl(var(--muted-foreground))]";
 }
 
-function statusLabel(s: VrcStatus): string {
-  return STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
+function statusLabel(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  s: VrcStatus,
+): string {
+  const option = STATUS_OPTIONS.find((o) => o.value === s);
+  return option ? t(option.key) : s;
 }
 
 function statusDot(s: VrcStatus): string {
@@ -129,6 +134,7 @@ export function ProfileCard({
   onSave,
   className,
 }: ProfileCardProps) {
+  const { t, i18n } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [wearingAvatar, setWearingAvatar] = useState(false);
@@ -158,9 +164,9 @@ export function ProfileCard({
         status: draftStatus,
       });
       setEditing(false);
-      toast.success("资料已更新");
+      toast.success(t("profile.updated"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "保存失败");
+      toast.error(e instanceof Error ? e.message : t("profile.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -222,7 +228,7 @@ export function ProfileCard({
               type="button"
               onClick={() => setEditing(true)}
               className="rounded bg-black/40 p-1.5 text-white/90 hover:bg-black/60 transition-colors backdrop-blur-sm shadow-sm"
-              title="编辑资料"
+              title={t("profile.editProfile")}
             >
               <Edit3 className="size-3" />
             </button>
@@ -259,7 +265,7 @@ export function ProfileCard({
             {/* Online indicator */}
             {!editing && (
               <div className="flex items-center gap-1.5 text-[11px] font-medium opacity-90 mt-0.5">
-                <span className={statusColor(user.status)}>{statusLabel(user.status)}</span>
+                <span className={statusColor(user.status)}>{statusLabel(t, user.status)}</span>
                 {user.statusDescription && (
                   <>
                     <span className="text-[hsl(var(--muted-foreground))]">·</span>
@@ -294,14 +300,14 @@ export function ProfileCard({
                            draftStatus === opt.value ? statusDot(opt.value) : "bg-current opacity-50",
                          )}
                        />
-                       {opt.label}
+                       {t(opt.key)}
                      </button>
                    ))}
                  </div>
                  <Input
                    value={draftStatusDesc}
                    onChange={(e) => setDraftStatusDesc(e.target.value)}
-                   placeholder="状态消息…"
+                   placeholder={t("profile.statusPlaceholder")}
                    className="h-7 text-[11px] bg-[hsl(var(--canvas))] border-[hsl(var(--border)/0.5)] focus:ring-[hsl(var(--primary))]"
                    maxLength={32}
                  />
@@ -315,7 +321,7 @@ export function ProfileCard({
       <div className="px-4 pb-3 flex flex-wrap items-center gap-1.5">
         <IdBadge id={user.id} size="xs" />
         <span className={cn("px-1.5 py-[1px] text-[9.5px] uppercase tracking-widest font-bold rounded shadow-sm border border-[hsl(var(--border)/0.4)]", trustColorClass(rank), "bg-current/10")}>
-          {trustLabelKey(rank)}
+          {t(trustLabelKey(rank))}
         </span>
         {niceTags.map((t, i) => (
            <span key={i} className="px-1.5 py-[1px] text-[9.5px] uppercase tracking-wider font-semibold rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border)/0.4)]">
@@ -330,7 +336,7 @@ export function ProfileCard({
           <textarea
             value={draftBio}
             onChange={(e) => setDraftBio(e.target.value)}
-            placeholder="个人简介…"
+            placeholder={t("profile.bioPlaceholder")}
             className={cn(
               "w-full resize-none rounded-[calc(var(--radius-sm)-2px)] border border-[hsl(var(--border)/0.5)]",
               "bg-[hsl(var(--canvas))] px-2.5 py-1.5 text-[11px] text-[hsl(var(--foreground))]",
@@ -344,7 +350,7 @@ export function ProfileCard({
             {user.bio}
           </p>
         ) : (
-          <p className="text-[11px] italic text-[hsl(var(--muted-foreground)/0.5)] select-none">无简介...</p>
+          <p className="text-[11px] italic text-[hsl(var(--muted-foreground)/0.5)] select-none">{t("profile.emptyBio")}</p>
         )}
       </div>
 
@@ -376,7 +382,7 @@ export function ProfileCard({
         {user.currentAvatarName && (
           <div className="flex flex-col gap-0.5 border-r border-[hsl(var(--border)/0.4)] px-4 py-2.5">
             <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground)/0.8)] font-semibold">
-              当前模型
+              {t("profile.currentAvatar")}
             </span>
             <span className="truncate font-medium text-[hsl(var(--foreground)/0.9)]">
               {user.currentAvatarName}
@@ -386,7 +392,7 @@ export function ProfileCard({
         {user.worldName && (
           <div className="flex flex-col gap-0.5 px-4 py-2.5 min-w-0">
             <span className="text-[9px] uppercase tracking-wider text-[hsl(var(--muted-foreground)/0.8)] font-semibold">
-              当前世界
+              {t("profile.currentWorld")}
             </span>
             <div className="flex items-center gap-1 text-[hsl(var(--foreground)/0.9)] font-medium">
               <Globe2 className="size-3 shrink-0 opacity-60" />
@@ -410,14 +416,16 @@ export function ProfileCard({
               </div>
             )}
             <span className="text-[10px] uppercase font-bold tracking-wider text-[hsl(var(--muted-foreground))]">
-              {user.isFriend ? "好友" : "玩家"}
+              {user.isFriend
+                ? t("common.friend", { defaultValue: "Friend" })
+                : t("common.player", { defaultValue: "Player" })}
             </span>
           </div>
           {user.last_activity && !isOnline && (
             <div className="flex items-center gap-1.5 opacity-80">
               <Clock className="size-3 text-[hsl(var(--muted-foreground))]" />
               <span className="text-[10px] font-mono text-[hsl(var(--muted-foreground))]">
-                {new Date(user.last_activity).toLocaleDateString("zh-CN")}
+                {new Date(user.last_activity).toLocaleDateString(i18n.resolvedLanguage ?? i18n.language)}
               </span>
             </div>
           )}
@@ -430,22 +438,22 @@ export function ProfileCard({
         <button
           type="button"
           onClick={openVrcProfile}
-          title="在 VRChat 网站查看"
+          title={t("profile.viewOnVrchat")}
           className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 py-1 text-[11px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.5)] transition-all"
         >
           <ExternalLink className="size-3" />
-          主页
+          {t("profileCard.home", { defaultValue: "Home" })}
         </button>
 
         {!isSelf && !user.isFriend && (
           <button
             type="button"
             onClick={() => void ipc.call("shell.openUrl", { url: `https://vrchat.com/home/user/${user.id}` })}
-            title="添加好友"
+            title={t("profileCard.addFriend", { defaultValue: "Add Friend" })}
             className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 py-1 text-[11px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:border-[hsl(var(--primary)/0.5)] hover:bg-[hsl(var(--primary)/0.08)] transition-all"
           >
             <UserPlus className="size-3" />
-            添加好友
+            {t("profileCard.addFriend", { defaultValue: "Add Friend" })}
           </button>
         )}
 
@@ -453,11 +461,11 @@ export function ProfileCard({
           <button
             type="button"
             onClick={() => void ipc.call("shell.openUrl", { url: `vrchat://launch?ref=vrchat.com&id=${user.location}` })}
-            title="加入到同一房间"
+            title={t("profileCard.joinInstance", { defaultValue: "Join Instance" })}
             className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 py-1 text-[11px] font-medium text-[hsl(var(--muted-foreground))] hover:text-emerald-400 hover:border-emerald-400/40 hover:bg-emerald-400/5 transition-all"
           >
             <LogIn className="size-3" />
-            加入房间
+            {t("profileCard.joinInstance", { defaultValue: "Join Instance" })}
           </button>
         )}
 
@@ -467,16 +475,16 @@ export function ProfileCard({
             onClick={async () => {
               try {
                 await ipc.call("auth.logout");
-                toast.success("已登出 VRChat");
+                toast.success(t("auth.signedOut"));
               } catch (e) {
-                toast.error(e instanceof Error ? e.message : "登出失败");
+                toast.error(e instanceof Error ? e.message : t("profileCard.logoutFailed", { defaultValue: "Sign out failed" }));
               }
             }}
-            title="登出 VRChat"
+            title={t("auth.signOut")}
             className="ml-auto flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-red-400/40 bg-red-400/5 px-2.5 py-1 text-[11px] font-medium text-red-400 hover:bg-red-400/15 hover:border-red-400/60 transition-all"
           >
             <LogOut className="size-3" />
-            登出
+            {t("auth.signOut")}
           </button>
         )}
       </div>
@@ -497,25 +505,35 @@ export function ProfileCard({
                 setWearingAvatar(true);
                 try {
                   await ipc.call("avatar.select", { avatarId: user.currentAvatarId });
-                  toast.success(`已穿上：${user.currentAvatarName || user.currentAvatarId}`);
+                  toast.success(t("profileCard.woreAvatar", {
+                    defaultValue: "Now wearing: {{name}}",
+                    name: user.currentAvatarName || user.currentAvatarId,
+                  }));
                 } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "穿戴模型失败，该模型可能不是公开/可用模型");
+                  toast.error(e instanceof Error ? e.message : t("profileCard.wearFailed", {
+                    defaultValue: "Failed to wear avatar. This avatar may not be public or available.",
+                  }));
                 } finally {
                   setWearingAvatar(false);
                 }
               }}
-              title={`穿上 ${user.currentAvatarName || user.currentAvatarId}`}
+              title={t("profileCard.wearAvatarTitle", {
+                defaultValue: "Wear {{name}}",
+                name: user.currentAvatarName || user.currentAvatarId,
+              })}
               className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.6)] bg-[hsl(var(--primary)/0.1)] px-2 py-0.5 text-[10px] font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.2)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {wearingAvatar ? "穿戴中…" : "穿上"}
+              {wearingAvatar
+                ? t("profileCard.wearing", { defaultValue: "Wearing…" })
+                : t("profileCard.wearAvatar", { defaultValue: "Wear" })}
             </button>
             <button
               type="button"
               onClick={() => {
                 void navigator.clipboard.writeText(user.currentAvatarId!);
-                toast.success("模型 ID 已复制");
+                toast.success(t("profileCard.avatarIdCopied", { defaultValue: "Avatar ID copied" }));
               }}
-              title="复制模型 ID"
+              title={t("profileCard.copyAvatarId", { defaultValue: "Copy Avatar ID" })}
               className="flex items-center gap-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all"
             >
               <Copy className="size-2.5" />
@@ -528,10 +546,10 @@ export function ProfileCard({
       {editing && (
         <div className="flex items-center justify-end gap-2 border-t border-[hsl(var(--border)/0.6)] bg-[hsl(var(--surface-raised))] px-3 py-2.5 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
           <Button variant="ghost" size="sm" onClick={handleCancel} disabled={saving} className="h-7 text-[11px] hover:bg-transparent">
-            <X className="size-3.5 mr-1" /> 取消
+            <X className="size-3.5 mr-1" /> {t("common.cancel")}
           </Button>
           <Button variant="tonal" size="sm" onClick={handleSave} disabled={saving} className="h-7 text-[11px] shadow-sm">
-            <Save className="size-3.5 mr-1" /> {saving ? "保存中…" : "保存"}
+            <Save className="size-3.5 mr-1" /> {saving ? t("profile.saving") : t("common.save")}
           </Button>
         </div>
       )}

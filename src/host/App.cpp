@@ -2,32 +2,7 @@
 
 #include "App.h"
 #include "MainWindow.h"
-
-namespace
-{
-std::filesystem::path GetLocalAppDataPath()
-{
-    std::wstring buffer(static_cast<size_t>(MAX_PATH), L'\0');
-    DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer.data(), static_cast<DWORD>(buffer.size()));
-    if (length == 0)
-    {
-        throw std::runtime_error("LOCALAPPDATA is not set");
-    }
-
-    if (length >= buffer.size())
-    {
-        buffer.resize(static_cast<size_t>(length));
-        length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer.data(), static_cast<DWORD>(buffer.size()));
-        if (length == 0 || length >= buffer.size())
-        {
-            throw std::runtime_error("Failed to query LOCALAPPDATA");
-        }
-    }
-
-    buffer.resize(static_cast<size_t>(length));
-    return std::filesystem::path(buffer);
-}
-}
+#include "../core/Common.h"
 
 int App::Run(HINSTANCE hInstance, int nShowCmd)
 {
@@ -48,7 +23,7 @@ int App::Run(HINSTANCE hInstance, int nShowCmd)
 
 void App::InitializeLogging()
 {
-    const std::filesystem::path logDir = GetLocalAppDataPath() / L"VRCSM" / L"logs";
+    const std::filesystem::path logDir = vrcsm::core::getAppDataRoot() / L"logs";
     std::filesystem::create_directories(logDir);
 
     const auto sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(

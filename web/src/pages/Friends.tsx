@@ -22,6 +22,7 @@ import { IdBadge } from "@/components/IdBadge";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import type { Friend, FriendsListResult, WorldDetails } from "@/lib/types";
 import {
   instanceTypeLabel,
@@ -427,6 +428,7 @@ export default function Friends() {
   const debouncedFilter = useDebouncedValue(filter, 150);
   const [showOffline, setShowOffline] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [showDetailPane, setShowDetailPane] = useUiPrefBoolean("vrcsm.layout.friends.detail.visible", true);
   const [collapsedBuckets, setCollapsedBuckets] = useState<Set<StatusBucket>>(
     new Set(),
   );
@@ -663,6 +665,18 @@ export default function Friends() {
           </p>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+          {selectedFriend ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDetailPane((current) => !current)}
+            >
+              {showDetailPane
+                ? t("common.hide", { defaultValue: "Hide" })
+                : t("common.show", { defaultValue: "Show" })}{" "}
+              {t("friends.detailPaneTitle", { defaultValue: "Details" })}
+            </Button>
+          ) : null}
           {data ? (
             <span>
               {t("friends.totalCount", { count: data.friends.length })}
@@ -772,7 +786,7 @@ export default function Friends() {
         </div>
       </Card>
 
-      {selectedFriend ? (
+      {selectedFriend && showDetailPane ? (
         <div className="w-[300px] shrink-0">
           <div className="sticky top-0 flex flex-col gap-2">
             <div className="flex items-center justify-between">
