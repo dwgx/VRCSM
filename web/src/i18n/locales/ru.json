@@ -47,9 +47,12 @@
     "openAvatarManager": "Открыть менеджер аватаров",
     "openWorldManager": "Открыть менеджер миров",
     "openHomePortal": "Открыть домашнюю страницу VRChat",
+    "openNativeWorkspace": "Открыть рабочее пространство",
     "liveContext": "Текущий контекст",
     "liveContextDesc": "Важные id и текущие цели сессии для быстрой навигации.",
-    "liveContextHint": "Используйте эти live-id как точки входа в нативные потоки друзей, аватаров, миров и избранного внутри VRCSM."
+    "liveContextHint": "Используйте эти live-id как точки входа в нативные потоки друзей, аватаров, миров и избранного внутри VRCSM.",
+    "openFriendsManager": "Присоединиться",
+    "openLibrary": "В библиотеку"
   },
   "screenshots": {
     "title": "Скриншоты",
@@ -73,7 +76,14 @@
     "clearSelection": "Снять выбор",
     "selectionCount": "Выбрано: {{count}}",
     "openSelected": "Открыть ({{count}})",
-    "copyPaths": "Скопировать пути"
+    "copyPaths": "Скопировать пути",
+    "deleteSelected": "Удалить ({{count}})",
+    "deleteSuccess": "Успешно удалено",
+    "deleteBulkSuccess": "Удалено скриншотов: {{count}}",
+    "deletePartial": "Некоторые файлы не удалились",
+    "deleteFailed": "Ошибка удаления",
+    "confirmDelete": "Точно удалить этот скриншот?",
+    "confirmDeleteBulk": "Точно удалить скриншотов: {{count}}?"
   },
   "avatars_extra": {
     "selectAvatar": "Переключить на этот аватар",
@@ -105,10 +115,65 @@
       "verify": "Подтвердить",
       "verifying": "Проверка…",
       "invalidCode": "Введите 6-значный код."
-    }
+    },
+    "username": "Никнейм"
   },
   "vrchatWorkspace": {
-    "title": "Рабочее пространство VRChat"
+    "title": "Рабочее пространство VRChat",
+    "joinFriend": "Присоединиться к другу",
+    "requestInvite": "Запросить приглашение",
+    "openFriendProfile": "Открыть профиль",
+    "noSubscriptionSignals": "В данной сессии не были раскрыты специальные поля для определения подписки.",
+    "block": "Блок",
+    "mute": "Мут",
+    "pickDownloadFolder": "Выберите папку для бандлов",
+    "downloadAssetMissing": "У этого аватара нет доступного Windows-бандла.",
+    "downloadSuccess": "Бандл сохранен в {{path}}",
+    "downloadFailed": "Ошибка скачивания: {{error}}",
+    "noJoinable": "Сейчас нет друзей в открытых инстансах.",
+    "saveToLibrary": "Сохранить в библиотеку",
+    "groupsTitle": "Группы",
+    "groupsBody": "Ваши группы VRChat из текущей сессии прямо в рабочем пространстве.",
+    "groupCount": "Групп: {{count}}",
+    "representing": "Представляет",
+    "noGroups": "Группы для этого аккаунта не найдены.",
+    "verified": "Подтвержден",
+    "blocksMutesTitle": "Блоки и муты",
+    "blocksMutesBody": "Списки модерации игроков из вашей сессии VRChat.",
+    "blocked": "В блоке",
+    "muted": "В муте",
+    "noModerations": "Блоков и мутов нет.",
+    "inventoryTitle": "Инвентарь",
+    "inventoryBody": "Недавние аватары из локального кэша, логов и истории VRCSM.",
+    "localAvatarData": "Локальные данные",
+    "avatarHistory": "История аватаров",
+    "noInventory": "Истории аватаров пока нет. Надевайте или осматривайте их, чтобы VRCSM начал сбор.",
+    "downloadBundle": "Скачать бандл",
+    "downloadTitle": "Скачивание",
+    "downloadBody": "Скачивайте бандлы недавних аватаров напрямую из сессии VRChat в выбранную папку.",
+    "noDownloadCandidates": "Недавних аватаров для скачивания пока нет.",
+    "marketplaceTitle": "Маркетплейс",
+    "marketplaceBody": "Данные о владении из избранного, инвентаря, скачанных бандлов и сессии VRChat.",
+    "favoriteAvatars": "Избранные аватары",
+    "favoriteWorlds": "Избранные миры",
+    "downloadReady": "Готово к скачиванию",
+    "downloadFolder": "Папка загрузок",
+    "topCreators": "Популярные авторы",
+    "inventoryCount": "Аватаров: {{count}}",
+    "noMarketplaceSignals": "Сигналов о владении пока нет. Добавляйте в избранное, осматривайте или скачивайте аватары.",
+    "accountLinkTitle": "Привязки",
+    "accountLinkBody": "Связанные платформы и аккаунты из вашей сессии VRChat без перехода в браузер.",
+    "linkedProviders": "Связанные сервисы",
+    "notLinked": "Отвязан",
+    "linked": "Привязан",
+    "subscriptionsTitle": "Подписки",
+    "subscriptionsBody": "Статус подписок VRChat на основе профиля и локальных настроек.",
+    "subscriptionStatus": "Статус",
+    "subscriptionActive": "Активна",
+    "subscriptionInactive": "Неактивна",
+    "subscriptionSignals": "Сигналы",
+    "lastExpiredSubscription": "Истекла",
+    "liveSignal": "Лайв-сигнал"
   },
   "friends": {
     "title": "Друзья",
@@ -163,21 +228,54 @@
       "avatarName": "Имя аватара"
     },
     "alsoInInstance": "Также в инстансе",
-    "detailPaneTitle": "Подробности"
+    "detailPaneTitle": "Подробности",
+    "platform": "Платформа"
   },
   "menu": {
     "file": "Файл",
     "edit": "Правка",
+    "view": "Вид",
+    "go": "Переход",
+    "tools": "Инструменты",
     "assets": "Ресурсы",
     "window": "Окно",
     "help": "Справка",
     "fileRescan": "Пересканировать",
-    "fileExportReport": "Экспорт отчета",
+    "fileExportReport": "Экспорт отчёта",
+    "fileOpenCacheFolder": "Открыть папку кэша",
+    "fileOpenLogFolder": "Открыть папку логов",
+    "fileOpenDataFolder": "Открыть папку данных",
     "fileExit": "Выход",
+    "editFind": "Найти…",
+    "editPreferences": "Настройки",
+    "editClearHistory": "Очистить историю сессий",
+    "viewToggleSidebar": "Скрыть боковую панель",
+    "viewToggleDock": "Скрыть нижнюю панель",
+    "viewResetLayout": "Сбросить макет",
+    "viewZoomIn": "Увеличить",
+    "viewZoomOut": "Уменьшить",
+    "viewZoomReset": "Реальный размер",
+    "goDashboard": "Панель",
+    "goRadar": "Радар",
+    "goLogs": "Логи",
+    "goBundles": "Бандлы",
+    "goLibrary": "Библиотека",
+    "goAvatars": "Аватары",
+    "goWorlds": "Миры",
+    "goFriends": "Друзья",
+    "goScreenshots": "Скриншоты",
+    "goProfile": "Профиль",
+    "goVrchat": "VRChat Workspace",
+    "toolsMigrate": "Миграция кэша",
+    "toolsSettings": "Настройки",
+    "toolsSteamVR": "Настройки SteamVR",
+    "toolsConfig": "Конфиг приложения",
     "windowResetLayout": "Сбросить макет",
     "helpAbout": "О VRCSM",
     "helpDocs": "Документация",
-    "helpCheckUpdates": "Проверить обновления"
+    "helpCheckUpdates": "Проверить обновления",
+    "helpReportIssue": "Сообщить о проблеме",
+    "helpKeyboard": "Сочетания клавиш"
   },
   "radar": {
     "title": "Радар живого инстанса",
@@ -244,7 +342,11 @@
     "created": "Создано",
     "updated": "Обновлено",
     "friend": "Друг",
-    "player": "Игрок"
+    "player": "Игрок",
+    "hide": "Скрыть",
+    "show": "Показать",
+    "unknown": "Неизвестно",
+    "sidebar": "Сайдбар"
   },
   "about": {
     "title": "О VRCSM",
@@ -253,17 +355,33 @@
     "version": "Версия",
     "build": "Сборка",
     "developer": "Разработчик",
-    "developerBody": "Направление продукта, нативный хост, фронтенд и упаковка поддерживаются в одном кодовом дереве.",
+    "developerBody": "Разработчик-одиночка с кофе в руке — нативный хост, UI и упаковка живут в одной маленькой кодовой базе. Надеюсь, VRChat станет для тебя уютнее (｡•ㅅ•｡)♡",
     "specialThanks": "Особая благодарность",
-    "specialThanksBody": "Первый друг, встреченный в VRChat, и важная часть истории проекта.",
+    "specialThanksBody": "Первый друг, встреченный в VRChat — и сейчас тихонько живёт внутри этого проекта.",
     "links": "Ссылки",
     "footer": "Создано для локального управления аккаунтом, кэшем и сессиями VRChat."
   },
   "toolbar": {
     "rescan": "Пересканировать",
     "search": "Поиск",
+    "searchPrompt": "Поиск в {{page}} или переход куда угодно…",
     "vrcRunning": "VRChat запущен",
     "vrcIdle": "VRChat не запущен"
+  },
+  "cmd": {
+    "title": "Палитра команд",
+    "placeholder": "Введите команду или ищите по логам, игрокам, мирам…",
+    "empty": "Совпадений не найдено.",
+    "loading": "Загрузка журнала сессий…",
+    "navigate": "навигация",
+    "select": "выбрать",
+    "dismiss": "закрыть",
+    "footer": "{{count}} результатов",
+    "sections": {
+      "navigate": "Переход",
+      "actions": "Действия",
+      "logs": "Журнал сессий"
+    }
   },
   "dock": {
     "console": "Консоль",
@@ -315,7 +433,9 @@
     "screenshotsHint": "файлы на диске",
     "recentActivity": "Недавняя активность",
     "recentActivityDesc": "Входы в мир, события игроков и переключения аватаров",
-    "noActivity": "В логах нет недавней активности"
+    "noActivity": "В логах нет недавней активности",
+    "lastSession": "Последняя сессия",
+    "playersLastSeen": "Игроков (недавно): {{count}}"
   },
   "bundles": {
     "title": "Бандлы",
@@ -449,7 +569,8 @@
       "panning": "Режим панорамирования",
       "textureNote": "Текущий extractor сохраняет только mesh и UV-данные. Встроенные текстуры пока не экспортируются в GLB.",
       "expandedTitle": "Увеличенный предпросмотр аватара",
-      "expandedBody": "Используйте большой viewport для проверки силуэта, костей и материалов. Shift+ЛКМ и ПКМ двигают камеру, средняя кнопка отключена из-за багов WebView."
+      "expandedBody": "Используйте большой viewport для проверки силуэта, костей и материалов. Shift+ЛКМ и ПКМ двигают камеру, средняя кнопка отключена из-за багов WebView.",
+      "retry": "Повторить"
     },
     "thumbnailNote": "API аватаров VRChat отклоняет анонимные запросы даже для публичных аватаров, поэтому VRCSM рисует стабильный куб на основе id вместо реальной миниатюры. Для миров используется публичный endpoint и реальные изображения доступны.",
     "unknownUser": "Неизвестный пользователь",
@@ -467,7 +588,9 @@
     "pickOne": "Выберите аватар",
     "noMatch": "Нет аватаров, соответствующих фильтру.",
     "nameNote": "Имена аватаров извлекаются из output_log VRChat. Имя появляется только для аватаров, которые хотя бы раз загружались на этом компьютере.",
-    "previewWorkbench": "Инспектор теперь намеренно компактный, а кнопка увеличения в правом верхнем углу открывает большой центральный viewer. Текущий extractor еще не встраивает текстуры в GLB, поэтому режим Original показывает только экспортированное состояние материалов. Колесо — масштаб, Shift+drag — панорамирование, ПКМ тоже панорамирует."
+    "previewWorkbench": "Инспектор теперь намеренно компактный, а кнопка увеличения в правом верхнем углу открывает большой центральный viewer. Текущий extractor еще не встраивает текстуры в GLB, поэтому режим Original показывает только экспортированное состояние материалов. Колесо — масштаб, Shift+drag — панорамирование, ПКМ тоже панорамирует.",
+    "unityPackages": "Платформ: {{count}}",
+    "hiddenCount": "Скрыто: {{count}}. Используйте поиск."
   },
   "worlds": {
     "title": "Миры",
@@ -534,7 +657,12 @@
     "joined": "зашел",
     "left": "вышел",
     "eventCount": "{{count}} событий",
-    "filterEvents": "Фильтр по имени…"
+    "filterEvents": "Фильтр по имени…",
+    "clearFilesSkippedActive": " Оставлено активных логов: {{count}} (VRChat запущен).",
+    "clearFilesSuccess": "Удалено логов: {{count}}.",
+    "clearFilesFailed": "Ошибка очистки логов: {{error}}",
+    "clearFiles": "Очистить логи",
+    "clearFilesConfirm": "Удалить старые файлы output_log VRChat? Если игра сейчас запущена, активный лог не удалится."
   },
   "migrate": {
     "title": "Миграция",
@@ -650,7 +778,11 @@
       "hours_other": "{{count}} ч. назад",
       "days_one": "{{count}} д. назад",
       "days_other": "{{count}} д. назад"
-    }
+    },
+    "clearHistorySuccess": "История очищена. Заметки о друзьях сохранены.",
+    "clearHistoryFailed": "Ошибка очистки: {{error}}",
+    "clearHistory": "Очистить историю",
+    "clearHistoryConfirm": "Удалить историю сеансов и социальных событий? Заметки о друзьях останутся."
   },
   "settings": {
     "title": "Настройки",
@@ -774,6 +906,21 @@
         "page": "Страница {{page}} / {{total}}",
         "range": "{{from}}–{{to}} из {{total}}"
       }
+    },
+    "general": {
+      "runtimeVr": "VR",
+      "runtimeStandalone": "Standalone",
+      "runtimeDesktop": "Desktop",
+      "radarTimeline": "Таймлайн радара",
+      "radarTimelineHint": "Держать нижнюю панель таймлайна всегда видимой в Радаре и Логах.",
+      "friendsDetail": "Панель профиля",
+      "friendsDetailHint": "Показывать боковую панель профиля на странице друзей.",
+      "vrchatSidebar": "Сайдбар VRChat",
+      "vrchatSidebarHint": "Если выключено, правая колонка уходит под основную панель, а не отображается сбоку.",
+      "runtimeTitle": "Среда выполнения",
+      "runtimeDesc": "Информация о среде запуска на основе логов VRChat.",
+      "runtimeMode": "Режим",
+      "runtimeDetail": "Детали"
     }
   },
   "profileCard": {

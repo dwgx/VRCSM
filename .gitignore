@@ -49,6 +49,9 @@ build.bat
 # Local scratch area (hand-tested glb outputs, resized icons, etc.)
 tmp/
 
+# vrcget workspace binaries (not part of the project)
+vrcget-bin/
+
 # One-off force-rebuild helpers (hardcode vcvars path — not portable)
 tools/build-*-force.bat
 tools/build-test-extract.bat

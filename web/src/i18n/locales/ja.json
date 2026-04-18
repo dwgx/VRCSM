@@ -47,9 +47,12 @@
     "openAvatarManager": "アバターマネージャーを開く",
     "openWorldManager": "ワールドマネージャーを開く",
     "openHomePortal": "VRChat ホームを開く",
+    "openNativeWorkspace": "ワークスペースを開く",
     "liveContext": "ライブコンテキスト",
     "liveContextDesc": "重要な ID と現在のセッション対象をすばやく確認できます。",
-    "liveContextHint": "これらのライブ ID をアンカーとして、VRCSM 内のネイティブなフレンド、アバター、ワールド、Favorites ワークフローにつなげます。"
+    "liveContextHint": "これらのライブ ID をアンカーとして、VRCSM 内のネイティブなフレンド、アバター、ワールド、Favorites ワークフローにつなげます。",
+    "openFriendsManager": "フレンドにJoin",
+    "openLibrary": "ライブラリを開く"
   },
   "screenshots": {
     "title": "スクリーンショット",
@@ -73,7 +76,14 @@
     "clearSelection": "選択解除",
     "selectionCount": "{{count}} 件選択中",
     "openSelected": "開く ({{count}})",
-    "copyPaths": "パスをコピー"
+    "copyPaths": "パスをコピー",
+    "deleteSelected": "削除 ({{count}})",
+    "deleteSuccess": "削除に成功しました",
+    "deleteBulkSuccess": "{{count}}枚のスクリーンショットを削除しました",
+    "deletePartial": "一部のファイルを削除できませんでした",
+    "deleteFailed": "削除に失敗しました",
+    "confirmDelete": "このスクリーンショットを削除してもよろしいですか？",
+    "confirmDeleteBulk": "{{count}}枚のスクリーンショットを削除してもよろしいですか？"
   },
   "avatars_extra": {
     "selectAvatar": "このアバターに切り替え",
@@ -105,10 +115,65 @@
       "verify": "確認",
       "verifying": "確認中…",
       "invalidCode": "6 桁のコードを入力してください。"
-    }
+    },
+    "username": "ユーザー名"
   },
   "vrchatWorkspace": {
-    "title": "VRChat ワークスペース"
+    "title": "VRChat ワークスペース",
+    "joinFriend": "フレンドに参加する",
+    "requestInvite": "招待をリクエスト",
+    "openFriendProfile": "プロフィールを開く",
+    "noSubscriptionSignals": "このセッションにはサブスクリプション判定用の専用フィールドがありませんでした。",
+    "block": "ブロック",
+    "mute": "ミュート",
+    "pickDownloadFolder": "アバターバンドルの保存先フォルダを選択",
+    "downloadAssetMissing": "このアバターにはダウンロード可能なWindowsアセットのURLがありません。",
+    "downloadSuccess": "バンドルを{{path}}に保存しました",
+    "downloadFailed": "ダウンロード失敗: {{error}}",
+    "noJoinable": "現在Join可能なインスタンスにいるフレンドはいません。",
+    "saveToLibrary": "ライブラリに保存",
+    "groupsTitle": "グループ",
+    "groupsBody": "サインイン中のセッションから取得したVRChatのグループをワークスペース内に表示します。",
+    "groupCount": "{{count}}グループ",
+    "representing": "代表中",
+    "noGroups": "このアカウントのグループが見つかりませんでした。",
+    "verified": "認証済み",
+    "blocksMutesTitle": "ブロック & ミュート",
+    "blocksMutesBody": "サインイン中のVRChatセッションから取得したプレイヤーのモデレーションリスト。",
+    "blocked": "ブロック中",
+    "muted": "ミュート中",
+    "noModerations": "このアカウントのブロックまたはミュート記録が見つかりませんでした。",
+    "inventoryTitle": "インベントリ",
+    "inventoryBody": "ローカルキャッシュ、ログ解析、VRCSMに保存された履歴から最近見たアバターを表示します。",
+    "localAvatarData": "ローカルアバターデータ",
+    "avatarHistory": "アバター履歴",
+    "noInventory": "保存されたアバター履歴がありません。アバターを着たり調べたりすると、VRCSMがここに履歴を構築します。",
+    "downloadBundle": "バンドルをダウンロード",
+    "downloadTitle": "ダウンロード",
+    "downloadBody": "サインイン中のVRChatセッションから、最近のアバターバンドルを選択したローカルフォルダに直接ダウンロードします。",
+    "noDownloadCandidates": "ダウンロード可能な最近のアバターはまだありません。",
+    "marketplaceTitle": "マーケットプレイス",
+    "marketplaceBody": "公式のお気に入り、ローカルのアバターインベントリ、最近のダウンロード対象、アクティブなVRChatセッションの商取引関連データから所有状況などを表示します。",
+    "favoriteAvatars": "お気に入りアバター",
+    "favoriteWorlds": "お気に入りワールド",
+    "downloadReady": "ダウンロード可能",
+    "downloadFolder": "ダウンロードフォルダ",
+    "topCreators": "ローカルインベントリの人気クリエイター",
+    "inventoryCount": "{{count}}体のアバター",
+    "noMarketplaceSignals": "ローカルでの所有情報がまだありません。アバターをお気に入り登録、確認、ダウンロードすると、VRCSMがここに情報を構築します。",
+    "accountLinkTitle": "アカウント連携",
+    "accountLinkBody": "サインイン中のVRChatセッションから取得した連携済みのプラットフォーム情報をWebパネルに飛ばずにローカルで表示します。",
+    "linkedProviders": "連携済みプロバイダー",
+    "notLinked": "未連携",
+    "linked": "連携済み",
+    "subscriptionsTitle": "サブスクリプション",
+    "subscriptionsBody": "認証済みユーザーデータと、このPCに保存されたVRChat設定シグナルから推測されたサポーターおよびサブスクリプションのステータス。",
+    "subscriptionStatus": "ステータス",
+    "subscriptionActive": "アクティブ",
+    "subscriptionInactive": "非アクティブ",
+    "subscriptionSignals": "シグナル",
+    "lastExpiredSubscription": "直近の期限切れ",
+    "liveSignal": "ライブシグナル"
   },
   "friends": {
     "title": "フレンド",
@@ -163,21 +228,54 @@
       "avatarName": "アバター名"
     },
     "alsoInInstance": "同じインスタンスのフレンド",
-    "detailPaneTitle": "詳細"
+    "detailPaneTitle": "詳細",
+    "platform": "プラットフォーム"
   },
   "menu": {
     "file": "ファイル",
     "edit": "編集",
+    "view": "表示",
+    "go": "移動",
+    "tools": "ツール",
     "assets": "アセット",
     "window": "ウィンドウ",
     "help": "ヘルプ",
     "fileRescan": "再スキャン",
     "fileExportReport": "レポートを書き出し",
+    "fileOpenCacheFolder": "キャッシュフォルダを開く",
+    "fileOpenLogFolder": "ログフォルダを開く",
+    "fileOpenDataFolder": "データフォルダを開く",
     "fileExit": "終了",
+    "editFind": "検索…",
+    "editPreferences": "環境設定",
+    "editClearHistory": "セッション履歴を消去",
+    "viewToggleSidebar": "サイドバーを切替",
+    "viewToggleDock": "下部ドックを切替",
+    "viewResetLayout": "レイアウトをリセット",
+    "viewZoomIn": "拡大",
+    "viewZoomOut": "縮小",
+    "viewZoomReset": "実際のサイズ",
+    "goDashboard": "ダッシュボード",
+    "goRadar": "レーダー",
+    "goLogs": "ログ",
+    "goBundles": "バンドル",
+    "goLibrary": "ライブラリ",
+    "goAvatars": "アバター",
+    "goWorlds": "ワールド",
+    "goFriends": "フレンド",
+    "goScreenshots": "スクリーンショット",
+    "goProfile": "プロフィール",
+    "goVrchat": "VRChat ワークスペース",
+    "toolsMigrate": "キャッシュ移行",
+    "toolsSettings": "設定",
+    "toolsSteamVR": "SteamVR 設定",
+    "toolsConfig": "アプリ設定",
     "windowResetLayout": "レイアウトをリセット",
     "helpAbout": "VRCSM について",
     "helpDocs": "ドキュメント",
-    "helpCheckUpdates": "アップデートを確認"
+    "helpCheckUpdates": "アップデートを確認",
+    "helpReportIssue": "問題を報告",
+    "helpKeyboard": "キーボードショートカット"
   },
   "radar": {
     "title": "ライブインスタンスレーダー",
@@ -244,7 +342,11 @@
     "created": "作成",
     "updated": "更新",
     "friend": "フレンド",
-    "player": "プレイヤー"
+    "player": "プレイヤー",
+    "hide": "非表示",
+    "show": "表示",
+    "unknown": "不明",
+    "sidebar": "サイドバー"
   },
   "about": {
     "title": "VRCSM について",
@@ -253,17 +355,33 @@
     "version": "バージョン",
     "build": "ビルド",
     "developer": "開発者",
-    "developerBody": "プロダクト方針、ネイティブホスト、フロントエンド、パッケージングは 1 つのコードベースで保守されています。",
+    "developerBody": "深夜にコーヒー片手にひとりでコツコツ～ネイティブホストも UI もパッケージングも全部ひとつのコードベースで書いてます。楽しく使ってもらえたら嬉しいな (｡•ㅅ•｡)♡",
     "specialThanks": "特別な感謝",
-    "specialThanksBody": "VRChat で最初に出会った友人であり、このプロジェクトの物語の一部でもあります。",
+    "specialThanksBody": "VRChat で最初に出会った大切な人。今もそっとこのプロジェクトの中にいます〜",
     "links": "リンク",
     "footer": "ローカルファーストな VRChat アカウント、キャッシュ、セッション管理のために構築されています。"
   },
   "toolbar": {
     "rescan": "再スキャン",
     "search": "検索",
+    "searchPrompt": "{{page}} を検索、どこへでも移動…",
     "vrcRunning": "VRChat 起動中",
     "vrcIdle": "VRChat 未起動"
+  },
+  "cmd": {
+    "title": "コマンドパレット",
+    "placeholder": "コマンドを入力、またはログ・プレイヤー・ワールドを検索…",
+    "empty": "一致するコマンドはありません。",
+    "loading": "セッションログを読み込み中…",
+    "navigate": "移動",
+    "select": "選択",
+    "dismiss": "閉じる",
+    "footer": "{{count}} 件",
+    "sections": {
+      "navigate": "移動",
+      "actions": "アクション",
+      "logs": "セッションログ"
+    }
   },
   "dock": {
     "console": "コンソール",
@@ -315,7 +433,9 @@
     "screenshotsHint": "ディスク上で検出されたファイル",
     "recentActivity": "最近のアクティビティ",
     "recentActivityDesc": "ワールド参加、プレイヤーイベント、アバター切り替え",
-    "noActivity": "ログに最近のアクティビティはありません"
+    "noActivity": "ログに最近のアクティビティはありません",
+    "lastSession": "前回セッション",
+    "playersLastSeen": "最近会ったプレイヤー {{count}}人"
   },
   "bundles": {
     "title": "バンドル",
@@ -449,7 +569,8 @@
       "panning": "平行移動モード",
       "textureNote": "現在の extractor はメッシュと UV データのみ保持します。埋め込みテクスチャはまだ GLB に書き出されません。",
       "expandedTitle": "拡大アバタープレビュー",
-      "expandedBody": "大きいビューポートでシルエット、ボーン、マテリアルを確認します。Shift+左ドラッグでも右ドラッグでも平行移動でき、中クリックは WebView の不具合回避のため無効です。"
+      "expandedBody": "大きいビューポートでシルエット、ボーン、マテリアルを確認します。Shift+左ドラッグでも右ドラッグでも平行移動でき、中クリックは WebView の不具合回避のため無効です。",
+      "retry": "再試行"
     },
     "thumbnailNote": "VRChat のアバター API は公開アバターでも匿名リクエストを拒否するため、VRCSM は実サムネイルの代わりに ID ベースの安定したキューブを描画します。ワールドは公開 API があるため実画像を表示できます。",
     "unknownUser": "不明なユーザー",
@@ -467,7 +588,9 @@
     "pickOne": "アバターを選択",
     "noMatch": "条件に一致するアバターはありません。",
     "nameNote": "アバター名は VRChat 出力ログから抽出されます。この端末で一度以上読み込まれたアバターのみ名前が表示されます。",
-    "previewWorkbench": "インスペクターのプレビューは意図的にコンパクト化されており、右上の拡大ボタンで大きな中央ビューアーを開けます。現在の extractor はまだテクスチャを GLB に埋め込まないため、オリジナルモードでは書き出された生のマテリアル状態のみ表示します。ホイールでズーム、Shift+ドラッグで平行移動、右ドラッグでも平行移動できます。"
+    "previewWorkbench": "インスペクターのプレビューは意図的にコンパクト化されており、右上の拡大ボタンで大きな中央ビューアーを開けます。現在の extractor はまだテクスチャを GLB に埋め込まないため、オリジナルモードでは書き出された生のマテリアル状態のみ表示します。ホイールでズーム、Shift+ドラッグで平行移動、右ドラッグでも平行移動できます。",
+    "unityPackages": "{{count}}個のプラットフォーム",
+    "hiddenCount": "他{{count}}件。検索で絞り込み。"
   },
   "worlds": {
     "title": "ワールド",
@@ -534,7 +657,12 @@
     "joined": "参加",
     "left": "退出",
     "eventCount": "{{count}} 件のイベント",
-    "filterEvents": "名前で絞り込み…"
+    "filterEvents": "名前で絞り込み…",
+    "clearFilesSkippedActive": " VRChatが実行中のため、{{count}}個のアクティブなログファイルを保持しました。",
+    "clearFilesSuccess": "{{count}}個のログファイルを削除しました。",
+    "clearFilesFailed": "ログファイルの削除に失敗しました: {{error}}",
+    "clearFiles": "ログファイルをクリア",
+    "clearFilesConfirm": "保存されたVRChatのoutput_logファイルを削除しますか？VRChatが実行中の場合、現在アクティブなログは保持されます。"
   },
   "migrate": {
     "title": "移行",
@@ -650,7 +778,11 @@
       "hours_other": "{{count}} 時間前",
       "days_one": "{{count}} 日前",
       "days_other": "{{count}} 日前"
-    }
+    },
+    "clearHistorySuccess": "履歴をクリアしました。フレンドのメモは保持されています。",
+    "clearHistoryFailed": "履歴のクリアに失敗しました: {{error}}",
+    "clearHistory": "履歴をクリア",
+    "clearHistoryConfirm": "保存されたセッション履歴とソーシャル変更履歴をクリアしますか？フレンドのメモは保持されます。"
   },
   "settings": {
     "title": "設定",
@@ -774,6 +906,21 @@
         "page": "ページ {{page}} / {{total}}",
         "range": "{{from}}–{{to}} / {{total}}"
       }
+    },
+    "general": {
+      "runtimeVr": "VR",
+      "runtimeStandalone": "スタンドアロン",
+      "runtimeDesktop": "デスクトップ",
+      "radarTimeline": "レーダータイムライン",
+      "radarTimelineHint": "レーダーとログの画面にリアルタイムのタイムラインドックを常に表示します。",
+      "friendsDetail": "フレンド詳細ペイン",
+      "friendsDetailHint": "フレンドページの右側にプロフィールの詳細ペインを表示します。",
+      "vrchatSidebar": "VRChatワークスペースのサイドバー",
+      "vrchatSidebarHint": "無効にすると、右側のカラムがメインのVRChatワークスペースの下に折りたたまれ、横並びになりません。",
+      "runtimeTitle": "ランタイム検出",
+      "runtimeDesc": "このPCのVRChatログから解析された実行環境の推測サマリー。",
+      "runtimeMode": "ランタイムモード",
+      "runtimeDetail": "検出された詳細"
     }
   },
   "profileCard": {

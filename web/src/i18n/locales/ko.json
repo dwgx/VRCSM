@@ -47,9 +47,12 @@
     "openAvatarManager": "아바타 관리자 열기",
     "openWorldManager": "월드 관리자 열기",
     "openHomePortal": "VRChat 홈 열기",
+    "openNativeWorkspace": "워크스페이스 열기",
     "liveContext": "실시간 컨텍스트",
     "liveContextDesc": "빠른 탐색을 위한 중요 ID 와 현재 세션 대상을 표시합니다.",
-    "liveContextHint": "이 실시간 ID 를 기준점으로 사용해 VRCSM 내부의 친구, 아바타, 월드, 즐겨찾기 흐름으로 연결할 수 있습니다."
+    "liveContextHint": "이 실시간 ID 를 기준점으로 사용해 VRCSM 내부의 친구, 아바타, 월드, 즐겨찾기 흐름으로 연결할 수 있습니다.",
+    "openFriendsManager": "친구 참가",
+    "openLibrary": "라이브러리 열기"
   },
   "screenshots": {
     "title": "스크린샷",
@@ -73,7 +76,14 @@
     "clearSelection": "선택 해제",
     "selectionCount": "{{count}}개 선택됨",
     "openSelected": "열기 ({{count}})",
-    "copyPaths": "경로 복사"
+    "copyPaths": "경로 복사",
+    "deleteSelected": "삭제 ({{count}})",
+    "deleteSuccess": "삭제 성공",
+    "deleteBulkSuccess": "스크린샷 {{count}}장 삭제됨",
+    "deletePartial": "일부 파일을 삭제할 수 없습니다",
+    "deleteFailed": "삭제 실패",
+    "confirmDelete": "이 스크린샷을 삭제하시겠습니까?",
+    "confirmDeleteBulk": "{{count}}장의 스크린샷을 삭제하시겠습니까?"
   },
   "avatars_extra": {
     "selectAvatar": "이 아바타로 전환",
@@ -105,10 +115,65 @@
       "verify": "확인",
       "verifying": "확인 중…",
       "invalidCode": "6자리 코드를 입력하세요."
-    }
+    },
+    "username": "사용자 이름"
   },
   "vrchatWorkspace": {
-    "title": "VRChat 워크스페이스"
+    "title": "VRChat 워크스페이스",
+    "joinFriend": "친구에 참가",
+    "requestInvite": "초대 요청",
+    "openFriendProfile": "프로필 열기",
+    "noSubscriptionSignals": "이 세션에서는 구독 상태를 확인할 수 있는 전용 필드가 제공되지 않았습니다.",
+    "block": "차단",
+    "mute": "뮤트",
+    "pickDownloadFolder": "아바타 번들 저장 폴더 선택",
+    "downloadAssetMissing": "이 아바타는 다운로드 가능한 Windows 에셋 URL을 제공하지 않습니다.",
+    "downloadSuccess": "번들이 {{path}}에 저장되었습니다",
+    "downloadFailed": "다운로드 실패: {{error}}",
+    "noJoinable": "현재 참가 가능한 친구가 인스턴스를 공개하고 있지 않습니다.",
+    "saveToLibrary": "라이브러리에 저장",
+    "groupsTitle": "그룹",
+    "groupsBody": "로그인된 세션의 VRChat 그룹을 워크스페이스 내에 직접 표시합니다.",
+    "groupCount": "그룹 {{count}}개",
+    "representing": "대표 그룹 활성화",
+    "noGroups": "이 계정에 대한 그룹이 없습니다.",
+    "verified": "인증됨",
+    "blocksMutesTitle": "차단 및 뮤트",
+    "blocksMutesBody": "로그인된 VRChat 세션에서 가져온 현재 플레이어 모더레이션 목록입니다.",
+    "blocked": "차단됨",
+    "muted": "뮤트됨",
+    "noModerations": "이 계정에 대한 차단 또는 뮤트 기록이 없습니다.",
+    "inventoryTitle": "인벤토리",
+    "inventoryBody": "로컬 캐시, 로그 분석 및 VRCSM에 저장된 아바타 기록을 통해 수집한 최근 본 아바타입니다.",
+    "localAvatarData": "로컬 아바타 데이터",
+    "avatarHistory": "아바타 기록",
+    "noInventory": "저장된 아바타 기록이 없습니다. 아바타를 착용하거나 확인하여 VRCSM이 인벤토리를 구축할 수 있게 하세요.",
+    "downloadBundle": "번들 다운로드",
+    "downloadTitle": "다운로드",
+    "downloadBody": "로그인된 VRChat 세션의 최근 아바타 번들을 선택한 로컬 폴더로 직접 다운로드합니다.",
+    "noDownloadCandidates": "아직 다운로드할 수 있는 최근 아바타가 없습니다.",
+    "marketplaceTitle": "마켓플레이스",
+    "marketplaceBody": "공식 즐겨찾기, 로컬 아바타 인벤토리, 최근 번들 대상 및 활성 VRChat 세션의 상점 관련 정보를 통해 수집한 보유 및 획득 정보입니다.",
+    "favoriteAvatars": "즐겨찾기한 아바타",
+    "favoriteWorlds": "즐겨찾기한 월드",
+    "downloadReady": "다운로드 가능",
+    "downloadFolder": "다운로드 폴더",
+    "topCreators": "로컬 인벤토리의 인기 크리에이터",
+    "inventoryCount": "아바타 {{count}}개",
+    "noMarketplaceSignals": "아직 로컬 보유 정보가 없습니다. 아바타를 즐겨찾기, 확인 또는 다운로드하여 VRCSM이 데이터를 구축할 수 있게 하세요.",
+    "accountLinkTitle": "계정 연동",
+    "accountLinkBody": "웹 패널로 이동할 필요 없이, 로그인된 VRChat 세션에서 연동된 플랫폼 및 식별 정보를 로컬에 표시합니다.",
+    "linkedProviders": "연동된 서비스",
+    "notLinked": "미연동",
+    "linked": "연동됨",
+    "subscriptionsTitle": "구독",
+    "subscriptionsBody": "인증된 사용자 정보 및 이 PC에 저장된 로컬 VRChat 설정값을 통해 유추한 서포터 및 구독 상태입니다.",
+    "subscriptionStatus": "상태",
+    "subscriptionActive": "활성",
+    "subscriptionInactive": "비활성",
+    "subscriptionSignals": "신호",
+    "lastExpiredSubscription": "최근 만료됨",
+    "liveSignal": "실시간 신호"
   },
   "friends": {
     "title": "친구",
@@ -163,21 +228,54 @@
       "avatarName": "아바타 이름"
     },
     "alsoInInstance": "같은 인스턴스에 있는 친구",
-    "detailPaneTitle": "세부 정보"
+    "detailPaneTitle": "세부 정보",
+    "platform": "플랫폼"
   },
   "menu": {
     "file": "파일",
     "edit": "편집",
+    "view": "보기",
+    "go": "이동",
+    "tools": "도구",
     "assets": "에셋",
     "window": "창",
     "help": "도움말",
     "fileRescan": "다시 스캔",
     "fileExportReport": "리포트 내보내기",
+    "fileOpenCacheFolder": "캐시 폴더 열기",
+    "fileOpenLogFolder": "로그 폴더 열기",
+    "fileOpenDataFolder": "데이터 폴더 열기",
     "fileExit": "종료",
+    "editFind": "찾기…",
+    "editPreferences": "환경설정",
+    "editClearHistory": "세션 기록 지우기",
+    "viewToggleSidebar": "사이드바 토글",
+    "viewToggleDock": "하단 도크 토글",
+    "viewResetLayout": "레이아웃 초기화",
+    "viewZoomIn": "확대",
+    "viewZoomOut": "축소",
+    "viewZoomReset": "실제 크기",
+    "goDashboard": "대시보드",
+    "goRadar": "레이더",
+    "goLogs": "로그",
+    "goBundles": "번들",
+    "goLibrary": "라이브러리",
+    "goAvatars": "아바타",
+    "goWorlds": "월드",
+    "goFriends": "친구",
+    "goScreenshots": "스크린샷",
+    "goProfile": "프로필",
+    "goVrchat": "VRChat 작업 공간",
+    "toolsMigrate": "캐시 이전",
+    "toolsSettings": "설정",
+    "toolsSteamVR": "SteamVR 설정",
+    "toolsConfig": "앱 구성",
     "windowResetLayout": "레이아웃 초기화",
     "helpAbout": "VRCSM 정보",
     "helpDocs": "문서",
-    "helpCheckUpdates": "업데이트 확인"
+    "helpCheckUpdates": "업데이트 확인",
+    "helpReportIssue": "문제 보고",
+    "helpKeyboard": "키보드 단축키"
   },
   "radar": {
     "title": "실시간 인스턴스 레이더",
@@ -244,7 +342,11 @@
     "created": "생성",
     "updated": "업데이트",
     "friend": "친구",
-    "player": "플레이어"
+    "player": "플레이어",
+    "hide": "숨기기",
+    "show": "표시",
+    "unknown": "알 수 없음",
+    "sidebar": "사이드바"
   },
   "about": {
     "title": "VRCSM 정보",
@@ -253,17 +355,33 @@
     "version": "버전",
     "build": "빌드",
     "developer": "개발자",
-    "developerBody": "제품 방향, 네이티브 호스트, 프런트엔드 셸, 패키징이 하나의 코드베이스에서 유지됩니다.",
+    "developerBody": "커피 한 잔 들고 혼자 새벽까지 코딩중~ 네이티브 호스트·UI·패키징 전부 한 코드베이스에서 직접 만들었어요. 편하게 써주세요 (｡•ㅅ•｡)♡",
     "specialThanks": "특별한 감사",
-    "specialThanksBody": "VRChat 에서 처음 만난 친구이자 이 프로젝트 이야기의 일부입니다.",
+    "specialThanksBody": "VRChat 에서 처음 만난 소중한 친구— 지금도 이 프로젝트 안에 살며시 함께 있어요~",
     "links": "링크",
     "footer": "로컬 우선 VRChat 계정, 캐시, 세션 관리를 위해 제작되었습니다."
   },
   "toolbar": {
     "rescan": "다시 스캔",
     "search": "검색",
+    "searchPrompt": "{{page}} 에서 검색하거나 어디로든 이동…",
     "vrcRunning": "VRChat 실행 중",
     "vrcIdle": "VRChat 실행 안 함"
+  },
+  "cmd": {
+    "title": "명령 팔레트",
+    "placeholder": "명령어를 입력하거나 로그 · 플레이어 · 월드를 검색…",
+    "empty": "일치하는 명령이 없습니다.",
+    "loading": "세션 로그를 불러오는 중…",
+    "navigate": "이동",
+    "select": "선택",
+    "dismiss": "닫기",
+    "footer": "{{count}} 건",
+    "sections": {
+      "navigate": "이동",
+      "actions": "동작",
+      "logs": "세션 로그"
+    }
   },
   "dock": {
     "console": "콘솔",
@@ -315,7 +433,9 @@
     "screenshotsHint": "디스크에서 감지된 파일",
     "recentActivity": "최근 활동",
     "recentActivityDesc": "월드 입장, 플레이어 이벤트, 아바타 전환",
-    "noActivity": "로그에 최근 활동이 없습니다"
+    "noActivity": "로그에 최근 활동이 없습니다",
+    "lastSession": "마지막 세션",
+    "playersLastSeen": "최근 만난 플레이어 {{count}}명"
   },
   "bundles": {
     "title": "번들",
@@ -449,7 +569,8 @@
       "panning": "이동 모드",
       "textureNote": "현재 extractor 는 메시와 UV 데이터만 유지합니다. 내장 텍스처는 아직 GLB 로 내보내지지 않습니다.",
       "expandedTitle": "확대된 아바타 미리보기",
-      "expandedBody": "더 큰 뷰포트로 실루엣, 본, 머티리얼을 확인하세요. Shift+좌드래그나 우드래그로 이동할 수 있고, WebView 문제를 피하기 위해 가운데 버튼 클릭은 비활성화되어 있습니다."
+      "expandedBody": "더 큰 뷰포트로 실루엣, 본, 머티리얼을 확인하세요. Shift+좌드래그나 우드래그로 이동할 수 있고, WebView 문제를 피하기 위해 가운데 버튼 클릭은 비활성화되어 있습니다.",
+      "retry": "재시도"
     },
     "thumbnailNote": "VRChat 아바타 API 는 공개 아바타라도 익명 요청을 거부하므로, VRCSM 은 실제 썸네일 대신 ID 기반의 안정적인 큐브를 렌더링합니다. 월드는 공개 엔드포인트를 사용하므로 실제 이미지를 표시합니다.",
     "unknownUser": "알 수 없는 사용자",
@@ -467,7 +588,9 @@
     "pickOne": "아바타 선택",
     "noMatch": "필터에 맞는 아바타가 없습니다.",
     "nameNote": "아바타 이름은 VRChat 출력 로그에서 추출됩니다. 이 기기에서 한 번 이상 로드된 아바타만 이름이 표시됩니다.",
-    "previewWorkbench": "인스펙터 미리보기는 의도적으로 작게 유지되며, 오른쪽 위 확대 버튼을 누르면 더 큰 중앙 뷰어가 열립니다. 현재 extractor 는 아직 텍스처를 GLB 에 포함하지 않으므로 원본 모드는 추출된 머티리얼 상태만 표시합니다. 휠로 확대/축소하고, Shift+드래그 또는 우드래그로 이동하세요."
+    "previewWorkbench": "인스펙터 미리보기는 의도적으로 작게 유지되며, 오른쪽 위 확대 버튼을 누르면 더 큰 중앙 뷰어가 열립니다. 현재 extractor 는 아직 텍스처를 GLB 에 포함하지 않으므로 원본 모드는 추출된 머티리얼 상태만 표시합니다. 휠로 확대/축소하고, Shift+드래그 또는 우드래그로 이동하세요.",
+    "unityPackages": "{{count}}개 플랫폼 패키지",
+    "hiddenCount": "+{{count}}개 더 있음. 검색으로 필터링하세요."
   },
   "worlds": {
     "title": "월드",
@@ -534,7 +657,12 @@
     "joined": "입장",
     "left": "퇴장",
     "eventCount": "이벤트 {{count}}개",
-    "filterEvents": "이름으로 필터…"
+    "filterEvents": "이름으로 필터…",
+    "clearFilesSkippedActive": " VRChat이 실행 중이므로 활성 로그 파일 {{count}}개를 유지했습니다.",
+    "clearFilesSuccess": "로그 파일 {{count}}개를 삭제했습니다.",
+    "clearFilesFailed": "로그 파일 삭제 실패: {{error}}",
+    "clearFiles": "로그 파일 정리",
+    "clearFilesConfirm": "저장된 VRChat output_log 파일을 삭제하시겠습니까? VRChat이 실행 중이면 현재 활성 로그는 유지됩니다."
   },
   "migrate": {
     "title": "이동",
@@ -650,7 +778,11 @@
       "hours_other": "{{count}}시간 전",
       "days_one": "{{count}}일 전",
       "days_other": "{{count}}일 전"
-    }
+    },
+    "clearHistorySuccess": "기록이 삭제되었습니다. 친구 메모는 유지됩니다.",
+    "clearHistoryFailed": "기록 삭제 실패: {{error}}",
+    "clearHistory": "기록 삭제",
+    "clearHistoryConfirm": "저장된 세션 기록과 소셜 변경 기록을 삭제하시겠습니까? 친구 메모는 유지됩니다."
   },
   "settings": {
     "title": "설정",
@@ -774,6 +906,21 @@
         "page": "페이지 {{page}} / {{total}}",
         "range": "{{from}}–{{to}} / {{total}}"
       }
+    },
+    "general": {
+      "runtimeVr": "VR",
+      "runtimeStandalone": "스탠드얼론",
+      "runtimeDesktop": "데스크톱",
+      "radarTimeline": "레이더 타임라인",
+      "radarTimelineHint": "레이더 및 로그 화면에 실시간 타임라인 도크를 계속 표시합니다.",
+      "friendsDetail": "친구 세부 정보 패널",
+      "friendsDetailHint": "친구 페이지 우측에 프로필 세부 정보 패널을 표시합니다.",
+      "vrchatSidebar": "VRChat 워크스페이스 사이드바",
+      "vrchatSidebarHint": "비활성화 시 우측 패널이 나란히 표시되지 않고 메인 VRChat 워크스페이스 아래로 접힙니다.",
+      "runtimeTitle": "런타임 환경 감지",
+      "runtimeDesc": "이 PC의 VRChat 로그를 분석하여 감지한 실행 환경 요약입니다.",
+      "runtimeMode": "실행 모드",
+      "runtimeDetail": "감지된 세부 정보"
     }
   },
   "profileCard": {

@@ -27,6 +27,8 @@ import {
   Smartphone,
   FileClock,
   Radio,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -250,6 +252,7 @@ function RadarEngine({
   // ── Player platform cache ────────────────────────────────────────────
   const [playerPlatform, setPlayerPlatform] = useState<Record<string, string>>({});
   const [recentSessionEvents, setRecentSessionEvents] = useState<RecentSessionEvent[]>([]);
+  const [showRecentHistory, setShowRecentHistory] = useUiPrefBoolean("vrcsm.layout.radar.recentHistory.visible", true);
   const currentWorldRef = useRef<WorldSwitchEvent | null>(null);
 
   const addTimelineEntry = useCallback((entry: Omit<TimelineEntry, "id">) => {
@@ -800,14 +803,29 @@ function RadarEngine({
           </Card>
 
           <Card className="border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--canvas))] shadow-sm">
-            <CardHeader className="py-4 border-b border-[hsl(var(--border)/0.5)]">
+            <CardHeader className={cn("py-4", showRecentHistory && "border-b border-[hsl(var(--border)/0.5)]")}>
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRecentHistory((v) => !v)}
+                  className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
+                  aria-expanded={showRecentHistory}
+                >
+                  {showRecentHistory ? (
+                    <ChevronDown className="size-3 text-[hsl(var(--muted-foreground))]" />
+                  ) : (
+                    <ChevronRight className="size-3 text-[hsl(var(--muted-foreground))]" />
+                  )}
                   <Clock className="size-3 text-[hsl(var(--muted-foreground))]" />
                   <CardTitle className="text-xs">
                     {t("radar.recentHistory.title", { defaultValue: "Recent Session History" })}
                   </CardTitle>
-                </div>
+                  {!showRecentHistory && recentSessionEvents.length > 0 ? (
+                    <Badge variant="secondary" className="h-4 font-mono text-[9px]">
+                      {recentSessionEvents.length}
+                    </Badge>
+                  ) : null}
+                </button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -817,54 +835,58 @@ function RadarEngine({
                   {t("radar.recentHistory.open", { defaultValue: "Open Log" })}
                 </Button>
               </div>
-              <CardDescription className="text-[11px]">
-                {t("radar.recentHistory.desc", {
-                  defaultValue: "Pulled from the persistent player event database.",
-                })}
-              </CardDescription>
+              {showRecentHistory ? (
+                <CardDescription className="text-[11px]">
+                  {t("radar.recentHistory.desc", {
+                    defaultValue: "Pulled from the persistent player event database.",
+                  })}
+                </CardDescription>
+              ) : null}
             </CardHeader>
-            <CardContent className="p-0">
-              {recentSessionEvents.length === 0 ? (
-                <div className="p-4 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
-                  {t("radar.recentHistory.empty", { defaultValue: "No recorded session events yet." })}
-                </div>
-              ) : (
-                <div className="divide-y divide-[hsl(var(--border)/0.4)]">
-                  {recentSessionEvents.map((event) => (
-                    <div key={`${event.id}-${event.occurred_at}`} className="flex items-start gap-2.5 px-3 py-2.5">
-                      {event.kind === "joined" ? (
-                        <UserPlus className="mt-0.5 size-3 text-emerald-400" />
-                      ) : (
-                        <UserMinus className="mt-0.5 size-3 text-zinc-400" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-[11px] font-medium text-[hsl(var(--foreground))]">
-                            {event.display_name}
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "h-4 border text-[9px] font-mono",
-                              event.kind === "joined"
-                                ? "bg-emerald-500/12 text-emerald-400 border-emerald-500/25"
-                                : "bg-zinc-500/12 text-zinc-300 border-zinc-500/25",
-                            )}
-                          >
-                            {event.kind === "joined"
-                              ? t("friendLog.session.kind.joined")
-                              : t("friendLog.session.kind.left")}
-                          </Badge>
-                        </div>
-                        <div className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
-                          {event.occurred_at}
+            {showRecentHistory ? (
+              <CardContent className="p-0 max-h-[280px] overflow-y-auto">
+                {recentSessionEvents.length === 0 ? (
+                  <div className="p-4 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
+                    {t("radar.recentHistory.empty", { defaultValue: "No recorded session events yet." })}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[hsl(var(--border)/0.4)]">
+                    {recentSessionEvents.map((event) => (
+                      <div key={`${event.id}-${event.occurred_at}`} className="flex items-start gap-2.5 px-3 py-2.5">
+                        {event.kind === "joined" ? (
+                          <UserPlus className="mt-0.5 size-3 text-emerald-400" />
+                        ) : (
+                          <UserMinus className="mt-0.5 size-3 text-zinc-400" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-[11px] font-medium text-[hsl(var(--foreground))]">
+                              {event.display_name}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "h-4 border text-[9px] font-mono",
+                                event.kind === "joined"
+                                  ? "bg-emerald-500/12 text-emerald-400 border-emerald-500/25"
+                                  : "bg-zinc-500/12 text-zinc-300 border-zinc-500/25",
+                              )}
+                            >
+                              {event.kind === "joined"
+                                ? t("friendLog.session.kind.joined")
+                                : t("friendLog.session.kind.left")}
+                            </Badge>
+                          </div>
+                          <div className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+                            {event.occurred_at}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            ) : null}
           </Card>
         </div>
 
@@ -1079,8 +1101,8 @@ export default function Radar() {
           <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-[hsl(var(--muted))]">
             <Globe className="size-6 text-[hsl(var(--muted-foreground)/0.5)]" />
           </div>
-          <h3 className="mb-1 text-sm font-semibold text-[hsl(var(--foreground))]">VRChat 未运行</h3>
-          <p className="text-xs">游戏启动后在此实时监测房间与玩家动向</p>
+          <h3 className="mb-1 text-sm font-semibold text-[hsl(var(--foreground))]">{t("radar.vrcNotRunning")}</h3>
+          <p className="text-xs">{t("radar.vrcNotRunningHint")}</p>
         </div>
       ) : vrcRunning === null ? null : (
         <RadarEngine

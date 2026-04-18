@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ipc } from "@/lib/ipc";
 import { toast } from "sonner";
 import { Lock, RefreshCw, Unlock } from "lucide-react";
@@ -15,6 +16,7 @@ import {
 import { SettingRow } from "./components/SettingRow";
 
 export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -26,7 +28,7 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       .then((c) => {
         if ((c as any).error) {
           if ((c as any).error.code !== "not_found") {
-            toast.error("Failed to read steamvr.vrsettings: " + (c as any).error.message);
+            toast.error(t("settings.steamvr.errorRead", { defaultValue: "Failed to read steamvr.vrsettings: {{msg}}", msg: (c as any).error.message }));
           }
         } else {
           setConfig(c);
@@ -34,7 +36,7 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e);
-        toast.error("Failed to read steamvr.vrsettings: " + msg);
+        toast.error(t("settings.steamvr.errorRead", { defaultValue: "Failed to read steamvr.vrsettings: {{msg}}", msg }));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -74,7 +76,7 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
 
       return next;
     });
-    toast.success("Applied preset.");
+    toast.success(t("settings.steamvr.presetApplied", { defaultValue: "Applied preset." }));
   };
 
   const saveConfig = async () => {
@@ -86,13 +88,13 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       };
       const res = await ipc.writeSteamVrConfig(updates);
       if ((res as any).error) {
-         toast.error("Failed to save steamvr.vrsettings: " + (res as any).error.message);
+         toast.error(t("settings.steamvr.errorSave", { defaultValue: "Failed to save steamvr.vrsettings: {{msg}}", msg: (res as any).error.message }));
       } else {
-         toast.success("Successfully updated steamvr.vrsettings!");
+         toast.success(t("settings.steamvr.successSave", { defaultValue: "Successfully updated steamvr.vrsettings!" }));
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error("Failed to save steamvr.vrsettings: " + msg);
+      toast.error(t("settings.steamvr.errorSave", { defaultValue: "Failed to save steamvr.vrsettings: {{msg}}", msg }));
     } finally {
       setSaving(false);
       fetchConfig();
@@ -108,7 +110,7 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <CardTitle>VR 串流设置 (SteamVR / Steam Link)</CardTitle>
+            <CardTitle>{t("settings.steamvr.title", { defaultValue: "VR Streaming Settings (SteamVR / Steam Link)" })}</CardTitle>
             <CardDescription className="max-w-[60ch]">
               Hardware: {hw.gpuVendor} | {hw.hmdModel} (Driver: {hw.hmdDriver})
             </CardDescription>
@@ -117,33 +119,33 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
             {steamVrProcRunning ? (
               <Badge variant="warning" className="gap-1">
                 <Lock className="size-3" />
-                SteamVR is Running
+                {t("settings.steamvr.steamvrRunning", { defaultValue: "SteamVR is Running" })}
               </Badge>
             ) : (
               <Badge variant="success" className="gap-1">
                 <Unlock className="size-3" />
-                SteamVR is Idle
+                {t("settings.steamvr.steamvrIdle", { defaultValue: "SteamVR is Idle" })}
               </Badge>
             )}
             <Button size="sm" variant="outline" onClick={fetchConfig} disabled={loading}>
               <RefreshCw className={loading ? "animate-spin size-3 mr-2" : "size-3 mr-2"} />
-              Reload
+              {t("settings.steamvr.reload", { defaultValue: "Reload" })}
             </Button>
             <Button size="sm" onClick={saveConfig} disabled={saving || locked}>
-              {saving ? "Saving..." : "Save Settings"}
+              {saving ? t("settings.steamvr.saving", { defaultValue: "Saving..." }) : t("settings.steamvr.save", { defaultValue: "Save Settings" })}
             </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 pt-0">
         <div className="flex flex-wrap items-center gap-2 mb-2 p-2 rounded bg-[hsl(var(--surface-raised))] border border-[hsl(var(--border))]">
-          <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-2">Quick Presets:</span>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(50, 0.8, 90, true, true, true)} disabled={locked}>Performance (50Mbps)</Button>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(100, 1.0, 72, false, true, true)} disabled={locked}>Balanced (100Mbps)</Button>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(150, 1.5, 72, false, false, true)} disabled={locked}>Quality (150Mbps)</Button>
+          <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-2">{t("settings.steamvr.quickPresets", { defaultValue: "Quick Presets:" })}</span>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(50, 0.8, 90, true, true, true)} disabled={locked}>{t("settings.steamvr.presetPerformance", { defaultValue: "Performance (50Mbps)" })}</Button>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(100, 1.0, 72, false, true, true)} disabled={locked}>{t("settings.steamvr.presetBalanced", { defaultValue: "Balanced (100Mbps)" })}</Button>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(150, 1.5, 72, false, false, true)} disabled={locked}>{t("settings.steamvr.presetQuality", { defaultValue: "Quality (150Mbps)" })}</Button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <SettingRow label="Target Bandwidth (Mbps)" hint="Bitrate limit for Steam Link. Up to 150-200 for good routers.">
+          <SettingRow label={t("settings.steamvr.targetBandwidth.label", { defaultValue: "Target Bandwidth (Mbps)" })} hint={t("settings.steamvr.targetBandwidth.hint", { defaultValue: "Bitrate limit for Steam Link. Up to 150-200 for good routers." })}>
             <div className="flex items-center gap-2 w-[180px]">
                <Input type="range" min="20" max="200" step="10" className="w-full"
                  disabled={locked}
@@ -152,12 +154,12 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
                <span className="text-[12px] tabular-nums whitespace-nowrap min-w-[36px]">{link.targetBandwidth ?? 90} M</span>
             </div>
           </SettingRow>
-          <SettingRow label="Automatic Bandwidth" hint="Let SteamVR dynamically drop bitrate on poor signal.">
+          <SettingRow label={t("settings.steamvr.automaticBandwidth.label", { defaultValue: "Automatic Bandwidth" })} hint={t("settings.steamvr.automaticBandwidth.hint", { defaultValue: "Let SteamVR dynamically drop bitrate on poor signal." })}>
             <Button size="sm" onClick={() => setField("driver_vrlink", "automaticBandwidth", !link.automaticBandwidth)} disabled={locked} variant={link.automaticBandwidth ? "default" : "outline"} className={link.automaticBandwidth ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]" : ""}>
-               {link.automaticBandwidth ? "Enabled" : "Disabled"}
+               {link.automaticBandwidth ? t("settings.steamvr.enabled", { defaultValue: "Enabled" }) : t("settings.steamvr.disabled", { defaultValue: "Disabled" })}
             </Button>
           </SettingRow>
-          <SettingRow label="Supersampling Scale" hint="Render scale (1.0 = native, 1.5 = high clarity, requires good GPU)">
+          <SettingRow label={t("settings.steamvr.supersampleScale.label", { defaultValue: "Supersampling Scale" })} hint={t("settings.steamvr.supersampleScale.hint", { defaultValue: "Render scale (1.0 = native, 1.5 = high clarity, requires good GPU)" })}>
              <div className="flex items-center gap-2 w-[180px]">
                <Input type="range" min="0.5" max="2.0" step="0.1" className="w-full"
                  disabled={locked}
@@ -166,22 +168,22 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
                <span className="text-[12px] tabular-nums whitespace-nowrap min-w-[36px]">{parseFloat((steamvr.supersampleScale ?? 1.0).toString()).toFixed(1)}x</span>
             </div>
           </SettingRow>
-          <SettingRow label="Supersample Manual Override" hint="Forces custom scale instead of auto-adjusting.">
+          <SettingRow label={t("settings.steamvr.supersampleManualOverride.label", { defaultValue: "Supersample Manual Override" })} hint={t("settings.steamvr.supersampleManualOverride.hint", { defaultValue: "Forces custom scale instead of auto-adjusting." })}>
             <Button size="sm" onClick={() => setField("steamvr", "supersampleManualOverride", !steamvr.supersampleManualOverride)} disabled={locked} variant={steamvr.supersampleManualOverride ? "default" : "outline"} className={steamvr.supersampleManualOverride ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]" : ""}>
-               {steamvr.supersampleManualOverride ? "Enabled" : "Disabled"}
+               {steamvr.supersampleManualOverride ? t("settings.steamvr.enabled", { defaultValue: "Enabled" }) : t("settings.steamvr.disabled", { defaultValue: "Disabled" })}
             </Button>
           </SettingRow>
-          <SettingRow label="Refresh Rate (Hz)" hint="Must match the headset's allowed refresh rates (72, 80, 90, 120)">
+          <SettingRow label={t("settings.steamvr.refreshRate.label", { defaultValue: "Refresh Rate (Hz)" })} hint={t("settings.steamvr.refreshRate.hint", { defaultValue: "Must match the headset's allowed refresh rates (72, 80, 90, 120)" })}>
              <Input type="number" step="1" className="w-24 h-8 text-[12px]" disabled={locked} value={steamvr.preferredRefreshRate ?? 72} onChange={(e) => setField("steamvr", "preferredRefreshRate", Number(e.target.value))} />
           </SettingRow>
-          <SettingRow label="Motion Smoothing" hint="Synthesizes frames on lag. Good for poor frametimes, but can cause ghosting artifacts.">
+          <SettingRow label={t("settings.steamvr.motionSmoothing.label", { defaultValue: "Motion Smoothing" })} hint={t("settings.steamvr.motionSmoothing.hint", { defaultValue: "Synthesizes frames on lag. Good for poor frametimes, but can cause ghosting artifacts." })}>
             <Button size="sm" onClick={() => setField("steamvr", "motionSmoothing", !steamvr.motionSmoothing)} disabled={locked} variant={steamvr.motionSmoothing ? "default" : "outline"} className={steamvr.motionSmoothing ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]" : ""}>
-               {steamvr.motionSmoothing ? "Enabled" : "Disabled"}
+               {steamvr.motionSmoothing ? t("settings.steamvr.enabled", { defaultValue: "Enabled" }) : t("settings.steamvr.disabled", { defaultValue: "Disabled" })}
             </Button>
           </SettingRow>
-          <SettingRow label="Supersample Filtering" hint="Reduces aliasing at the cost of slight blur">
+          <SettingRow label={t("settings.steamvr.supersampleFiltering.label", { defaultValue: "Supersample Filtering" })} hint={t("settings.steamvr.supersampleFiltering.hint", { defaultValue: "Reduces aliasing at the cost of slight blur" })}>
             <Button size="sm" onClick={() => setField("steamvr", "allowSupersampleFiltering", !steamvr.allowSupersampleFiltering)} disabled={locked} variant={steamvr.allowSupersampleFiltering ? "default" : "outline"} className={steamvr.allowSupersampleFiltering ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]" : ""}>
-               {steamvr.allowSupersampleFiltering ? "Enabled" : "Disabled"}
+               {steamvr.allowSupersampleFiltering ? t("settings.steamvr.enabled", { defaultValue: "Enabled" }) : t("settings.steamvr.disabled", { defaultValue: "Disabled" })}
             </Button>
           </SettingRow>
         </div>

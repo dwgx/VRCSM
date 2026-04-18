@@ -254,7 +254,7 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
             >
               <Trash2 className="size-3 mr-1.5" />
               {t("settings.app.clearVrcCacheLabel", {
-                defaultValue: "一键清理缓存",
+                defaultValue: "Clear VRC Cache",
               })}
             </Button>
           </SettingRow>
@@ -473,7 +473,7 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Trash2 className="size-4 text-[hsl(var(--destructive))]" />
-              {t("settings.app.clearCacheTitle", { defaultValue: "一键清理缓存 (Clear VRC Cache)" })}
+              {t("settings.app.clearCacheTitle", { defaultValue: "Clear VRC Cache" })}
             </DialogTitle>
             <DialogDescription>
               {t("settings.app.clearCacheBody", { defaultValue: "Select which VRChat cache categories you want to safely wipe. Useful if the cache is taking up a massive amount of space or you want a fresh start." })}
