@@ -3,8 +3,10 @@
 #include "Common.h"
 
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <system_error>
+#include <vector>
 
 #include <Windows.h>
 #include <TlHelp32.h>
@@ -36,6 +38,7 @@ void to_json(nlohmann::json& j, const SteamVrHardwareInfo& info)
         {"hmdModel", info.hmdModel},
         {"hmdManufacturer", info.hmdManufacturer},
         {"hmdDriver", info.hmdDriver},
+        {"hmdSerial", info.hmdSerial},
     };
 }
 
@@ -201,6 +204,36 @@ nlohmann::json SteamVrConfig::Read(const std::filesystem::path& path)
         }
 
         result["steamvr_running"] = IsSteamVrRunning();
+
+        // Extract historical VR devices from per-device audio overrides.
+        // Audio section keys follow the pattern:
+        //   enablePlaybackDeviceOverride_{Manufacturer}_{Model}
+        // where the model may contain spaces.  Parse unique model names.
+        {
+            std::set<std::string> seen;
+            std::vector<std::string> devices;
+            if (doc.contains("audio") && doc["audio"].is_object())
+            {
+                constexpr std::string_view kPrefix = "enablePlaybackDeviceOverride_";
+                for (auto it = doc["audio"].begin(); it != doc["audio"].end(); ++it)
+                {
+                    const auto& k = it.key();
+                    if (k.size() > kPrefix.size() && k.compare(0, kPrefix.size(), kPrefix) == 0)
+                    {
+                        auto rest = k.substr(kPrefix.size()); // "Manufacturer_Model"
+                        auto sep = rest.find('_');
+                        if (sep != std::string::npos)
+                        {
+                            auto model = rest.substr(sep + 1);
+                            if (!model.empty() && seen.insert(model).second)
+                                devices.push_back(model);
+                        }
+                    }
+                }
+            }
+            result["knownDevices"] = devices;
+        }
+
         return result;
     }
     catch (const std::exception& ex)
@@ -341,6 +374,10 @@ SteamVrHardwareInfo SteamVrConfig::ExtractHardwareInfo(const nlohmann::json& doc
         {
             info.hmdDriver = hmd["ActualHMDDriver"].get<std::string>();
         }
+        if (hmd.contains("HMDSerialNumber") && hmd["HMDSerialNumber"].is_string())
+        {
+            info.hmdSerial = hmd["HMDSerialNumber"].get<std::string>();
+        }
     }
 
     return info;
@@ -348,7 +385,9 @@ SteamVrHardwareInfo SteamVrConfig::ExtractHardwareInfo(const nlohmann::json& doc
 
 bool SteamVrConfig::IsSteamVrRunning()
 {
-    return isProcessRunning(L"vrmonitor.exe") || isProcessRunning(L"vrserver.exe");
+    return isProcessRunning(L"vrmonitor.exe")
+        || isProcessRunning(L"vrserver.exe")
+        || isProcessRunning(L"steamlink.exe");
 }
 
 } // namespace vrcsm::core

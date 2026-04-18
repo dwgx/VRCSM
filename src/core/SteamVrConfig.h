@@ -17,6 +17,7 @@ struct SteamVrHardwareInfo
     std::string hmdModel;
     std::string hmdManufacturer;
     std::string hmdDriver;
+    std::string hmdSerial;
 };
 
 void to_json(nlohmann::json& j, const SteamVrHardwareInfo& info);

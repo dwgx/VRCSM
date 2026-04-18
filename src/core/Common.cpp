@@ -170,18 +170,15 @@ namespace
 
 std::filesystem::path normalizeContainmentPath(const std::filesystem::path& input)
 {
+    // Use absolute() + lexically_normal() instead of weakly_canonical().
+    // weakly_canonical() follows NTFS junctions, which causes the containment
+    // check to fail when the user has relocated cache dirs via junctions
+    // (e.g. HTTPCache-WindowsPlayer → D:\VRChatCache\...). lexically_normal()
+    // still resolves ".." traversal without touching the filesystem.
     std::error_code ec;
-    auto normalized = std::filesystem::weakly_canonical(input, ec);
-    if (ec)
-    {
-        ec.clear();
-        normalized = std::filesystem::absolute(input, ec);
-    }
-    if (ec)
-    {
-        normalized = input;
-    }
-    return normalized.lexically_normal();
+    auto abs = std::filesystem::absolute(input, ec);
+    if (ec) abs = input;
+    return abs.lexically_normal();
 }
 
 bool pathComponentEquals(const std::filesystem::path& lhs, const std::filesystem::path& rhs)
