@@ -110,6 +110,9 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "auth.login",
         "auth.verify2FA",
         "friends.list",
+        "groups.list",
+        "moderations.list",
+        "avatar.bundle.download",
         "avatar.details",
         "world.details",
         "avatar.preview",
@@ -119,6 +122,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "user.getProfile",
         "user.updateProfile",
         "screenshots.list",
+        "logs.files.clear",
         "app.factoryReset",
         "db.worldVisits.list",
         "db.playerEvents.list",
@@ -126,6 +130,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "db.avatarHistory.list",
         "db.stats.heatmap",
         "db.stats.overview",
+        "db.history.clear",
         "favorites.lists",
         "favorites.items",
         "favorites.add",
@@ -213,6 +218,11 @@ IpcBridge::IpcBridge(WebViewHost& host)
     // Spin up the VRChat process watcher.
     vrcsm::core::ProcessGuard::StartWatcher([this](const vrcsm::core::ProcessStatus& status)
     {
+        if (!status.running)
+        {
+            CloseTrackedWorldVisits(vrcsm::core::nowIso());
+        }
+
         nlohmann::json envelope{
             {"event", "process.vrcStatusChanged"},
             {"data", nlohmann::json(status)},
@@ -226,6 +236,14 @@ IpcBridge::~IpcBridge()
     *m_alive = false;
     vrcsm::core::ProcessGuard::StopWatcher();
     vrcsm::core::Database::Instance().Close();
+}
+
+void IpcBridge::CloseTrackedWorldVisits(const std::string& leftAt)
+{
+    (void)vrcsm::core::Database::Instance().CloseOpenWorldVisits(leftAt);
+    std::lock_guard<std::mutex> lk(m_currentWorldMutex);
+    m_currentWorldId.clear();
+    m_currentInstanceId.clear();
 }
 
 // ── Dispatch ────────────────────────────────────────────────────────
@@ -359,6 +377,9 @@ void IpcBridge::RegisterHandlers()
         return nlohmann::json{{"ok", true}};
     });
     m_handlers.emplace("friends.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsList(p, id); });
+    m_handlers.emplace("groups.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGroupsList(p, id); });
+    m_handlers.emplace("moderations.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleModerationsList(p, id); });
+    m_handlers.emplace("avatar.bundle.download", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarBundleDownload(p, id); });
     m_handlers.emplace("avatar.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarDetails(p, id); });
     m_handlers.emplace("world.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldDetails(p, id); });
     m_handlers.emplace("avatar.select", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSelect(p, id); });
@@ -375,6 +396,7 @@ void IpcBridge::RegisterHandlers()
     // Logs
     m_handlers.emplace("logs.stream.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLogsStreamStart(p, id); });
     m_handlers.emplace("logs.stream.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLogsStreamStop(p, id); });
+    m_handlers.emplace("logs.files.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLogsFilesClear(p, id); });
 
     // Radar / Memory
     m_handlers.emplace("memory.status", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleMemoryStatus(p, id); });
@@ -387,6 +409,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("db.avatarHistory.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistory(p, id); });
     m_handlers.emplace("db.stats.heatmap", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsHeatmap(p, id); });
     m_handlers.emplace("db.stats.overview", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsOverview(p, id); });
+    m_handlers.emplace("db.history.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbHistoryClear(p, id); });
     m_handlers.emplace("favorites.lists", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesLists(p, id); });
     m_handlers.emplace("favorites.items", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesItems(p, id); });
     m_handlers.emplace("favorites.add", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesAdd(p, id); });

@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ipc } from "@/lib/ipc";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,11 @@ interface ContextMenuState {
   x: number;
   y: number;
   shot: Screenshot;
+}
+
+interface DeleteConfirmState {
+  paths: string[];
+  count: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -393,6 +399,8 @@ export default function Screenshots() {
   // Selection state
   const [selectedSet, setSelectedSet] = useState<Set<string>>(new Set());
   const lastClickedRef = useRef<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -458,46 +466,51 @@ export default function Screenshots() {
   }
 
   function deleteShot(shot: Screenshot) {
-    if (confirm(t("screenshots.confirmDelete", { defaultValue: "Are you sure you want to delete this screenshot?" }))) {
-      ipc.call<{paths: string[]}, {deleted: number, failed: string[]}>("screenshots.delete", { paths: [shot.path] })
-        .then((res) => {
-          if (res.deleted > 0) {
-            toast.success(t("screenshots.deleteSuccess", { defaultValue: "Deleted successfully" }));
-            setSelectedSet((prev) => {
-              const next = new Set(prev);
-              next.delete(shot.path);
-              return next;
-            });
-            load();
-          }
-          if (res.failed && res.failed.length > 0) {
-            toast.error(t("screenshots.deletePartial", { defaultValue: "Some files could not be deleted" }));
-          }
-        })
-        .catch(() => {
-          toast.error(t("screenshots.deleteFailed", { defaultValue: "Delete failed" }));
-        });
-    }
+    setDeleteConfirm({ paths: [shot.path], count: 1 });
   }
 
   function deleteSelected() {
     if (selectedSet.size === 0) return;
-    if (confirm(t("screenshots.confirmDeleteBulk", { defaultValue: "Are you sure you want to delete {{count}} screenshots?", count: selectedSet.size }))) {
-      const paths = Array.from(selectedSet);
-      ipc.call<{paths: string[]}, {deleted: number, failed: string[]}>("screenshots.delete", { paths })
-        .then((res) => {
-          if (res.deleted > 0) {
-            toast.success(t("screenshots.deleteBulkSuccess", { defaultValue: "Deleted {{count}} screenshots", count: res.deleted }));
-            setSelectedSet(new Set());
-            load();
+    setDeleteConfirm({ paths: Array.from(selectedSet), count: selectedSet.size });
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirm || deleteConfirm.paths.length === 0) return;
+
+    setDeleting(true);
+    try {
+      const res = await ipc.call<{paths: string[]}, {deleted: number, failed: string[]}>("screenshots.delete", {
+        paths: deleteConfirm.paths,
+      });
+
+      if (res.deleted > 0) {
+        if (deleteConfirm.count === 1) {
+          toast.success(t("screenshots.deleteSuccess", { defaultValue: "Deleted successfully" }));
+        } else {
+          toast.success(t("screenshots.deleteBulkSuccess", {
+            defaultValue: "Deleted {{count}} screenshots",
+            count: res.deleted,
+          }));
+        }
+
+        setSelectedSet((prev) => {
+          const next = new Set(prev);
+          for (const path of deleteConfirm.paths) {
+            next.delete(path);
           }
-          if (res.failed && res.failed.length > 0) {
-            toast.error(t("screenshots.deletePartial", { defaultValue: "Some files could not be deleted" }));
-          }
-        })
-        .catch(() => {
-          toast.error(t("screenshots.deleteFailed", { defaultValue: "Delete failed" }));
+          return next;
         });
+        load();
+      }
+
+      if (res.failed && res.failed.length > 0) {
+        toast.error(t("screenshots.deletePartial", { defaultValue: "Some files could not be deleted" }));
+      }
+    } catch {
+      toast.error(t("screenshots.deleteFailed", { defaultValue: "Delete failed" }));
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm(null);
     }
   }
 
@@ -755,6 +768,29 @@ export default function Screenshots() {
           onClear={clearSelection}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirm(null);
+          }
+        }}
+        title={t("screenshots.delete", { defaultValue: "Delete" })}
+        description={deleteConfirm?.count === 1
+          ? t("screenshots.confirmDelete", {
+              defaultValue: "Are you sure you want to delete this screenshot?",
+            })
+          : t("screenshots.confirmDeleteBulk", {
+              defaultValue: "Are you sure you want to delete {{count}} screenshots?",
+              count: deleteConfirm?.count ?? 0,
+            })}
+        confirmLabel={t("screenshots.delete", { defaultValue: "Delete" })}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => void confirmDelete()}
+        loading={deleting}
+        tone="destructive"
+      />
     </div>
   );
 }

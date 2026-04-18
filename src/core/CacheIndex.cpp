@@ -81,15 +81,7 @@ std::size_t CacheIndex::EntryCount() const
 
 std::filesystem::path CacheIndex::PersistPath()
 {
-    PWSTR raw = nullptr;
-    if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &raw)) || raw == nullptr)
-    {
-        if (raw) CoTaskMemFree(raw);
-        return {};
-    }
-    std::filesystem::path base(raw);
-    CoTaskMemFree(raw);
-    return base / L"VRCSM" / L"cache-index.json";
+    return getAppDataRoot() / L"cache-index.json";
 }
 
 void CacheIndex::LoadPersisted()

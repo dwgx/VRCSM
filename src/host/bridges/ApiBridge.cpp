@@ -12,6 +12,41 @@
 namespace
 {
 
+std::string SanitizeFilename(std::string value)
+{
+    for (char& ch : value)
+    {
+        switch (ch)
+        {
+        case '<':
+        case '>':
+        case ':':
+        case '"':
+        case '/':
+        case '\\':
+        case '|':
+        case '?':
+        case '*':
+            ch = '_';
+            break;
+        default:
+            break;
+        }
+    }
+
+    while (!value.empty() && (value.back() == ' ' || value.back() == '.'))
+    {
+        value.pop_back();
+    }
+
+    if (value.empty())
+    {
+        return "avatar_bundle";
+    }
+
+    return value;
+}
+
 nlohmann::json FilterFriend(const nlohmann::json& friendJson)
 {
     nlohmann::json out{
@@ -96,6 +131,74 @@ nlohmann::json FilterUserProfile(const nlohmann::json& user)
     return out;
 }
 
+std::optional<int> JsonIntField(const nlohmann::json& json, const char* key)
+{
+    if (json.contains(key) && json[key].is_number_integer())
+    {
+        return json[key].get<int>();
+    }
+    return std::nullopt;
+}
+
+std::optional<bool> JsonBoolField(const nlohmann::json& json, const char* key)
+{
+    if (json.contains(key) && json[key].is_boolean())
+    {
+        return json[key].get<bool>();
+    }
+    return std::nullopt;
+}
+
+nlohmann::json FilterGroup(const nlohmann::json& groupJson)
+{
+    nlohmann::json out{
+        {"id", JsonStringField(groupJson, "id").value_or("")},
+        {"name", JsonStringField(groupJson, "name").value_or("")},
+        {"shortCode", JsonStringField(groupJson, "shortCode").value_or("")},
+        {"description", JsonStringField(groupJson, "description").value_or("")},
+        {"iconUrl", JsonStringField(groupJson, "iconUrl").value_or("")},
+        {"bannerUrl", JsonStringField(groupJson, "bannerUrl").value_or("")},
+        {"discriminator", JsonStringField(groupJson, "discriminator").value_or("")},
+        {"ownerId", JsonStringField(groupJson, "ownerId").value_or("")},
+        {"memberCount", JsonIntField(groupJson, "memberCount").value_or(0)},
+        {"onlineMemberCount", JsonIntField(groupJson, "onlineMemberCount").value_or(0)},
+        {"privacy", JsonStringField(groupJson, "privacy").value_or("")},
+        {"isVerified", JsonBoolField(groupJson, "isVerified").value_or(false)},
+        {"isRepresenting", JsonBoolField(groupJson, "isRepresenting").value_or(false)},
+        {"createdAt", JsonStringField(groupJson, "createdAt").value_or("")},
+        {"lastPostCreatedAt", JsonStringField(groupJson, "lastPostCreatedAt").value_or("")},
+    };
+
+    if (groupJson.contains("roles") && groupJson["roles"].is_array())
+    {
+        nlohmann::json roles = nlohmann::json::array();
+        for (const auto& role : groupJson["roles"])
+        {
+            if (!role.is_string()) continue;
+            roles.push_back(role.get<std::string>());
+        }
+        out["roles"] = std::move(roles);
+    }
+    else
+    {
+        out["roles"] = nlohmann::json::array();
+    }
+
+    return out;
+}
+
+nlohmann::json FilterModeration(const nlohmann::json& moderationJson)
+{
+    return nlohmann::json{
+        {"id", JsonStringField(moderationJson, "id").value_or("")},
+        {"type", JsonStringField(moderationJson, "type").value_or("")},
+        {"targetUserId", JsonStringField(moderationJson, "targetUserId").value_or("")},
+        {"targetDisplayName", JsonStringField(moderationJson, "targetDisplayName").value_or("")},
+        {"sourceUserId", JsonStringField(moderationJson, "sourceUserId").value_or("")},
+        {"created", JsonStringField(moderationJson, "created").value_or("")},
+    };
+}
+
 } // namespace
 
 nlohmann::json IpcBridge::HandleThumbnailsFetch(const nlohmann::json& params, const std::optional<std::string>&)
@@ -131,7 +234,11 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
     auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
     if (!vrcsm::core::isOk(currentUser))
     {
-        vrcsm::core::AuthStore::Instance().Clear();
+        const auto& err = vrcsm::core::error(currentUser);
+        if (err.code == "auth_expired")
+        {
+            vrcsm::core::AuthStore::Instance().Clear();
+        }
         return nlohmann::json{{"friends", nlohmann::json::array()}};
     }
 
@@ -149,6 +256,106 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
     }
 
     return nlohmann::json{{"friends", std::move(out)}};
+}
+
+nlohmann::json IpcBridge::HandleGroupsList(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
+    if (!vrcsm::core::isOk(currentUser))
+    {
+        const auto& err = vrcsm::core::error(currentUser);
+        if (err.code == "auth_expired")
+        {
+            vrcsm::core::AuthStore::Instance().Clear();
+        }
+        return nlohmann::json{{"groups", nlohmann::json::array()}};
+    }
+
+    const auto result = vrcsm::core::VrcApi::fetchGroups();
+    if (!vrcsm::core::isOk(result))
+    {
+        throw IpcException{vrcsm::core::error(result)};
+    }
+
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& item : vrcsm::core::value(result))
+    {
+        out.push_back(FilterGroup(item));
+    }
+    return nlohmann::json{{"groups", std::move(out)}};
+}
+
+nlohmann::json IpcBridge::HandleModerationsList(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
+    if (!vrcsm::core::isOk(currentUser))
+    {
+        const auto& err = vrcsm::core::error(currentUser);
+        if (err.code == "auth_expired")
+        {
+            vrcsm::core::AuthStore::Instance().Clear();
+        }
+        return nlohmann::json{{"items", nlohmann::json::array()}};
+    }
+
+    const auto result = vrcsm::core::VrcApi::fetchPlayerModerations();
+    if (!vrcsm::core::isOk(result))
+    {
+        throw IpcException{vrcsm::core::error(result)};
+    }
+
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& item : vrcsm::core::value(result))
+    {
+        out.push_back(FilterModeration(item));
+    }
+    return nlohmann::json{{"items", std::move(out)}};
+}
+
+nlohmann::json IpcBridge::HandleAvatarBundleDownload(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto avatarId = JsonStringField(params, "avatarId").value_or("");
+    const auto assetUrl = JsonStringField(params, "assetUrl").value_or("");
+    const auto outDir = JsonStringField(params, "outDir").value_or("");
+    const auto displayName = JsonStringField(params, "displayName").value_or(avatarId);
+
+    if (avatarId.empty() || assetUrl.empty() || outDir.empty())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument",
+            "avatar.bundle.download requires avatarId, assetUrl, outDir",
+            0,
+        });
+    }
+
+    const std::filesystem::path targetDir = Utf8ToWide(outDir);
+    std::error_code ec;
+    std::filesystem::create_directories(targetDir, ec);
+    if (ec)
+    {
+        throw IpcException(vrcsm::core::Error{
+            "io_error",
+            fmt::format("Failed to create download directory: {}", ec.message()),
+            0,
+        });
+    }
+
+    const auto safeStem = SanitizeFilename(displayName);
+    std::filesystem::path targetPath = targetDir / Utf8ToWide(fmt::format("{}-{}.vrca", safeStem, avatarId));
+
+    if (!vrcsm::core::VrcApi::downloadFile(assetUrl, targetPath))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "download_failed",
+            "Failed to download avatar bundle",
+            0,
+        });
+    }
+
+    return nlohmann::json{
+        {"ok", true},
+        {"path", WideToUtf8(targetPath.wstring())},
+    };
 }
 
 nlohmann::json IpcBridge::HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>&)
@@ -227,6 +434,7 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
 {
     const auto avatarId = JsonStringField(params, "avatarId").value_or("");
     const auto assetUrl = JsonStringField(params, "assetUrl").value_or("");
+    const auto bundlePath = JsonStringField(params, "bundlePath").value_or("");
     if (avatarId.empty())
     {
         return nlohmann::json{
@@ -236,16 +444,71 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
         };
     }
 
-    std::promise<vrcsm::core::AvatarPreviewResult> promise;
-    auto future = promise.get_future();
-
     const auto probe = vrcsm::core::PathProbe::Probe();
+    const auto emitProgress = [this, avatarId](std::string_view phase, std::string_view message, std::size_t queuePosition = 0)
+    {
+        nlohmann::json event{
+            {"event", "avatar.preview.progress"},
+            {"data", {
+                {"avatarId", avatarId},
+                {"phase", phase},
+                {"message", message},
+                {"queuePosition", queuePosition},
+            }},
+        };
+        m_host.PostMessageToWeb(event.dump());
+    };
+
+    std::shared_ptr<std::promise<std::string>> ownerPromise;
+    std::shared_future<std::string> sharedFuture;
+    bool owner = false;
+    {
+        std::lock_guard<std::mutex> lock(m_previewSharedMutex);
+        if (const auto it = m_previewShared.find(avatarId); it != m_previewShared.end())
+        {
+            sharedFuture = it->second;
+        }
+        else
+        {
+            ownerPromise = std::make_shared<std::promise<std::string>>();
+            sharedFuture = ownerPromise->get_future().share();
+            m_previewShared[avatarId] = sharedFuture;
+            owner = true;
+        }
+    }
+
+    if (!owner)
+    {
+        emitProgress("extracting", "Running the avatar extractor");
+        const auto joinedResult = sharedFuture.get();
+        try { return nlohmann::json::parse(joinedResult); }
+        catch (...)
+        {
+            return nlohmann::json{
+                {"avatarId", avatarId},
+                {"ok", false},
+                {"code", "preview_failed"},
+                {"message", "Joined preview request returned invalid JSON"},
+            };
+        }
+    }
 
     vrcsm::core::Task task;
     task.key = avatarId;
-    task.work = [avatarId, assetUrl, baseDir = probe.baseDir, this](const vrcsm::core::TaskToken& token) -> vrcsm::core::TaskResult
+    task.work = [avatarId, assetUrl, bundlePath, baseDir = probe.baseDir, this, emitProgress](const vrcsm::core::TaskToken& token) -> vrcsm::core::TaskResult
     {
-        const auto result = vrcsm::core::AvatarPreview::Request(avatarId, baseDir, assetUrl, m_previewQueue, token);
+        emitProgress("starting", "Preparing avatar preview");
+        const auto result = vrcsm::core::AvatarPreview::Request(
+            avatarId,
+            baseDir,
+            assetUrl,
+            bundlePath,
+            m_previewQueue,
+            token,
+            [emitProgress](std::string_view phase, std::string_view message)
+            {
+                emitProgress(phase, message);
+            });
         nlohmann::json out;
         out["avatarId"] = avatarId;
         out["ok"] = result.ok;
@@ -263,40 +526,57 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
         return vrcsm::core::TaskResult{result.ok, out.dump(), result.message};
     };
 
-    task.onDone = [&promise](const vrcsm::core::TaskResult& taskResult)
+    task.onDone = [this, avatarId, ownerPromise, emitProgress](const vrcsm::core::TaskResult& taskResult)
     {
-        vrcsm::core::AvatarPreviewResult result;
+        std::string serialized;
         if (taskResult.error == "cancelled")
         {
-            result.code = "cancelled";
-            result.message = "Request superseded by a newer avatar.preview call";
+            serialized = nlohmann::json{
+                {"avatarId", avatarId},
+                {"ok", false},
+                {"code", "cancelled"},
+                {"message", "Request superseded by a newer avatar.preview call"},
+            }.dump();
+            emitProgress("cancelled", "Preview request cancelled");
         }
-        else if (taskResult.ok)
+        else if (taskResult.ok && !taskResult.value.empty())
         {
-            result.ok = true;
-            result.glbPath = taskResult.value;
+            serialized = taskResult.value;
+            emitProgress("done", "Avatar preview ready");
         }
         else
         {
-            result.code = "preview_failed";
-            result.message = taskResult.error;
+            serialized = nlohmann::json{
+                {"avatarId", avatarId},
+                {"ok", false},
+                {"code", "preview_failed"},
+                {"message", taskResult.error.empty() ? std::string("Avatar preview failed") : taskResult.error},
+            }.dump();
+            emitProgress("failed", taskResult.error.empty() ? "Avatar preview failed" : taskResult.error);
         }
-        promise.set_value(std::move(result));
+
+        {
+            std::lock_guard<std::mutex> lock(m_previewSharedMutex);
+            m_previewShared.erase(avatarId);
+        }
+        ownerPromise->set_value(std::move(serialized));
     };
 
+    const auto queuePosition = m_previewQueue.PendingCount() + 1;
+    emitProgress(
+        queuePosition > 1 ? "queued" : "starting",
+        queuePosition > 1 ? "Waiting for the preview queue" : "Preparing avatar preview",
+        queuePosition);
     m_previewQueue.Submit(std::move(task));
-    auto queueResult = future.get();
-
-    if (!queueResult.glbPath.empty() && queueResult.glbPath.front() == '{')
+    const auto finalResult = sharedFuture.get();
+    try { return nlohmann::json::parse(finalResult); }
+    catch (...)
     {
-        try { return nlohmann::json::parse(queueResult.glbPath); }
-        catch (...) {}
+        return nlohmann::json{
+            {"avatarId", avatarId},
+            {"ok", false},
+            {"code", "preview_failed"},
+            {"message", "Preview request returned invalid JSON"},
+        };
     }
-
-    nlohmann::json out;
-    out["avatarId"] = avatarId;
-    out["ok"] = queueResult.ok;
-    out["code"] = queueResult.code.empty() ? std::string("preview_failed") : queueResult.code;
-    out["message"] = queueResult.message;
-    return out;
 }

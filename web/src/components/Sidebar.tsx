@@ -14,10 +14,12 @@ import {
   Globe2,
   Users,
   Radio,
+  Orbit,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { APP_ICON_URL } from "@/lib/assets";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_LANGUAGES, changeLanguage } from "@/i18n";
 import { ipc } from "@/lib/ipc";
@@ -32,6 +34,7 @@ interface NavItem {
 const items: NavItem[] = [
   { to: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { to: "/profile", labelKey: "nav.profile", icon: UserCircle2 },
+  { to: "/vrchat", labelKey: "nav.vrchat", icon: Orbit },
   { to: "/friends", labelKey: "nav.friends", icon: Users },
   { to: "/radar", labelKey: "nav.radar", icon: Radio },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
@@ -141,7 +144,7 @@ export function Sidebar() {
       {/* App header — app icon + product name */}
       <div className="flex items-center gap-2 px-3 py-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))]">
         <img
-          src="/app-icon.png"
+          src={APP_ICON_URL}
           alt=""
           width={22}
           height={22}

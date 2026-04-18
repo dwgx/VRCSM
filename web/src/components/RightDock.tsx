@@ -46,9 +46,15 @@ export function useRightDock(descriptor: RightDockDescriptor | null): void {
   }, [context, descriptor]);
 }
 
-export function RightDock({ fallback = null }: RightDockProps) {
+export function useResolvedRightDock(
+  fallback: RightDockDescriptor | null = null,
+): RightDockDescriptor | null {
   const context = useContext(RightDockContext);
-  const activeDock = context?.dock ?? fallback;
+  return context?.dock ?? fallback;
+}
+
+export function RightDock({ fallback = null }: RightDockProps) {
+  const activeDock = useResolvedRightDock(fallback);
 
   if (!activeDock) return null;
 

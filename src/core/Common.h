@@ -7,6 +7,7 @@
 #include <string_view>
 #include <variant>
 
+#include <guiddef.h>
 #include <nlohmann/json.hpp>
 
 namespace vrcsm::core
@@ -64,5 +65,17 @@ std::wstring toWide(std::string_view utf8);
 std::filesystem::path utf8Path(std::string_view utf8);
 
 bool ensureWithinBase(const std::filesystem::path& base, const std::filesystem::path& candidate);
+
+std::optional<std::filesystem::path> tryGetKnownFolderPath(const GUID& id);
+
+std::optional<std::filesystem::path> tryGetEnvPath(std::wstring_view key);
+
+std::filesystem::path getExecutableDirectory();
+
+std::filesystem::path getWritableTempDirectory();
+
+std::filesystem::path getLocalAppDataPath();
+
+std::filesystem::path getAppDataRoot();
 
 } // namespace vrcsm::core

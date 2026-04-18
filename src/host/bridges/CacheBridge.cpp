@@ -3,6 +3,7 @@
 
 #include "../../core/BundleSniff.h"
 #include "../../core/CacheScanner.h"
+#include "../../core/Common.h"
 #include "../../core/PathProbe.h"
 #include "../../core/SafeDelete.h"
 
@@ -16,6 +17,12 @@ nlohmann::json IpcBridge::HandleBundlePreview(const nlohmann::json& params, cons
 {
     const auto entryPath = Utf8ToWide(params.at("entry").get<std::string>());
     const std::filesystem::path base(entryPath);
+    const auto probe = vrcsm::core::PathProbe::Probe();
+    const auto cwpDir = std::filesystem::path(probe.baseDir) / L"Cache-WindowsPlayer";
+    if (probe.baseDir.empty() || !vrcsm::core::ensureWithinBase(cwpDir, base))
+    {
+        throw std::runtime_error("bundle.preview: entry escapes Cache-WindowsPlayer");
+    }
 
     std::filesystem::path versionDir = base;
     if (!std::filesystem::exists(base / L"__info"))
@@ -24,7 +31,9 @@ nlohmann::json IpcBridge::HandleBundlePreview(const nlohmann::json& params, cons
         for (const auto& child : std::filesystem::directory_iterator(base, ec))
         {
             if (ec) break;
-            if (child.is_directory() && std::filesystem::exists(child.path() / L"__info"))
+            if (child.is_directory()
+                && vrcsm::core::ensureWithinBase(cwpDir, child.path())
+                && std::filesystem::exists(child.path() / L"__info"))
             {
                 versionDir = child.path();
                 break;

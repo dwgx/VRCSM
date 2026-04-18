@@ -9,8 +9,11 @@
 #include <system_error>
 
 #include <Windows.h>
+#include <KnownFolders.h>
+#include <ShlObj.h>
 
 #include <fmt/format.h>
+#include <wil/resource.h>
 
 namespace vrcsm::core
 {
@@ -162,21 +165,178 @@ std::filesystem::path utf8Path(std::string_view utf8)
     return std::filesystem::path(toWide(utf8));
 }
 
-bool ensureWithinBase(const std::filesystem::path& base, const std::filesystem::path& candidate)
+namespace
+{
+
+std::filesystem::path normalizeContainmentPath(const std::filesystem::path& input)
 {
     std::error_code ec;
-    auto baseAbs = std::filesystem::weakly_canonical(base, ec);
-    if (ec) baseAbs = base;
-    auto candAbs = std::filesystem::weakly_canonical(candidate, ec);
-    if (ec) candAbs = candidate;
+    auto normalized = std::filesystem::weakly_canonical(input, ec);
+    if (ec)
+    {
+        ec.clear();
+        normalized = std::filesystem::absolute(input, ec);
+    }
+    if (ec)
+    {
+        normalized = input;
+    }
+    return normalized.lexically_normal();
+}
 
-    auto baseStr = baseAbs.wstring();
-    auto candStr = candAbs.wstring();
-    if (candStr.size() < baseStr.size())
+bool pathComponentEquals(const std::filesystem::path& lhs, const std::filesystem::path& rhs)
+{
+    return _wcsicmp(lhs.native().c_str(), rhs.native().c_str()) == 0;
+}
+
+} // namespace
+
+bool ensureWithinBase(const std::filesystem::path& base, const std::filesystem::path& candidate)
+{
+    if (base.empty() || candidate.empty())
     {
         return false;
     }
-    return std::equal(baseStr.begin(), baseStr.end(), candStr.begin());
+
+    const auto baseAbs = normalizeContainmentPath(base);
+    const auto candAbs = normalizeContainmentPath(candidate);
+
+    auto baseIt = baseAbs.begin();
+    auto candIt = candAbs.begin();
+    for (; baseIt != baseAbs.end(); ++baseIt, ++candIt)
+    {
+        if (candIt == candAbs.end())
+        {
+            return false;
+        }
+        if (!pathComponentEquals(*baseIt, *candIt))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+std::optional<std::filesystem::path> tryGetKnownFolderPath(const GUID& id)
+{
+    wil::unique_cotaskmem_string raw;
+    if (FAILED(SHGetKnownFolderPath(id, 0, nullptr, raw.put())) || raw == nullptr)
+    {
+        return std::nullopt;
+    }
+
+    return std::filesystem::path(raw.get());
+}
+
+std::optional<std::filesystem::path> tryGetEnvPath(std::wstring_view key)
+{
+    if (key.empty())
+    {
+        return std::nullopt;
+    }
+
+    const std::wstring keyCopy(key);
+    const DWORD required = GetEnvironmentVariableW(keyCopy.c_str(), nullptr, 0);
+    if (required <= 1)
+    {
+        return std::nullopt;
+    }
+
+    std::wstring buffer(static_cast<std::size_t>(required), L'\0');
+    const DWORD written = GetEnvironmentVariableW(keyCopy.c_str(), buffer.data(), required);
+    if (written == 0 || written >= required)
+    {
+        return std::nullopt;
+    }
+
+    buffer.resize(static_cast<std::size_t>(written));
+    return std::filesystem::path(buffer);
+}
+
+std::filesystem::path getExecutableDirectory()
+{
+    std::wstring buffer(static_cast<std::size_t>(MAX_PATH), L'\0');
+    DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+    while (length >= buffer.size())
+    {
+        buffer.resize(buffer.size() * 2);
+        length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+    }
+
+    if (length == 0)
+    {
+        return {};
+    }
+
+    buffer.resize(static_cast<std::size_t>(length));
+    return std::filesystem::path(buffer).parent_path();
+}
+
+std::filesystem::path getWritableTempDirectory()
+{
+    DWORD required = GetTempPathW(0, nullptr);
+    if (required > 1)
+    {
+        std::wstring buffer(static_cast<std::size_t>(required), L'\0');
+        const DWORD written = GetTempPathW(required, buffer.data());
+        if (written > 0 && written < required)
+        {
+            buffer.resize(static_cast<std::size_t>(written));
+            return std::filesystem::path(buffer).lexically_normal();
+        }
+    }
+
+    if (const auto temp = tryGetEnvPath(L"TEMP"))
+    {
+        return *temp;
+    }
+    if (const auto tmp = tryGetEnvPath(L"TMP"))
+    {
+        return *tmp;
+    }
+    if (const auto profile = tryGetEnvPath(L"USERPROFILE"))
+    {
+        return *profile / L"AppData" / L"Local" / L"Temp";
+    }
+
+    std::wstring buffer(static_cast<std::size_t>(MAX_PATH), L'\0');
+    UINT length = GetWindowsDirectoryW(buffer.data(), static_cast<UINT>(buffer.size()));
+    while (length >= buffer.size())
+    {
+        buffer.resize(buffer.size() * 2);
+        length = GetWindowsDirectoryW(buffer.data(), static_cast<UINT>(buffer.size()));
+    }
+    if (length > 0)
+    {
+        buffer.resize(static_cast<std::size_t>(length));
+        return std::filesystem::path(buffer) / L"Temp";
+    }
+
+    return std::filesystem::path(L"C:\\Windows\\Temp");
+}
+
+std::filesystem::path getLocalAppDataPath()
+{
+    if (const auto known = tryGetKnownFolderPath(FOLDERID_LocalAppData))
+    {
+        return *known;
+    }
+    if (const auto env = tryGetEnvPath(L"LOCALAPPDATA"))
+    {
+        return *env;
+    }
+    if (const auto profile = tryGetEnvPath(L"USERPROFILE"))
+    {
+        return *profile / L"AppData" / L"Local";
+    }
+
+    return getWritableTempDirectory() / L"VRCSM-LocalAppData";
+}
+
+std::filesystem::path getAppDataRoot()
+{
+    return getLocalAppDataPath() / L"VRCSM";
 }
 
 } // namespace vrcsm::core

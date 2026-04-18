@@ -1,7 +1,7 @@
 import type {
   AppVersion,
   AuthStatus,
-  AuthUser,
+  AuthUserDetailsResult,
   BundlePreview,
   DeleteResult,
   DryRunResult,
@@ -727,16 +727,24 @@ class IpcClient {
       }
       case "auth.user":
         return {
-          id: "usr_mock-1234-5678",
-          username: "mock_user",
-          displayName: "mock_user",
-          currentAvatarImageUrl: null,
-          currentAvatarThumbnailImageUrl: null,
-          status: "active",
-          statusDescription: "browser dev mode",
-          bio: null,
-          last_platform: "standalonewindows",
-        } satisfies AuthUser as unknown as TResult;
+          authed: true,
+          user: {
+            id: "usr_mock-1234-5678",
+            username: "mock_user",
+            displayName: "mock_user",
+            currentAvatarImageUrl: null,
+            currentAvatarThumbnailImageUrl: null,
+            status: "active",
+            statusDescription: "browser dev mode",
+            bio: null,
+            last_platform: "standalonewindows",
+            obfuscatedEmail: "mo***@example.com",
+            emailVerified: true,
+            steamId: "76561198000000000",
+            tags: ["system_supporter", "language_eng"],
+            subscriptionTier: "VRC+",
+          },
+        } satisfies AuthUserDetailsResult as unknown as TResult;
       case "friends.list": {
         // Emit a deterministic list so the Friends page shows something
         // in browser dev mode. IDs follow VRChat's real prefix scheme.
@@ -952,6 +960,63 @@ class IpcClient {
           synced_at: syncedAt,
         } satisfies FavoritesSyncResult as unknown as TResult;
       }
+      case "groups.list": {
+        return {
+          groups: [
+            {
+              id: "grp_mock_0001",
+              name: "VRCSM Test Group",
+              shortCode: "VRCSM",
+              description: "Mock native group surface for browser dev mode.",
+              iconUrl: null,
+              bannerUrl: null,
+              discriminator: "0001",
+              ownerId: "usr_mock-owner-0001",
+              memberCount: 128,
+              onlineMemberCount: 12,
+              privacy: "default",
+              isVerified: false,
+              isRepresenting: true,
+              createdAt: "2026-01-05T10:20:00Z",
+              lastPostCreatedAt: nowIso(),
+              roles: ["member", "representative"],
+            },
+          ],
+        } as unknown as TResult;
+      }
+      case "moderations.list": {
+        return {
+          items: [
+            {
+              id: "mod_mock_block_0001",
+              type: "block",
+              targetUserId: "usr_mock-blocked-0001",
+              targetDisplayName: "Muted Troublemaker",
+              sourceUserId: "usr_mock-1234-5678",
+              created: "2026-04-15T14:10:00Z",
+            },
+            {
+              id: "mod_mock_mute_0002",
+              type: "mute",
+              targetUserId: "usr_mock-muted-0002",
+              targetDisplayName: "Very Loud Friend",
+              sourceUserId: "usr_mock-1234-5678",
+              created: "2026-04-16T09:30:00Z",
+            },
+          ],
+        } as unknown as TResult;
+      }
+      case "avatar.bundle.download": {
+        const p = (params ?? {}) as {
+          avatarId?: string;
+          outDir?: string;
+          displayName?: string;
+        };
+        return {
+          ok: true,
+          path: `${p.outDir ?? "C:/Temp"}/${(p.displayName ?? "avatar").replace(/[<>:\"/\\\\|?*]/g, "_")}-${p.avatarId ?? "unknown"}.vrca`,
+        } as unknown as TResult;
+      }
       case "config.read":
         return {
           cache_directory: "D:/VRChatCache/",
@@ -1062,6 +1127,25 @@ class IpcClient {
         const paths = p.paths ?? [];
         return { deleted: paths.length, failed: [] } as unknown as TResult;
       }
+      case "db.history.clear":
+        return {
+          cleared: {
+            player_events: 0,
+            player_encounters: 0,
+            world_visits: 0,
+            avatar_history: 0,
+            friend_log: 0,
+          },
+          include_friend_notes: false,
+        } as unknown as TResult;
+      case "logs.files.clear":
+        return {
+          ok: true,
+          deleted: 1,
+          failed: [],
+          skipped: [],
+          vrc_running: false,
+        } as unknown as TResult;
       case "app.factoryReset":
         return {
           ok: true,
@@ -1143,6 +1227,18 @@ class IpcClient {
     return this.call<typeof opts, PickFolderResult>("shell.pickFolder", opts);
   }
 
+  async downloadAvatarBundle(params: {
+    avatarId: string;
+    assetUrl: string;
+    outDir: string;
+    displayName?: string;
+  }): Promise<{ ok: boolean; path: string }> {
+    return this.call<typeof params, { ok: boolean; path: string }>(
+      "avatar.bundle.download",
+      params,
+    );
+  }
+
   async readVrcSettings(): Promise<VrcSettingsReport> {
     return this.call<undefined, VrcSettingsReport>("settings.readAll");
   }
@@ -1196,9 +1292,33 @@ class IpcClient {
     );
   }
 
-  async dbPlayerEvents(limit = 100, offset = 0) {
-    return this.call<{ limit: number; offset: number }, { items: any[] }>(
-      "db.playerEvents.list", { limit, offset },
+  async dbPlayerEvents(
+    limit = 100,
+    offset = 0,
+    options?: {
+      worldId?: string;
+      instanceId?: string;
+      occurredAfter?: string;
+      occurredBefore?: string;
+    },
+  ) {
+    return this.call<{
+      limit: number;
+      offset: number;
+      world_id?: string;
+      instance_id?: string;
+      occurred_after?: string;
+      occurred_before?: string;
+    }, { items: any[] }>(
+      "db.playerEvents.list",
+      {
+        limit,
+        offset,
+        world_id: options?.worldId,
+        instance_id: options?.instanceId,
+        occurred_after: options?.occurredAfter,
+        occurred_before: options?.occurredBefore,
+      },
     );
   }
 
@@ -1220,6 +1340,13 @@ class IpcClient {
 
   async dbStatsOverview() {
     return this.call<undefined, any>("db.stats.overview");
+  }
+
+  async dbHistoryClear(includeFriendNotes = false) {
+    return this.call<{ include_friend_notes: boolean }, any>(
+      "db.history.clear",
+      { include_friend_notes: includeFriendNotes },
+    );
   }
 
   // ── Favorites ───────────────────────────────────────────────────────
@@ -1430,6 +1557,19 @@ class IpcClient {
       { user_id: string; note: string },
       { ok: boolean; updated_at: string }
     >("friendNote.set", { user_id: userId, note });
+  }
+
+  async logFilesClear() {
+    return this.call<
+      undefined,
+      {
+        ok: boolean;
+        deleted: number;
+        failed: string[];
+        skipped: string[];
+        vrc_running: boolean;
+      }
+    >("logs.files.clear");
   }
 }
 

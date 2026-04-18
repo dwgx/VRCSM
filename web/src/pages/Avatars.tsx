@@ -267,7 +267,7 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
       <div className="unity-panel-header">
         {t("avatars.inspectorPaneTitle")}
       </div>
-      <div className="grid gap-5 p-5 xl:grid-cols-[300px_1fr]">
+      <div className="grid gap-5 p-5 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-3">
           {(() => {
             const windowsAssetUrl = details?.unityPackages?.find(
@@ -278,9 +278,10 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
               <AvatarPreview3D
                 avatarId={selected.avatar_id}
                 assetUrl={windowsAssetUrl}
+                bundlePath={selected.path || undefined}
                 fallbackImageUrl={fallbackUrl}
-                size={224}
-                expandedSize={640}
+                size={220}
+                expandedSize={720}
               />
             );
           })()}
@@ -438,7 +439,7 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
             {selected.path ? (
               <div className="flex items-start gap-1.5">
                 <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
-                  path:{" "}
+                  {t("common.path", { defaultValue: "Path" })}:{" "}
                 </span>
                 <span className="break-all font-mono text-[10.5px] text-[hsl(var(--foreground))]">
                   {selected.path}
@@ -448,7 +449,7 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
             {details?.created_at ? (
               <div>
                 <span className="text-[hsl(var(--muted-foreground))]">
-                  created:{" "}
+                  {t("common.created", { defaultValue: "Created" })}:{" "}
                 </span>
                 <span className="font-mono text-[hsl(var(--foreground))]">
                   {formatDate(details.created_at)}
@@ -458,7 +459,7 @@ function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
             {details?.updated_at ? (
               <div>
                 <span className="text-[hsl(var(--muted-foreground))]">
-                  updated:{" "}
+                  {t("common.updated", { defaultValue: "Updated" })}:{" "}
                 </span>
                 <span className="font-mono text-[hsl(var(--foreground))]">
                   {formatDate(details.updated_at)}
@@ -489,12 +490,14 @@ function AvatarRow({
   item,
   isSelected,
   isFavorited,
+  duplicateNameCount,
   onSelect,
   onToggleFavorite,
 }: {
   item: AugmentedAvatar;
   isSelected: boolean;
   isFavorited: boolean;
+  duplicateNameCount: number;
   onSelect: () => void;
   onToggleFavorite: (thumbnailUrl: string | null) => void;
 }) {
@@ -524,8 +527,17 @@ function AvatarRow({
         onToggleFavorite={onToggleFavorite}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="truncate text-[12.5px] font-medium text-[hsl(var(--foreground))]">
-          {display}
+        <div className="flex items-center gap-1.5">
+          <div className="truncate text-[12.5px] font-medium text-[hsl(var(--foreground))]">
+            {display}
+          </div>
+          {duplicateNameCount > 1 ? (
+            <span className="shrink-0 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+              {t("avatars.duplicateNameHint", {
+                defaultValue: "Same name",
+              })}
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
           <span className="font-mono">{shortenId(item.avatar_id, 6, 4)}</span>
@@ -609,8 +621,18 @@ function Avatars() {
         it.user_id.toLowerCase().includes(q) ||
         (it.display_name?.toLowerCase().includes(q) ?? false) ||
         (it.author?.toLowerCase().includes(q) ?? false),
-    );
+      );
   }, [items, filter]);
+
+  const displayNameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      const name = item.display_name?.trim();
+      if (!name) continue;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return counts;
+  }, [items]);
 
   // Warm the thumbnail cache as soon as the avatar list lands so the
   // row icons + inspector preview don't each trigger individual fetches
@@ -693,7 +715,7 @@ function Avatars() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid min-h-[560px] items-start gap-4 md:grid-cols-[260px_1fr]">
+        <div className="grid min-h-[560px] items-start gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
           {/* List pane — Unity hierarchy style */}
           <Card elevation="flat" className="flex flex-col p-0 border border-[hsl(var(--border))] h-[calc(100vh-140px)]">
             <div className="unity-panel-header flex items-center justify-between">
@@ -726,6 +748,7 @@ function Avatars() {
                       item={item}
                       isSelected={selected?.avatar_id === item.avatar_id}
                       isFavorited={favoriteIds.avatar.has(item.avatar_id)}
+                      duplicateNameCount={displayNameCounts.get(item.display_name?.trim() ?? "") ?? 0}
                       onSelect={() => setSelectedId(item.avatar_id)}
                       onToggleFavorite={(thumbnailUrl) =>
                         handleToggleFavorite(item, thumbnailUrl)
@@ -743,7 +766,7 @@ function Avatars() {
           </Card>
 
           {/* Inspector pane — 3D preview + metadata */}
-          <div className="sticky top-4 h-[calc(100vh-140px)] overflow-y-auto scrollbar-none rounded-[var(--radius-lg)]">
+          <div className="sticky top-4 h-[calc(100vh-140px)] min-w-0 overflow-y-auto overflow-x-hidden scrollbar-none rounded-[var(--radius-lg)]">
             {selected ? (
               <AvatarInspector selected={selected} />
             ) : (

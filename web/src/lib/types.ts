@@ -86,6 +86,8 @@ export interface PlayerEvent {
   display_name: string;
   /** Only present on newer client builds; older ones omit the `(usr_…)`. */
   user_id: string | null;
+  world_id?: string | null;
+  instance_id?: string | null;
 }
 
 /** `[Behaviour] Switching <actor> to avatar <name>` — local or remote. */
@@ -93,6 +95,8 @@ export interface AvatarSwitchEvent {
   iso_time: string | null;
   actor: string;
   avatar_name: string;
+  world_id?: string | null;
+  instance_id?: string | null;
 }
 
 export interface ScreenshotEvent {
@@ -361,6 +365,24 @@ export interface AuthUser {
   last_platform: string | null;
 }
 
+export type AuthUserPayload = Record<string, unknown> & {
+  id?: string;
+  username?: string;
+  displayName?: string;
+  currentAvatarImageUrl?: string | null;
+  currentAvatarThumbnailImageUrl?: string | null;
+  status?: string | null;
+  statusDescription?: string | null;
+  bio?: string | null;
+  last_platform?: string | null;
+  tags?: string[];
+};
+
+export interface AuthUserDetailsResult {
+  authed: boolean;
+  user: AuthUserPayload | null;
+}
+
 // ─── Friends (v0.2.0) ───────────────────────────────────────────────────
 // Friend = the lightweight list row returned by /auth/user/friends. Full
 // instance / location info is lazily expanded on row hover if we ever
@@ -396,6 +418,54 @@ export interface Friend {
 
 export interface FriendsListResult {
   friends: Friend[];
+}
+
+export interface WorkspaceGroup {
+  id: string;
+  name: string;
+  shortCode: string | null;
+  description: string | null;
+  iconUrl: string | null;
+  bannerUrl: string | null;
+  discriminator: string | null;
+  ownerId: string | null;
+  memberCount: number;
+  onlineMemberCount: number;
+  privacy: string | null;
+  isVerified: boolean;
+  isRepresenting: boolean;
+  createdAt: string | null;
+  lastPostCreatedAt: string | null;
+  roles: string[];
+}
+
+export interface WorkspaceGroupsResult {
+  groups: WorkspaceGroup[];
+}
+
+export interface WorkspaceModerationItem {
+  id: string;
+  type: string;
+  targetUserId: string | null;
+  targetDisplayName: string | null;
+  sourceUserId: string | null;
+  created: string | null;
+}
+
+export interface WorkspaceModerationsResult {
+  items: WorkspaceModerationItem[];
+}
+
+export interface AvatarHistoryItem {
+  avatar_id: string;
+  avatar_name: string | null;
+  author_name: string | null;
+  first_seen_on: string | null;
+  first_seen_at: string | null;
+}
+
+export interface AvatarHistoryResult {
+  items: AvatarHistoryItem[];
 }
 
 // ─── Avatar Details (v0.5.0) ──────────────────────────────────────────

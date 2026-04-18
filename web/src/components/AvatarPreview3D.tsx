@@ -2,16 +2,21 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type MutableRefObject,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import {
   AlertTriangle,
   Box,
@@ -43,6 +48,19 @@ interface PreparedSceneMeta {
 }
 
 const DISABLED_MOUSE_BUTTON = -1 as THREE.MOUSE;
+
+function applyControlsMode(controls: any, shiftPanning: boolean) {
+  if (!controls) return;
+  controls.mouseButtons.LEFT = shiftPanning
+    ? THREE.MOUSE.PAN
+    : THREE.MOUSE.ROTATE;
+  controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
+  controls.mouseButtons.MIDDLE = DISABLED_MOUSE_BUTTON;
+  controls.enablePan = true;
+  controls.enableRotate = true;
+  controls.enableZoom = true;
+  controls.update();
+}
 
 const CODE_META: Record<
   string,
@@ -115,16 +133,103 @@ function EmptyState({
   );
 }
 
-function LoadingState({ size }: { size: number }) {
+const PREVIEW_PHASES = [
+  "queued",
+  "starting",
+  "resolving_bundle",
+  "downloading_bundle",
+  "extracting",
+  "finalizing",
+  "cached",
+] as const;
+
+function phaseProgress(phase: string | undefined): number {
+  if (!phase) return 0.15;
+  const idx = PREVIEW_PHASES.indexOf(phase as (typeof PREVIEW_PHASES)[number]);
+  if (idx < 0) return 0.15;
+  // Map 0..6 → 0.05..0.95
+  return 0.05 + (idx / (PREVIEW_PHASES.length - 1)) * 0.9;
+}
+
+function formatPreviewPhase(
+  phase: string | undefined,
+  queuePosition: number | undefined,
+): string {
+  switch (phase) {
+    case "queued":
+      return queuePosition && queuePosition > 1
+        ? `Queued (${queuePosition})`
+        : "Queued";
+    case "starting":
+      return "Preparing";
+    case "resolving_bundle":
+      return "Finding bundle";
+    case "downloading_bundle":
+      return "Downloading";
+    case "extracting":
+      return "Extracting";
+    case "finalizing":
+      return "Finalizing";
+    case "cached":
+      return "Loading cache";
+    default:
+      return "Extracting";
+  }
+}
+
+function LoadingState({
+  size,
+  phase,
+  message,
+  queuePosition,
+}: {
+  size: number;
+  phase?: string;
+  message?: string;
+  queuePosition?: number;
+}) {
   const { t } = useTranslation();
+  const [seconds, setSeconds] = useState(0);
+  const progress = phaseProgress(phase);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setSeconds((value) => value + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const compact = size < 200;
+
   return (
     <div
-      className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
+      className="flex flex-col items-center justify-center gap-2.5 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
       style={{ width: size, height: size }}
     >
       <Loader2 className="size-5 animate-spin text-[hsl(var(--primary))]" />
       <span className="text-[10px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-        {t("avatars.preview3d.loading", { defaultValue: "Extracting..." })}
+        {formatPreviewPhase(phase, queuePosition)}
+      </span>
+
+      {/* ── Progress bar ── */}
+      <div
+        className="relative overflow-hidden rounded-full bg-[hsl(var(--border))] shadow-[inset_0_0_0_1px_hsl(var(--border))]" 
+        style={{ width: compact ? size - 40 : Math.min(size - 48, 220), height: 5 }}
+      >
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-[hsl(var(--primary))] transition-[width] duration-500 ease-out"
+          style={{ width: `${Math.round(progress * 100)}%` }}
+        />
+      </div>
+
+      <span className="px-3 text-center text-[10px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+        {message ??
+          t("avatars.preview3d.loading", {
+            defaultValue: "Extracting avatar preview...",
+          })}
+      </span>
+      <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))] opacity-70">
+        {seconds}s
       </span>
     </div>
   );
@@ -164,41 +269,63 @@ function FallbackError({
 }
 
 function computeRobustBounds(scene: THREE.Object3D): THREE.Box3 {
-  const positions: THREE.Vector3[] = [];
+  const meshBoxes: Array<{
+    box: THREE.Box3;
+    largestDim: number;
+    volume: number;
+  }> = [];
 
+  scene.updateMatrixWorld(true);
   scene.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
-    const geo = child.geometry;
-    if (!geo?.attributes?.position) return;
+    const geometry = child.geometry;
+    if (!geometry) return;
 
-    const posAttr = geo.attributes.position;
-    const worldMatrix = child.matrixWorld;
-    const v = new THREE.Vector3();
-
-    for (let i = 0; i < posAttr.count; i += 1) {
-      v.fromBufferAttribute(posAttr, i);
-      v.applyMatrix4(worldMatrix);
-      positions.push(v.clone());
+    if (!geometry.boundingBox) {
+      geometry.computeBoundingBox();
     }
+    if (!geometry.boundingBox) return;
+
+    const worldBox = geometry.boundingBox.clone().applyMatrix4(child.matrixWorld);
+    if (worldBox.isEmpty()) return;
+
+    const size = new THREE.Vector3();
+    worldBox.getSize(size);
+    const largestDim = Math.max(size.x, size.y, size.z);
+    if (!Number.isFinite(largestDim) || largestDim <= 0) return;
+
+    meshBoxes.push({
+      box: worldBox,
+      largestDim,
+      volume: Math.max(size.x * size.y * size.z, 0),
+    });
   });
 
-  if (positions.length === 0) {
+  if (meshBoxes.length === 0) {
     return new THREE.Box3().setFromObject(scene);
   }
 
-  const trim = Math.max(1, Math.floor(positions.length * 0.02));
-  const xs = positions.map((p) => p.x).sort((a, b) => a - b);
-  const ys = positions.map((p) => p.y).sort((a, b) => a - b);
-  const zs = positions.map((p) => p.z).sort((a, b) => a - b);
+  const sortedLargestDims = meshBoxes
+    .map((entry) => entry.largestDim)
+    .sort((a, b) => a - b);
+  const sortedVolumes = meshBoxes
+    .map((entry) => entry.volume)
+    .sort((a, b) => a - b);
+  const medianLargestDim = sortedLargestDims[Math.floor(sortedLargestDims.length / 2)] ?? 0;
+  const medianVolume = sortedVolumes[Math.floor(sortedVolumes.length / 2)] ?? 0;
 
-  return new THREE.Box3(
-    new THREE.Vector3(xs[trim], ys[trim], zs[trim]),
-    new THREE.Vector3(
-      xs[xs.length - 1 - trim],
-      ys[ys.length - 1 - trim],
-      zs[zs.length - 1 - trim],
-    ),
-  );
+  const filtered = meshBoxes.filter((entry) => {
+    const dimOk = medianLargestDim <= 0 || entry.largestDim <= medianLargestDim * 5;
+    const volumeOk = medianVolume <= 0 || entry.volume <= medianVolume * 125;
+    return dimOk && volumeOk;
+  });
+
+  const source = filtered.length > 0 ? filtered : meshBoxes;
+  const merged = source[0].box.clone();
+  for (let index = 1; index < source.length; index += 1) {
+    merged.union(source[index].box);
+  }
+  return merged;
 }
 
 function buildDebugMaterial(
@@ -280,14 +407,15 @@ function GlbModel({
   onPrepared: (meta: PreparedSceneMeta) => void;
 }) {
   const { scene } = useGLTF(url);
+  const clonedScene = useMemo(() => cloneSkeleton(scene), [scene]);
   const groupRef = useRef<THREE.Group>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!groupRef.current) return;
 
-    scene.updateMatrixWorld(true);
+    clonedScene.updateMatrixWorld(true);
 
-    const box = computeRobustBounds(scene);
+    const box = computeRobustBounds(clonedScene);
     const boxSize = new THREE.Vector3();
     const boxCenter = new THREE.Vector3();
     box.getSize(boxSize);
@@ -313,7 +441,7 @@ function GlbModel({
     let meshCount = 0;
     let boneCount = 0;
     const materialIds = new Set<string>();
-    scene.traverse((child) => {
+    clonedScene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         meshCount += 1;
         const material = child.material;
@@ -335,24 +463,58 @@ function GlbModel({
       materialCount: materialIds.size,
       boneCount,
     });
-  }, [onPrepared, scene]);
+  }, [clonedScene, onPrepared]);
 
   useEffect(() => {
+    applyPreviewMode(clonedScene, mode);
     return () => {
-      useGLTF.clear(url);
+      applyPreviewMode(clonedScene, "textured");
     };
-  }, [url]);
+  }, [clonedScene, mode]);
 
+  // GPU-resource cleanup. useGLTF.clear at the parent level drops the JS
+  // cache entry but three.js doesn't reference-count geometries/textures,
+  // so without an explicit dispose() the buffers leak on every avatar
+  // switch. cloneSkeleton shares geometry with the original scene, but
+  // since we're tearing the whole URL out of the cache in the same tick,
+  // disposing here is safe.
   useEffect(() => {
-    applyPreviewMode(scene, mode);
+    const textures = new Set<THREE.Texture>();
+    const materials = new Set<THREE.Material>();
+    const geometries = new Set<THREE.BufferGeometry>();
     return () => {
-      applyPreviewMode(scene, "textured");
+      clonedScene.traverse((child) => {
+        if (!(child instanceof THREE.Mesh)) return;
+        if (child.geometry) geometries.add(child.geometry);
+        const registerMaterial = (material: THREE.Material) => {
+          materials.add(material);
+          for (const value of Object.values(material) as Array<unknown>) {
+            if (value instanceof THREE.Texture) textures.add(value);
+          }
+        };
+        if (Array.isArray(child.material)) {
+          child.material.forEach(registerMaterial);
+        } else if (child.material) {
+          registerMaterial(child.material);
+        }
+        if (child.userData?.__vrcsmDebugMaterial) {
+          const debugMat = child.userData.__vrcsmDebugMaterial;
+          if (Array.isArray(debugMat)) {
+            debugMat.forEach(registerMaterial);
+          } else if (debugMat) {
+            registerMaterial(debugMat as THREE.Material);
+          }
+        }
+      });
+      geometries.forEach((g) => g.dispose());
+      materials.forEach((m) => m.dispose());
+      textures.forEach((t) => t.dispose());
     };
-  }, [mode, scene]);
+  }, [clonedScene]);
 
   return (
     <group ref={groupRef}>
-      <primitive object={scene} />
+      <primitive object={clonedScene} />
     </group>
   );
 }
@@ -378,25 +540,37 @@ function PreviewCameraRig({
   sceneMeta,
   fitTick,
   shiftPanning,
+  controlsExternalRef,
+  onSettled,
 }: {
   sceneMeta: PreparedSceneMeta | null;
   fitTick: number;
   shiftPanning: boolean;
+  controlsExternalRef: React.MutableRefObject<any | null>;
+  onSettled: () => void;
 }) {
   const { camera, invalidate } = useThree();
   const controlsRef = useRef<any>(null);
+  const onSettledRef = useRef(onSettled);
+  onSettledRef.current = onSettled;
 
-  useEffect(() => {
-    if (!controlsRef.current) return;
-    controlsRef.current.mouseButtons.LEFT = shiftPanning
-      ? THREE.MOUSE.PAN
-      : THREE.MOUSE.ROTATE;
-    controlsRef.current.mouseButtons.RIGHT = THREE.MOUSE.PAN;
-    controlsRef.current.mouseButtons.MIDDLE = DISABLED_MOUSE_BUTTON;
-    controlsRef.current.update();
+  // Separate effect for shift-panning mode — does NOT touch camera position
+  useLayoutEffect(() => {
+    applyControlsMode(controlsRef.current, shiftPanning);
   }, [shiftPanning]);
 
-  useEffect(() => {
+  // Controls ref assignment (stable — only runs on mount/unmount)
+  useLayoutEffect(() => {
+    controlsExternalRef.current = controlsRef.current;
+    return () => {
+      if (controlsExternalRef.current === controlsRef.current) {
+        controlsExternalRef.current = null;
+      }
+    };
+  }, [controlsExternalRef]);
+
+  // Camera framing — only runs when the scene geometry or fitTick changes
+  useLayoutEffect(() => {
     if (!sceneMeta || !controlsRef.current) return;
 
     const center = sceneMeta.center.clone();
@@ -417,6 +591,25 @@ function PreviewCameraRig({
     controlsRef.current.maxDistance = Math.max(8, maxDim * 9);
     controlsRef.current.update();
     invalidate();
+
+    let frame1 = 0;
+    let frame2 = 0;
+    frame1 = window.requestAnimationFrame(() => {
+      frame2 = window.requestAnimationFrame(() => {
+        onSettledRef.current();
+      });
+    });
+
+    return () => {
+      if (frame1) {
+        window.cancelAnimationFrame(frame1);
+      }
+      if (frame2) {
+        window.cancelAnimationFrame(frame2);
+      }
+    };
+  // onSettled is captured via ref — NOT in deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera, fitTick, invalidate, sceneMeta]);
 
   return (
@@ -448,8 +641,27 @@ function OverlayButton({
   return (
     <button
       type="button"
-      onPointerDown={(event) => event.stopPropagation()}
-      onClick={onClick}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onMouseDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onPointerUp={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onMouseUp={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick();
+      }}
       className={
         "inline-flex h-7 items-center gap-1 rounded-[var(--radius-sm)] border px-2 text-[10px] font-medium transition-colors " +
         (active
@@ -474,9 +686,12 @@ function PreviewViewport({
   onPrepared,
   onPointerDownCapture,
   onPointerUpCapture,
+  onMouseDownCapture,
+  onMouseUpCapture,
   onAuxClickCapture,
   onExpand,
   showExpand,
+  controlsExternalRef,
 }: {
   url: string;
   size: number;
@@ -489,9 +704,12 @@ function PreviewViewport({
   onPrepared: (meta: PreparedSceneMeta) => void;
   onPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUpCapture: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onMouseDownCapture: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onMouseUpCapture: (event: React.MouseEvent<HTMLDivElement>) => void;
   onAuxClickCapture: (event: React.MouseEvent<HTMLDivElement>) => void;
   onExpand?: () => void;
   showExpand: boolean;
+  controlsExternalRef: MutableRefObject<any | null>;
 }) {
   const { t } = useTranslation();
   const canvasStyle = useMemo<CSSProperties>(
@@ -505,14 +723,53 @@ function PreviewViewport({
   const showModes = !compact;
   const showControls = !compact;
   const showTextureNote = size >= 280;
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+
+  useEffect(() => {
+    setCameraReady(false);
+  }, [url, fitTick, sceneMeta]);
+
+  useEffect(() => {
+    const element = wrapperRef.current;
+    if (!element) return;
+
+    const suppressMiddleMouse = (event: MouseEvent | PointerEvent) => {
+      if (event.button !== 1) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const suppressAuxClick = (event: MouseEvent) => {
+      if (event.button !== 1) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    element.addEventListener("mousedown", suppressMiddleMouse, true);
+    element.addEventListener("mouseup", suppressMiddleMouse, true);
+    element.addEventListener("pointerdown", suppressMiddleMouse, true);
+    element.addEventListener("pointerup", suppressMiddleMouse, true);
+    element.addEventListener("auxclick", suppressAuxClick, true);
+
+    return () => {
+      element.removeEventListener("mousedown", suppressMiddleMouse, true);
+      element.removeEventListener("mouseup", suppressMiddleMouse, true);
+      element.removeEventListener("pointerdown", suppressMiddleMouse, true);
+      element.removeEventListener("pointerup", suppressMiddleMouse, true);
+      element.removeEventListener("auxclick", suppressAuxClick, true);
+    };
+  }, []);
 
   return (
     <div
+      ref={wrapperRef}
       className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] select-none"
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, touchAction: "none" }}
       onContextMenu={(event) => event.preventDefault()}
       onPointerDownCapture={onPointerDownCapture}
       onPointerUpCapture={onPointerUpCapture}
+      onMouseDownCapture={onMouseDownCapture}
+      onMouseUpCapture={onMouseUpCapture}
       onAuxClickCapture={onAuxClickCapture}
     >
       <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
@@ -576,7 +833,7 @@ function PreviewViewport({
           <div className="w-fit max-w-full rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.9)] px-2 py-1 text-[10px] leading-tight text-[hsl(var(--muted-foreground))] shadow-sm">
             {t("avatars.preview3d.textureNote", {
               defaultValue:
-                "Current extractor keeps mesh and UV data only; embedded texture export is still pending.",
+                "Original mode uses any extracted material and texture data that survived the bundle export. Clay and wireframe stay available for broken or noisy materials.",
             })}
           </div>
         </div>
@@ -605,7 +862,18 @@ function PreviewViewport({
         </div>
       ) : null}
 
-      <Canvas dpr={[1, 2]} camera={{ position: [0, 1, 3.5], fov: 34 }} style={canvasStyle}>
+      <Canvas
+        dpr={[1, 2]}
+        camera={{ position: [0, 1, 3.5], fov: 34 }}
+        style={{
+          ...canvasStyle,
+          opacity: sceneMeta && cameraReady ? 1 : 0,
+          // Always animate in and out — previously we only fade in, which
+          // made avatar URL swaps snap to black before fading back. A
+          // symmetric transition cross-dissolves instead.
+          transition: "opacity 140ms ease-out",
+        }}
+      >
         <color attach="background" args={["#0D1218"]} />
         <fog attach="fog" args={["#0D1218", 6, 18]} />
 
@@ -624,6 +892,8 @@ function PreviewViewport({
             sceneMeta={sceneMeta}
             fitTick={fitTick}
             shiftPanning={shiftPanning}
+            controlsExternalRef={controlsExternalRef}
+            onSettled={() => setCameraReady(true)}
           />
         </Suspense>
       </Canvas>
@@ -649,6 +919,13 @@ function AvatarPreviewSurface({
   const [sceneMeta, setSceneMeta] = useState<PreparedSceneMeta | null>(null);
   const [expanded, setExpanded] = useState(false);
   const lastPreparedKey = useRef<string>("");
+  const controlsRef = useRef<any>(null);
+  const shiftPressedRef = useRef(false);
+  const leftPointerDownRef = useRef(false);
+  const syncControlsMode = useCallback((next: boolean) => {
+    setShiftPanning(next);
+    applyControlsMode(controlsRef.current, next);
+  }, []);
 
   const handlePrepared = useCallback((meta: PreparedSceneMeta) => {
     const key = [
@@ -679,31 +956,51 @@ function AvatarPreviewSurface({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Shift") {
-        setShiftPanning(true);
+        shiftPressedRef.current = true;
+        if (!leftPointerDownRef.current) {
+          setShiftPanning(true);
+        }
       }
     };
     const onKeyUp = (event: KeyboardEvent) => {
       if (event.key === "Shift") {
-        setShiftPanning(false);
+        shiftPressedRef.current = false;
+        if (leftPointerDownRef.current) {
+          syncControlsMode(false);
+        } else {
+          setShiftPanning(false);
+        }
       }
     };
     const onBlur = () => {
-      setShiftPanning(false);
+      shiftPressedRef.current = false;
+      leftPointerDownRef.current = false;
+      syncControlsMode(false);
+    };
+    const onPointerRelease = () => {
+      if (!leftPointerDownRef.current) return;
+      leftPointerDownRef.current = false;
+      syncControlsMode(false);
+      setShiftPanning(shiftPressedRef.current);
     };
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
+    window.addEventListener("pointerup", onPointerRelease);
+    window.addEventListener("pointercancel", onPointerRelease);
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
+      window.removeEventListener("pointerup", onPointerRelease);
+      window.removeEventListener("pointercancel", onPointerRelease);
     };
-  }, []);
+  }, [syncControlsMode]);
 
   const handlePointerDownCapture = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
+    (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.button === 1) {
         event.preventDefault();
         event.stopPropagation();
@@ -711,23 +1008,48 @@ function AvatarPreviewSurface({
       }
 
       if (event.button === 0) {
+        leftPointerDownRef.current = true;
+        shiftPressedRef.current = event.shiftKey;
+        syncControlsMode(event.shiftKey);
+      }
+    },
+    [syncControlsMode],
+  );
+
+  const handlePointerUpCapture = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button === 0) {
+        leftPointerDownRef.current = false;
+        shiftPressedRef.current = event.shiftKey;
+        syncControlsMode(false);
         setShiftPanning(event.shiftKey);
+      }
+    },
+    [syncControlsMode],
+  );
+
+  const handleMouseDownCapture = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (event.button === 1) {
+        event.preventDefault();
+        event.stopPropagation();
       }
     },
     [],
   );
 
-  const handlePointerUpCapture = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.button === 0) {
-        setShiftPanning(event.shiftKey);
+  const handleMouseUpCapture = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (event.button === 1) {
+        event.preventDefault();
+        event.stopPropagation();
       }
     },
     [],
   );
 
   const handleAuxClickCapture = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
+    (event: ReactMouseEvent<HTMLDivElement>) => {
       if (event.button === 1) {
         event.preventDefault();
         event.stopPropagation();
@@ -749,9 +1071,12 @@ function AvatarPreviewSurface({
       onPrepared={handlePrepared}
       onPointerDownCapture={handlePointerDownCapture}
       onPointerUpCapture={handlePointerUpCapture}
+      onMouseDownCapture={handleMouseDownCapture}
+      onMouseUpCapture={handleMouseUpCapture}
       onAuxClickCapture={handleAuxClickCapture}
       onExpand={enableExpand ? () => setExpanded(true) : undefined}
       showExpand={enableExpand}
+      controlsExternalRef={controlsRef}
     />
   );
 
@@ -790,8 +1115,11 @@ function AvatarPreviewSurface({
               onPrepared={handlePrepared}
               onPointerDownCapture={handlePointerDownCapture}
               onPointerUpCapture={handlePointerUpCapture}
+              onMouseDownCapture={handleMouseDownCapture}
+              onMouseUpCapture={handleMouseUpCapture}
               onAuxClickCapture={handleAuxClickCapture}
               showExpand={false}
+              controlsExternalRef={controlsRef}
             />
           </div>
         </DialogContent>
@@ -800,9 +1128,47 @@ function AvatarPreviewSurface({
   );
 }
 
+function PreviewBusyOverlay({
+  size,
+  phase,
+  queuePosition,
+}: {
+  size: number;
+  phase?: string;
+  queuePosition?: number;
+}) {
+  const label = formatPreviewPhase(phase, queuePosition);
+  const progress = phaseProgress(phase);
+  const compact = size < 200;
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex flex-col items-center gap-1"
+    >
+      <div className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border)/0.75)] bg-[hsl(var(--surface)/0.95)] px-2.5 py-1 shadow-sm">
+        <Loader2 className="size-3 animate-spin text-[hsl(var(--primary))]" />
+        <span className="text-[10px] font-medium text-[hsl(var(--foreground))]">
+          {label}
+        </span>
+      </div>
+      {!compact ? (
+        <div
+          className="relative overflow-hidden rounded-full bg-[hsl(var(--border))]"
+          style={{ width: Math.min(size - 32, 180), height: 3 }}
+        >
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-[hsl(var(--primary))] transition-[width] duration-500 ease-out"
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function AvatarPreview3D({
   avatarId,
   assetUrl,
+  bundlePath,
   fallbackImageUrl,
   size = 140,
   enableExpand = true,
@@ -810,16 +1176,47 @@ export function AvatarPreview3D({
 }: {
   avatarId: string;
   assetUrl?: string;
+  bundlePath?: string;
   fallbackImageUrl?: string;
   size?: number;
   enableExpand?: boolean;
   expandedSize?: number;
 }) {
-  const { state, retry } = useAvatarPreview(avatarId, assetUrl);
+  const { state, retry } = useAvatarPreview(avatarId, assetUrl, bundlePath);
 
-  if (state.kind === "loading") {
-    return <LoadingState size={size} />;
-  }
+  // Keep the previously-ready URL visible while the pipeline is loading
+  // the next one. Without this, every avatar switch unmounts the Canvas
+  // (WebGL context teardown ≈ 200 ms) and then the user stares at a
+  // spinner even for cache hits that resolve in under 50 ms. We hold the
+  // last good URL in state and only swap it when the new one reports
+  // ready. Error states still fall through so the user sees a real
+  // failure message instead of a stale ghost preview.
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (state.kind === "ready") {
+      setDisplayUrl(state.url);
+    } else if (state.kind === "error") {
+      setDisplayUrl(null);
+    }
+  }, [state]);
+
+  // Release the drei useGLTF cache entry when we move off a URL. Without
+  // this every avatar ever inspected stays resident in GPU memory until
+  // the full tab reloads, which shows up as cumulative lag on each
+  // subsequent switch once a few dozen avatars have been opened. The
+  // cleanup runs AFTER React has committed the new displayUrl so the
+  // new <GlbModel> already has its own fresh scene reference — we only
+  // evict the one nobody is looking at anymore.
+  useEffect(() => {
+    if (!displayUrl) return;
+    return () => {
+      try {
+        useGLTF.clear(displayUrl);
+      } catch {
+        /* non-fatal — drei may have already evicted it */
+      }
+    };
+  }, [displayUrl]);
 
   if (state.kind === "error") {
     if (fallbackImageUrl) {
@@ -841,12 +1238,46 @@ export function AvatarPreview3D({
     );
   }
 
+  if (state.kind === "loading" && !displayUrl) {
+    return (
+      <LoadingState
+        size={size}
+        phase={state.phase}
+        message={state.message}
+        queuePosition={state.queuePosition}
+      />
+    );
+  }
+
+  const activeUrl = state.kind === "ready" ? state.url : displayUrl;
+  if (!activeUrl) {
+    // Shouldn't happen — defensive fallback in case state is ready with
+    // an empty url. Mirrors the LoadingState return above.
+    return (
+      <LoadingState
+        size={size}
+        phase={state.kind === "loading" ? state.phase : undefined}
+        message={state.kind === "loading" ? state.message : undefined}
+        queuePosition={state.kind === "loading" ? state.queuePosition : undefined}
+      />
+    );
+  }
+
   return (
-    <AvatarPreviewSurface
-      url={state.url}
-      size={size}
-      enableExpand={enableExpand}
-      expandedSize={expandedSize}
-    />
+    <div className="relative" style={{ width: size, height: size }}>
+      <AvatarPreviewSurface
+        url={activeUrl}
+        size={size}
+        enableExpand={enableExpand}
+        expandedSize={expandedSize}
+      />
+      {state.kind === "loading" ? (
+        <PreviewBusyOverlay
+          size={size}
+          phase={state.phase}
+          queuePosition={state.queuePosition}
+        />
+      ) : null}
+    </div>
   );
 }

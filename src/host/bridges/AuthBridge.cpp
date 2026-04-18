@@ -33,7 +33,11 @@ nlohmann::json IpcBridge::HandleAuthStatus(const nlohmann::json&, const std::opt
     auto result = vrcsm::core::VrcApi::fetchCurrentUser();
     if (!vrcsm::core::isOk(result))
     {
-        vrcsm::core::AuthStore::Instance().Clear();
+        const auto& err = vrcsm::core::error(result);
+        if (err.code == "auth_expired")
+        {
+            vrcsm::core::AuthStore::Instance().Clear();
+        }
         return nlohmann::json{
             {"authed", false},
             {"displayName", nullptr},
@@ -159,7 +163,11 @@ nlohmann::json IpcBridge::HandleAuthUser(const nlohmann::json&, const std::optio
     auto result = vrcsm::core::VrcApi::fetchCurrentUser();
     if (!vrcsm::core::isOk(result))
     {
-        vrcsm::core::AuthStore::Instance().Clear();
+        const auto& err = vrcsm::core::error(result);
+        if (err.code == "auth_expired")
+        {
+            vrcsm::core::AuthStore::Instance().Clear();
+        }
         return nlohmann::json{
             {"authed", false},
             {"user", nullptr},

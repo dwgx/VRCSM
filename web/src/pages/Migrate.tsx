@@ -41,10 +41,10 @@ import type {
 /*  Constants                                                         */
 /* ================================================================== */
 
-const DEFAULT_TARGETS: Record<string, string> = {
-  cache_windows_player: "D:\\VRChatCache\\Cache-WindowsPlayer",
-  http_cache: "D:\\VRChatCache\\HTTPCache-WindowsPlayer",
-  texture_cache: "D:\\VRChatCache\\TextureCache-WindowsPlayer",
+const TARGET_FOLDER_NAMES: Record<string, string> = {
+  cache_windows_player: "Cache-WindowsPlayer",
+  http_cache: "HTTPCache-WindowsPlayer",
+  texture_cache: "TextureCache-WindowsPlayer",
 };
 
 const PHASE_ORDER: MigratePhase[] = [
@@ -55,6 +55,20 @@ const PHASE_ORDER: MigratePhase[] = [
   "junction",
   "done",
 ];
+
+function suggestTargetPath(category?: Pick<CategorySummary, "key" | "resolved_path">) {
+  if (!category) return "";
+
+  const folderName = TARGET_FOLDER_NAMES[category.key];
+  if (!folderName) return "";
+
+  const driveMatch = category.resolved_path.match(/^[A-Za-z]:/);
+  if (driveMatch) {
+    return `${driveMatch[0]}\\VRChatCache\\${folderName}`;
+  }
+
+  return `VRChatCache\\${folderName}`;
+}
 
 /* ================================================================== */
 /*  Main Component                                                    */
@@ -67,9 +81,7 @@ function Migrate() {
 
   // ── Category / target state ─────────────────────────────────────
   const [categoryKey, setCategoryKey] = useState("cache_windows_player");
-  const [target, setTarget] = useState(
-    DEFAULT_TARGETS.cache_windows_player ?? "",
-  );
+  const [target, setTarget] = useState("");
 
   // ── Preflight & plan ────────────────────────────────────────────
   const [plan, setPlan] = useState<MigratePlan | null>(null);
@@ -131,12 +143,12 @@ function Migrate() {
   const onPickCategory = useCallback(
     (key: string) => {
       setCategoryKey(key);
-      const next = DEFAULT_TARGETS[key];
-      if (next) setTarget(next);
+      const next = migratable.find((item) => item.key === key);
+      setTarget(suggestTargetPath(next));
       setPlan(null);
       setProgress(null);
     },
-    [],
+    [migratable],
   );
 
   /* ─── Hydrate from ?category=... ────────────────────────────────── */
@@ -145,7 +157,7 @@ function Migrate() {
     if (prefilled.current) return;
     if (!report) return;
     const cat = searchParams.get("category");
-    if (cat && DEFAULT_TARGETS[cat]) {
+    if (cat && TARGET_FOLDER_NAMES[cat]) {
       onPickCategory(cat);
     }
     prefilled.current = true;
@@ -153,6 +165,11 @@ function Migrate() {
     next.delete("category");
     setSearchParams(next, { replace: true });
   }, [report, searchParams, setSearchParams, onPickCategory]);
+
+  useEffect(() => {
+    if (target.trim()) return;
+    setTarget(suggestTargetPath(selected));
+  }, [selected, target]);
 
   /* ─── Progress event subscription ───────────────────────────────── */
 
@@ -429,7 +446,7 @@ function Migrate() {
                   onChange={(e) => setTarget(e.target.value)}
                   className="flex-1 font-mono text-[12px]"
                   placeholder={t("migrate.targetPlaceholder", {
-                    defaultValue: "D:\\VRChatCache\\...",
+                    defaultValue: "X:\\VRChatCache\\...",
                   })}
                 />
                 <Button

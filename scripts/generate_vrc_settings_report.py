@@ -7,10 +7,16 @@ import subprocess
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+import os
 
 
-ROOT = Path(r"D:\Project\VRCSM")
-SRC_ROOT = Path(r"D:\WorkSpace\VRChat\VRChat_Data\il2cpp_dump_tools\output\src")
+ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = Path(
+    os.environ.get(
+        "VRCSM_VRC_IL2CPP_SRC_ROOT",
+        str(ROOT / "il2cpp_dump_tools" / "output" / "src"),
+    )
+)
 DOC_PATH = ROOT / "docs" / "vrc-settings-keys.md"
 REG_PATH = r"HKCU\Software\VRChat\VRChat"
 
@@ -244,6 +250,8 @@ def tokenize(text: str) -> set[str]:
 def build_source_index() -> tuple[list[SourceLine], dict[str, list[int]]]:
     lines = []
     inverted: dict[str, list[int]] = defaultdict(list)
+    if not SRC_ROOT.exists():
+        return lines, inverted
     for path in SRC_ROOT.rglob("*.cs"):
         rel_path = str(path.relative_to(SRC_ROOT)).replace("\\", "/")
         try:
@@ -599,6 +607,11 @@ def main() -> None:
     DOC_PATH.parent.mkdir(parents=True, exist_ok=True)
     DOC_PATH.write_text(build_report(entries), encoding="utf-8")
     print(f"{DOC_PATH} {len(entries)}")
+    if not SRC_ROOT.exists():
+        print(
+            "warning: IL2CPP source root not found; "
+            "set VRCSM_VRC_IL2CPP_SRC_ROOT to improve semantic anchors"
+        )
 
 
 if __name__ == "__main__":

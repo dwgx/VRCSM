@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ipc } from "@/lib/ipc";
 import { useReport } from "@/lib/report-context";
 import type {
@@ -27,9 +28,11 @@ import {
   Globe2,
   Search,
   Shirt,
+  Trash2,
   UserRound,
   Users,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -268,7 +271,7 @@ const PAGE_SIZE = 100;
 
 function Logs() {
   const { t } = useTranslation();
-  const { report, loading, error } = useReport();
+  const { report, loading, error, refresh } = useReport();
   const logs = report?.logs ?? null;
 
   const [search, setSearch] = useState("");
@@ -286,6 +289,8 @@ function Logs() {
   });
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [clearingLogFiles, setClearingLogFiles] = useState(false);
+  const [clearLogFilesOpen, setClearLogFilesOpen] = useState(false);
 
   const toggleFilter = useCallback((key: FilterKey) => {
     setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -483,6 +488,38 @@ function Logs() {
     setVisibleCount(PAGE_SIZE);
   }, [debouncedSearch, filters]);
 
+  const handleClearLogFiles = useCallback(async () => {
+    setClearingLogFiles(true);
+    try {
+      const result = await ipc.logFilesClear();
+      await refresh();
+
+      const skippedMessage = result.skipped.length > 0
+        ? t("logs.clearFilesSkippedActive", {
+            count: result.skipped.length,
+            defaultValue: " Kept {{count}} active log file because VRChat is running.",
+          })
+        : "";
+
+      toast.success(
+        t("logs.clearFilesSuccess", {
+          count: result.deleted,
+          defaultValue: "Deleted {{count}} log files.",
+        }) + skippedMessage,
+      );
+    } catch (e) {
+      toast.error(
+        t("logs.clearFilesFailed", {
+          error: e instanceof Error ? e.message : String(e),
+          defaultValue: "Failed to clear log files: {{error}}",
+        }),
+      );
+    } finally {
+      setClearingLogFiles(false);
+      setClearLogFilesOpen(false);
+    }
+  }, [refresh, t]);
+
   // -- Loading / error states -----------------------------------------------
 
   if (loading && !logs) {
@@ -526,6 +563,15 @@ function Logs() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] border border-[hsl(var(--destructive)/0.3)] px-3 text-[11px] font-medium text-[hsl(var(--destructive))] transition-colors hover:bg-[hsl(var(--destructive)/0.08)]"
+            disabled={clearingLogFiles}
+            onClick={() => setClearLogFilesOpen(true)}
+          >
+            <Trash2 className={["size-3.5", clearingLogFiles ? "animate-pulse" : ""].join(" ")} />
+            {t("logs.clearFiles", { defaultValue: "Clear Log Files" })}
+          </button>
           {isStreaming ? (
             <div className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400">
               <span className="relative flex size-2">
@@ -884,6 +930,20 @@ function Logs() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={clearLogFilesOpen}
+        onOpenChange={setClearLogFilesOpen}
+        title={t("logs.clearFiles", { defaultValue: "Clear Log Files" })}
+        description={t("logs.clearFilesConfirm", {
+          defaultValue: "Delete stored VRChat output_log files? If VRChat is running, the current active log will be kept.",
+        })}
+        confirmLabel={t("logs.clearFiles", { defaultValue: "Clear Log Files" })}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => void handleClearLogFiles()}
+        loading={clearingLogFiles}
+        tone="destructive"
+      />
     </div>
   );
 }

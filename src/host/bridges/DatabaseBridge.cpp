@@ -51,7 +51,17 @@ nlohmann::json IpcBridge::HandleDbPlayerEvents(const nlohmann::json& params, con
 {
     const int limit = ParamInt(params, "limit", 100);
     const int offset = ParamInt(params, "offset", 0);
-    auto res = vrcsm::core::Database::Instance().RecentPlayerEvents(limit, offset);
+    const auto worldId = JsonStringField(params, "world_id");
+    const auto instanceId = JsonStringField(params, "instance_id");
+    const auto occurredAfter = JsonStringField(params, "occurred_after");
+    const auto occurredBefore = JsonStringField(params, "occurred_before");
+    auto res = vrcsm::core::Database::Instance().RecentPlayerEvents(
+        limit,
+        offset,
+        worldId,
+        instanceId,
+        occurredAfter,
+        occurredBefore);
     return nlohmann::json{{"items", unwrapResult(std::move(res))}};
 }
 
@@ -84,6 +94,18 @@ nlohmann::json IpcBridge::HandleDbStatsHeatmap(const nlohmann::json& params, con
 nlohmann::json IpcBridge::HandleDbStatsOverview(const nlohmann::json&, const std::optional<std::string>&)
 {
     auto res = vrcsm::core::Database::Instance().StatsOverview();
+    return unwrapResult(std::move(res));
+}
+
+nlohmann::json IpcBridge::HandleDbHistoryClear(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const bool includeFriendNotes =
+        params.is_object()
+        && params.contains("include_friend_notes")
+        && params["include_friend_notes"].is_boolean()
+        && params["include_friend_notes"].get<bool>();
+
+    auto res = vrcsm::core::Database::Instance().ClearHistory(includeFriendNotes);
     return unwrapResult(std::move(res));
 }
 

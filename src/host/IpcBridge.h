@@ -8,6 +8,8 @@
 #include "../core/TaskQueue.h"
 #include "../core/VrcRadarEngine.h"
 
+#include <future>
+
 class WebViewHost;
 
 class IpcBridge
@@ -48,6 +50,9 @@ private:
     nlohmann::json HandleAuthUser(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarPreviewRequest(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleGroupsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleModerationsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarBundleDownload(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleWorldDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarSelect(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -60,6 +65,7 @@ private:
     nlohmann::json HandleScreenshotsDelete(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsStreamStart(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsStreamStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleLogsFilesClear(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleConfigRead(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleConfigWrite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAppFactoryReset(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -78,6 +84,7 @@ private:
     nlohmann::json HandleDbAvatarHistory(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbStatsHeatmap(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbStatsOverview(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleDbHistoryClear(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesLists(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesItems(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesAdd(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -91,6 +98,8 @@ private:
     nlohmann::json HandleFriendLogForUser(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendNoteGet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendNoteSet(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    void CloseTrackedWorldVisits(const std::string& leftAt);
 
     void PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const;
     void PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message) const;
@@ -109,4 +118,10 @@ private:
     // because the LogTailer callback fires on its own thread.
     std::mutex m_currentWorldMutex;
     std::string m_currentWorldId;
+    std::string m_currentInstanceId;
+
+    // Coalesce same-avatar preview requests so repeated renders / panes
+    // join the existing extraction instead of cancelling and restarting it.
+    std::mutex m_previewSharedMutex;
+    std::unordered_map<std::string, std::shared_future<std::string>> m_previewShared;
 };

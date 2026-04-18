@@ -78,6 +78,11 @@ public:
                                          const std::string& instance_id,
                                          const std::string& left_at);
 
+    // Mark every still-open visit as closed at `left_at`. Used as a
+    // safety net when VRChat exits or when the host recovers from
+    // previously interrupted tracking state.
+    Result<std::monostate> CloseOpenWorldVisits(const std::string& left_at);
+
     // Recent visits ordered by joined_at desc, newest first.
     Result<nlohmann::json> RecentWorldVisits(int limit, int offset);
 
@@ -89,6 +94,7 @@ public:
         std::optional<std::string> user_id;
         std::string display_name;
         std::optional<std::string> world_id;
+        std::optional<std::string> instance_id;
         std::string occurred_at;
     };
     // Writes into player_events *and* upserts player_encounters in
@@ -97,7 +103,13 @@ public:
     Result<std::monostate> RecordPlayerEvent(const PlayerEventInsert& e);
 
     // Chronological player events (latest first).
-    Result<nlohmann::json> RecentPlayerEvents(int limit, int offset);
+    Result<nlohmann::json> RecentPlayerEvents(
+        int limit,
+        int offset,
+        std::optional<std::string> world_id = std::nullopt,
+        std::optional<std::string> instance_id = std::nullopt,
+        std::optional<std::string> occurred_after = std::nullopt,
+        std::optional<std::string> occurred_before = std::nullopt);
 
     // All aggregated encounters for a given user (across worlds).
     Result<nlohmann::json> EncountersForUser(const std::string& user_id);
@@ -138,6 +150,7 @@ public:
     Result<std::monostate> SetFriendNote(const std::string& user_id,
                                          const std::string& note,
                                          const std::string& updated_at);
+    Result<nlohmann::json> ClearHistory(bool include_friend_notes = false);
 
     // ─── local_favorites ─────────────────────────────────────────
 

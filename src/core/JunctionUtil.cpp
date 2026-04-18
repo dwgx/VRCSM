@@ -1,7 +1,8 @@
 #include "JunctionUtil.h"
 
+#include "PathProbe.h"
+
 #include <cstring>
-#include <system_error>
 #include <system_error>
 #include <vector>
 
@@ -173,6 +174,11 @@ nlohmann::json JunctionUtil::Repair(const nlohmann::json& params)
 
     const auto sourceStr = params.at(sourceKey).get<std::string>();
     const auto source = utf8Path(sourceStr);
+    const auto probe = PathProbe::Probe();
+    if (probe.baseDir.empty() || !ensureWithinBase(probe.baseDir, source))
+    {
+        throw std::runtime_error("junction.repair source must stay inside the detected VRChat data directory");
+    }
 
     std::optional<std::filesystem::path> target;
     if (params.contains("target") && params["target"].is_string())
@@ -186,6 +192,10 @@ nlohmann::json JunctionUtil::Repair(const nlohmann::json& params)
     if (!target.has_value())
     {
         throw std::runtime_error("junction.repair could not resolve target path");
+    }
+    if (ensureWithinBase(source, *target))
+    {
+        throw std::runtime_error("junction.repair target cannot be inside the source path");
     }
 
     std::error_code ec;

@@ -41,6 +41,7 @@ import { AvatarPopupBadge } from "@/components/AvatarPopupBadge";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { cn } from "@/lib/utils";
 import { useVrcProcess } from "@/lib/vrc-context";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { trustRank, trustDotColor } from "@/lib/vrcFriends";
 import { FriendLogPanel } from "@/pages/FriendLog";
 import type { VrcUserProfile } from "@/components/ProfileCard";
@@ -96,6 +97,17 @@ function formatTimePart(isoTime: string | null): string {
   // Handle both "2026.04.15 00:42:02" and ISO 8601 formats
   const timePart = isoTime.includes(" ") ? isoTime.split(" ")[1] : isoTime.split("T")[1]?.slice(0, 8);
   return timePart ?? "--:--";
+}
+
+function parseEventTimestamp(value: string | null | undefined): number | null {
+  if (!value) return null;
+  if (value.includes(".") && value.includes(" ") && !value.includes("T")) {
+    const [datePart, timePart] = value.split(" ");
+    const parsed = Date.parse(`${datePart.replace(/\./g, "-")}T${timePart}`);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 /** Elapsed time as "Xh Xm Xs" from an ISO timestamp to now */
@@ -203,13 +215,22 @@ function PlatformIcon({ platform }: { platform: string | null | undefined }) {
 }
 
 
-function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
+function RadarEngine({
+  onOpenHistory,
+  showTimeline,
+  onToggleTimeline,
+}: {
+  onOpenHistory?: () => void;
+  showTimeline: boolean;
+  onToggleTimeline?: () => void;
+}) {
   const { t } = useTranslation();
   const [currentWorld, setCurrentWorld] = useState<WorldSwitchEvent | null>(null);
   const [worldNames, setWorldNames] = useState<Record<string, string>>({});
 
   // Track players in the current instance
   const [activePlayers, setActivePlayers] = useState<Record<string, RadarPlayer>>({});
+  const activePlayersRef = useRef<Record<string, RadarPlayer>>({});
 
   // History of recently left players (for tracing who just left)
   const [leftPlayers, setLeftPlayers] = useState<Record<string, RadarPlayer>>({});
@@ -229,6 +250,7 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
   // ── Player platform cache ────────────────────────────────────────────
   const [playerPlatform, setPlayerPlatform] = useState<Record<string, string>>({});
   const [recentSessionEvents, setRecentSessionEvents] = useState<RecentSessionEvent[]>([]);
+  const currentWorldRef = useRef<WorldSwitchEvent | null>(null);
 
   const addTimelineEntry = useCallback((entry: Omit<TimelineEntry, "id">) => {
     const id = `tl-${++timelineIdCounter.current}`;
@@ -297,21 +319,55 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
 
   useEffect(() => {
     // ── Step 1: reconstruct current state from existing log ────────────────
-    type ScanLogs = { world_switches: WorldSwitchEvent[]; player_events: PlayerEvent[]; avatar_switches: AvatarSwitchEvent[]; world_names: Record<string, string> };
+    type ScanLogs = {
+      world_switches: WorldSwitchEvent[];
+      player_events: PlayerEvent[];
+      avatar_switches: AvatarSwitchEvent[];
+      world_names: Record<string, string>;
+      local_user_name?: string | null;
+    };
     void ipc.call<object, { logs: ScanLogs }>("scan", {}).then((res) => {
-      const { world_switches = [], player_events = [], avatar_switches = [], world_names = {} } = res?.logs ?? {} as ScanLogs;
+      const {
+        world_switches = [],
+        player_events = [],
+        avatar_switches = [],
+        world_names = {},
+        local_user_name = null,
+      } = res?.logs ?? {} as ScanLogs;
       setWorldNames(world_names);
       const lastWorld = world_switches.length ? world_switches[world_switches.length - 1] : null;
-      if (lastWorld) setCurrentWorld(lastWorld);
+      if (lastWorld) {
+        setCurrentWorld(lastWorld);
+        currentWorldRef.current = lastWorld;
+      }
 
       const worldTime = lastWorld?.iso_time ?? null;
+      const worldTimeMs = parseEventTimestamp(worldTime);
+      const currentWorldId = lastWorld?.world_id ?? null;
+      const currentInstanceId = lastWorld?.instance_id ?? null;
       const players: Record<string, RadarPlayer> = {};
-      const initTimeline: TimelineEntry[] = [];
+      const initTimeline: Array<TimelineEntry & { sortTime: number | null }> = [];
       const seen = new Set<string>();
       let avatarChanges = 0;
 
+      const belongsToCurrentSession = (
+        event: Pick<PlayerEvent, "iso_time" | "world_id" | "instance_id"> | Pick<AvatarSwitchEvent, "iso_time" | "world_id" | "instance_id">,
+      ) => {
+        if (currentInstanceId && event.instance_id) {
+          return event.instance_id === currentInstanceId;
+        }
+        if (currentWorldId && event.world_id) {
+          return event.world_id === currentWorldId;
+        }
+        const eventTime = parseEventTimestamp(event.iso_time);
+        if (worldTimeMs !== null && eventTime !== null) {
+          return eventTime >= worldTimeMs;
+        }
+        return worldTime === null;
+      };
+
       for (const ev of player_events) {
-        if (worldTime && ev.iso_time && ev.iso_time < worldTime) continue;
+        if (!belongsToCurrentSession(ev)) continue;
         if (ev.kind === "joined") {
           players[ev.display_name] = {
             displayName: ev.display_name, userId: ev.user_id,
@@ -323,6 +379,7 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
           initTimeline.push({
             id: `init-p-${initTimeline.length}`,
             time: formatTimePart(ev.iso_time),
+            sortTime: parseEventTimestamp(ev.iso_time),
             kind: "joined",
             actor: ev.display_name,
           });
@@ -331,13 +388,18 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
           initTimeline.push({
             id: `init-l-${initTimeline.length}`,
             time: formatTimePart(ev.iso_time),
+            sortTime: parseEventTimestamp(ev.iso_time),
             kind: "left",
             actor: ev.display_name,
           });
         }
       }
       for (const av of avatar_switches) {
-        if (worldTime && av.iso_time && av.iso_time < worldTime) continue;
+        if (!belongsToCurrentSession(av)) continue;
+        const isLocalActor = Boolean(local_user_name && av.actor === local_user_name);
+        if (!players[av.actor] && !isLocalActor) {
+          continue;
+        }
         avatarChanges++;
         if (players[av.actor]) {
           players[av.actor] = { ...players[av.actor], avatarIdOrName: av.avatar_name, lastAvatarSwitchTime: av.iso_time };
@@ -345,17 +407,23 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
         initTimeline.push({
           id: `init-a-${initTimeline.length}`,
           time: formatTimePart(av.iso_time),
+          sortTime: parseEventTimestamp(av.iso_time),
           kind: "avatarSwitch",
           actor: av.actor,
           detail: av.avatar_name,
         });
       }
 
-      // Sort timeline by time string (they come from the same log so lexicographic works)
-      initTimeline.sort((a, b) => a.time.localeCompare(b.time));
+      initTimeline.sort((a, b) => {
+        if (a.sortTime !== null && b.sortTime !== null && a.sortTime !== b.sortTime) {
+          return a.sortTime - b.sortTime;
+        }
+        return a.id.localeCompare(b.id);
+      });
 
       setActivePlayers(players);
-      setTimeline(initTimeline);
+      activePlayersRef.current = players;
+      setTimeline(initTimeline.map(({ sortTime: _sortTime, ...entry }) => entry));
       setUniquePlayersSeen(seen);
       setAvatarChangeCount(avatarChanges);
       setPeakPlayerCount(Object.keys(players).length);
@@ -380,8 +448,10 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
       if (kind === "worldSwitch") {
         const ev = data as WorldSwitchEvent;
         setCurrentWorld(ev);
+        currentWorldRef.current = ev;
         // Clear room on new map
         setActivePlayers({});
+        activePlayersRef.current = {};
         setLeftPlayers({});
         // Reset session stats for new world
         setPeakPlayerCount(0);
@@ -398,17 +468,28 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
       }
       else if (kind === "player") {
         const ev = data as PlayerEvent;
+        const liveWorld = currentWorldRef.current;
+        if (liveWorld?.instance_id && ev.instance_id && ev.instance_id !== liveWorld.instance_id) {
+          return;
+        }
+        if (liveWorld?.world_id && ev.world_id && ev.world_id !== liveWorld.world_id) {
+          return;
+        }
         if (ev.kind === "joined") {
-          setActivePlayers(prev => ({
-            ...prev,
-            [ev.display_name]: {
+          setActivePlayers(prev => {
+            const next = {
+              ...prev,
+              [ev.display_name]: {
               displayName: ev.display_name,
               userId: ev.user_id,
               joinTime: ev.iso_time,
               avatarIdOrName: prev[ev.display_name]?.avatarIdOrName || null,
               lastAvatarSwitchTime: prev[ev.display_name]?.lastAvatarSwitchTime || null,
             }
-          }));
+            };
+            activePlayersRef.current = next;
+            return next;
+          });
           // Remove from left history if they re-join
           setLeftPlayers(prev => {
             const next = { ...prev };
@@ -433,6 +514,7 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
               setLeftPlayers(lp => ({ ...lp, [ev.display_name]: p }));
             }
             delete next[ev.display_name];
+            activePlayersRef.current = next;
             return next;
           });
           // Timeline
@@ -445,20 +527,18 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
       }
       else if (kind === "avatarSwitch") {
         const ev = data as AvatarSwitchEvent;
+        const liveWorld = currentWorldRef.current;
+        if (liveWorld?.instance_id && ev.instance_id && ev.instance_id !== liveWorld.instance_id) {
+          return;
+        }
+        if (liveWorld?.world_id && ev.world_id && ev.world_id !== liveWorld.world_id) {
+          return;
+        }
+        if (!activePlayersRef.current[ev.actor]) {
+          return;
+        }
         setActivePlayers(prev => {
-          if (!prev[ev.actor]) {
-             return {
-               ...prev,
-               [ev.actor]: {
-                 displayName: ev.actor,
-                 userId: null,
-                 joinTime: null,
-                 avatarIdOrName: ev.avatar_name,
-                 lastAvatarSwitchTime: ev.iso_time
-               }
-             };
-          }
-          return {
+          const next = {
             ...prev,
             [ev.actor]: {
               ...prev[ev.actor],
@@ -466,6 +546,8 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
               lastAvatarSwitchTime: ev.iso_time
             }
           };
+          activePlayersRef.current = next;
+          return next;
         });
         setAvatarChangeCount(prev => prev + 1);
         // Timeline
@@ -537,10 +619,18 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
           </p>
         </div>
         {/* Experimental badge */}
-        <Badge variant="outline" className="shrink-0 gap-1.5 border-amber-500/40 text-amber-500 bg-amber-500/5 text-[10px] font-medium px-2.5 py-1">
-          <AlertTriangle className="size-3" />
-          {t("radar.experimental", { defaultValue: "Experimental — log analysis only" })}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onToggleTimeline}>
+            {showTimeline
+              ? t("common.hide", { defaultValue: "Hide" })
+              : t("common.show", { defaultValue: "Show" })}{" "}
+            {t("radar.timeline.title", { defaultValue: "Session Timeline" })}
+          </Button>
+          <Badge variant="outline" className="shrink-0 gap-1.5 border-amber-500/40 text-amber-500 bg-amber-500/5 text-[10px] font-medium px-2.5 py-1">
+            <AlertTriangle className="size-3" />
+            {t("radar.experimental", { defaultValue: "Experimental — log analysis only" })}
+          </Badge>
+        </div>
       </header>
 
       {/* ── Session Stats Bar ──────────────────────────────────────────── */}
@@ -602,7 +692,7 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className={showTimeline ? "grid gap-4 md:grid-cols-[320px_minmax(0,1fr)_340px]" : "grid gap-4 md:grid-cols-[320px_minmax(0,1fr)]"}>
         {/* Left Column: Instance Info + Left Players */}
         <div className="flex flex-col gap-4">
           {/* ── World Instance Card with Banner ────────────────────────── */}
@@ -849,85 +939,83 @@ function RadarEngine({ onOpenHistory }: { onOpenHistory?: () => void }) {
         </Card>
 
         {/* ── Right Column: Session Timeline ──────────────────────────── */}
-        <Card className="flex flex-col min-h-[500px]">
-          <CardHeader className="py-3 border-b border-[hsl(var(--border))]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="size-4 text-[hsl(var(--primary))]" />
-                <CardTitle className="text-sm">{t("radar.timeline.title", { defaultValue: "Session Timeline" })}</CardTitle>
-              </div>
-              <Badge variant="secondary" className="font-mono text-[9px] h-4">
-                {timeline.length} {t("radar.timeline.events", { defaultValue: "events" })}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent 
-            className="p-0 flex-1 overflow-y-auto"
-            ref={timelineScrollRef}
-            onScroll={handleTimelineScroll}
-          >
-            {timeline.length === 0 ? (
-              <div className="h-full flex items-center justify-center flex-col gap-2 p-4">
-                <Clock className="size-8 text-[hsl(var(--muted-foreground)/0.2)]" />
-                <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                  {t("radar.timeline.empty", { defaultValue: "Events will appear here..." })}
-                </span>
-              </div>
-            ) : (
-              <div className="relative pl-6 pr-3 py-3">
-                {/* Vertical line */}
-                <div className="absolute left-[18px] top-3 bottom-3 w-px bg-[hsl(var(--border)/0.5)]" />
-
-                <div className="flex flex-col gap-0.5">
-                  {timeline.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="relative flex items-start gap-3 py-1.5 group hover:bg-[hsl(var(--muted)/0.15)] rounded-r-md px-1 -ml-1 transition-colors"
-                    >
-                      {/* Dot on the timeline */}
-                      <div className={`absolute -left-[13px] top-[9px] size-2 rounded-full ring-2 ring-[hsl(var(--card))] ${timelineDotClass(entry.kind)}`} />
-
-                      {/* Time label */}
-                      <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))] shrink-0 w-[42px] pt-0.5 tabular-nums">
-                        {entry.time}
-                      </span>
-
-                      {/* Content */}
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className={`shrink-0 ${
-                          entry.kind === "joined" ? "text-emerald-500" :
-                          entry.kind === "left" ? "text-red-500" :
-                          entry.kind === "avatarSwitch" ? "text-purple-500" :
-                          "text-blue-500"
-                        }`}>
-                          {timelineIcon(entry.kind)}
-                        </span>
-                        <span className="text-[11px] truncate">
-                          {entry.kind === "worldSwitch" ? (
-                            <span className="text-blue-400 font-medium">
-                              {t("radar.timeline.worldChanged", { defaultValue: "World changed" })}
-                            </span>
-                          ) : entry.kind === "avatarSwitch" ? (
-                            <>
-                              <span className="font-medium">{entry.actor}</span>
-                              <span className="text-[hsl(var(--muted-foreground))]"> → </span>
-                              <span className="italic text-purple-400">{entry.detail}</span>
-                            </>
-                          ) : (
-                            <span className={`font-medium ${entry.kind === "joined" ? "text-emerald-400" : "text-red-400"}`}>
-                              {entry.actor}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={timelineEndRef} />
+        {showTimeline ? (
+          <Card className="flex flex-col min-h-[500px]">
+            <CardHeader className="py-3 border-b border-[hsl(var(--border))]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="size-4 text-[hsl(var(--primary))]" />
+                  <CardTitle className="text-sm">{t("radar.timeline.title", { defaultValue: "Session Timeline" })}</CardTitle>
                 </div>
+                <Badge variant="secondary" className="font-mono text-[9px] h-4">
+                  {timeline.length} {t("radar.timeline.events", { defaultValue: "events" })}
+                </Badge>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent
+              className="p-0 flex-1 overflow-y-auto"
+              ref={timelineScrollRef}
+              onScroll={handleTimelineScroll}
+            >
+              {timeline.length === 0 ? (
+                <div className="h-full flex items-center justify-center flex-col gap-2 p-4">
+                  <Clock className="size-8 text-[hsl(var(--muted-foreground)/0.2)]" />
+                  <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                    {t("radar.timeline.empty", { defaultValue: "Events will appear here..." })}
+                  </span>
+                </div>
+              ) : (
+                <div className="relative pl-6 pr-3 py-3">
+                  <div className="absolute left-[18px] top-3 bottom-3 w-px bg-[hsl(var(--border)/0.5)]" />
+
+                  <div className="flex flex-col gap-0.5">
+                    {timeline.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="relative flex items-start gap-3 py-1.5 group hover:bg-[hsl(var(--muted)/0.15)] rounded-r-md px-1 -ml-1 transition-colors"
+                      >
+                        <div className={`absolute -left-[13px] top-[9px] size-2 rounded-full ring-2 ring-[hsl(var(--card))] ${timelineDotClass(entry.kind)}`} />
+
+                        <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))] shrink-0 w-[42px] pt-0.5 tabular-nums">
+                          {entry.time}
+                        </span>
+
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <span className={`shrink-0 ${
+                            entry.kind === "joined" ? "text-emerald-500" :
+                            entry.kind === "left" ? "text-red-500" :
+                            entry.kind === "avatarSwitch" ? "text-purple-500" :
+                            "text-blue-500"
+                          }`}>
+                            {timelineIcon(entry.kind)}
+                          </span>
+                          <span className="text-[11px] truncate">
+                            {entry.kind === "worldSwitch" ? (
+                              <span className="text-blue-400 font-medium">
+                                {t("radar.timeline.worldChanged", { defaultValue: "World changed" })}
+                              </span>
+                            ) : entry.kind === "avatarSwitch" ? (
+                              <>
+                                <span className="font-medium">{entry.actor}</span>
+                                <span className="text-[hsl(var(--muted-foreground))]"> → </span>
+                                <span className="italic text-purple-400">{entry.detail}</span>
+                              </>
+                            ) : (
+                              <span className={`font-medium ${entry.kind === "joined" ? "text-emerald-400" : "text-red-400"}`}>
+                                {entry.actor}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={timelineEndRef} />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   );
@@ -938,6 +1026,7 @@ export default function Radar() {
   const { status: vrcProcessStatus, loading } = useVrcProcess();
   const vrcRunning = loading ? null : vrcProcessStatus.running;
   const [tab, setTab] = useState<RadarTab>("live");
+  const [showTimeline, setShowTimeline] = useUiPrefBoolean("vrcsm.layout.radar.timeline.visible", true);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in pb-12">
@@ -994,7 +1083,11 @@ export default function Radar() {
           <p className="text-xs">游戏启动后在此实时监测房间与玩家动向</p>
         </div>
       ) : vrcRunning === null ? null : (
-        <RadarEngine onOpenHistory={() => setTab("history")} />
+        <RadarEngine
+          onOpenHistory={() => setTab("history")}
+          showTimeline={showTimeline}
+          onToggleTimeline={() => setShowTimeline((current) => !current)}
+        />
       )}
     </div>
   );

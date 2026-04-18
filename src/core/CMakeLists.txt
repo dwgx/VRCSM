@@ -24,6 +24,10 @@ add_library(vrcsm_core STATIC
     RateLimiter.cpp
     VrcApi.cpp
     Report.cpp
+    UnityBundle.cpp
+    UnitySerialized.cpp
+    UnityMesh.cpp
+    UnityPreview.cpp
 )
 
 target_include_directories(vrcsm_core PUBLIC
@@ -32,12 +36,16 @@ target_include_directories(vrcsm_core PUBLIC
 )
 
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
+find_package(lz4 CONFIG REQUIRED)
+find_package(LibLZMA REQUIRED)
 
 target_link_libraries(vrcsm_core PUBLIC
     nlohmann_json::nlohmann_json
     fmt::fmt
     spdlog::spdlog
     unofficial::sqlite3::sqlite3
+    lz4::lz4
+    LibLZMA::LibLZMA
 )
 
 if(MSVC)

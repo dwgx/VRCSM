@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "JunctionUtil.h"
+#include "PathProbe.h"
 #include "ProcessGuard.h"
 
 #include <algorithm>
@@ -107,6 +108,28 @@ Result<MigratePlan> Migrator::preflight(
     {
         const auto stats = sizeOf(source);
         plan.sourceBytes = stats.bytes;
+    }
+
+    const auto probe = PathProbe::Probe();
+    if (probe.baseDir.empty() || !ensureWithinBase(probe.baseDir, source))
+    {
+        plan.blockers.push_back("source path is outside the detected VRChat data directory");
+    }
+
+    auto normalizedSource = std::filesystem::absolute(source, ec);
+    if (ec) normalizedSource = source;
+    ec.clear();
+    auto normalizedTarget = std::filesystem::absolute(target, ec);
+    if (ec) normalizedTarget = target;
+    ec.clear();
+
+    if (_wcsicmp(normalizedSource.wstring().c_str(), normalizedTarget.wstring().c_str()) == 0)
+    {
+        plan.blockers.push_back("source and target must be different paths");
+    }
+    else if (ensureWithinBase(normalizedSource, normalizedTarget))
+    {
+        plan.blockers.push_back("target cannot be inside the source directory");
     }
 
     plan.sourceIsJunction = JunctionUtil::isReparsePoint(source);

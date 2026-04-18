@@ -9,13 +9,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Code2,
   ExternalLink,
   Github,
   Heart,
   MessageCircle,
   Users,
 } from "lucide-react";
+import { APP_ICON_URL, SPECIAL_THANKS_1033484989_URL } from "@/lib/assets";
 import { ipc } from "@/lib/ipc";
 import type { AppVersion } from "@/lib/types";
 
@@ -51,8 +51,15 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
         <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-6 py-5">
           <DialogHeader className="gap-3">
             <div className="flex items-start gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] text-[hsl(var(--primary))]">
-                <Code2 className="size-6" />
+              <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
+                <img
+                  src={APP_ICON_URL}
+                  alt="VRCSM"
+                  width={48}
+                  height={48}
+                  className="block size-12 object-cover"
+                  draggable={false}
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-[18px] font-semibold tracking-tight">
@@ -99,8 +106,23 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
                 <Heart className="size-3 text-[#C25B5B]" />
                 {t("about.specialThanks", { defaultValue: "Special Thanks" })}
               </div>
-              <div className="mt-1 text-[15px] font-semibold text-[hsl(var(--foreground))]">
-                嗯呐！！
+              <div className="mt-3 flex items-center gap-3">
+                <img
+                  src={SPECIAL_THANKS_1033484989_URL}
+                  alt="嗯呐！！"
+                  width={44}
+                  height={44}
+                  className="size-11 rounded-full border border-[hsl(var(--border))] object-cover"
+                  draggable={false}
+                />
+                <div className="min-w-0">
+                  <div className="text-[15px] font-semibold text-[hsl(var(--foreground))]">
+                    嗯呐！！
+                  </div>
+                  <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                    QQ 1033484989
+                  </div>
+                </div>
               </div>
               <div className="mt-2 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
                 {t("about.specialThanksBody", {

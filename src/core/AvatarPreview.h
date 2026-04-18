@@ -1,7 +1,9 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <string>
+#include <string_view>
 
 namespace vrcsm::core
 {
@@ -55,6 +57,17 @@ struct AvatarPreviewResult
 class AvatarPreview
 {
 public:
+    using ProgressCallback = std::function<void(std::string_view phase, std::string_view message)>;
+
+    /// Deterministic cache key for a given `avtr_*` id. The key is safe to
+    /// use as a filename stem and changes whenever the preview cache schema
+    /// version changes.
+    static std::string CacheKeyForAvatarId(std::string_view avatarId);
+
+    /// Absolute path to the cached GLB for a given avatar id under
+    /// `%LocalAppData%\VRCSM\preview-cache`.
+    static std::filesystem::path CachedGlbPathForAvatarId(std::string_view avatarId);
+
     /// Best-effort preview pipeline for a single avatar. `avatarId`
     /// is the `avtr_*` UUID string; `vrchatBaseDir` is the VRChat
     /// `LocalLow\VRChat\VRChat` directory where Cache-WindowsPlayer
@@ -65,7 +78,9 @@ public:
     static AvatarPreviewResult Request(
         const std::string& avatarId,
         const std::filesystem::path& vrchatBaseDir,
-        const std::string& assetUrl = "");
+        const std::string& assetUrl = "",
+        const std::string& bundlePath = "",
+        ProgressCallback progress = {});
 
     /// Cancellation-aware variant. Uses `queue` for child process
     /// management (Job Object, concurrency=1) and checks `token` at
@@ -75,8 +90,10 @@ public:
         const std::string& avatarId,
         const std::filesystem::path& vrchatBaseDir,
         const std::string& assetUrl,
+        const std::string& bundlePath,
         TaskQueue& queue,
-        const TaskToken& token);
+        const TaskToken& token,
+        ProgressCallback progress = {});
 
     /// Directory where converted glbs land.
     /// `%LocalAppData%\VRCSM\preview-cache`. Created on first access.

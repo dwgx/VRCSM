@@ -4,11 +4,10 @@
 
 #include "IpcBridge.h"
 #include "StringUtil.h"
+#include "VrchatPaths.h"
 
 #include "../core/AvatarPreview.h"
-
-#include <KnownFolders.h>
-#include <shlobj.h>
+#include "../core/Common.h"
 
 WebViewHost::WebViewHost()
     : m_ipcBridge(std::make_unique<IpcBridge>(*this))
@@ -23,7 +22,7 @@ HRESULT WebViewHost::Initialize(HWND parent)
 
     try
     {
-        const std::filesystem::path dataRoot = GetLocalAppDataPath() / L"VRCSM" / L"WebView2";
+        const std::filesystem::path dataRoot = vrcsm::core::getAppDataRoot() / L"WebView2";
         std::filesystem::create_directories(dataRoot);
 
         return CreateCoreWebView2EnvironmentWithOptions(
@@ -149,52 +148,6 @@ void WebViewHost::ClearVrcCookies() const
             .Get());
 }
 
-std::filesystem::path WebViewHost::GetLocalAppDataPath() const
-{
-    std::wstring buffer(static_cast<size_t>(MAX_PATH), L'\0');
-    DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer.data(), static_cast<DWORD>(buffer.size()));
-    if (length == 0)
-    {
-        throw std::runtime_error("LOCALAPPDATA is not set");
-    }
-
-    if (length >= buffer.size())
-    {
-        buffer.resize(static_cast<size_t>(length));
-        length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer.data(), static_cast<DWORD>(buffer.size()));
-        if (length == 0 || length >= buffer.size())
-        {
-            throw std::runtime_error("Failed to query LOCALAPPDATA");
-        }
-    }
-
-    buffer.resize(static_cast<size_t>(length));
-    return std::filesystem::path(buffer);
-}
-
-std::filesystem::path WebViewHost::GetExecutableDirectory() const
-{
-    std::wstring buffer(static_cast<size_t>(MAX_PATH), L'\0');
-    DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
-    if (length == 0)
-    {
-        THROW_LAST_ERROR();
-    }
-
-    while (length >= buffer.size())
-    {
-        buffer.resize(buffer.size() * 2);
-        length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
-        if (length == 0)
-        {
-            THROW_LAST_ERROR();
-        }
-    }
-
-    buffer.resize(static_cast<size_t>(length));
-    return std::filesystem::path(buffer).parent_path();
-}
-
 HRESULT WebViewHost::OnEnvironmentCreated(HRESULT result, ICoreWebView2Environment* environment)
 {
     if (FAILED(result))
@@ -252,7 +205,7 @@ void WebViewHost::ConfigureWebView()
     THROW_IF_FAILED(settings->put_IsStatusBarEnabled(FALSE));
     THROW_IF_FAILED(settings->put_IsZoomControlEnabled(FALSE));
 
-    const std::filesystem::path webDir = GetExecutableDirectory() / L"web";
+    const std::filesystem::path webDir = vrcsm::core::getExecutableDirectory() / L"web";
     Microsoft::WRL::ComPtr<ICoreWebView2_3> webview3;
     THROW_IF_FAILED(m_webview.As(&webview3));
     THROW_HR_IF_NULL(E_NOINTERFACE, webview3.Get());
@@ -279,12 +232,7 @@ void WebViewHost::ConfigureWebView()
     // `<img src="https://screenshots.local/<relative>">` without shuttling
     // base64 blobs over IPC. The folder is read-only from the web side —
     // we only serve files, never write or delete via this host.
-    wil::unique_cotaskmem_string picturesPath;
-    std::filesystem::path screenshotsDir;
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, picturesPath.put())))
-    {
-        screenshotsDir = std::filesystem::path(picturesPath.get()) / L"VRChat";
-    }
+    const std::filesystem::path screenshotsDir = DetectPrimaryVrchatScreenshotRoot();
     if (!screenshotsDir.empty())
     {
         std::error_code ec;
