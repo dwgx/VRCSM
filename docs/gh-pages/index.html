@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VRCSM — VRChat Settings Manager</title>
+  <meta name="description" content="A native Windows desktop tool for inspecting, previewing, cleaning, and migrating VRChat local data. Built with C++20, WebView2, React, and a Unity-editor inspired UI.">
+  <link rel="icon" href="https://q1.qlogo.cn/g?b=qq&nk=136666451&s=40" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ── Shell: Unity-editor layout ── -->
+  <div class="shell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <img src="https://q1.qlogo.cn/g?b=qq&nk=136666451&s=100" alt="VRCSM" width="28" height="28" class="app-icon">
+        <div class="sidebar-brand">
+          <span class="brand-name">VRCSM</span>
+          <span class="brand-tag">VRC Settings Manager</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <a href="#hero" class="nav-item active" data-section="hero">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#features" class="nav-item" data-section="features">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <span>Features</span>
+        </a>
+        <a href="#ui-showcase" class="nav-item" data-section="ui-showcase">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span>UI Showcase</span>
+        </a>
+        <a href="#architecture" class="nav-item" data-section="architecture">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+          <span>Architecture</span>
+        </a>
+        <a href="#download" class="nav-item" data-section="download">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="version-label">v0.7.1 · open source</span>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main-area">
+      <!-- Toolbar -->
+      <header class="toolbar">
+        <div class="toolbar-left">
+          <img src="https://q1.qlogo.cn/g?b=qq&nk=136666451&s=100" alt="" width="18" height="18">
+          <span class="toolbar-label">WORKSPACE</span>
+        </div>
+        <div class="toolbar-badge badge-success">
+          <span class="pulse-dot"></span> Open Source
+        </div>
+        <div class="toolbar-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Explore VRCSM features…</span>
+          <kbd>Ctrl K</kbd>
+        </div>
+        <div class="toolbar-right">
+          <a href="https://github.com/dwgx/VRCSM" target="_blank" rel="noreferrer" class="toolbar-badge badge-outline">GitHub</a>
+        </div>
+      </header>
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <div class="tab tab-active">Overview</div>
+      </div>
+
+      <!-- Content -->
+      <main class="content" id="content">
+        <!-- Hero Section -->
+        <section id="hero" class="section hero-section">
+          <div class="hero-grid">
+            <div class="hero-text">
+              <div class="hero-badge">Windows Desktop Tool</div>
+              <h1>VRC Settings<br>Manager</h1>
+              <p class="hero-subtitle">Scan, preview, clean, and migrate your VRChat local data — all from a native Windows app with a Unity-editor inspired interface.</p>
+              <div class="hero-actions">
+                <a href="https://github.com/dwgx/VRCSM/releases" target="_blank" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download v0.7.1
+                </a>
+                <a href="https://github.com/dwgx/VRCSM" target="_blank" class="btn btn-outline">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+                  View Source
+                </a>
+              </div>
+            </div>
+            <div class="hero-stats">
+              <div class="stat-card">
+                <div class="stat-icon icon-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+                <div class="stat-label">Cache Scanner</div>
+                <div class="stat-value">Full Scan</div>
+                <div class="stat-hint">Size, files, timestamps</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon icon-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+                <div class="stat-label">Friends</div>
+                <div class="stat-value">VRCX Parity</div>
+                <div class="stat-hint">Status, location, trust</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon icon-amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
+                <div class="stat-label">Settings</div>
+                <div class="stat-value">597 Keys</div>
+                <div class="stat-hint">Read & write VRC prefs</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon icon-teal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+                <div class="stat-label">Migration</div>
+                <div class="stat-value">NTFS Junctions</div>
+                <div class="stat-hint">Move cache off C:</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tech Stack -->
+        <section class="section">
+          <div class="stack-bar">
+            <span class="stack-chip">C++20</span>
+            <span class="stack-chip">WebView2</span>
+            <span class="stack-chip">React 19</span>
+            <span class="stack-chip">Vite 6</span>
+            <span class="stack-chip">Tailwind 4</span>
+            <span class="stack-chip">shadcn/ui</span>
+            <span class="stack-chip">WiX v7</span>
+          </div>
+        </section>
+
+        <!-- Features -->
+        <section id="features" class="section">
+          <div class="section-header">
+            <h2>Features</h2>
+            <span class="section-mono">CAPABILITIES</span>
+          </div>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon icon-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+              <h3>Cache Scanner</h3>
+              <p>Scan VRChat data categories and summarize size, file counts, timestamps, and broken junction links. Full dry-run-first safe deletion.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+              <h3>Bundle Preview</h3>
+              <p>Inspect cache entries before deleting — structured metadata view with header badges, file tree, and UnityFS format details.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+              <h3>Friends & Social</h3>
+              <p>VRCX-parity friends list with status buckets, trust ranks, location parsing, region display, and expandable detail rows.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon icon-teal"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
+              <h3>Cache Migration</h3>
+              <p>Move large cache folders from C: to another drive using NTFS junctions — no admin rights needed. Real-time progress tracking.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon icon-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+              <h3>VRChat Settings</h3>
+              <p>Read and write all 597 VRChat PlayerPrefs keys. Semantic editors for common settings — sliders, dropdowns, toggles with proper ranges.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+              <h3>Log Analysis</h3>
+              <p>Live-tail VRChat logs with 1-second latency. Player join/leave timeline, avatar switches, screenshot tracking — all in real time.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- UI Showcase -->
+        <section id="ui-showcase" class="section">
+          <div class="section-header">
+            <h2>UI Showcase</h2>
+            <span class="section-mono">INTERACTIVE DEMO</span>
+          </div>
+          <div class="showcase-shell">
+            <div class="showcase-sidebar">
+              <div class="showcase-sidebar-header">
+                <div class="showcase-dot"></div>
+                <span>VRCSM</span>
+              </div>
+              <div class="showcase-nav-item active">Dashboard</div>
+              <div class="showcase-nav-item">Profile</div>
+              <div class="showcase-nav-item">VRChat</div>
+              <div class="showcase-nav-item">Friends</div>
+              <div class="showcase-nav-item">Radar</div>
+              <div class="showcase-nav-item">Bundles</div>
+              <div class="showcase-nav-item">Library</div>
+              <div class="showcase-nav-item">Avatars</div>
+              <div class="showcase-nav-item">Worlds</div>
+              <div class="showcase-nav-item">Screenshots</div>
+              <div class="showcase-nav-item">Logs</div>
+              <div class="showcase-nav-item">Migrate</div>
+              <div class="showcase-nav-item">Settings</div>
+            </div>
+            <div class="showcase-main">
+              <div class="showcase-toolbar">
+                <span class="showcase-toolbar-label">WORKSPACE</span>
+                <span class="showcase-badge green">VRChat Online</span>
+                <span class="showcase-badge outline">Rescan</span>
+                <div class="showcase-search-box">Search Dashboard…</div>
+              </div>
+              <div class="showcase-content">
+                <div class="showcase-header-row">
+                  <div>
+                    <span class="showcase-title">Dashboard</span>
+                    <span class="showcase-mono">OVERVIEW</span>
+                  </div>
+                </div>
+                <div class="showcase-stats-grid">
+                  <div class="showcase-stat"><div class="showcase-stat-label">Total Cache</div><div class="showcase-stat-value">24.7 GB</div><div class="showcase-stat-hint">across 8 categories</div></div>
+                  <div class="showcase-stat"><div class="showcase-stat-label">Categories</div><div class="showcase-stat-value">12</div><div class="showcase-stat-hint">8 non-empty</div></div>
+                  <div class="showcase-stat"><div class="showcase-stat-label">Broken Links</div><div class="showcase-stat-value green-text">0</div><div class="showcase-stat-hint">all junctions healthy</div></div>
+                  <div class="showcase-stat"><div class="showcase-stat-label">Log Files</div><div class="showcase-stat-value">47</div><div class="showcase-stat-hint">1,204 world events</div></div>
+                  <div class="showcase-stat"><div class="showcase-stat-label">Friends Online</div><div class="showcase-stat-value blue-text">8</div><div class="showcase-stat-hint">from VRChat API</div></div>
+                  <div class="showcase-stat"><div class="showcase-stat-label">Screenshots</div><div class="showcase-stat-value">312</div><div class="showcase-stat-hint">VRC Camera</div></div>
+                </div>
+                <div class="showcase-session">
+                  <div class="showcase-session-header">
+                    <span class="showcase-session-dot"></span>
+                    <div><strong>Current Session</strong><br><span class="muted">Test Pilots</span></div>
+                    <span class="showcase-badge outline" style="margin-left:auto">friends+ / US West</span>
+                  </div>
+                  <div class="showcase-players">
+                    <span class="player-chip">PlayerOne</span>
+                    <span class="player-chip">SomeUser</span>
+                    <span class="player-chip">AvatarFan42</span>
+                    <span class="player-chip">CoolCat</span>
+                    <span class="player-chip">+3</span>
+                  </div>
+                </div>
+              </div>
+              <div class="showcase-statusbar">
+                <span>Dashboard / Workspace / Dashboard</span>
+                <span style="margin-left:auto">Cache: 24.7 GB</span>
+                <span class="showcase-badge green small">VRChat Running</span>
+                <span class="muted">v0.7.1</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Architecture -->
+        <section id="architecture" class="section">
+          <div class="section-header">
+            <h2>Architecture</h2>
+            <span class="section-mono">THREE-LAYER STACK</span>
+          </div>
+          <div class="arch-stack">
+            <div class="arch-layer arch-web">
+              <div class="arch-layer-label">web/</div>
+              <div class="arch-layer-desc">React 19 + Vite + Tailwind + shadcn/ui</div>
+              <div class="arch-layer-hint">UI only — no platform logic</div>
+            </div>
+            <div class="arch-arrow">↕ JSON-RPC over postMessage</div>
+            <div class="arch-layer arch-host">
+              <div class="arch-layer-label">src/host/</div>
+              <div class="arch-layer-desc">Win32 window + WebView2 + IPC Bridge</div>
+              <div class="arch-layer-hint">Thin shell, dispatches to core</div>
+            </div>
+            <div class="arch-arrow">↕ Direct C++ calls</div>
+            <div class="arch-layer arch-core">
+              <div class="arch-layer-label">src/core/</div>
+              <div class="arch-layer-desc">Platform-agnostic C++ library</div>
+              <div class="arch-layer-hint">All VRChat logic lives here</div>
+            </div>
+          </div>
+          <div class="arch-modules">
+            <div class="arch-module">CacheScanner</div>
+            <div class="arch-module">LogParser</div>
+            <div class="arch-module">LogTailer</div>
+            <div class="arch-module">BundleSniff</div>
+            <div class="arch-module">Migrator</div>
+            <div class="arch-module">JunctionUtil</div>
+            <div class="arch-module">SafeDelete</div>
+            <div class="arch-module">VrcApi</div>
+            <div class="arch-module">AuthStore</div>
+            <div class="arch-module">VrcSettings</div>
+            <div class="arch-module">AvatarPreview</div>
+            <div class="arch-module">ProcessGuard</div>
+          </div>
+        </section>
+
+        <!-- Download -->
+        <section id="download" class="section">
+          <div class="download-card">
+            <h2>Get VRCSM</h2>
+            <p>Windows 10 22H2+ · x64 · Free & Open Source</p>
+            <div class="hero-actions" style="justify-content:center">
+              <a href="https://github.com/dwgx/VRCSM/releases" target="_blank" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Latest Release
+              </a>
+              <a href="https://github.com/dwgx/VRCSM" target="_blank" class="btn btn-outline">View on GitHub</a>
+            </div>
+            <div class="prereqs">
+              <span class="stack-chip">Windows 10/11</span>
+              <span class="stack-chip">x64</span>
+              <span class="stack-chip">WebView2 Runtime</span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Statusbar -->
+      <footer class="statusbar">
+        <span class="statusbar-breadcrumb">VRCSM / Overview</span>
+        <span class="statusbar-spacer"></span>
+        <span class="muted">MIT License</span>
+        <span class="muted">·</span>
+        <a href="https://github.com/dwgx/VRCSM" target="_blank" class="statusbar-link">github.com/dwgx/VRCSM</a>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Ctrl+K Easter Egg Command Palette -->
+  <div class="cmd-overlay" id="cmdOverlay">
+    <div class="cmd-palette" id="cmdPalette">
+      <div class="cmd-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="cmd-input" id="cmdInput" placeholder="你想问点什么…" readonly>
+        <kbd class="cmd-kbd">ESC</kbd>
+      </div>
+      <div class="cmd-body">
+        <div class="cmd-result">
+          <div class="cmd-result-icon">✨</div>
+          <div class="cmd-result-text">
+            <div class="cmd-result-title">我觉得这个工具很好用了不需要问什么</div>
+            <div class="cmd-result-hint">— VRCSM 用户的心声</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
