@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type MutableRefObject,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -49,11 +48,15 @@ interface PreparedSceneMeta {
 
 const DISABLED_MOUSE_BUTTON = -1 as THREE.MOUSE;
 
-function applyControlsMode(controls: any, shiftPanning: boolean) {
+// OrbitControls' built-in behaviour: when LEFT=ROTATE and the user holds
+// Shift (or Ctrl/Meta) during pointerdown, it *automatically* swaps to PAN
+// for that gesture. Mutating LEFT→PAN on our side actually inverts that —
+// OrbitControls then swaps back to ROTATE on Shift+LMB. So we keep LEFT
+// pinned to ROTATE and let drei handle the modifier. `shiftPanning` state
+// survives only to drive the UI badge, not the controls.
+function applyControlsMode(controls: any) {
   if (!controls) return;
-  controls.mouseButtons.LEFT = shiftPanning
-    ? THREE.MOUSE.PAN
-    : THREE.MOUSE.ROTATE;
+  controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
   controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
   controls.mouseButtons.MIDDLE = DISABLED_MOUSE_BUTTON;
   controls.enablePan = true;
@@ -539,35 +542,32 @@ function GroundGrid({ visible }: { visible: boolean }) {
 function PreviewCameraRig({
   sceneMeta,
   fitTick,
-  shiftPanning,
-  controlsExternalRef,
+  onControlsReady,
   onSettled,
 }: {
   sceneMeta: PreparedSceneMeta | null;
   fitTick: number;
-  shiftPanning: boolean;
-  controlsExternalRef: React.MutableRefObject<any | null>;
+  onControlsReady: (controls: any | null) => void;
   onSettled: () => void;
 }) {
   const { camera, invalidate } = useThree();
   const controlsRef = useRef<any>(null);
   const onSettledRef = useRef(onSettled);
   onSettledRef.current = onSettled;
+  const onControlsReadyRef = useRef(onControlsReady);
+  onControlsReadyRef.current = onControlsReady;
 
-  // Separate effect for shift-panning mode — does NOT touch camera position
+  // Controls handoff — runs on mount/unmount for this specific rig. Each
+  // PreviewViewport owns its own controls instance so inline + expanded
+  // modal never fight over a shared ref. Mode is a one-shot init now
+  // because LEFT stays on ROTATE forever (Shift→PAN is OrbitControls' job).
   useLayoutEffect(() => {
-    applyControlsMode(controlsRef.current, shiftPanning);
-  }, [shiftPanning]);
-
-  // Controls ref assignment (stable — only runs on mount/unmount)
-  useLayoutEffect(() => {
-    controlsExternalRef.current = controlsRef.current;
+    applyControlsMode(controlsRef.current);
+    onControlsReadyRef.current(controlsRef.current);
     return () => {
-      if (controlsExternalRef.current === controlsRef.current) {
-        controlsExternalRef.current = null;
-      }
+      onControlsReadyRef.current(null);
     };
-  }, [controlsExternalRef]);
+  }, []);
 
   // Camera framing — only runs when the scene geometry or fitTick changes
   useLayoutEffect(() => {
@@ -681,17 +681,10 @@ function PreviewViewport({
   setMode,
   fitTick,
   onFit,
-  shiftPanning,
   sceneMeta,
   onPrepared,
-  onPointerDownCapture,
-  onPointerUpCapture,
-  onMouseDownCapture,
-  onMouseUpCapture,
-  onAuxClickCapture,
   onExpand,
   showExpand,
-  controlsExternalRef,
 }: {
   url: string;
   size: number;
@@ -699,17 +692,10 @@ function PreviewViewport({
   setMode: (mode: PreviewMode) => void;
   fitTick: number;
   onFit: () => void;
-  shiftPanning: boolean;
   sceneMeta: PreparedSceneMeta | null;
   onPrepared: (meta: PreparedSceneMeta) => void;
-  onPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void;
-  onPointerUpCapture: (event: React.PointerEvent<HTMLDivElement>) => void;
-  onMouseDownCapture: (event: React.MouseEvent<HTMLDivElement>) => void;
-  onMouseUpCapture: (event: React.MouseEvent<HTMLDivElement>) => void;
-  onAuxClickCapture: (event: React.MouseEvent<HTMLDivElement>) => void;
   onExpand?: () => void;
   showExpand: boolean;
-  controlsExternalRef: MutableRefObject<any | null>;
 }) {
   const { t } = useTranslation();
   const canvasStyle = useMemo<CSSProperties>(
@@ -725,6 +711,104 @@ function PreviewViewport({
   const showTextureNote = size >= 280;
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [cameraReady, setCameraReady] = useState(false);
+
+  // Pure UI state — drives the "Pan mode" badge only. The actual
+  // controls-mode swap is handled internally by OrbitControls because
+  // LEFT stays on ROTATE and it auto-switches to PAN when Shift is held.
+  const [shiftPanning, setShiftPanning] = useState(false);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Shift") return;
+      setShiftPanning(true);
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== "Shift") return;
+      setShiftPanning(false);
+    };
+    const onBlur = () => setShiftPanning(false);
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+
+    // Also listen on the wrapper so modal portals (which may trap focus
+    // away from the window root) still receive the events reliably.
+    if (wrapper) {
+      wrapper.addEventListener("keydown", onKeyDown);
+      wrapper.addEventListener("keyup", onKeyUp);
+    }
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+      if (wrapper) {
+        wrapper.removeEventListener("keydown", onKeyDown);
+        wrapper.removeEventListener("keyup", onKeyUp);
+      }
+    };
+  }, []);
+
+  const handleControlsReady = useCallback((_controls: any | null) => {
+    // Nothing to do — PreviewCameraRig already applied the static mode.
+  }, []);
+
+  const handlePointerDownCapture = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button === 1) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      // Mirror pointer-time shiftKey into the badge state so it lights up
+      // even if the user mouse-dragged before the keydown event arrived
+      // (e.g., focus was elsewhere).
+      if (event.button === 0 && event.shiftKey) {
+        setShiftPanning(true);
+      }
+    },
+    [],
+  );
+
+  const handlePointerUpCapture = useCallback(
+    (_event: ReactPointerEvent<HTMLDivElement>) => {
+      // No mode-swap work left — OrbitControls already released the gesture.
+    },
+    [],
+  );
+
+  const handleMouseDownCapture = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (event.button === 1) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    [],
+  );
+
+  const handleMouseUpCapture = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (event.button === 1) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    [],
+  );
+
+  const handleAuxClickCapture = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (event.button === 1) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     setCameraReady(false);
@@ -766,11 +850,11 @@ function PreviewViewport({
       className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] select-none"
       style={{ width: size, height: size, touchAction: "none" }}
       onContextMenu={(event) => event.preventDefault()}
-      onPointerDownCapture={onPointerDownCapture}
-      onPointerUpCapture={onPointerUpCapture}
-      onMouseDownCapture={onMouseDownCapture}
-      onMouseUpCapture={onMouseUpCapture}
-      onAuxClickCapture={onAuxClickCapture}
+      onPointerDownCapture={handlePointerDownCapture}
+      onPointerUpCapture={handlePointerUpCapture}
+      onMouseDownCapture={handleMouseDownCapture}
+      onMouseUpCapture={handleMouseUpCapture}
+      onAuxClickCapture={handleAuxClickCapture}
     >
       <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
         <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
@@ -891,8 +975,7 @@ function PreviewViewport({
           <PreviewCameraRig
             sceneMeta={sceneMeta}
             fitTick={fitTick}
-            shiftPanning={shiftPanning}
-            controlsExternalRef={controlsExternalRef}
+            onControlsReady={handleControlsReady}
             onSettled={() => setCameraReady(true)}
           />
         </Suspense>
@@ -915,17 +998,9 @@ function AvatarPreviewSurface({
   const { t } = useTranslation();
   const [mode, setMode] = useState<PreviewMode>("textured");
   const [fitTick, setFitTick] = useState(0);
-  const [shiftPanning, setShiftPanning] = useState(false);
   const [sceneMeta, setSceneMeta] = useState<PreparedSceneMeta | null>(null);
   const [expanded, setExpanded] = useState(false);
   const lastPreparedKey = useRef<string>("");
-  const controlsRef = useRef<any>(null);
-  const shiftPressedRef = useRef(false);
-  const leftPointerDownRef = useRef(false);
-  const syncControlsMode = useCallback((next: boolean) => {
-    setShiftPanning(next);
-    applyControlsMode(controlsRef.current, next);
-  }, []);
 
   const handlePrepared = useCallback((meta: PreparedSceneMeta) => {
     const key = [
@@ -953,111 +1028,6 @@ function AvatarPreviewSurface({
     setFitTick((value) => value + 1);
   }, [url]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Shift") {
-        shiftPressedRef.current = true;
-        if (!leftPointerDownRef.current) {
-          setShiftPanning(true);
-        }
-      }
-    };
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (event.key === "Shift") {
-        shiftPressedRef.current = false;
-        if (leftPointerDownRef.current) {
-          syncControlsMode(false);
-        } else {
-          setShiftPanning(false);
-        }
-      }
-    };
-    const onBlur = () => {
-      shiftPressedRef.current = false;
-      leftPointerDownRef.current = false;
-      syncControlsMode(false);
-    };
-    const onPointerRelease = () => {
-      if (!leftPointerDownRef.current) return;
-      leftPointerDownRef.current = false;
-      syncControlsMode(false);
-      setShiftPanning(shiftPressedRef.current);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("pointerup", onPointerRelease);
-    window.addEventListener("pointercancel", onPointerRelease);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("pointerup", onPointerRelease);
-      window.removeEventListener("pointercancel", onPointerRelease);
-    };
-  }, [syncControlsMode]);
-
-  const handlePointerDownCapture = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button === 1) {
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-
-      if (event.button === 0) {
-        leftPointerDownRef.current = true;
-        shiftPressedRef.current = event.shiftKey;
-        syncControlsMode(event.shiftKey);
-      }
-    },
-    [syncControlsMode],
-  );
-
-  const handlePointerUpCapture = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button === 0) {
-        leftPointerDownRef.current = false;
-        shiftPressedRef.current = event.shiftKey;
-        syncControlsMode(false);
-        setShiftPanning(event.shiftKey);
-      }
-    },
-    [syncControlsMode],
-  );
-
-  const handleMouseDownCapture = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      if (event.button === 1) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    },
-    [],
-  );
-
-  const handleMouseUpCapture = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      if (event.button === 1) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    },
-    [],
-  );
-
-  const handleAuxClickCapture = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      if (event.button === 1) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    },
-    [],
-  );
-
   const preview = (
     <PreviewViewport
       url={url}
@@ -1066,17 +1036,10 @@ function AvatarPreviewSurface({
       setMode={setMode}
       fitTick={fitTick}
       onFit={() => setFitTick((value) => value + 1)}
-      shiftPanning={shiftPanning}
       sceneMeta={sceneMeta}
       onPrepared={handlePrepared}
-      onPointerDownCapture={handlePointerDownCapture}
-      onPointerUpCapture={handlePointerUpCapture}
-      onMouseDownCapture={handleMouseDownCapture}
-      onMouseUpCapture={handleMouseUpCapture}
-      onAuxClickCapture={handleAuxClickCapture}
       onExpand={enableExpand ? () => setExpanded(true) : undefined}
       showExpand={enableExpand}
-      controlsExternalRef={controlsRef}
     />
   );
 
@@ -1110,16 +1073,9 @@ function AvatarPreviewSurface({
               setMode={setMode}
               fitTick={fitTick}
               onFit={() => setFitTick((value) => value + 1)}
-              shiftPanning={shiftPanning}
               sceneMeta={sceneMeta}
               onPrepared={handlePrepared}
-              onPointerDownCapture={handlePointerDownCapture}
-              onPointerUpCapture={handlePointerUpCapture}
-              onMouseDownCapture={handleMouseDownCapture}
-              onMouseUpCapture={handleMouseUpCapture}
-              onAuxClickCapture={handleAuxClickCapture}
               showExpand={false}
-              controlsExternalRef={controlsRef}
             />
           </div>
         </DialogContent>

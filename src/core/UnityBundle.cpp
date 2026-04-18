@@ -3,6 +3,7 @@
 #include "Common.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <string_view>
@@ -199,10 +200,17 @@ std::vector<std::uint8_t> decompressBlock(
             return {};
         }
 
-        lzma_options_lzma opts{};
+        // lzma_properties_decode() allocates a fresh lzma_options_lzma via
+        // the allocator (malloc when allocator is null) and overwrites
+        // propsFilter.options with the pointer — it does NOT populate any
+        // caller-provided struct. Passing a stack `opts` here and then
+        // handing `&opts` to the decoder would feed it a zero-initialised
+        // options struct (dict_size=lc=lp=pb=0), so every real stream
+        // decodes as LZMA_DATA_ERROR. Use propsFilter.options directly
+        // and free it after the decoder is done.
         lzma_filter propsFilter{};
         propsFilter.id = LZMA_FILTER_LZMA1;
-        propsFilter.options = &opts;
+        propsFilter.options = nullptr;
         if (lzma_properties_decode(&propsFilter, nullptr, src, 5) != LZMA_OK)
         {
             spdlog::error("UnityBundle: lzma_properties_decode failed");
@@ -210,7 +218,7 @@ std::vector<std::uint8_t> decompressBlock(
         }
 
         lzma_filter filters[2] = {
-            { LZMA_FILTER_LZMA1, &opts },
+            { LZMA_FILTER_LZMA1, propsFilter.options },
             { LZMA_VLI_UNKNOWN, nullptr },
         };
 
@@ -218,6 +226,7 @@ std::vector<std::uint8_t> decompressBlock(
         if (lzma_raw_decoder(&strm, filters) != LZMA_OK)
         {
             spdlog::error("UnityBundle: lzma_raw_decoder init failed");
+            free(propsFilter.options);
             return {};
         }
 
@@ -230,6 +239,7 @@ std::vector<std::uint8_t> decompressBlock(
         const lzma_ret ret = lzma_code(&strm, LZMA_FINISH);
         const auto producedOut = strm.total_out;
         lzma_end(&strm);
+        free(propsFilter.options);
 
         if (ret != LZMA_STREAM_END && ret != LZMA_OK)
         {
