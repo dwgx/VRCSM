@@ -1,21 +1,104 @@
-MIT License
+VRCSM Source-Available License (VSAL)
+版权所有 (C) 2026 dwgx (somdhmtb@gmail.com / QQ 136666451)
+All Rights Reserved.
 
-Copyright (c) 2026 dwgx
+This software is published source-available for transparency and personal
+study. It is NOT open source. The author retains all rights not expressly
+granted below.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+================================================================================
+1. WHAT YOU MAY DO
+================================================================================
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+   a. Read, audit, and learn from the source code.
+   b. Download and run unmodified builds from the official GitHub Releases
+      page (https://github.com/dwgx/VRCSM/releases) for personal,
+      non-commercial use.
+   c. Build the source locally for personal, non-commercial use, provided
+      the build is not redistributed.
+   d. Submit issues, suggestions, and pull requests to the official
+      repository. Accepted contributions become part of this project under
+      the same license; contributors retain copyright on their additions
+      but grant the project author a perpetual, irrevocable license to
+      use, sublicense, and re-license those additions.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+================================================================================
+2. WHAT YOU MAY NOT DO (without prior written permission from the author)
+================================================================================
+
+   a. Redistribute the source code, in whole or in part, original or
+      modified, in any form (mirror, fork upload, repackaging, "educational
+      copy", etc.).
+   b. Redistribute compiled binaries, installers, or any derivative build
+      artifacts.
+   c. Modify the source code and publish, share, host, or distribute the
+      modified version (including private forks made public).
+   d. Sell, sublicense, lease, rent, or otherwise commercially exploit the
+      software, the source code, the compiled binaries, the installer, or
+      any artwork, icons, branding, or assets bundled with it.
+   e. Remove, alter, obscure, or replace this license, the copyright
+      notice, the author's name, the project name "VRCSM", or any
+      attribution.
+   f. Use the project name, author name, or branding to endorse or promote
+      derivative or unrelated products.
+   g. Use this software, in whole or in part, to train, fine-tune, or
+      evaluate machine learning models without prior written permission.
+   h. Use this software for any activity that violates the VRChat Terms of
+      Service, applicable laws, or the rights of any third party.
+
+================================================================================
+3. NO WARRANTY
+================================================================================
+
+   THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, DATA
+   LOSS, ACCOUNT BAN, OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+   CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION
+   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+================================================================================
+4. THIRD-PARTY COMPONENTS
+================================================================================
+
+   This project bundles or links third-party libraries (WebView2, React,
+   Vite, Tailwind, shadcn/ui, nlohmann/json, fmt, spdlog, WiX, etc.) which
+   remain governed by their own respective licenses. Nothing in this
+   document overrides those upstream licenses.
+
+================================================================================
+5. TERMINATION
+================================================================================
+
+   Any violation of the above terms automatically and immediately
+   terminates the rights granted to you under this license. Upon
+   termination you must cease all use and destroy all copies in your
+   possession.
+
+================================================================================
+6. CONTACT FOR PERMISSION
+================================================================================
+
+   For commercial licensing, redistribution permission, or any use not
+   covered above, contact:
+
+       Author : dwgx
+       Email  : somdhmtb@gmail.com
+       QQ     : 136666451
+       Group  : 901738883
+
+================================================================================
+中文摘要 (CHINESE SUMMARY — non-binding; the English text above is authoritative)
+================================================================================
+
+本软件源代码公开仅供学习与审计，不属于开源软件，作者保留所有权利。
+未经作者书面授权，任何人不得：
+  (1) 转载、镜像、重新打包源代码或二进制文件；
+  (2) 修改后再发布；
+  (3) 出售、转售、商用；
+  (4) 移除版权署名；
+  (5) 用于训练 AI 模型；
+  (6) 用于违反 VRChat 服务条款或法律的活动。
+仅允许个人非商业使用，欢迎在原仓库提交 Issue / Pull Request。
+如需授权，请联系 somdhmtb@gmail.com / QQ 136666451。

@@ -1,0 +1,52 @@
+# Normalize line endings
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.icns binary
+*.zip binary
+*.msi binary
+*.exe binary
+*.dll binary
+*.pdb binary
+*.lib binary
+*.wav binary
+*.mp3 binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+
+# Hide build/packaging tooling from GitHub language stats
+scripts/**             linguist-vendored
+*.ps1                  linguist-vendored
+*.bat                  linguist-vendored
+*.cmd                  linguist-vendored
+*.py                   linguist-vendored
+build_ps.ps1           linguist-vendored
+package_release.ps1    linguist-vendored
+
+# CMake is build configuration, not application source
+cmake/**               linguist-vendored
+*.cmake                linguist-vendored
+CMakeLists.txt         linguist-vendored
+CMakePresets.json      linguist-vendored
+
+# Tailwind-generated / framework CSS is not hand-authored source
+web/src/styles/**      linguist-generated
+web/src/index.css      linguist-generated
+docs/**                linguist-documentation
+
+# Vendored dependencies
+third_party/**         linguist-vendored
+web/node_modules/**    linguist-vendored
+
+# Lock files / generated
+*.lock                 linguist-generated
+pnpm-lock.yaml         linguist-generated
+package-lock.json      linguist-generated
