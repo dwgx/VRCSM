@@ -1,349 +1,625 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VRCSM — VRChat Settings Manager</title>
-  <meta name="description" content="A native Windows desktop tool for inspecting, previewing, cleaning, and migrating VRChat local data. Built with C++20, WebView2, React, and a Unity-editor inspired UI.">
-  <link rel="icon" href="https://q1.qlogo.cn/g?b=qq&nk=136666451&s=40" type="image/png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VRCSM — VRChat Settings Manager</title>
+<meta name="description" content="A native Windows 11 desktop tool for inspecting, previewing, cleaning, and migrating VRChat local data. Built with C++20, WebView2, and React.">
+<meta property="og:title" content="VRCSM — VRChat Settings Manager">
+<meta property="og:description" content="原生 Windows 11 桌面工具：扫描缓存、预览化身、迁移 NTFS junction、离线分析雷达日志。">
+<meta property="og:image" content="https://q.qlogo.cn/headimg_dl?dst_uin=136666451&spec=640">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#1c1c1c">
+<link rel="icon" href="https://q.qlogo.cn/headimg_dl?dst_uin=136666451&spec=140" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- ── Shell: Unity-editor layout ── -->
-  <div class="shell">
-    <!-- Sidebar -->
+
+<!-- ════════════════════ APP WINDOW ════════════════════ -->
+<div class="window">
+
+  <!-- ═══ Title Bar (32px) ═══ -->
+  <header class="titlebar">
+    <div class="titlebar-icon">
+      <img src="https://q.qlogo.cn/headimg_dl?dst_uin=136666451&spec=140" alt="VRCSM" id="appIconTop">
+      <span class="titlebar-title"><b>VRCSM</b> · VRChat Settings Manager <span style="color:var(--muted-2)">— v0.7.1</span></span>
+    </div>
+    <div class="titlebar-spacer"></div>
+    <div class="titlebar-controls">
+      <button class="titlebar-btn" title="Minimize" data-easter="minimize">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+      </button>
+      <button class="titlebar-btn" title="Maximize" data-easter="maximize">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="2" width="8" height="8"/></svg>
+      </button>
+      <button class="titlebar-btn close" title="Close" data-easter="close">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ Menu Bar (28px) ═══ -->
+  <nav class="menubar" id="menubar">
+    <button class="menubar-trigger" data-menu="file">File</button>
+    <button class="menubar-trigger" data-menu="edit">Edit</button>
+    <button class="menubar-trigger" data-menu="view">View</button>
+    <button class="menubar-trigger" data-menu="go">Go</button>
+    <button class="menubar-trigger" data-menu="tools">Tools</button>
+    <button class="menubar-trigger" data-menu="help">Help</button>
+
+    <div class="menu-popover" data-popover="file">
+      <button class="menu-item disabled">New Window <span class="shortcut">Ctrl+N</span></button>
+      <button class="menu-item" data-cmd="rescan">Rescan Cache <span class="shortcut">F5</span></button>
+      <div class="menu-separator"></div>
+      <button class="menu-item" data-cmd="external" data-url="https://github.com/dwgx/VRCSM/releases/latest">Open Releases Page <span class="shortcut">Ctrl+R</span></button>
+      <div class="menu-separator"></div>
+      <button class="menu-item" data-cmd="close-tab">Close Tab <span class="shortcut">Ctrl+W</span></button>
+      <button class="menu-item" data-cmd="exit">Exit <span class="shortcut">Alt+F4</span></button>
+    </div>
+    <div class="menu-popover" data-popover="edit">
+      <button class="menu-item" data-cmd="palette">Find… <span class="shortcut">Ctrl+K</span></button>
+      <button class="menu-item disabled">Copy <span class="shortcut">Ctrl+C</span></button>
+      <button class="menu-item disabled">Paste <span class="shortcut">Ctrl+V</span></button>
+    </div>
+    <div class="menu-popover" data-popover="view">
+      <button class="menu-item" data-cmd="toggle-sidebar">Toggle Sidebar <span class="shortcut">Ctrl+B</span></button>
+      <button class="menu-item" data-cmd="toggle-rainbow">Rainbow Mode <span class="shortcut">✨</span></button>
+      <div class="menu-separator"></div>
+      <button class="menu-item" data-cmd="zoom-in">Zoom In <span class="shortcut">Ctrl++</span></button>
+      <button class="menu-item" data-cmd="zoom-out">Zoom Out <span class="shortcut">Ctrl+-</span></button>
+      <button class="menu-item" data-cmd="zoom-reset">Reset Zoom <span class="shortcut">Ctrl+0</span></button>
+    </div>
+    <div class="menu-popover" data-popover="go">
+      <button class="menu-item" data-cmd="nav" data-route="dashboard">Dashboard <span class="shortcut">Ctrl+1</span></button>
+      <button class="menu-item" data-cmd="nav" data-route="features">Features <span class="shortcut">Ctrl+2</span></button>
+      <button class="menu-item" data-cmd="nav" data-route="architecture">Architecture <span class="shortcut">Ctrl+3</span></button>
+      <button class="menu-item" data-cmd="nav" data-route="download">Download <span class="shortcut">Ctrl+4</span></button>
+      <button class="menu-item" data-cmd="nav" data-route="about">About <span class="shortcut">Ctrl+5</span></button>
+    </div>
+    <div class="menu-popover" data-popover="tools">
+      <button class="menu-item" data-cmd="external" data-url="https://github.com/dwgx/VRCSM/issues/new">Report Issue</button>
+      <button class="menu-item" data-cmd="external" data-url="https://github.com/dwgx/VRCSM">View Source</button>
+      <div class="menu-separator"></div>
+      <button class="menu-item" data-cmd="konami">Secret… <span class="shortcut">↑↑↓↓</span></button>
+    </div>
+    <div class="menu-popover" data-popover="help">
+      <button class="menu-item" data-cmd="external" data-url="https://github.com/dwgx/VRCSM#readme">Documentation</button>
+      <button class="menu-item" data-cmd="external" data-url="https://github.com/dwgx/VRCSM/releases">Release Notes</button>
+      <div class="menu-separator"></div>
+      <button class="menu-item" data-cmd="nav" data-route="about">About VRCSM…</button>
+    </div>
+  </nav>
+
+  <!-- ═══ Toolbar (36px) ═══ -->
+  <div class="toolbar">
+    <div class="toolbar-section">
+      <span class="toolbar-label">Workspace</span>
+      <button class="toolbar-icon-btn" data-cmd="rescan" title="Rescan (F5)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10"/></svg>
+      </button>
+    </div>
+    <div class="toolbar-section">
+      <span class="statusbar pill green" style="height:auto;border:0;background:rgba(111,179,92,.16);padding:3px 9px;border-radius:3px"><span class="dot" style="background:var(--success);box-shadow:0 0 4px var(--success)"></span> VRChat Online</span>
+    </div>
+    <div class="toolbar-search" id="cmdTrigger" role="button" tabindex="0">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="placeholder">Search commands & pages…</span>
+      <kbd>Ctrl K</kbd>
+    </div>
+    <div class="toolbar-section">
+      <a class="toolbar-icon-btn" href="https://github.com/dwgx/VRCSM" target="_blank" rel="noreferrer" title="View on GitHub">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55v-2.13c-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18.92-.26 1.91-.39 2.9-.39s1.97.13 2.9.39c2.21-1.49 3.18-1.18 3.18-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.07.78 2.16v3.21c0 .31.21.67.8.55 4.57-1.52 7.85-5.83 7.85-10.91C23.5 5.65 18.35.5 12 .5z"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- ═══ Tab Bar (32px) ═══ -->
+  <div class="tabbar" id="tabbar">
+    <div class="tab active" data-tab="dashboard">Dashboard <span class="tab-close">×</span></div>
+  </div>
+
+  <!-- ═══ Body — Sidebar + Main + Statusbar ═══ -->
+  <div class="body">
+
+    <!-- ─── Sidebar (208px) ─── -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <img src="https://q1.qlogo.cn/g?b=qq&nk=136666451&s=100" alt="VRCSM" width="28" height="28" class="app-icon">
-        <div class="sidebar-brand">
-          <span class="brand-name">VRCSM</span>
-          <span class="brand-tag">VRC Settings Manager</span>
-        </div>
-      </div>
-      <nav class="sidebar-nav" id="sidebar-nav">
-        <a href="#hero" class="nav-item active" data-section="hero">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <div class="sidebar-nav" id="sidebarNav">
+        <div class="nav-item active" data-route="dashboard">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
           <span>Dashboard</span>
-        </a>
-        <a href="#features" class="nav-item" data-section="features">
+          <span class="badge">⌘1</span>
+        </div>
+        <div class="nav-item" data-route="features">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
           <span>Features</span>
-        </a>
-        <a href="#ui-showcase" class="nav-item" data-section="ui-showcase">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          <span>UI Showcase</span>
-        </a>
-        <a href="#architecture" class="nav-item" data-section="architecture">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        </div>
+        <div class="nav-item" data-route="architecture">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
           <span>Architecture</span>
-        </a>
-        <a href="#download" class="nav-item" data-section="download">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="nav-item" data-route="download">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span>Download</span>
-        </a>
-      </nav>
+          <span class="badge">v0.7.1</span>
+        </div>
+        <div class="nav-item" data-route="about">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>About</span>
+        </div>
+
+        <div style="margin:10px 6px 4px;font-size:9.5px;font-family:var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2)">Real App</div>
+
+        <div class="nav-item" data-cmd="external" data-url="https://github.com/dwgx/VRCSM/releases/latest" style="opacity:.85">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="19" r="3"/></svg>
+          <span>13 more pages…</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;color:var(--muted-2)"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+        </div>
+      </div>
+
       <div class="sidebar-footer">
-        <span class="version-label">v0.7.1 · open source</span>
+        <span class="lang-pill" id="langPill" title="Click to cycle language">中文</span>
+        <span class="version">v0.7.1</span>
       </div>
     </aside>
 
-    <!-- Main -->
-    <div class="main-area">
-      <!-- Toolbar -->
-      <header class="toolbar">
-        <div class="toolbar-left">
-          <img src="https://q1.qlogo.cn/g?b=qq&nk=136666451&s=100" alt="" width="18" height="18">
-          <span class="toolbar-label">WORKSPACE</span>
-        </div>
-        <div class="toolbar-badge badge-success">
-          <span class="pulse-dot"></span> Open Source
-        </div>
-        <div class="toolbar-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span>Explore VRCSM features…</span>
-          <kbd>Ctrl K</kbd>
-        </div>
-        <div class="toolbar-right">
-          <a href="https://github.com/dwgx/VRCSM" target="_blank" rel="noreferrer" class="toolbar-badge badge-outline">GitHub</a>
-        </div>
-      </header>
+    <!-- ─── Main ─── -->
+    <main class="main">
+      <div class="content" id="content">
 
-      <!-- Tab bar -->
-      <div class="tab-bar">
-        <div class="tab tab-active">Overview</div>
-      </div>
+        <!-- ── PAGE: Dashboard ── -->
+        <section class="page active" id="page-dashboard">
+          <div class="page-header">
+            <span class="page-title">Dashboard</span>
+            <span class="page-mono">Overview</span>
+            <div class="page-actions">
+              <button class="btn btn-ghost" data-cmd="rescan">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10"/></svg>
+                Rescan
+              </button>
+            </div>
+          </div>
 
-      <!-- Content -->
-      <main class="content" id="content">
-        <!-- Hero Section -->
-        <section id="hero" class="section hero-section">
-          <div class="hero-grid">
-            <div class="hero-text">
-              <div class="hero-badge">Windows Desktop Tool</div>
-              <h1>VRC Settings<br>Manager</h1>
-              <p class="hero-subtitle">Scan, preview, clean, and migrate your VRChat local data — all from a native Windows app with a Unity-editor inspired interface.</p>
+          <div class="hero">
+            <div class="hero-left">
+              <div class="hero-tag"><span class="dot"></span> Native Windows 11 · WebView2 + C++20</div>
+              <h1 class="hero-title">VRChat <span class="accent">Settings<br>Manager</span></h1>
+              <p class="hero-sub">扫描、预览、清理、迁移 VRChat 本地数据；离线分析雷达日志重建会话；从一个无边框 Mica 窗口管理你所有的 VRC 体验。</p>
               <div class="hero-actions">
-                <a href="https://github.com/dwgx/VRCSM/releases" target="_blank" class="btn btn-primary">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <a class="btn btn-primary" href="https://github.com/dwgx/VRCSM/releases/latest" target="_blank" rel="noreferrer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Download v0.7.1
                 </a>
-                <a href="https://github.com/dwgx/VRCSM" target="_blank" class="btn btn-outline">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
-                  View Source
-                </a>
+                <button class="btn btn-outline" data-cmd="nav" data-route="features">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                  See Features
+                </button>
+              </div>
+              <div class="hero-meta">
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Windows 10 22H2+ · x64</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> 597 settings keys</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 1s log latency</span>
               </div>
             </div>
-            <div class="hero-stats">
-              <div class="stat-card">
-                <div class="stat-icon icon-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
-                <div class="stat-label">Cache Scanner</div>
-                <div class="stat-value">Full Scan</div>
-                <div class="stat-hint">Size, files, timestamps</div>
+
+            <div class="hero-right">
+              <div class="hero-right-header">
+                Cache Snapshot <span class="live">live</span>
               </div>
-              <div class="stat-card">
-                <div class="stat-icon icon-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
-                <div class="stat-label">Friends</div>
-                <div class="stat-value">VRCX Parity</div>
-                <div class="stat-hint">Status, location, trust</div>
+              <div class="hero-right-body">
+                <div class="metric">
+                  <div class="metric-label">Cache</div>
+                  <div class="metric-value">24.7<span style="font-size:13px;color:var(--muted)"> GB</span></div>
+                  <div class="metric-hint">8 categories</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Junctions</div>
+                  <div class="metric-value green">0</div>
+                  <div class="metric-hint">all healthy</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Friends</div>
+                  <div class="metric-value blue">8 <span style="font-size:13px;color:var(--muted)">/ 142</span></div>
+                  <div class="metric-hint">online now</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Logs</div>
+                  <div class="metric-value">47</div>
+                  <div class="metric-hint">files indexed</div>
+                </div>
               </div>
-              <div class="stat-card">
-                <div class="stat-icon icon-amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
-                <div class="stat-label">Settings</div>
-                <div class="stat-value">597 Keys</div>
-                <div class="stat-hint">Read & write VRC prefs</div>
+            </div>
+          </div>
+
+          <div class="card-mono" style="margin:0 0 8px;display:block">Live Session</div>
+          <div class="session">
+            <div class="session-header">
+              <span class="live-dot"></span>
+              <div>
+                <div class="session-world">Test Pilots</div>
+                <div style="font-size:10.5px;color:var(--muted);font-family:var(--font-mono);margin-top:2px">wrld_4cf554b4-430c-4f8f-b53e-1f294eed230b · US-W</div>
               </div>
-              <div class="stat-card">
-                <div class="stat-icon icon-teal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
-                <div class="stat-label">Migration</div>
-                <div class="stat-value">NTFS Junctions</div>
-                <div class="stat-hint">Move cache off C:</div>
+              <div class="session-meta">
+                <span class="pill">friends+</span>
+                <span class="pill">5/12 players</span>
+                <span class="pill">23 min</span>
               </div>
+            </div>
+            <div class="player-row">
+              <span class="player you"><span class="trust trust-self" style="background:#5da6e8"></span>You</span>
+              <span class="player"><span class="trust trusted"></span>PixelHearts</span>
+              <span class="player"><span class="trust veteran"></span>SkyBlueCat</span>
+              <span class="player"><span class="trust user"></span>嗯呐！！</span>
+              <span class="player"><span class="trust known"></span>OrbitDancer</span>
+            </div>
+          </div>
+
+          <div class="card-mono" style="margin:18px 0 8px;display:block">Recent Activity · output_log_2026-04-19_18-32-47.txt</div>
+          <div class="activity">
+            <div class="activity-row">
+              <span class="time">18:55</span>
+              <span class="icon join"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              <span class="label"><b>OrbitDancer</b> joined</span>
+              <span class="meta">Test Pilots</span>
+            </div>
+            <div class="activity-row">
+              <span class="time">18:48</span>
+              <span class="icon avatar"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+              <span class="label">switched avatar to <b>Quest-Friendly Femboy</b></span>
+              <span class="meta">avtr_1f2e…</span>
+            </div>
+            <div class="activity-row">
+              <span class="time">18:32</span>
+              <span class="icon world"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg></span>
+              <span class="label">entered <b>Test Pilots</b></span>
+              <span class="meta">wrld_4cf5…</span>
+            </div>
+            <div class="activity-row">
+              <span class="time">18:28</span>
+              <span class="icon leave"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              <span class="label"><b>SilverHaze</b> left</span>
+              <span class="meta">The Black Cat</span>
+            </div>
+            <div class="activity-row">
+              <span class="time">18:14</span>
+              <span class="icon world"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></span>
+              <span class="label">entered <b>The Black Cat</b></span>
+              <span class="meta">wrld_8a3c…</span>
             </div>
           </div>
         </section>
 
-        <!-- Tech Stack -->
-        <section class="section">
-          <div class="stack-bar">
-            <span class="stack-chip">C++20</span>
-            <span class="stack-chip">WebView2</span>
-            <span class="stack-chip">React 19</span>
-            <span class="stack-chip">Vite 6</span>
-            <span class="stack-chip">Tailwind 4</span>
-            <span class="stack-chip">shadcn/ui</span>
-            <span class="stack-chip">WiX v7</span>
+        <!-- ── PAGE: Features ── -->
+        <section class="page" id="page-features">
+          <div class="page-header">
+            <span class="page-title">Features</span>
+            <span class="page-mono">Capabilities</span>
           </div>
-        </section>
 
-        <!-- Features -->
-        <section id="features" class="section">
-          <div class="section-header">
-            <h2>Features</h2>
-            <span class="section-mono">CAPABILITIES</span>
-          </div>
           <div class="features-grid">
-            <div class="feature-card">
-              <div class="feature-icon icon-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-              <h3>Cache Scanner</h3>
-              <p>Scan VRChat data categories and summarize size, file counts, timestamps, and broken junction links. Full dry-run-first safe deletion.</p>
+            <div class="feature">
+              <div class="feature-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+              <div class="feature-title">Cache Scanner</div>
+              <div class="feature-desc">分类汇总 8 个目录的大小、文件数、时间戳，自动检测损坏的 NTFS junction，扫描结果秒级返回。</div>
+              <div class="feature-tags"><span>CacheScanner</span><span>JunctionUtil</span></div>
             </div>
-            <div class="feature-card">
-              <div class="feature-icon icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
-              <h3>Bundle Preview</h3>
-              <p>Inspect cache entries before deleting — structured metadata view with header badges, file tree, and UnityFS format details.</p>
+            <div class="feature">
+              <div class="feature-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+              <div class="feature-title">Avatar Preview</div>
+              <div class="feature-desc">从本地 UnityFS Bundle 直接解析三维网格，OrbitControls 自由旋转、平移、缩放，删除前先看一眼。</div>
+              <div class="feature-tags"><span>BundleSniff</span><span>AvatarPreview</span></div>
             </div>
-            <div class="feature-card">
-              <div class="feature-icon icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
-              <h3>Friends & Social</h3>
-              <p>VRCX-parity friends list with status buckets, trust ranks, location parsing, region display, and expandable detail rows.</p>
+            <div class="feature">
+              <div class="feature-icon amber"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18l-2 13H5L3 6z"/><path d="M3 6L2 3"/></svg></div>
+              <div class="feature-title">Safe Delete</div>
+              <div class="feature-desc">默认 dry-run，自动检测 VRChat.exe 运行状态。删 Cache-WindowsPlayer 时保留 __info 与 vrc-version。</div>
+              <div class="feature-tags"><span>SafeDelete</span><span>ProcessGuard</span></div>
             </div>
-            <div class="feature-card">
-              <div class="feature-icon icon-teal"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
-              <h3>Cache Migration</h3>
-              <p>Move large cache folders from C: to another drive using NTFS junctions — no admin rights needed. Real-time progress tracking.</p>
+            <div class="feature">
+              <div class="feature-icon teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+              <div class="feature-title">NTFS Migration</div>
+              <div class="feature-desc">用 NTFS junction 把 Cache-WindowsPlayer 迁出系统盘，无需管理员权限，VRChat 完全无感。</div>
+              <div class="feature-tags"><span>Migrator</span><span>JunctionUtil</span></div>
             </div>
-            <div class="feature-card">
-              <div class="feature-icon icon-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
-              <h3>VRChat Settings</h3>
-              <p>Read and write all 597 VRChat PlayerPrefs keys. Semantic editors for common settings — sliders, dropdowns, toggles with proper ranges.</p>
+            <div class="feature">
+              <div class="feature-icon magenta"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1A3.5 3.5 0 0 1 6.5 13z"/></svg></div>
+              <div class="feature-title">Historical Radar</div>
+              <div class="feature-desc">离线分析 output_log_*.txt，按世界切换边界重建会话：玩家进出、停留时长、化身切换、三色时间线。</div>
+              <div class="feature-tags"><span>LogParser</span><span>RadarHistory</span></div>
             </div>
-            <div class="feature-card">
-              <div class="feature-icon icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-              <h3>Log Analysis</h3>
-              <p>Live-tail VRChat logs with 1-second latency. Player join/leave timeline, avatar switches, screenshot tracking — all in real time.</p>
+            <div class="feature">
+              <div class="feature-icon red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+              <div class="feature-title">VRC Settings</div>
+              <div class="feature-desc">读写全部 597 个 VRChat PlayerPrefs 键，提供语义化编辑器 — 滑块、下拉、开关，带正确的取值范围。</div>
+              <div class="feature-tags"><span>VrcSettings</span><span>VrcConfig</span></div>
             </div>
-          </div>
-        </section>
-
-        <!-- UI Showcase -->
-        <section id="ui-showcase" class="section">
-          <div class="section-header">
-            <h2>UI Showcase</h2>
-            <span class="section-mono">INTERACTIVE DEMO</span>
-          </div>
-          <div class="showcase-shell">
-            <div class="showcase-sidebar">
-              <div class="showcase-sidebar-header">
-                <div class="showcase-dot"></div>
-                <span>VRCSM</span>
-              </div>
-              <div class="showcase-nav-item active">Dashboard</div>
-              <div class="showcase-nav-item">Profile</div>
-              <div class="showcase-nav-item">VRChat</div>
-              <div class="showcase-nav-item">Friends</div>
-              <div class="showcase-nav-item">Radar</div>
-              <div class="showcase-nav-item">Bundles</div>
-              <div class="showcase-nav-item">Library</div>
-              <div class="showcase-nav-item">Avatars</div>
-              <div class="showcase-nav-item">Worlds</div>
-              <div class="showcase-nav-item">Screenshots</div>
-              <div class="showcase-nav-item">Logs</div>
-              <div class="showcase-nav-item">Migrate</div>
-              <div class="showcase-nav-item">Settings</div>
+            <div class="feature">
+              <div class="feature-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <div class="feature-title">Friends &amp; Social</div>
+              <div class="feature-desc">VRCX 同等级好友列表，按状态分桶、信任等级、位置解析、所属区域。可展开查看 bio / note / 历史相遇。</div>
+              <div class="feature-tags"><span>VrcApi</span><span>FriendNotes</span></div>
             </div>
-            <div class="showcase-main">
-              <div class="showcase-toolbar">
-                <span class="showcase-toolbar-label">WORKSPACE</span>
-                <span class="showcase-badge green">VRChat Online</span>
-                <span class="showcase-badge outline">Rescan</span>
-                <div class="showcase-search-box">Search Dashboard…</div>
-              </div>
-              <div class="showcase-content">
-                <div class="showcase-header-row">
-                  <div>
-                    <span class="showcase-title">Dashboard</span>
-                    <span class="showcase-mono">OVERVIEW</span>
-                  </div>
-                </div>
-                <div class="showcase-stats-grid">
-                  <div class="showcase-stat"><div class="showcase-stat-label">Total Cache</div><div class="showcase-stat-value">24.7 GB</div><div class="showcase-stat-hint">across 8 categories</div></div>
-                  <div class="showcase-stat"><div class="showcase-stat-label">Categories</div><div class="showcase-stat-value">12</div><div class="showcase-stat-hint">8 non-empty</div></div>
-                  <div class="showcase-stat"><div class="showcase-stat-label">Broken Links</div><div class="showcase-stat-value green-text">0</div><div class="showcase-stat-hint">all junctions healthy</div></div>
-                  <div class="showcase-stat"><div class="showcase-stat-label">Log Files</div><div class="showcase-stat-value">47</div><div class="showcase-stat-hint">1,204 world events</div></div>
-                  <div class="showcase-stat"><div class="showcase-stat-label">Friends Online</div><div class="showcase-stat-value blue-text">8</div><div class="showcase-stat-hint">from VRChat API</div></div>
-                  <div class="showcase-stat"><div class="showcase-stat-label">Screenshots</div><div class="showcase-stat-value">312</div><div class="showcase-stat-hint">VRC Camera</div></div>
-                </div>
-                <div class="showcase-session">
-                  <div class="showcase-session-header">
-                    <span class="showcase-session-dot"></span>
-                    <div><strong>Current Session</strong><br><span class="muted">Test Pilots</span></div>
-                    <span class="showcase-badge outline" style="margin-left:auto">friends+ / US West</span>
-                  </div>
-                  <div class="showcase-players">
-                    <span class="player-chip">PlayerOne</span>
-                    <span class="player-chip">SomeUser</span>
-                    <span class="player-chip">AvatarFan42</span>
-                    <span class="player-chip">CoolCat</span>
-                    <span class="player-chip">+3</span>
-                  </div>
-                </div>
-              </div>
-              <div class="showcase-statusbar">
-                <span>Dashboard / Workspace / Dashboard</span>
-                <span style="margin-left:auto">Cache: 24.7 GB</span>
-                <span class="showcase-badge green small">VRChat Running</span>
-                <span class="muted">v0.7.1</span>
-              </div>
+            <div class="feature">
+              <div class="feature-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+              <div class="feature-title">Live Logs</div>
+              <div class="feature-desc">实时跟踪 VRChat 日志，1 秒延迟。玩家进出时间线、化身切换、截图记录，全部秒级落地 SQLite。</div>
+              <div class="feature-tags"><span>LogTailer</span><span>Database</span></div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+              <div class="feature-title">Steam Link</div>
+              <div class="feature-desc">显示 HMD 序列号、活动 SteamVR 设备列表、当前音频输入/输出，一眼判断头显是否就位。</div>
+              <div class="feature-tags"><span>SteamVR</span><span>OpenVR</span></div>
             </div>
           </div>
         </section>
 
-        <!-- Architecture -->
-        <section id="architecture" class="section">
-          <div class="section-header">
-            <h2>Architecture</h2>
-            <span class="section-mono">THREE-LAYER STACK</span>
+        <!-- ── PAGE: Architecture ── -->
+        <section class="page" id="page-architecture">
+          <div class="page-header">
+            <span class="page-title">Architecture</span>
+            <span class="page-mono">Three-Layer Stack</span>
           </div>
+
           <div class="arch-stack">
-            <div class="arch-layer arch-web">
-              <div class="arch-layer-label">web/</div>
-              <div class="arch-layer-desc">React 19 + Vite + Tailwind + shadcn/ui</div>
-              <div class="arch-layer-hint">UI only — no platform logic</div>
+            <div class="arch-layer web">
+              <div class="arch-layer-name">web/</div>
+              <div class="arch-layer-desc">React 19 + Vite 6 + Tailwind 4 + shadcn/ui + TanStack Query</div>
+              <div class="arch-layer-hint">UI only — no platform logic, lazy-loaded routes</div>
             </div>
-            <div class="arch-arrow">↕ JSON-RPC over postMessage</div>
-            <div class="arch-layer arch-host">
-              <div class="arch-layer-label">src/host/</div>
-              <div class="arch-layer-desc">Win32 window + WebView2 + IPC Bridge</div>
-              <div class="arch-layer-hint">Thin shell, dispatches to core</div>
+            <div class="arch-arrow">↕ JSON-RPC over postMessage / PostWebMessageAsString</div>
+            <div class="arch-layer host">
+              <div class="arch-layer-name">src/host/</div>
+              <div class="arch-layer-desc">Win32 borderless Mica window + WebView2 + IpcBridge</div>
+              <div class="arch-layer-hint">Thin shell — async methods marshal results back via WM_APP_POST_WEB_MESSAGE</div>
             </div>
-            <div class="arch-arrow">↕ Direct C++ calls</div>
-            <div class="arch-layer arch-core">
-              <div class="arch-layer-label">src/core/</div>
-              <div class="arch-layer-desc">Platform-agnostic C++ library</div>
-              <div class="arch-layer-hint">All VRChat logic lives here</div>
+            <div class="arch-arrow">↕ Direct C++ calls · Result&lt;T&gt; (no exceptions)</div>
+            <div class="arch-layer core">
+              <div class="arch-layer-name">src/core/</div>
+              <div class="arch-layer-desc">Platform-agnostic vrcsm_core static library</div>
+              <div class="arch-layer-hint">All VRChat logic lives here — zero Win32 deps except junction/process</div>
             </div>
           </div>
+
+          <div class="card-mono" style="margin:24px 0 8px;display:block">Core Modules</div>
           <div class="arch-modules">
-            <div class="arch-module">CacheScanner</div>
-            <div class="arch-module">LogParser</div>
-            <div class="arch-module">LogTailer</div>
-            <div class="arch-module">BundleSniff</div>
-            <div class="arch-module">Migrator</div>
-            <div class="arch-module">JunctionUtil</div>
-            <div class="arch-module">SafeDelete</div>
-            <div class="arch-module">VrcApi</div>
-            <div class="arch-module">AuthStore</div>
-            <div class="arch-module">VrcSettings</div>
-            <div class="arch-module">AvatarPreview</div>
-            <div class="arch-module">ProcessGuard</div>
+            <span class="arch-module">CacheScanner</span>
+            <span class="arch-module">LogParser</span>
+            <span class="arch-module">LogTailer</span>
+            <span class="arch-module">BundleSniff</span>
+            <span class="arch-module">PathProbe</span>
+            <span class="arch-module">Migrator</span>
+            <span class="arch-module">JunctionUtil</span>
+            <span class="arch-module">SafeDelete</span>
+            <span class="arch-module">VrcApi</span>
+            <span class="arch-module">AuthStore</span>
+            <span class="arch-module">VrcSettings</span>
+            <span class="arch-module">VrcConfig</span>
+            <span class="arch-module">AvatarPreview</span>
+            <span class="arch-module">ProcessGuard</span>
+            <span class="arch-module">Database (SQLite)</span>
           </div>
+
+          <div class="card-mono" style="margin:24px 0 8px;display:block">IPC Protocol</div>
+          <pre class="code-block"><span class="com">// Request</span>
+{ <span class="key">"id"</span>: <span class="str">"7f3e9a1c-…"</span>, <span class="key">"method"</span>: <span class="str">"scan"</span>, <span class="key">"params"</span>: {} }
+
+<span class="com">// Response (success)</span>
+{ <span class="key">"id"</span>: <span class="str">"7f3e9a1c-…"</span>, <span class="key">"result"</span>: { <span class="key">"world_switches"</span>: [<span class="id">…</span>] } }
+
+<span class="com">// Response (error — IpcError carries machine-readable code)</span>
+{ <span class="key">"id"</span>: <span class="str">"7f3e9a1c-…"</span>, <span class="key">"error"</span>: { <span class="key">"code"</span>: <span class="str">"vrchat_running"</span>, <span class="key">"message"</span>: <span class="str">"…"</span> } }
+
+<span class="com">// Unsolicited push event</span>
+{ <span class="key">"event"</span>: <span class="str">"migrate.progress"</span>, <span class="key">"data"</span>: { <span class="key">"percent"</span>: <span class="id">42</span> } }</pre>
         </section>
 
-        <!-- Download -->
-        <section id="download" class="section">
-          <div class="download-card">
-            <h2>Get VRCSM</h2>
-            <p>Windows 10 22H2+ · x64 · Free & Open Source</p>
-            <div class="hero-actions" style="justify-content:center">
-              <a href="https://github.com/dwgx/VRCSM/releases" target="_blank" class="btn btn-primary">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download Latest Release
+        <!-- ── PAGE: Download ── -->
+        <section class="page" id="page-download">
+          <div class="page-header">
+            <span class="page-title">Download</span>
+            <span class="page-mono">v0.7.1 · 2026-04-19</span>
+            <div class="page-actions">
+              <a class="btn btn-ghost" href="https://github.com/dwgx/VRCSM/releases" target="_blank" rel="noreferrer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+                All Releases
               </a>
-              <a href="https://github.com/dwgx/VRCSM" target="_blank" class="btn btn-outline">View on GitHub</a>
             </div>
-            <div class="prereqs">
-              <span class="stack-chip">Windows 10/11</span>
-              <span class="stack-chip">x64</span>
-              <span class="stack-chip">WebView2 Runtime</span>
+          </div>
+
+          <div class="download-grid">
+            <div class="download-card featured">
+              <div class="download-card-head">
+                <div class="download-card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>
+                </div>
+                <div>
+                  <div class="download-card-name">MSI Installer</div>
+                  <div class="download-card-size">3.4 MB · WiX v7</div>
+                </div>
+              </div>
+              <div class="download-card-desc">推荐方式。标准 Windows 安装器，自动注册卸载、开始菜单快捷方式与文件关联。无管理员权限要求。</div>
+              <a class="btn btn-primary" href="https://github.com/dwgx/VRCSM/releases/download/v0.7.1/VRCSM_v0.7.1_x64_Installer.msi">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Installer.msi
+              </a>
+            </div>
+            <div class="download-card">
+              <div class="download-card-head">
+                <div class="download-card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                </div>
+                <div>
+                  <div class="download-card-name">Portable ZIP</div>
+                  <div class="download-card-size">8.7 MB · run-in-place</div>
+                </div>
+              </div>
+              <div class="download-card-desc">绿色版。解压到任意目录直接运行，不写注册表，方便放 U 盘 / 跨机器拷贝 / 离线评估。</div>
+              <a class="btn btn-outline" href="https://github.com/dwgx/VRCSM/releases/download/v0.7.1/VRCSM_v0.7.1_x64.zip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                x64.zip
+              </a>
+            </div>
+          </div>
+
+          <div class="checksum">
+            <span class="label">SHA-256</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis">查看 <a href="https://github.com/dwgx/VRCSM/releases/tag/v0.7.1" target="_blank" rel="noreferrer" style="color:var(--primary)">Releases 页面</a> 获取签名校验和发布说明</span>
+          </div>
+
+          <div class="requirements">
+            <div class="requirements-title">System Requirements</div>
+            <ul>
+              <li>Windows 10 22H2 or newer</li>
+              <li>x64 architecture</li>
+              <li>WebView2 Runtime (Win11 自带)</li>
+              <li>VRChat 安装在标准路径</li>
+              <li>~20 MB 安装空间</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- ── PAGE: About ── -->
+        <section class="page" id="page-about">
+          <div class="page-header">
+            <span class="page-title">About</span>
+            <span class="page-mono">VRCSM v0.7.1</span>
+          </div>
+
+          <div class="about-grid">
+            <div class="about-portrait">
+              <img src="https://q.qlogo.cn/headimg_dl?dst_uin=136666451&spec=640" alt="dwgx" id="aboutPortrait" title="点我">
+              <div class="about-name">dwgx</div>
+              <div class="about-handle">QQ 136666451</div>
+            </div>
+            <div class="about-info">
+              <div class="about-row">
+                <div class="key">Version</div>
+                <div class="val"><b>v0.7.1</b> · released 2026-04-19 · commit <code style="font-family:var(--font-mono);background:var(--canvas);padding:1px 5px;border-radius:3px;color:var(--primary)">bb73d25</code></div>
+              </div>
+              <div class="about-row">
+                <div class="key">Author</div>
+                <div class="val">dwgx · <a href="mailto:somdhmtb@gmail.com">somdhmtb@gmail.com</a></div>
+              </div>
+              <div class="about-row">
+                <div class="key">Repository</div>
+                <div class="val"><a href="https://github.com/dwgx/VRCSM" target="_blank" rel="noreferrer">github.com/dwgx/VRCSM</a></div>
+              </div>
+              <div class="about-row">
+                <div class="key">License</div>
+                <div class="val">VRCSM Source-Available License (VSAL) — 源码可见，禁止二次分发与商业用途</div>
+              </div>
+              <div class="about-row">
+                <div class="key">QQ Group</div>
+                <div class="val"><b>901738883</b> — VRCSM 用户交流群</div>
+              </div>
+              <div class="about-row">
+                <div class="key">Special Thanks</div>
+                <div class="val">嗯呐！！ (QQ 1033484989) · all VRChat reverse-engineering pioneers · the unsung VRCX team</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-mono" style="margin:24px 0 10px;display:block">Changelog</div>
+          <div class="changelog">
+            <div class="changelog-version">
+              <div class="changelog-header">
+                <span class="changelog-tag">v0.7.1</span>
+                <span class="changelog-date">2026-04-19</span>
+              </div>
+              <ul class="changelog-list">
+                <li>雷达加入历史分析 Tab — 离线读取 output_log 重建会话</li>
+                <li>缓存迁移在含 NTFS junction 的目录上不再误判越界</li>
+                <li>SteamVR 设置页恢复显示 HMD 序列号与音频设备列表</li>
+                <li>化身预览首次拉取失败时自动重试一次</li>
+                <li>Worlds 加入历史卡片可折叠</li>
+              </ul>
+            </div>
+            <div class="changelog-version">
+              <div class="changelog-header">
+                <span class="changelog-tag">v0.7.0</span>
+                <span class="changelog-date">2026-04-18</span>
+              </div>
+              <ul class="changelog-list">
+                <li>原生 Unity Bundle 解析器替换原 PyInstaller 路径</li>
+                <li>修复 LZMA properties_decode malloc 溢出</li>
+                <li>修复 OrbitControls Shift 键反转手感</li>
+              </ul>
+            </div>
+            <div class="changelog-version">
+              <div class="changelog-header">
+                <span class="changelog-tag">v0.6.0</span>
+                <span class="changelog-date">2026-04-18</span>
+              </div>
+              <ul class="changelog-list">
+                <li>Ctrl+K 命令面板</li>
+                <li>MenuBar 完全重写</li>
+                <li>7 国语言界面（中、英、日、韩、泰、印地、俄）</li>
+              </ul>
+            </div>
+            <div class="changelog-version">
+              <div class="changelog-header">
+                <span class="changelog-tag">v0.5.0</span>
+                <span class="changelog-date">2026-04-17</span>
+              </div>
+              <ul class="changelog-list">
+                <li>SQLite 数据库内置 — 持久化好友追踪、备注、收藏</li>
+                <li>16 个 db/favorites/friendLog/friendNote IPC 处理器</li>
+              </ul>
             </div>
           </div>
         </section>
-      </main>
 
-      <!-- Statusbar -->
+      </div>
+
+      <!-- ─── Status Bar (22px) ─── -->
       <footer class="statusbar">
-        <span class="statusbar-breadcrumb">VRCSM / Overview</span>
-        <span class="statusbar-spacer"></span>
-        <span class="muted">MIT License</span>
-        <span class="muted">·</span>
-        <a href="https://github.com/dwgx/VRCSM" target="_blank" class="statusbar-link">github.com/dwgx/VRCSM</a>
+        <span class="breadcrumb">VRCSM / <span id="crumb">Dashboard</span></span>
+        <span class="spacer"></span>
+        <span>Cache: 24.7 GB</span>
+        <span style="opacity:.4">·</span>
+        <span class="pill blue"><span class="dot" style="background:#5da6e8;box-shadow:0 0 4px #5da6e8"></span> 8 friends online</span>
+        <span class="pill green"><span class="dot"></span> VRChat Running</span>
+        <span style="font-family:var(--font-mono);color:var(--muted-2)">v0.7.1</span>
       </footer>
+    </main>
+  </div>
+</div>
+
+<!-- ════════════════════ Command Palette (Ctrl+K) ════════════════════ -->
+<div class="cmd-overlay" id="cmdOverlay">
+  <div class="cmd" role="dialog">
+    <div class="cmd-input-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="cmd-input" id="cmdInput" placeholder="搜索命令、页面、彩蛋… (试试 'help' 或 'who')" autocomplete="off">
+      <kbd>ESC</kbd>
+    </div>
+    <div class="cmd-list" id="cmdList"></div>
+    <div class="cmd-footer">
+      <span class="help"><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+      <span class="help"><kbd>↵</kbd> Select</span>
+      <span class="help"><kbd>Esc</kbd> Dismiss</span>
+      <span class="right" id="cmdCount">0 results</span>
     </div>
   </div>
+</div>
 
-  <!-- Ctrl+K Easter Egg Command Palette -->
-  <div class="cmd-overlay" id="cmdOverlay">
-    <div class="cmd-palette" id="cmdPalette">
-      <div class="cmd-header">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="cmd-input" id="cmdInput" placeholder="你想问点什么…" readonly>
-        <kbd class="cmd-kbd">ESC</kbd>
-      </div>
-      <div class="cmd-body">
-        <div class="cmd-result">
-          <div class="cmd-result-icon">✨</div>
-          <div class="cmd-result-text">
-            <div class="cmd-result-title">我觉得这个工具很好用了不需要问什么</div>
-            <div class="cmd-result-hint">— VRCSM 用户的心声</div>
-          </div>
-        </div>
-      </div>
-    </div>
+<!-- ════════════════════ Toast stack ════════════════════ -->
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- ════════════════════ Konami secret card ════════════════════ -->
+<div class="konami-overlay" id="konamiOverlay">
+  <div class="konami-card">
+    <h2>✦ 你发现了一个秘密 ✦</h2>
+    <p>恭喜你输入了 Konami Code！这只是个静态网站，但作者很高兴你愿意按到这里。</p>
+    <div class="codeline">↑ ↑ ↓ ↓ ← → ← → B A</div>
+    <p style="margin-bottom:0;font-size:11.5px">作为奖励，左侧导航栏已切换为彩虹模式 — 你可以在 View 菜单里关掉它。</p>
+    <button id="konamiClose" style="margin-top:14px">Continue</button>
   </div>
+</div>
 
-  <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
