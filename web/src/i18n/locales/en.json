@@ -323,7 +323,28 @@
       "empty": "No recorded session events yet."
     },
     "vrcNotRunning": "VRChat is not running",
-    "vrcNotRunningHint": "Start VRChat to monitor rooms and players in real time"
+    "vrcNotRunningHint": "Start VRChat to monitor rooms and players in real time",
+    "analysis": {
+      "tab": "Historical Analysis",
+      "openFromOffline": "Browse historical analysis",
+      "sessions": "Session history",
+      "sessionsDesc": "Reconstructed from local logs — newest first.",
+      "ongoing": "Ongoing",
+      "empty": "No sessions found in local logs.",
+      "topWorlds": "Most-visited worlds",
+      "topPlayers": "Most-encountered players",
+      "aggregate": {
+        "totalSessions": "Sessions",
+        "uniquePlayers": "Unique players",
+        "uniqueWorlds": "Unique worlds",
+        "avatarChanges": "Avatar changes"
+      },
+      "session": {
+        "players": "Players",
+        "noPlayers": "No player events recorded.",
+        "timeline": "Timeline"
+      }
+    }
   },
   "common": {
     "loading": "Loading…",

@@ -323,7 +323,28 @@
       "empty": "暂时还没有记录到会话事件。"
     },
     "vrcNotRunning": "VRChat 未运行",
-    "vrcNotRunningHint": "游戏启动后在此实时监测房间与玩家动向"
+    "vrcNotRunningHint": "游戏启动后在此实时监测房间与玩家动向",
+    "analysis": {
+      "tab": "历史分析",
+      "openFromOffline": "查看历史会话分析",
+      "sessions": "会话历史",
+      "sessionsDesc": "从本地日志重建,最新的在最上方。",
+      "ongoing": "进行中",
+      "empty": "暂无会话数据。",
+      "topWorlds": "常去的世界",
+      "topPlayers": "常遇的玩家",
+      "aggregate": {
+        "totalSessions": "会话总数",
+        "uniquePlayers": "独立玩家",
+        "uniqueWorlds": "去过的世界",
+        "avatarChanges": "模型切换"
+      },
+      "session": {
+        "players": "玩家",
+        "noPlayers": "未记录玩家事件。",
+        "timeline": "时间线"
+      }
+    }
   },
   "common": {
     "loading": "加载中…",
