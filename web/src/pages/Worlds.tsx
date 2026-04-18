@@ -26,7 +26,7 @@ import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { type WorldSwitchEvent, type PlayerEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff, Heart, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff, Heart, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 interface DbWorldVisit {
   id: number;
@@ -297,6 +297,7 @@ function WorldHistoryPanel({
   dbPlayerEvents: DbPlayerEvent[];
 }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useUiPrefBoolean("worlds.joinHistory.open", true);
   if (switches.length === 0) return null;
   const orderedSwitches = [...allSwitches]
     .map((entry, index) => ({
@@ -309,9 +310,19 @@ function WorldHistoryPanel({
 
   return (
     <div className="flex flex-col gap-3 mt-4">
-      <div className="text-[12px] font-semibold text-[hsl(var(--foreground))]">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex items-center gap-1.5 text-left text-[12px] font-semibold text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] transition-colors"
+        title={open ? t("common.collapse", { defaultValue: "Collapse" }) : t("common.expand", { defaultValue: "Expand" })}
+      >
+        {open ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
         {t("worlds.joinHistory")}
-      </div>
+        <span className="text-[10px] font-normal text-[hsl(var(--muted-foreground))]">
+          ({switches.length})
+        </span>
+      </button>
+      {open ? (
       <div className="flex flex-col gap-2.5">
         {switches.map((ev, i) => {
           let AccessIcon = Globe2;
@@ -506,6 +517,7 @@ function WorldHistoryPanel({
           );
         })}
       </div>
+      ) : null}
     </div>
   );
 }
