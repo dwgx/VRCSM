@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ipc } from "@/lib/ipc";
 
 /* ── IPC contract (mirrors src/core/AvatarPreview.h) ──────────────── */
@@ -43,6 +43,11 @@ export function useAvatarPreview(
 ): { state: PreviewState; retry: () => void } {
   const [state, setState] = useState<PreviewState>({ kind: "loading" });
   const [retryKey, setRetryKey] = useState(0);
+  // Track which (avatarId, assetUrl, bundlePath) tuple has already used its
+  // one auto-retry slot. Prevents an infinite retry loop while still giving
+  // each fresh input one transparent second chance.
+  const autoRetriedKeyRef = useRef<string>("");
+  const inputKey = `${avatarId}|${assetUrl ?? ""}|${bundlePath ?? ""}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +117,23 @@ export function useAvatarPreview(
             }
           }, 150);
         } else {
+          // Some failure codes are commonly transient — VRChat may still be
+          // writing the bundle, the cache may have just been purged, or the
+          // extractor lost a race with another preview. Give the same input
+          // tuple one silent second attempt before flashing red so users
+          // don't have to manually click Retry.
+          const transient =
+            resp.code === "bundle_not_found" ||
+            resp.code === "extractor_failed";
+          if (transient && autoRetriedKeyRef.current !== inputKey) {
+            autoRetriedKeyRef.current = inputKey;
+            retryTimer = window.setTimeout(() => {
+              if (!cancelled) {
+                setRetryKey((value) => value + 1);
+              }
+            }, 300);
+            return;
+          }
           setState({
             kind: "error",
             code: resp.code ?? "preview_failed",
