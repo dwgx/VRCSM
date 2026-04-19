@@ -35,6 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SmartWearButton } from "@/components/SmartWearButton";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { ipc } from "@/lib/ipc";
 import type { Friend, WorldDetails } from "@/lib/types";
@@ -188,7 +189,6 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
   }, [friend, noteText, t, refetchNote]);
 
   // --- Action states -----------------------------------------------------------
-  const [wearBusy, setWearBusy] = useState(false);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
 
   // --- Derived data ------------------------------------------------------------
@@ -451,31 +451,7 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] gap-1"
-                    disabled={wearBusy}
-                    onClick={async () => {
-                      setWearBusy(true);
-                      try {
-                        await ipc.call("avatar.select", { avatarId });
-                        toast.success(t("friendDetail.wearing", {
-                          defaultValue: "Now wearing: {{name}}",
-                          name: avatarName ?? avatarId,
-                        }));
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : String(e));
-                      } finally {
-                        setWearBusy(false);
-                      }
-                    }}
-                  >
-                    <Shirt className="size-3" />
-                    {wearBusy
-                      ? t("friendDetail.wearBusy", { defaultValue: "..." })
-                      : t("friendDetail.wear", { defaultValue: "Wear" })}
-                  </Button>
+                  <SmartWearButton avatarId={avatarId} avatarName={avatarName} variant="button" />
                   <Button
                     variant="outline"
                     size="sm"

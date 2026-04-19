@@ -56,8 +56,8 @@ import {
   PlayerProfileDialog,
   PlayerAvatar,
   TrustDot,
-  WearAvatarBtn,
 } from "./RadarPlayerWidgets";
+import { SmartWearButton } from "@/components/SmartWearButton";
 
 export
 function RadarEngine({
@@ -841,7 +841,7 @@ function RadarEngine({
                                 <span className="font-medium">{entry.actor}</span>
                                 <span className="text-[hsl(var(--muted-foreground))]"> → </span>
                                 <span className="italic text-purple-400">{entry.detail}</span>
-                                <WearAvatarBtn avatarName={entry.detail} />
+                                <SmartWearButton avatarName={entry.detail} variant="compact" />
                               </span>
                             ) : (
                               <span className={`font-medium ${entry.kind === "joined" ? "text-emerald-400" : "text-red-400"}`}>

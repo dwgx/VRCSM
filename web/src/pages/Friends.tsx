@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoginForm } from "@/components/LoginForm";
 import { FriendDetailDialog } from "@/components/FriendDetailDialog";
+import { SmartWearButton } from "@/components/SmartWearButton";
 import { IdBadge } from "@/components/IdBadge";
-import { Shirt } from "lucide-react";
+
+
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -108,56 +110,7 @@ function FriendAvatar({ friend }: { friend: Friend }) {
   );
 }
 
-function CloneAvatarButton({ userId, avatarId: directId, avatarName }: { userId: string; avatarId?: string | null; avatarName?: string }) {
-  const { t } = useTranslation();
-  const [busy, setBusy] = useState(false);
-
-  const handleClone = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setBusy(true);
-    try {
-      let avatarId = directId;
-      if (!avatarId) {
-        const { profile } = await ipc.call<{ userId: string }, { profile: { currentAvatarId?: string } | null }>(
-          "user.getProfile", { userId },
-        );
-        avatarId = profile?.currentAvatarId;
-      }
-      if (!avatarId) {
-        toast.error(t("friends.cloneNoAvatar", { defaultValue: "Could not resolve this user's current avatar." }));
-        return;
-      }
-      await ipc.call("avatar.select", { avatarId });
-      toast.success(t("friends.cloneSuccess", {
-        defaultValue: "Now wearing: {{name}}",
-        name: avatarName || avatarId,
-      }));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isNotCloneable = msg.includes("403") || msg.toLowerCase().includes("clone") || msg.toLowerCase().includes("not available");
-      toast.error(isNotCloneable
-        ? t("friends.cloneNotAllowed", { defaultValue: "This avatar does not allow cloning." })
-        : t("friends.cloneFailed", { defaultValue: "Clone failed: {{error}}", error: msg }));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={handleClone}
-      className="ml-auto flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.08)] px-1.5 py-0.5 text-[9px] font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.18)] disabled:opacity-50 transition-colors"
-      title={t("friends.cloneTitle", { defaultValue: "Wear this avatar" })}
-    >
-      <Shirt className="size-2.5" />
-      {busy
-        ? t("friends.cloneBusy", { defaultValue: "…" })
-        : t("friends.cloneBtn", { defaultValue: "Wear" })}
-    </button>
-  );
-}
+// CloneAvatarButton replaced by SmartWearButton
 
 const FriendRow = memo(function FriendRow({
   friend,
@@ -308,7 +261,7 @@ const FriendRow = memo(function FriendRow({
                       {friend.currentAvatarName}
                     </span>
                   ) : null}
-                  <CloneAvatarButton userId={friend.id} avatarId={friend.currentAvatarId} avatarName={friend.currentAvatarName ?? undefined} />
+                  <SmartWearButton userId={friend.id} avatarId={friend.currentAvatarId} avatarName={friend.currentAvatarName ?? undefined} variant="pill" className="ml-auto" />
                 </div>
               </>
             ) : null}
