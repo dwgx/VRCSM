@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -34,12 +35,17 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <numeric>
 #include <optional>
+#include <regex>
+#include <set>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>

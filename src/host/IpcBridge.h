@@ -79,6 +79,11 @@ private:
     nlohmann::json HandleWorldDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarSelect(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarSearch(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserInvite(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserMute(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserUnmute(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserBlock(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserUnblock(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserMe(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserGetProfile(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserUpdateProfile(const nlohmann::json& params, const std::optional<std::string>& id);

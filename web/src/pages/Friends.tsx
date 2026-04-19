@@ -13,17 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoginForm } from "@/components/LoginForm";
-import {
-  ProfileCard,
-  type VrcUserProfile,
-  type VrcStatus,
-} from "@/components/ProfileCard";
+import { FriendDetailDialog } from "@/components/FriendDetailDialog";
 import { IdBadge } from "@/components/IdBadge";
 import { Shirt } from "lucide-react";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
-import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import type { Friend, FriendsListResult, WorldDetails } from "@/lib/types";
 import {
   instanceTypeLabel,
@@ -50,7 +45,6 @@ import {
   Monitor,
   Smartphone,
   UserRound,
-  X,
   Play,
 } from "lucide-react";
 
@@ -444,31 +438,6 @@ const FriendRow = memo(function FriendRow({
   );
 });
 
-// Adapt the lightweight Friend row shape into the full VrcUserProfile
-// the ProfileCard component expects. Friends come from `FilterFriend` in
-// the C++ bridge, so some fields (bioLinks, worldName) are absent —
-// ProfileCard handles that gracefully. `Friend` fields are `string | null`
-// while `VrcUserProfile` uses `string | undefined`, so fold nulls away.
-function friendToProfile(friend: Friend): VrcUserProfile {
-  const nn = (v: string | null | undefined): string | undefined =>
-    v == null || v === "" ? undefined : v;
-  return {
-    id: friend.id,
-    displayName: friend.displayName,
-    bio: nn(friend.bio),
-    status: (nn(friend.status) as VrcStatus) ?? "offline",
-    statusDescription: nn(friend.statusDescription),
-    currentAvatarImageUrl: nn(friend.currentAvatarImageUrl),
-    currentAvatarThumbnailImageUrl: nn(friend.currentAvatarThumbnailImageUrl),
-    currentAvatarName: nn(friend.currentAvatarName),
-    profilePicOverride: nn(friend.profilePicOverride),
-    developerType: nn(friend.developerType),
-    last_login: nn(friend.last_login),
-    last_activity: nn(friend.last_activity),
-    isFriend: true,
-  };
-}
-
 const FRIENDS_CACHE_KEY = "vrcsm.friends.cache.v1";
 
 function readFriendsCache(): FriendsListResult | null {
@@ -503,46 +472,14 @@ export default function Friends() {
   const debouncedFilter = useDebouncedValue(filter, 150);
   const [showOffline, setShowOffline] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [showDetailPane, setShowDetailPane] = useUiPrefBoolean("vrcsm.layout.friends.detail.visible", true);
+  const [dialogFriend, setDialogFriend] = useState<Friend | null>(null);
   const [collapsedBuckets, setCollapsedBuckets] = useState<Set<StatusBucket>>(
     new Set(),
   );
 
-  // Detail-panel state. We seed it with the lightweight row data
-  // immediately so the panel renders without a loading flash, then
-  // upgrade it with the full `user.getProfile` payload as soon as it
-  // resolves (bioLinks, currentAvatarName, world, etc.).
-  const [selectedFriend, setSelectedFriend] = useState<VrcUserProfile | null>(
-    null,
-  );
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  const openDetail = useCallback(
-    (friend: Friend) => {
-      const base = friendToProfile(friend);
-      setSelectedFriend(base);
-      setDetailLoading(true);
-      ipc
-        .call<{ userId: string }, { profile: VrcUserProfile | null }>(
-          "user.getProfile",
-          { userId: friend.id },
-        )
-        .then((res) => {
-          // Only overwrite if the user hasn't closed or switched
-          // targets — guard against stale promises clobbering state.
-          setSelectedFriend((prev) =>
-            prev && prev.id === friend.id
-              ? { ...prev, ...(res.profile ?? {}), isFriend: true }
-              : prev,
-          );
-        })
-        .catch((e: unknown) => {
-          toast.error(e instanceof Error ? e.message : String(e));
-        })
-        .finally(() => setDetailLoading(false));
-    },
-    [],
-  );
+  const openDetail = useCallback((friend: Friend) => {
+    setDialogFriend(friend);
+  }, []);
 
   const refresh = () => {
     if (!status.authed) return;
@@ -743,18 +680,6 @@ export default function Friends() {
           </p>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
-          {selectedFriend ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDetailPane((current) => !current)}
-            >
-              {showDetailPane
-                ? t("common.hide", { defaultValue: "Hide" })
-                : t("common.show", { defaultValue: "Show" })}{" "}
-              {t("friends.detailPaneTitle", { defaultValue: "Details" })}
-            </Button>
-          ) : null}
           {data ? (
             <span>
               {t("friends.totalCount", { count: data.friends.length })}
@@ -864,51 +789,7 @@ export default function Friends() {
         </div>
       </Card>
 
-      {selectedFriend && showDetailPane ? (
-        <div className="w-[300px] shrink-0">
-          <div className="sticky top-0 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                {t("friends.detailPaneTitle", { defaultValue: "好友详情" })}
-                {detailLoading ? " · …" : ""}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedFriend(null)}
-                className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                title={t("common.close", { defaultValue: "关闭" })}
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-            <ProfileCard user={selectedFriend} />
-            <div className="mt-2 flex gap-1.5">
-              {selectedFriend.currentAvatarId ? (
-                <CloneAvatarButton
-                  userId={selectedFriend.id!}
-                  avatarId={selectedFriend.currentAvatarId}
-                  avatarName={selectedFriend.currentAvatarName}
-                />
-              ) : null}
-              {selectedFriend.location && selectedFriend.location !== "offline" && selectedFriend.location !== "private" ? (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => {
-                    ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                      url: `vrchat://launch?id=${selectedFriend.location}`,
-                    }).catch(console.error);
-                  }}
-                >
-                  <Play className="mr-1 size-3" />
-                  {t("friends.joinRoom", { defaultValue: "Join Room" })}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <FriendDetailDialog friend={dialogFriend} onClose={() => setDialogFriend(null)} />
       </div>
     </div>
   );

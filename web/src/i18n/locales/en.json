@@ -150,6 +150,14 @@
   },
   "vrchatWorkspace": {
     "title": "VRChat Workspace",
+    "tabs": {
+      "overview": "Overview",
+      "friends": "Friends",
+      "avatars": "Avatars",
+      "worlds": "Worlds",
+      "social": "Social",
+      "vrcPlus": "VRC+"
+    },
     "joinFriend": "Join friend",
     "requestInvite": "Request invite",
     "openFriendProfile": "Open profile",

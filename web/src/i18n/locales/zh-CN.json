@@ -150,6 +150,14 @@
   },
   "vrchatWorkspace": {
     "title": "VRChat 工作区",
+    "tabs": {
+      "overview": "概览",
+      "friends": "好友",
+      "avatars": "模型",
+      "worlds": "世界",
+      "social": "社交",
+      "vrcPlus": "VRC+"
+    },
     "quickFilters": "快速筛选",
     "onlyOnlineFriends": "只看在线好友",
     "onlyMyGroups": "只看我的团体",

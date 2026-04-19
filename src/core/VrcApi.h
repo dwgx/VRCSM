@@ -158,6 +158,15 @@ public:
     /// everything else is preserved server-side. Returns the updated
     /// user JSON on success, structured Error on auth failure.
     static Result<nlohmann::json> updateAuthUser(const nlohmann::json& patch);
+
+    /// Self-invite to a friend's instance via POST /api/1/invite/myself.
+    static Result<nlohmann::json> inviteSelf(const std::string& instanceLocation);
+
+    /// Add a player moderation (mute or block) via POST /api/1/auth/user/playermoderations.
+    static Result<nlohmann::json> addPlayerModeration(const std::string& type, const std::string& targetUserId);
+
+    /// Remove a player moderation via DELETE /api/1/auth/user/playermoderations/{id}.
+    static Result<nlohmann::json> removePlayerModeration(const std::string& moderationId);
 };
 
 } // namespace vrcsm::core
