@@ -25,16 +25,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
+
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { ipc } from "@/lib/ipc";
@@ -54,18 +46,34 @@ import { cn } from "@/lib/utils";
 
 // ---- Bio link parser (mirrors ProfileCard) ------------------------------------
 
-function parseBioLink(url: string) {
+const SOCIAL_ICONS: Record<string, string> = {
+  Twitter: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
+  Bilibili: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/></svg>',
+  YouTube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
+  Discord: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>',
+  GitHub: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
+  Twitch: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>',
+};
+
+function parseBioLink(url: string): { url: string; label: string; iconSvg: string | null } {
   try {
     const u = new URL(url);
-    let label = u.hostname.replace(/^www\./, "");
-    if (label.includes("twitter.com") || label.includes("x.com")) label = "Twitter";
-    else if (label.includes("bilibili.com")) label = "Bilibili";
-    else if (label.includes("youtube.com") || label.includes("youtu.be")) label = "YouTube";
-    else if (label.includes("discord")) label = "Discord";
-    else if (label.includes("github.com")) label = "GitHub";
-    return { url, label };
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (host.includes("twitter.com") || host.includes("x.com")) return { url, label: "Twitter", iconSvg: SOCIAL_ICONS.Twitter };
+    if (host.includes("bilibili.com")) return { url, label: "Bilibili", iconSvg: SOCIAL_ICONS.Bilibili };
+    if (host.includes("youtube.com") || host.includes("youtu.be")) return { url, label: "YouTube", iconSvg: SOCIAL_ICONS.YouTube };
+    if (host.includes("discord")) return { url, label: "Discord", iconSvg: SOCIAL_ICONS.Discord };
+    if (host.includes("github.com")) return { url, label: "GitHub", iconSvg: SOCIAL_ICONS.GitHub };
+    if (host.includes("twitch.tv")) return { url, label: "Twitch", iconSvg: SOCIAL_ICONS.Twitch };
+    if (host.includes("booth.pm")) return { url, label: "BOOTH", iconSvg: null };
+    if (host.includes("gumroad.com")) return { url, label: "Gumroad", iconSvg: null };
+    if (host.includes("patreon.com")) return { url, label: "Patreon", iconSvg: null };
+    if (host.includes("ko-fi.com")) return { url, label: "Ko-fi", iconSvg: null };
+    if (host.includes("pixiv.net")) return { url, label: "Pixiv", iconSvg: null };
+    if (host.includes("instagram.com")) return { url, label: "Instagram", iconSvg: null };
+    return { url, label: host, iconSvg: null };
   } catch {
-    return { url, label: url };
+    return { url, label: url, iconSvg: null };
   }
 }
 
@@ -232,25 +240,26 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
 
             <div className="flex gap-4">
               {/* Avatar with trust ring */}
-              <div
-                className="relative size-20 shrink-0 overflow-hidden rounded-full"
-                style={{ boxShadow: `0 0 0 3px ${dotColor}` }}
-              >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-[hsl(var(--muted))]">
-                    <Users className="size-8 text-[hsl(var(--muted-foreground))]" />
-                  </div>
-                )}
-                {/* Status dot */}
+              <div className="relative size-20 shrink-0">
+                <div
+                  className="size-full overflow-hidden rounded-full"
+                  style={{ boxShadow: `0 0 0 3px ${dotColor}` }}
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[hsl(var(--muted))]">
+                      <Users className="size-8 text-[hsl(var(--muted-foreground))]" />
+                    </div>
+                  )}
+                </div>
                 <span className={cn(
-                  "absolute bottom-0.5 right-0.5 size-4 rounded-full border-2 border-[hsl(var(--surface))]",
+                  "absolute bottom-1 right-1 size-3.5 rounded-full border-[2.5px] border-[hsl(var(--surface))]",
                   statusDot(friend?.status ?? null),
                 )} />
               </div>
@@ -334,15 +343,19 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
             {bioLinks.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {bioLinks.map((url, i) => {
-                  const { label } = parseBioLink(url);
+                  const { label, iconSvg } = parseBioLink(url);
                   return (
                     <button
                       key={i}
                       type="button"
                       onClick={() => void ipc.call("shell.openUrl", { url })}
-                      className="inline-flex items-center gap-1 rounded-full border border-[hsl(var(--border)/0.6)] bg-[hsl(var(--canvas))] px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--border-strong))] transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--border)/0.6)] bg-[hsl(var(--canvas))] px-2.5 py-1 text-[10px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--border-strong))] transition-colors"
                     >
-                      <ExternalLink className="size-2.5" />
+                      {iconSvg ? (
+                        <span className="size-3 shrink-0 [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: iconSvg }} />
+                      ) : (
+                        <ExternalLink className="size-3 shrink-0" />
+                      )}
                       {label}
                     </button>
                   );
@@ -488,45 +501,47 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                 {t("friendDetail.mute", { defaultValue: "Mute" })}
               </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-[11px] gap-1.5 text-red-400 border-red-400/40 hover:bg-red-400/10"
-                onClick={() => setBlockConfirmOpen(true)}
-              >
-                <Ban className="size-3.5" />
-                {t("friendDetail.block", { defaultValue: "Block" })}
-              </Button>
-              <AlertDialog open={blockConfirmOpen} onOpenChange={setBlockConfirmOpen}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t("friendDetail.blockConfirmTitle", { defaultValue: "Block User" })}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t("friendDetail.blockConfirm", {
-                        defaultValue: "Are you sure you want to block {{name}}? This will prevent them from interacting with you in VRChat.",
-                        name: friend?.displayName,
-                      })}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("common.cancel", { defaultValue: "Cancel" })}</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                      onClick={async () => {
-                        try {
-                          await ipc.call("user.block", { userId: friend?.id });
-                          toast.success(t("friendDetail.blocked", { defaultValue: "User blocked" }));
-                          onClose();
-                        } catch (e) {
-                          toast.error(e instanceof Error ? e.message : String(e));
-                        }
-                      }}
-                    >
-                      {t("friendDetail.block", { defaultValue: "Block" })}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {!blockConfirmOpen ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px] gap-1.5 text-red-400 border-red-400/40 hover:bg-red-400/10"
+                  onClick={() => setBlockConfirmOpen(true)}
+                >
+                  <Ban className="size-3.5" />
+                  {t("friendDetail.block", { defaultValue: "Block" })}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-red-400/40 bg-red-400/5 px-2 py-1">
+                  <span className="text-[10px] text-red-400">
+                    {t("friendDetail.blockConfirmShort", { defaultValue: "Block {{name}}?", name: friend?.displayName })}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-2 text-[9px]"
+                    onClick={() => setBlockConfirmOpen(false)}
+                  >
+                    {t("common.cancel", { defaultValue: "Cancel" })}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-5 px-2 text-[9px] bg-red-600 hover:bg-red-700 text-white"
+                    onClick={async () => {
+                      try {
+                        await ipc.call("user.block", { userId: friend?.id });
+                        toast.success(t("friendDetail.blocked", { defaultValue: "User blocked" }));
+                        setBlockConfirmOpen(false);
+                        onClose();
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : String(e));
+                      }
+                    }}
+                  >
+                    {t("friendDetail.block", { defaultValue: "Block" })}
+                  </Button>
+                </div>
+              )}
 
               <Button
                 variant="outline"
