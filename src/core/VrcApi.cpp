@@ -1429,10 +1429,7 @@ Result<nlohmann::json> VrcApi::searchAvatars(
             static_cast<int>(response.status)};
     }
 
-    auto body = parseJsonBody(response, "/avatars?search=");
-    if (!isOk(body)) return body;
-
-    auto& arr = value(body);
+    auto arr = parseJsonBody(response, "/avatars?search=");
     nlohmann::json results = nlohmann::json::array();
     for (auto& item : arr)
     {
