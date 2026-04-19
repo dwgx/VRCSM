@@ -283,6 +283,57 @@ function PlatformIcon({ platform }: { platform: string | null | undefined }) {
   return null;
 }
 
+function WearAvatarBtn({ userId, avatarName }: { userId?: string | null; avatarName?: string | null }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  if (!userId && !avatarName) return null;
+
+  const handleWear = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setBusy(true);
+    try {
+      let avatarId: string | undefined;
+      if (userId) {
+        const { profile } = await ipc.call<{ userId: string }, { profile: { currentAvatarId?: string } | null }>(
+          "user.getProfile", { userId },
+        );
+        avatarId = profile?.currentAvatarId || undefined;
+      }
+      if (!avatarId && avatarName && !avatarName.startsWith("avtr_")) {
+        const res = await ipc.searchAvatars(avatarName, 1);
+        const match = res.avatars?.find((a: any) => a.name === avatarName);
+        if (match) avatarId = match.id;
+      }
+      if (avatarName?.startsWith("avtr_")) avatarId = avatarName;
+      if (!avatarId) {
+        toast.error(t("radar.wearNotFound", { defaultValue: "Could not find this avatar. It may be private." }));
+        return;
+      }
+      await ipc.call("avatar.select", { avatarId });
+      toast.success(t("radar.wearSuccess", { defaultValue: "Now wearing: {{name}}", name: avatarName || avatarId }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg.includes("403")
+        ? t("radar.wearNotAllowed", { defaultValue: "This avatar does not allow cloning." })
+        : msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={handleWear}
+      className="shrink-0 flex items-center gap-0.5 rounded-[3px] border border-[hsl(var(--primary)/0.45)] bg-[hsl(var(--primary)/0.08)] px-1 py-px text-[8px] font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.18)] disabled:opacity-50 transition-colors"
+    >
+      <Shirt className="size-2" />
+      {busy ? "…" : "Wear"}
+    </button>
+  );
+}
 
 function RadarEngine({
   onOpenHistory,
@@ -1011,6 +1062,7 @@ function RadarEngine({
                                    ) : (
                                       <span className="text-[11px] text-[hsl(var(--muted-foreground))] italic truncate max-w-[140px]">{p.avatarIdOrName}</span>
                                    )}
+                                   <WearAvatarBtn userId={p.userId} avatarName={p.avatarIdOrName} />
                                  </div>
                                ) : (
                                  <span className="text-[11px] text-[hsl(var(--muted-foreground)/0.5)] italic">{t("radar.unknownAvatar", { defaultValue: "Unknown Avatar" })}</span>
@@ -1084,11 +1136,12 @@ function RadarEngine({
                                 {t("radar.timeline.worldChanged", { defaultValue: "World changed" })}
                               </span>
                             ) : entry.kind === "avatarSwitch" ? (
-                              <>
+                              <span className="flex items-center gap-1">
                                 <span className="font-medium">{entry.actor}</span>
                                 <span className="text-[hsl(var(--muted-foreground))]"> → </span>
                                 <span className="italic text-purple-400">{entry.detail}</span>
-                              </>
+                                <WearAvatarBtn avatarName={entry.detail} />
+                              </span>
                             ) : (
                               <span className={`font-medium ${entry.kind === "joined" ? "text-emerald-400" : "text-red-400"}`}>
                                 {entry.actor}
