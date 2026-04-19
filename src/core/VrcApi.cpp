@@ -1517,4 +1517,102 @@ Result<nlohmann::json> VrcApi::fetchWorldDetails(const std::string& worldId)
     return parseJsonBody(response, "/worlds/{id}");
 }
 
+Result<nlohmann::json> VrcApi::inviteSelf(const std::string& instanceLocation)
+{
+    if (instanceLocation.empty())
+    {
+        return Error{"invalid_params", "Empty instance location", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const auto body = nlohmann::json{{"instanceId", instanceLocation}}.dump();
+    const auto response = httpRequest(
+        L"POST", kApiHostW,
+        toWide(fmt::format("/api/1/invite/myself?apiKey={}", kApiKey)),
+        headers, body, false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error", msg.value_or(fmt::format("invite/myself returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::addPlayerModeration(
+    const std::string& type, const std::string& targetUserId)
+{
+    if (targetUserId.empty())
+    {
+        return Error{"invalid_params", "Empty targetUserId", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const auto body = nlohmann::json{{"type", type}, {"moderated", targetUserId}}.dump();
+    const auto response = httpRequest(
+        L"POST", kApiHostW,
+        toWide(fmt::format("/api/1/auth/user/playermoderations?apiKey={}", kApiKey)),
+        headers, body, false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error", msg.value_or(fmt::format("playermoderations POST returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return parseJsonBody(response, "/auth/user/playermoderations");
+}
+
+Result<nlohmann::json> VrcApi::removePlayerModeration(const std::string& moderationId)
+{
+    if (moderationId.empty())
+    {
+        return Error{"invalid_params", "Empty moderationId", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto response = httpRequest(
+        L"DELETE", kApiHostW,
+        toWide(fmt::format("/api/1/auth/user/playermoderations/{}?apiKey={}", moderationId, kApiKey)),
+        headers, "", false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error", msg.value_or(fmt::format("playermoderations DELETE returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
 } // namespace vrcsm::core

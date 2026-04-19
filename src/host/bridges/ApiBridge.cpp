@@ -410,6 +410,56 @@ nlohmann::json IpcBridge::HandleAvatarSearch(const nlohmann::json& params, const
     return unwrapResult(vrcsm::core::VrcApi::searchAvatars(*query, count, offset));
 }
 
+nlohmann::json IpcBridge::HandleUserInvite(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto location = JsonStringField(params, "location");
+    if (!location.has_value() || location->empty())
+    {
+        throw std::runtime_error("user.invite: missing 'location'");
+    }
+    return unwrapResult(vrcsm::core::VrcApi::inviteSelf(*location));
+}
+
+nlohmann::json IpcBridge::HandleUserMute(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId");
+    if (!userId.has_value() || userId->empty())
+    {
+        throw std::runtime_error("user.mute: missing 'userId'");
+    }
+    return unwrapResult(vrcsm::core::VrcApi::addPlayerModeration("mute", *userId));
+}
+
+nlohmann::json IpcBridge::HandleUserUnmute(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto id = JsonStringField(params, "moderationId");
+    if (!id.has_value() || id->empty())
+    {
+        throw std::runtime_error("user.unmute: missing 'moderationId'");
+    }
+    return unwrapResult(vrcsm::core::VrcApi::removePlayerModeration(*id));
+}
+
+nlohmann::json IpcBridge::HandleUserBlock(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId");
+    if (!userId.has_value() || userId->empty())
+    {
+        throw std::runtime_error("user.block: missing 'userId'");
+    }
+    return unwrapResult(vrcsm::core::VrcApi::addPlayerModeration("block", *userId));
+}
+
+nlohmann::json IpcBridge::HandleUserUnblock(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto id = JsonStringField(params, "moderationId");
+    if (!id.has_value() || id->empty())
+    {
+        throw std::runtime_error("user.unblock: missing 'moderationId'");
+    }
+    return unwrapResult(vrcsm::core::VrcApi::removePlayerModeration(*id));
+}
+
 nlohmann::json IpcBridge::HandleUserMe(const nlohmann::json&, const std::optional<std::string>&)
 {
     auto user = unwrapResult(vrcsm::core::VrcApi::fetchCurrentUser());
