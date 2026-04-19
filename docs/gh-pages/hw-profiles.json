@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "communityProfiles": [
+    { "cpu": "*7800X3D*", "gpu": "*4090*", "hmd": "Quest 3", "preset": "ultra", "note": "Community tested - no motion smoothing needed." },
+    { "cpu": "*7800X3D*", "gpu": "*4080*", "hmd": "Quest 3", "preset": "ultra", "note": "Stable 120 Hz on strong Wi-Fi 6E setups." },
+    { "cpu": "*7950X*", "gpu": "*4090*", "hmd": "Quest 3", "preset": "ultra", "note": "Headroom remains good even in crowded worlds." },
+    { "cpu": "*13900K*", "gpu": "*4090*", "hmd": "Quest 3", "preset": "ultra", "note": "Use the community ultra preset for desktop mirrors." },
+    { "cpu": "*13900K*", "gpu": "*4080*", "hmd": "Quest Pro", "preset": "ultra", "note": "Quest Pro users report clean frametimes at 90 Hz." },
+    { "cpu": "*12700K*", "gpu": "*4070 Ti*", "hmd": "Quest 3", "preset": "high", "note": "High is more consistent than ultra during avatar-heavy events." },
+    { "cpu": "*12700K*", "gpu": "*4070*", "hmd": "Quest 2", "preset": "high", "note": "90 Hz works well if router signal is strong." },
+    { "cpu": "*10700K*", "gpu": "*3080*", "hmd": "Quest 2", "preset": "high", "note": "Good baseline for Steam Link with manual supersampling." },
+    { "cpu": "*10700K*", "gpu": "*3070*", "hmd": "Quest 2", "preset": "balanced", "note": "Balanced avoids bitrate spikes in busy public lobbies." },
+    { "cpu": "*5800X3D*", "gpu": "*4090*", "hmd": "Quest 3", "preset": "ultra", "note": "Strong GPU overhead keeps latency low without smoothing." },
+    { "cpu": "*5800X3D*", "gpu": "*4080*", "hmd": "Quest 3", "preset": "ultra", "note": "Community verified for 120 Hz desktop gameplay." },
+    { "cpu": "*5800X3D*", "gpu": "*4070 Ti*", "hmd": "Quest 3", "preset": "high", "note": "High remains the safer pick for mirror-heavy worlds." },
+    { "cpu": "*5800X3D*", "gpu": "*3080*", "hmd": "Quest Pro", "preset": "high", "note": "Quest Pro clarity stays good at 90 Hz with filtering on." },
+    { "cpu": "*5800X3D*", "gpu": "*3070*", "hmd": "Quest 2", "preset": "balanced", "note": "Balanced reduces reprojection during club instances." },
+    { "cpu": "*3700X*", "gpu": "*3070*", "hmd": "Quest 2", "preset": "balanced", "note": "Keeps CPU frametime spikes under control in medium rooms." },
+    { "cpu": "*3700X*", "gpu": "*3060*", "hmd": "Quest 2", "preset": "low", "note": "Prefer lower refresh to avoid encoder saturation." },
+    { "cpu": "*5600X*", "gpu": "*3060*", "hmd": "Quest 2", "preset": "balanced", "note": "Balanced is widely reported as the sweet spot." },
+    { "cpu": "*5600X*", "gpu": "*4070*", "hmd": "Quest 3", "preset": "high", "note": "Quest 3 users can usually keep 90 Hz at high." },
+    { "cpu": "*5700X3D*", "gpu": "*4070 Ti*", "hmd": "Quest 3", "preset": "high", "note": "High handles dense avatars better than ultra on this combo." },
+    { "cpu": "*7700X*", "gpu": "*7900 XTX*", "hmd": "Quest 3", "preset": "high", "note": "AMD owners report better stability below the top tier." },
+    { "cpu": "*7800X3D*", "gpu": "*7900 XTX*", "hmd": "Quest 3", "preset": "high", "note": "High avoids intermittent encoder artifacts on some AMD drivers." },
+    { "cpu": "*5800X3D*", "gpu": "*7800 XT*", "hmd": "Quest 3", "preset": "balanced", "note": "Balanced keeps frame pacing more predictable than high." },
+    { "cpu": "*12700K*", "gpu": "*6800 XT*", "hmd": "Quest 2", "preset": "balanced", "note": "Balanced is the common community recommendation for RDNA2." },
+    { "cpu": "*7800X3D*", "gpu": "*4090*", "hmd": "Valve Index", "preset": "ultra", "note": "Index can hold 120 Hz cleanly without fixed foveation." },
+    { "cpu": "*5800X3D*", "gpu": "*3080*", "hmd": "Valve Index", "preset": "high", "note": "High is the stable 120 Hz choice for most Index users." },
+    { "cpu": "*10700K*", "gpu": "*3070*", "hmd": "Valve Index", "preset": "balanced", "note": "Balanced avoids motion smoothing dependency in social hubs." },
+    { "cpu": "*12700K*", "gpu": "*4080*", "hmd": "Vive Pro 2", "preset": "high", "note": "High is preferred because of the panel's native resolution." },
+    { "cpu": "*13900K*", "gpu": "*4090*", "hmd": "Vive Pro 2", "preset": "ultra", "note": "Ultra remains viable, but monitor VRAM use in large worlds." },
+    { "cpu": "*5800X3D*", "gpu": "*3090*", "hmd": "Quest Pro", "preset": "high", "note": "Quest Pro users report good clarity at 90 Hz with this tier." },
+    { "cpu": "*7950X*", "gpu": "*4080*", "hmd": "Quest 2", "preset": "ultra", "note": "Ultra is workable on excellent wireless links." }
+  ],
+  "overrides": {
+    "targetBandwidthMax": 250
+  }
+}
