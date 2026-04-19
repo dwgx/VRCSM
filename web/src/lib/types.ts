@@ -499,6 +499,21 @@ export interface AvatarDetails {
   assetUrl: string | null;
 }
 
+export interface AvatarSearchResult {
+  id: string;
+  name: string;
+  description: string;
+  authorId: string;
+  authorName: string;
+  imageUrl: string;
+  thumbnailImageUrl: string;
+  releaseStatus: string;
+  version: number;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── World Details (v0.5.0) ───────────────────────────────────────────
 
 export interface WorldDetails {

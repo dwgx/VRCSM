@@ -26,8 +26,8 @@ import {
   useFavoriteActions,
   useFavoriteItems,
 } from "@/lib/library";
-import type { LocalAvatarItem } from "@/lib/types";
-import { Eye, Sliders, Search, User, Info, Lock, Box, Sword, Heart } from "lucide-react";
+import type { AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
+import { Eye, Sliders, Search, User, Info, Lock, Box, Sword, Heart, Shirt, Globe2, Loader2 } from "lucide-react";
 
 type AugmentedAvatar = LocalAvatarItem & {
   display_name?: string;
@@ -593,6 +593,125 @@ function AvatarRow({
   );
 }
 
+function PublicAvatarSearch() {
+  const { t } = useTranslation();
+  const { status } = useAuth();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<AvatarSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [wearing, setWearing] = useState<string | null>(null);
+
+  const doSearch = useCallback(async () => {
+    const q = query.trim();
+    if (!q || !status.authed) return;
+    setSearching(true);
+    try {
+      const res = await ipc.searchAvatars(q, 24);
+      setResults(res.avatars ?? []);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSearching(false);
+    }
+  }, [query, status.authed]);
+
+  const handleWear = useCallback(async (av: AvatarSearchResult) => {
+    setWearing(av.id);
+    try {
+      await ipc.call("avatar.select", { avatarId: av.id });
+      toast.success(t("avatars.search.woreAvatar", {
+        defaultValue: "Now wearing: {{name}}",
+        name: av.name,
+      }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg.includes("403")
+        ? t("avatars.search.notCloneable", { defaultValue: "This avatar does not allow cloning." })
+        : msg);
+    } finally {
+      setWearing(null);
+    }
+  }, [t]);
+
+  if (!status.authed) return null;
+
+  return (
+    <Card elevation="flat" className="p-0">
+      <div className="unity-panel-header flex items-center gap-2">
+        <Globe2 className="size-3" />
+        <span>{t("avatars.search.title", { defaultValue: "Search Public Avatars" })}</span>
+        <span className="ml-1 rounded-[3px] bg-[hsl(45_93%_47%/0.15)] px-1 py-px text-[8px] font-semibold uppercase tracking-[0.06em] text-[hsl(45_93%_47%)]">
+          {t("common.experimental", { defaultValue: "Beta" })}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") doSearch(); }}
+            placeholder={t("avatars.search.placeholder", { defaultValue: "Search by avatar name…" })}
+            className="h-7 pl-7 text-[12px]"
+          />
+        </div>
+        <Button size="sm" onClick={doSearch} disabled={searching || !query.trim()}>
+          {searching ? <Loader2 className="size-3 animate-spin" /> : <Search className="size-3" />}
+          {t("avatars.search.go", { defaultValue: "Search" })}
+        </Button>
+      </div>
+      {results.length > 0 ? (
+        <div className="grid grid-cols-1 gap-px p-1 sm:grid-cols-2 lg:grid-cols-3">
+          {results.map((av) => (
+            <div
+              key={av.id}
+              className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-2 py-2 hover:bg-[hsl(var(--surface-raised))] transition-colors"
+            >
+              {av.thumbnailImageUrl ? (
+                <div className="size-10 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
+                  <img
+                    src={av.thumbnailImageUrl}
+                    alt=""
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
+              ) : (
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
+                  <User className="size-4 text-[hsl(var(--muted-foreground))]" />
+                </div>
+              )}
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate text-[12px] font-medium">{av.name}</span>
+                <span className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">
+                  {av.authorName}
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={wearing === av.id}
+                onClick={() => handleWear(av)}
+                className="flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.08)] px-2 py-1 text-[10px] font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.18)] disabled:opacity-50 transition-colors"
+              >
+                <Shirt className="size-3" />
+                {wearing === av.id
+                  ? t("avatars.search.wearing", { defaultValue: "…" })
+                  : t("avatars.search.wear", { defaultValue: "Wear" })}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : searching ? (
+        <div className="flex items-center justify-center gap-2 py-8 text-[12px] text-[hsl(var(--muted-foreground))]">
+          <Loader2 className="size-4 animate-spin" />
+          {t("avatars.search.searching", { defaultValue: "Searching…" })}
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
 function Avatars() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -840,6 +959,8 @@ function Avatars() {
           </div>
         </div>
       )}
+
+      <PublicAvatarSearch />
     </div>
   );
 }
