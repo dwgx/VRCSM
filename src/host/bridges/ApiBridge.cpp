@@ -392,6 +392,22 @@ nlohmann::json IpcBridge::HandleAvatarSelect(const nlohmann::json& params, const
     return unwrapResult(vrcsm::core::VrcApi::selectAvatar(*avatarId));
 }
 
+nlohmann::json IpcBridge::HandleAvatarSearch(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto query = JsonStringField(params, "query");
+    if (!query.has_value() || query->empty())
+    {
+        return nlohmann::json{{"avatars", nlohmann::json::array()}};
+    }
+    int count = 20;
+    int offset = 0;
+    if (params.contains("count") && params["count"].is_number_integer())
+        count = params["count"].get<int>();
+    if (params.contains("offset") && params["offset"].is_number_integer())
+        offset = params["offset"].get<int>();
+    return unwrapResult(vrcsm::core::VrcApi::searchAvatars(*query, count, offset));
+}
+
 nlohmann::json IpcBridge::HandleUserMe(const nlohmann::json&, const std::optional<std::string>&)
 {
     auto user = unwrapResult(vrcsm::core::VrcApi::fetchCurrentUser());

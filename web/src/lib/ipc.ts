@@ -1,5 +1,6 @@
 import type {
   AppVersion,
+  AvatarSearchResult,
   AuthStatus,
   AuthUserDetailsResult,
   BundlePreview,
@@ -1323,6 +1324,13 @@ class IpcClient {
       "settings.exportReg",
       outPath ? { outPath } : {},
     );
+  }
+
+  async searchAvatars(query: string, count = 20, offset = 0) {
+    return this.call<
+      { query: string; count: number; offset: number },
+      { avatars: AvatarSearchResult[] }
+    >("avatar.search", { query, count, offset });
   }
 
   // ── Database / History ──────────────────────────────────────────────

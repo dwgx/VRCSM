@@ -149,6 +149,10 @@ public:
     /// structured Error on auth/network failure.
     static Result<nlohmann::json> selectAvatar(const std::string& avatarId);
 
+    /// Search public avatars via `GET /api/1/avatars?releaseStatus=public&search=...`.
+    static Result<nlohmann::json> searchAvatars(
+        const std::string& query, int count = 20, int offset = 0);
+
     /// Patch the authenticated user's profile via
     /// `PUT /api/1/users/{id}`. Only fields present in `patch` are sent;
     /// everything else is preserved server-side. Returns the updated

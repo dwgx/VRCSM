@@ -122,6 +122,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "avatar.preview",
         "avatar.preview.abort",
         "avatar.select",
+        "avatar.search",
         "user.me",
         "user.getProfile",
         "user.updateProfile",
@@ -500,6 +501,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("avatar.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarDetails(p, id); });
     m_handlers.emplace("world.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldDetails(p, id); });
     m_handlers.emplace("avatar.select", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSelect(p, id); });
+    m_handlers.emplace("avatar.search", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSearch(p, id); });
     m_handlers.emplace("user.me", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserMe(p, id); });
     m_handlers.emplace("user.getProfile", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserGetProfile(p, id); });
     m_handlers.emplace("user.updateProfile", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserUpdateProfile(p, id); });

@@ -19,6 +19,7 @@ import {
   type VrcStatus,
 } from "@/components/ProfileCard";
 import { IdBadge } from "@/components/IdBadge";
+import { Shirt } from "lucide-react";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -113,7 +114,53 @@ function FriendAvatar({ friend }: { friend: Friend }) {
   );
 }
 
+function CloneAvatarButton({ userId, avatarName }: { userId: string; avatarName?: string }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
 
+  const handleClone = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBusy(true);
+    try {
+      const { profile } = await ipc.call<{ userId: string }, { profile: { currentAvatarId?: string } | null }>(
+        "user.getProfile", { userId },
+      );
+      const avatarId = profile?.currentAvatarId;
+      if (!avatarId) {
+        toast.error(t("friends.cloneNoAvatar", { defaultValue: "Could not resolve this user's current avatar." }));
+        return;
+      }
+      await ipc.call("avatar.select", { avatarId });
+      toast.success(t("friends.cloneSuccess", {
+        defaultValue: "Now wearing: {{name}}",
+        name: avatarName || avatarId,
+      }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isNotCloneable = msg.includes("403") || msg.toLowerCase().includes("clone") || msg.toLowerCase().includes("not available");
+      toast.error(isNotCloneable
+        ? t("friends.cloneNotAllowed", { defaultValue: "This avatar does not allow cloning." })
+        : t("friends.cloneFailed", { defaultValue: "Clone failed: {{error}}", error: msg }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={handleClone}
+      className="ml-auto flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.08)] px-1.5 py-0.5 text-[9px] font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.18)] disabled:opacity-50 transition-colors"
+      title={t("friends.cloneTitle", { defaultValue: "Wear this avatar" })}
+    >
+      <Shirt className="size-2.5" />
+      {busy
+        ? t("friends.cloneBusy", { defaultValue: "…" })
+        : t("friends.cloneBtn", { defaultValue: "Wear" })}
+    </button>
+  );
+}
 
 const FriendRow = memo(function FriendRow({
   friend,
@@ -238,7 +285,7 @@ const FriendRow = memo(function FriendRow({
               {t(trustLabelKey(rank))}
             </span>
 
-            {/* Avatar preview chip */}
+            {/* Avatar preview chip + clone button */}
             {friend.currentAvatarName || friend.currentAvatarThumbnailImageUrl ? (
               <>
                 <span className="text-[hsl(var(--muted-foreground))]">
@@ -264,6 +311,7 @@ const FriendRow = memo(function FriendRow({
                       {friend.currentAvatarName}
                     </span>
                   ) : null}
+                  <CloneAvatarButton userId={friend.id} avatarName={friend.currentAvatarName ?? undefined} />
                 </div>
               </>
             ) : null}

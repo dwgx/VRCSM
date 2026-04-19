@@ -1391,6 +1391,69 @@ Result<nlohmann::json> VrcApi::selectAvatar(const std::string& avatarId)
     return nlohmann::json{{"ok", true}};
 }
 
+Result<nlohmann::json> VrcApi::searchAvatars(
+    const std::string& query, int count, int offset)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::string encoded;
+    for (unsigned char ch : query)
+    {
+        if (std::isalnum(ch) || ch == '-' || ch == '_' || ch == '.' || ch == '~')
+        {
+            encoded += static_cast<char>(ch);
+        }
+        else
+        {
+            char buf[4];
+            std::snprintf(buf, sizeof(buf), "%%%02X", ch);
+            encoded.append(buf);
+        }
+    }
+
+    const auto path = toWide(fmt::format(
+        "/api/1/avatars?apiKey={}&releaseStatus=public&sort=popularity"
+        "&order=descending&n={}&offset={}&search={}",
+        kApiKey, std::clamp(count, 1, 100), std::max(offset, 0), encoded));
+
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status != 200)
+    {
+        return Error{"api_error",
+            fmt::format("/avatars search returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+    }
+
+    auto body = parseJsonBody(response, "/avatars?search=");
+    if (!isOk(body)) return body;
+
+    auto& arr = value(body);
+    nlohmann::json results = nlohmann::json::array();
+    for (auto& item : arr)
+    {
+        results.push_back({
+            {"id",              item.value("id", "")},
+            {"name",            item.value("name", "")},
+            {"description",     item.value("description", "")},
+            {"authorId",        item.value("authorId", "")},
+            {"authorName",      item.value("authorName", "")},
+            {"imageUrl",        item.value("imageUrl", "")},
+            {"thumbnailImageUrl", item.value("thumbnailImageUrl", "")},
+            {"releaseStatus",   item.value("releaseStatus", "")},
+            {"version",         item.value("version", 0)},
+            {"tags",            item.value("tags", nlohmann::json::array())},
+            {"created_at",      item.value("created_at", "")},
+            {"updated_at",      item.value("updated_at", "")},
+        });
+    }
+    return nlohmann::json{{"avatars", results}};
+}
+
 Result<nlohmann::json> VrcApi::updateAuthUser(const nlohmann::json& patch)
 {
     const std::string cookieHeader = getLoadedCookieHeader();
