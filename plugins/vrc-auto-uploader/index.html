@@ -11,8 +11,8 @@
     <div class="brand">
       <div class="brand-icon">AU</div>
       <div>
-        <h1>VRChat Auto-Uploader</h1>
-        <p class="subtitle">Batch-upload <code>.unitypackage</code> avatars without the 25% failure rate.</p>
+        <h1 data-t="title">VRChat Auto-Uploader</h1>
+        <p class="subtitle" data-t="subtitle">Batch-upload <code>.unitypackage</code> avatars without the 25% failure rate.</p>
       </div>
     </div>
     <div class="brand-version" id="version-pill">v0.9.2</div>
@@ -20,23 +20,23 @@
 
   <section class="panel">
     <div class="panel-head">
-      <h2>1 &middot; Pick model root folder</h2>
-      <span class="hint">Drop the folder that contains every avatar's .unitypackage (recursion supported).</span>
+      <h2 data-t="step1">1 · Pick model root folder</h2>
+      <span class="hint" data-t="step1Hint">Drop the folder that contains every avatar's .unitypackage (recursion supported).</span>
     </div>
     <div class="row">
-      <button id="pick-folder" class="btn primary">Choose folder…</button>
-      <code id="folder-display" class="folder">(not selected)</code>
+      <button id="pick-folder" class="btn primary" data-t="chooseFolder">Choose folder…</button>
+      <code id="folder-display" class="folder" data-t="notSelected">(not selected)</code>
     </div>
   </section>
 
   <section class="panel">
     <div class="panel-head">
-      <h2>2 &middot; Scan + rename</h2>
-      <span class="hint">Reads the subfolders of the chosen root; each one will be uploaded as an avatar. Rename any row and the edit is remembered for next time (<code>au:renames:&lt;folder&gt;</code> in localStorage).</span>
+      <h2 data-t="step2">2 · Scan + rename</h2>
+      <span class="hint" data-t="step2Hint">Reads the subfolders of the chosen root; each one will be uploaded as an avatar.</span>
     </div>
     <div class="row">
-      <button id="scan" class="btn" disabled>Scan</button>
-      <button id="reset-names" class="btn ghost small" disabled>Reset all to folder name</button>
+      <button id="scan" class="btn" disabled data-t="scan">Scan</button>
+      <button id="reset-names" class="btn ghost small" disabled data-t="resetNames">Reset all to folder name</button>
       <span id="scan-result" class="muted">—</span>
     </div>
     <div id="rename-list-wrap" hidden>
@@ -44,9 +44,9 @@
         <thead>
           <tr>
             <th><input type="checkbox" id="rename-select-all" checked /></th>
-            <th>Folder</th>
-            <th>Upload as…</th>
-            <th class="col-warn">Collisions</th>
+            <th data-t="thFolder">Folder</th>
+            <th data-t="thUploadAs">Upload as…</th>
+            <th class="col-warn" data-t="thCollisions">Collisions</th>
             <th></th>
           </tr>
         </thead>
@@ -58,61 +58,60 @@
 
   <section class="panel">
     <div class="panel-head">
-      <h2>3 &middot; Upload</h2>
-      <span class="hint">Runs the Unity Editor headless, one avatar at a time, with event-based <code>ImportPackage</code> wait + 120s timeout + SessionState persistence across domain reloads.</span>
+      <h2 data-t="step3">3 · Upload</h2>
+      <span class="hint" data-t="step3Hint">Runs the Unity Editor headless, one avatar at a time.</span>
     </div>
     <div class="row">
-      <button id="upload" class="btn primary" disabled>Start upload batch</button>
-      <button id="cancel" class="btn destructive" disabled>Cancel</button>
+      <button id="upload" class="btn primary" disabled data-t="startUpload">Start upload batch</button>
+      <button id="cancel" class="btn destructive" disabled data-t="cancel">Cancel</button>
       <progress id="progress" max="1" value="0"></progress>
-      <span id="progress-label" class="muted">idle</span>
+      <span id="progress-label" class="muted" data-t="idle">idle</span>
     </div>
   </section>
 
   <section class="panel">
     <div class="panel-head">
-      <h2>Log</h2>
-      <button id="clear-log" class="btn ghost small">Clear</button>
+      <h2 data-t="log">Log</h2>
+      <button id="clear-log" class="btn ghost small" data-t="clear">Clear</button>
     </div>
     <pre id="log" class="log" aria-live="polite"></pre>
   </section>
 
   <section class="panel">
     <div class="panel-head">
-      <h2>Results</h2>
+      <h2 data-t="results">Results</h2>
       <span id="result-summary" class="muted">—</span>
     </div>
     <table id="results" class="results">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Status</th>
+          <th data-t="thName">Name</th>
+          <th data-t="thStatus">Status</th>
           <th>Blueprint ID</th>
-          <th>Note</th>
+          <th data-t="thNote">Note</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </section>
 
-  <!-- In-panel folder picker (uses fs.listDir via plugin.rpc) -->
   <div id="picker-backdrop" class="picker-backdrop" hidden>
     <div class="picker" role="dialog" aria-modal="true" aria-labelledby="picker-title">
       <header class="picker-head">
-        <h3 id="picker-title">Choose avatar root folder</h3>
+        <h3 id="picker-title" data-t="pickerTitle">Choose avatar root folder</h3>
         <button id="picker-close" class="btn ghost small" type="button" aria-label="Close">✕</button>
       </header>
       <div class="picker-bar">
-        <button id="picker-up" class="btn small" type="button">▲ Up</button>
-        <button id="picker-home" class="btn small" type="button">This PC</button>
+        <button id="picker-up" class="btn small" type="button" data-t="pickerUp">▲ Up</button>
+        <button id="picker-home" class="btn small" type="button" data-t="pickerHome">This PC</button>
         <code id="picker-path" class="folder">—</code>
       </div>
       <div id="picker-list" class="picker-list" aria-busy="false"></div>
       <footer class="picker-foot">
-        <span id="picker-hint" class="muted">Double-click a folder to descend.</span>
+        <span id="picker-hint" class="muted" data-t="pickerHint">Double-click a folder to descend.</span>
         <div class="picker-actions">
-          <button id="picker-cancel" class="btn" type="button">Cancel</button>
-          <button id="picker-choose" class="btn primary" type="button" disabled>Choose this folder</button>
+          <button id="picker-cancel" class="btn" type="button" data-t="cancel">Cancel</button>
+          <button id="picker-choose" class="btn primary" type="button" disabled data-t="pickerChoose">Choose this folder</button>
         </div>
       </footer>
     </div>
