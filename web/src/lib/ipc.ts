@@ -10,10 +10,13 @@ import type {
   FavoritesSyncResult,
   Friend,
   FriendsListResult,
+  InstalledPluginDto,
   IpcEnvelopeEvent,
   IpcEnvelopeRequest,
   IpcEnvelopeResponse,
+  MarketFeedDto,
   MigratePlan,
+  PluginInstallResult,
   ProcessStatus,
   Report,
   LogStreamChunk,
@@ -637,6 +640,32 @@ class IpcClient {
       }
       case "shell.pickFolder":
         return { cancelled: true } as unknown as TResult;
+      case "fs.listDir": {
+        const p = (params ?? {}) as { path?: string };
+        const roots = [
+          { path: "C:\\", label: "System", type: 3 },
+          { path: "D:\\", label: "Data", type: 3 },
+        ];
+        if (!p.path) {
+          return {
+            path: "",
+            parent: null,
+            entries: [],
+            roots,
+            truncated: false,
+          } as unknown as TResult;
+        }
+        return {
+          path: p.path,
+          parent: null,
+          entries: [
+            { name: "MockProject", isDir: true, hidden: false, system: false },
+            { name: "Assets", isDir: true, hidden: false, system: false },
+          ],
+          roots,
+          truncated: false,
+        } as unknown as TResult;
+      }
       case "shell.openUrl":
         // Mock branch: no side effect, just echo success so the UI can be
         // exercised in browser-only dev mode without shelling out.
@@ -1224,7 +1253,19 @@ class IpcClient {
   async pickFolder(
     opts: { title?: string; initialDir?: string } = {},
   ): Promise<PickFolderResult> {
+    // Prefer the in-app React dialog when it has been mounted — it
+    // renders as a child of the WebView2 host, so the user sees it
+    // regardless of focus/Z-order issues that plague the native
+    // IFileOpenDialog. The host IPC is kept as a fallback for
+    // headless/test contexts where no dialog host is installed.
+    if (inlinePickFolderHandler) {
+      return inlinePickFolderHandler(opts);
+    }
     return this.call<typeof opts, PickFolderResult>("shell.pickFolder", opts);
+  }
+
+  async listDir(opts: { path?: string; includeHidden?: boolean } = {}): Promise<ListDirResult> {
+    return this.call<typeof opts, ListDirResult>("fs.listDir", opts);
   }
 
   async downloadAvatarBundle(params: {
@@ -1571,11 +1612,84 @@ class IpcClient {
       }
     >("logs.files.clear");
   }
+
+  // ── Plugins ─────────────────────────────────────────────────────────
+
+  async pluginList() {
+    return this.call<undefined, { plugins: InstalledPluginDto[] }>("plugin.list");
+  }
+
+  async pluginMarketFeed(force = false) {
+    return this.call<{ force: boolean }, MarketFeedDto>("plugin.marketFeed", { force });
+  }
+
+  async pluginInstall(params: { path?: string; url?: string; sha256?: string; overwrite?: boolean }) {
+    return this.call<typeof params, PluginInstallResult>("plugin.install", params);
+  }
+
+  async pluginUninstall(id: string) {
+    return this.call<{ id: string }, { ok: boolean; id: string }>("plugin.uninstall", { id });
+  }
+
+  async pluginEnable(id: string) {
+    return this.call<{ id: string }, { ok: boolean; id: string; enabled: boolean }>(
+      "plugin.enable", { id },
+    );
+  }
+
+  async pluginDisable(id: string) {
+    return this.call<{ id: string }, { ok: boolean; id: string; enabled: boolean }>(
+      "plugin.disable", { id },
+    );
+  }
+
+  async pluginRpc<TParams, TResult>(method: string, params?: TParams) {
+    return this.call<{ method: string; params?: TParams }, TResult>("plugin.rpc", {
+      method,
+      params,
+    });
+  }
 }
 
 export interface PickFolderResult {
   cancelled: boolean;
   path?: string;
+}
+
+export interface ListDirEntry {
+  name: string;
+  isDir: boolean;
+  hidden: boolean;
+  system: boolean;
+}
+
+export interface ListDirRoot {
+  path: string;
+  label: string;
+  // Win32 GetDriveType return value — 2=removable, 3=fixed, 4=remote,
+  // 5=cdrom, 6=ramdisk. UI uses it to pick an appropriate icon.
+  type: number;
+}
+
+export interface ListDirResult {
+  path: string;
+  parent: string | null;
+  entries: ListDirEntry[];
+  roots: ListDirRoot[];
+  truncated: boolean;
+}
+
+// The FolderPickerHost React component registers itself here so
+// ipc.pickFolder() resolves through the in-app dialog instead of the
+// native IFileOpenDialog. A null handler means we fall back to the host.
+type InlinePickFolderHandler = (
+  opts: { title?: string; initialDir?: string },
+) => Promise<PickFolderResult>;
+
+let inlinePickFolderHandler: InlinePickFolderHandler | null = null;
+
+export function registerInlinePickFolder(handler: InlinePickFolderHandler | null): void {
+  inlinePickFolderHandler = handler;
 }
 
 export const ipc = new IpcClient();

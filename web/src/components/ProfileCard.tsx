@@ -41,6 +41,10 @@ export interface VrcUserProfile {
   bio?: string;
   bioLinks?: string[];
   tags?: string[];
+  pronouns?: string;
+  userIcon?: string;
+  date_joined?: string;
+  ageVerificationStatus?: string;
   status: VrcStatus;
   statusDescription?: string;
   currentAvatarImageUrl?: string;
@@ -88,6 +92,111 @@ function statusDot(s: VrcStatus): string {
     default:        return "bg-[hsl(var(--muted-foreground))]";
   }
 }
+
+// ─── Language tag catalog ────────────────────────────────────────────────────
+// VRChat tracks spoken languages as `language_<iso>` tags. Mirrors the
+// vrchat.com profile editor plus every regional Chinese/Japanese/Korean
+// dialect the VRChat API actually accepts — Cantonese (yue), Wu (wuu),
+// Min Nan (nan, covers Taiwanese/Chaozhou/Hokkien), Hakka (hak), Tibetan,
+// Mongolian, and so on. Label is always the native self-name so a
+// user picking from a localised UI still recognises the tag.
+const VRC_LANGUAGE_TAGS: ReadonlyArray<readonly [string, string]> = [
+  // CJK + Chinese dialects
+  ["language_eng", "English"],
+  ["language_zho", "中文 (普通话)"],
+  ["language_yue", "粵語 (广东话)"],
+  ["language_wuu", "吴语 (上海话)"],
+  ["language_nan", "闽南语 (潮汕/台语)"],
+  ["language_hak", "客家话"],
+  ["language_jpn", "日本語"],
+  ["language_kor", "한국어"],
+  ["language_mon", "Монгол"],
+  ["language_bod", "བོད་སྐད།"],
+  ["language_uig", "ئۇيغۇرچە"],
+  // European — Romance / Germanic / Slavic
+  ["language_spa", "Español"],
+  ["language_por", "Português"],
+  ["language_fra", "Français"],
+  ["language_ita", "Italiano"],
+  ["language_cat", "Català"],
+  ["language_glg", "Galego"],
+  ["language_ron", "Română"],
+  ["language_deu", "Deutsch"],
+  ["language_nld", "Nederlands"],
+  ["language_swe", "Svenska"],
+  ["language_nor", "Norsk"],
+  ["language_dan", "Dansk"],
+  ["language_fin", "Suomi"],
+  ["language_isl", "Íslenska"],
+  ["language_pol", "Polski"],
+  ["language_ces", "Čeština"],
+  ["language_slk", "Slovenčina"],
+  ["language_hun", "Magyar"],
+  ["language_rus", "Русский"],
+  ["language_ukr", "Українська"],
+  ["language_bel", "Беларуская"],
+  ["language_bul", "Български"],
+  ["language_srp", "Српски"],
+  ["language_hrv", "Hrvatski"],
+  ["language_slv", "Slovenščina"],
+  ["language_mkd", "Македонски"],
+  ["language_alb", "Shqip"],
+  ["language_ell", "Ελληνικά"],
+  ["language_tur", "Türkçe"],
+  ["language_gle", "Gaeilge"],
+  ["language_cym", "Cymraeg"],
+  ["language_eus", "Euskara"],
+  ["language_est", "Eesti"],
+  ["language_lav", "Latviešu"],
+  ["language_lit", "Lietuvių"],
+  // Middle East / South Asia
+  ["language_ara", "العربية"],
+  ["language_heb", "עברית"],
+  ["language_fas", "فارسی"],
+  ["language_urd", "اردو"],
+  ["language_hin", "हिन्दी"],
+  ["language_ben", "বাংলা"],
+  ["language_pan", "ਪੰਜਾਬੀ"],
+  ["language_tam", "தமிழ்"],
+  ["language_tel", "తెలుగు"],
+  ["language_mar", "मराठी"],
+  ["language_guj", "ગુજરાતી"],
+  ["language_mal", "മലയാളം"],
+  ["language_kan", "ಕನ್ನಡ"],
+  ["language_nep", "नेपाली"],
+  ["language_sin", "සිංහල"],
+  // SE Asia
+  ["language_tha", "ไทย"],
+  ["language_vie", "Tiếng Việt"],
+  ["language_ind", "Bahasa Indonesia"],
+  ["language_msa", "Bahasa Melayu"],
+  ["language_fil", "Filipino"],
+  ["language_khm", "ខ្មែរ"],
+  ["language_lao", "ລາວ"],
+  ["language_mya", "မြန်မာဘာသာ"],
+  // Central Asia / Caucasus
+  ["language_kat", "ქართული"],
+  ["language_hye", "Հայերեն"],
+  ["language_aze", "Azərbaycanca"],
+  ["language_kaz", "Қазақ"],
+  ["language_uzb", "Oʻzbekcha"],
+  // Africa
+  ["language_swa", "Kiswahili"],
+  ["language_zul", "isiZulu"],
+  ["language_xho", "isiXhosa"],
+  ["language_afr", "Afrikaans"],
+  ["language_amh", "አማርኛ"],
+  ["language_hau", "Hausa"],
+  ["language_yor", "Yorùbá"],
+  // Sign languages
+  ["language_ase", "ASL (American)"],
+  ["language_bsl", "BSL (British)"],
+  ["language_jsl", "JSL (日本手話)"],
+  ["language_csl", "CSL (中国手语)"],
+  // Constructed / historical (VRChat actually accepts these)
+  ["language_epo", "Esperanto"],
+  ["language_lat", "Latīna"],
+];
 
 // ─── BioLinks helpers ────────────────────────────────────────────────────────
 
@@ -146,11 +255,19 @@ export function ProfileCard({
   const [draftBio, setDraftBio] = useState(user.bio ?? "");
   const [draftStatusDesc, setDraftStatusDesc] = useState(user.statusDescription ?? "");
   const [draftStatus, setDraftStatus] = useState<VrcStatus>(user.status);
+  const [draftBioLinks, setDraftBioLinks] = useState<string[]>(user.bioLinks ?? []);
+  const [draftPronouns, setDraftPronouns] = useState(user.pronouns ?? "");
+  const [draftLanguageTags, setDraftLanguageTags] = useState<string[]>(
+    (user.tags ?? []).filter((tag) => tag.startsWith("language_")),
+  );
 
   useEffect(() => {
     setDraftBio(user.bio ?? "");
     setDraftStatusDesc(user.statusDescription ?? "");
     setDraftStatus(user.status);
+    setDraftBioLinks(user.bioLinks ?? []);
+    setDraftPronouns(user.pronouns ?? "");
+    setDraftLanguageTags((user.tags ?? []).filter((tag) => tag.startsWith("language_")));
     setEditing(false);
   }, [user]);
 
@@ -158,10 +275,16 @@ export function ProfileCard({
     if (!onSave) return;
     setSaving(true);
     try {
+      // Preserve non-language tags; replace language_* set.
+      const nonLangTags = (user.tags ?? []).filter((tag) => !tag.startsWith("language_"));
+      const mergedTags = [...nonLangTags, ...draftLanguageTags];
       await onSave({
         bio: draftBio,
         statusDescription: draftStatusDesc,
         status: draftStatus,
+        bioLinks: draftBioLinks.filter((link) => link.trim().length > 0).slice(0, 4),
+        pronouns: draftPronouns,
+        tags: mergedTags,
       });
       setEditing(false);
       toast.success(t("profile.updated"));
@@ -176,6 +299,9 @@ export function ProfileCard({
     setDraftBio(user.bio ?? "");
     setDraftStatusDesc(user.statusDescription ?? "");
     setDraftStatus(user.status);
+    setDraftBioLinks(user.bioLinks ?? []);
+    setDraftPronouns(user.pronouns ?? "");
+    setDraftLanguageTags((user.tags ?? []).filter((tag) => tag.startsWith("language_")));
     setEditing(false);
   }
 
@@ -255,6 +381,11 @@ export function ProfileCard({
               <span className="truncate text-base font-bold text-[hsl(var(--foreground))] drop-shadow-sm tracking-tight">
                 {user.displayName}
               </span>
+              {user.pronouns && (
+                <span className="shrink-0 rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 text-[9.5px] font-medium text-[hsl(var(--muted-foreground))]">
+                  {user.pronouns}
+                </span>
+              )}
               {user.developerType && user.developerType !== "none" && (
                 <span className="shrink-0 rounded bg-[hsl(var(--primary)/0.15)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[hsl(var(--primary))] shadow-sm">
                   Dev
@@ -354,7 +485,7 @@ export function ProfileCard({
         )}
       </div>
 
-      {/* ── Bio Links ── */}
+      {/* ── Bio Links (view) ── */}
       {user.bioLinks && user.bioLinks.length > 0 && !editing && (
         <div className="px-4 py-2.5 flex flex-wrap gap-1.5 bg-[hsl(var(--surface))]">
           {user.bioLinks.map((url, i) => {
@@ -374,6 +505,122 @@ export function ProfileCard({
               </a>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Bio Links / Pronouns / Language (edit) ── */}
+      {editing && isSelf && (
+        <div className="px-4 py-3 flex flex-col gap-3 bg-[hsl(var(--canvas)/0.25)] border-y border-[hsl(var(--border)/0.3)]">
+          {/* bio links */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 text-[10px] uppercase font-semibold tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+              <Link className="size-3" />
+              {t("profile.edit.bioLinks", { defaultValue: "Bio Links (up to 4)" })}
+              <button
+                type="button"
+                onClick={() => setDraftBioLinks((prev) => (prev.length >= 4 ? prev : [...prev, ""]))}
+                className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium text-[hsl(var(--primary))] hover:underline"
+                disabled={draftBioLinks.length >= 4}
+              >
+                + {t("profile.edit.addLink", { defaultValue: "Add link" })}
+              </button>
+            </div>
+            {draftBioLinks.length === 0 ? (
+              <p className="text-[11px] italic text-[hsl(var(--muted-foreground)/0.6)]">
+                {t("profile.edit.noLinks", { defaultValue: "No links yet — click + Add link above" })}
+              </p>
+            ) : (
+              draftBioLinks.map((url, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <Input
+                    value={url}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setDraftBioLinks((prev) => prev.map((p, idx) => (idx === i ? v : p)));
+                    }}
+                    placeholder={t("profile.edit.linkPlaceholder", { defaultValue: "https://…" })}
+                    className="h-7 text-[11px] bg-[hsl(var(--canvas))]"
+                    maxLength={256}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDraftBioLinks((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="rounded p-1 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--destructive)/0.1)] hover:text-[hsl(var(--destructive))]"
+                    title={t("common.remove", { defaultValue: "Remove" })}
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* pronouns */}
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[10px] uppercase font-semibold tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+              {t("profile.edit.pronouns", { defaultValue: "Pronouns" })}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {["he/him", "she/her", "they/them", "ze/zir", "any/all"].map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setDraftPronouns(opt)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-0.5 text-[10.5px] font-medium transition-colors",
+                    draftPronouns === opt
+                      ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.14)] text-[hsl(var(--primary))]"
+                      : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--border-strong))] hover:text-[hsl(var(--foreground))]",
+                  )}
+                >
+                  {opt}
+                </button>
+              ))}
+              <Input
+                value={draftPronouns}
+                onChange={(e) => setDraftPronouns(e.target.value)}
+                placeholder={t("profile.edit.pronounsCustom", { defaultValue: "custom…" })}
+                className="h-7 w-32 text-[11px] bg-[hsl(var(--canvas))]"
+                maxLength={32}
+              />
+            </div>
+          </div>
+
+          {/* language tags */}
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[10px] uppercase font-semibold tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+              {t("profile.edit.languages", { defaultValue: "Spoken Languages" })}
+              <span className="ml-2 text-[9.5px] normal-case text-[hsl(var(--muted-foreground)/0.7)]">
+                {draftLanguageTags.length}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin">
+              {VRC_LANGUAGE_TAGS.map(([tag, label]) => {
+                const selected = draftLanguageTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      setDraftLanguageTags((prev) => {
+                        if (prev.includes(tag)) return prev.filter((p) => p !== tag);
+                        return [...prev, tag];
+                      });
+                    }}
+                    className={cn(
+                      "rounded px-2 py-0.5 text-[10.5px] font-medium transition-colors border",
+                      selected
+                        ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]"
+                        : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--border-strong))] disabled:opacity-40 disabled:hover:border-[hsl(var(--border))]",
+                    )}
+                    title={label}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 

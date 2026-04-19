@@ -14,6 +14,7 @@ add_executable(vrcsm WIN32
     bridges/AuthBridge.cpp
     bridges/ApiBridge.cpp
     bridges/CacheBridge.cpp
+    bridges/HwBridge.cpp
     bridges/SettingsBridge.cpp
     bridges/MigrateBridge.cpp
     bridges/ScreenshotBridge.cpp
@@ -21,6 +22,8 @@ add_executable(vrcsm WIN32
     bridges/LogsBridge.cpp
     bridges/RadarBridge.cpp
     bridges/DatabaseBridge.cpp
+    bridges/PluginBridge.cpp
+    bridges/UpdateBridge.cpp
 )
 
 set(VRCSM_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
@@ -43,6 +46,7 @@ configure_file(
 
 target_link_libraries(vrcsm PRIVATE
     vrcsm_core
+    vrcsm_core_hw
     nlohmann_json::nlohmann_json
     fmt::fmt
     spdlog::spdlog
@@ -92,6 +96,17 @@ add_custom_command(TARGET vrcsm POST_BUILD
         ${VRCSM_ICON_SOURCE_PATH}
         $<TARGET_FILE_DIR:vrcsm>/VRCSM.ico
     COMMENT "Syncing app icon to $<TARGET_FILE_DIR:vrcsm>/VRCSM.ico"
+    VERBATIM
+)
+
+# Bundled plugins (shipped in the MSI and copied next to VRCSM.exe so the
+# plugin loader discovers them on first run).
+add_custom_command(TARGET vrcsm POST_BUILD
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE=${CMAKE_SOURCE_DIR}/plugins
+        -DDEST=$<TARGET_FILE_DIR:vrcsm>/plugins
+        -P ${CMAKE_SOURCE_DIR}/cmake/sync-plugins.cmake
+    COMMENT "Syncing bundled plugins to $<TARGET_FILE_DIR:vrcsm>/plugins"
     VERBATIM
 )
 

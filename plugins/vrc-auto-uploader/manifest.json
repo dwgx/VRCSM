@@ -1,0 +1,18 @@
+{
+  "id": "dev.vrcsm.autouploader",
+  "name": "VRChat Auto-Uploader",
+  "version": "0.9.2",
+  "hostMin": "0.9.2",
+  "shape": "panel",
+  "entry": {
+    "panel": "index.html"
+  },
+  "permissions": [
+    "ipc:shell"
+  ],
+  "author": {
+    "name": "dwgx",
+    "url": "https://github.com/dwgx/VRCSM"
+  },
+  "homepage": "https://github.com/dwgx/VRCSM/tree/main/plugins/vrc-auto-uploader"
+}

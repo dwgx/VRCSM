@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Heart,
   Package,
+  Plug,
   User,
   UserCircle2,
   Camera,
@@ -13,16 +14,18 @@ import {
   Check,
   Globe2,
   Users,
+  Users2,
   Radio,
   Orbit,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { APP_ICON_URL } from "@/lib/assets";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_LANGUAGES, changeLanguage } from "@/i18n";
 import { ipc } from "@/lib/ipc";
+import { useInstalledPanelPlugins } from "@/lib/plugin-context";
 import type { AppVersion } from "@/lib/types";
 
 interface NavItem {
@@ -36,6 +39,7 @@ const items: NavItem[] = [
   { to: "/profile", labelKey: "nav.profile", icon: UserCircle2 },
   { to: "/vrchat", labelKey: "nav.vrchat", icon: Orbit },
   { to: "/friends", labelKey: "nav.friends", icon: Users },
+  { to: "/groups", labelKey: "nav.groups", icon: Users2 },
   { to: "/radar", labelKey: "nav.radar", icon: Radio },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
   { to: "/library", labelKey: "nav.library", icon: Heart },
@@ -44,6 +48,7 @@ const items: NavItem[] = [
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
+  { to: "/plugins", labelKey: "nav.plugins", icon: Plug },
   { to: "/settings", labelKey: "nav.settings", icon: SettingsIcon },
 ];
 
@@ -133,6 +138,18 @@ function VersionFooter() {
 
 export function Sidebar() {
   const { t } = useTranslation();
+  const panelPlugins = useInstalledPanelPlugins();
+  const pluginItems = useMemo(
+    () =>
+      panelPlugins.map((p) => ({
+        to: `/p/${encodeURIComponent(p.id)}`,
+        label: p.name,
+        iconUrl: p.icon
+          ? `https://${p.virtualHost}/${p.icon}`
+          : null,
+      })),
+    [panelPlugins],
+  );
   return (
     <aside
       className={cn(
@@ -198,6 +215,52 @@ export function Sidebar() {
             )}
           </NavLink>
         ))}
+
+        {pluginItems.length > 0 ? (
+          <>
+            <div className="mt-1 px-2.5 pt-1 text-[9.5px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+              {t("nav.category.plugins", { defaultValue: "Plugins" })}
+            </div>
+            {pluginItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    "relative flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5",
+                    "text-[12.5px] font-medium",
+                    "text-[hsl(var(--muted-foreground))]",
+                    "border border-transparent",
+                    "hover:bg-[hsl(var(--surface-raised))] hover:text-[hsl(var(--foreground))]",
+                    "transition-colors",
+                    isActive && [
+                      "bg-[hsl(var(--primary)/0.22)]",
+                      "text-[hsl(var(--foreground))]",
+                      "border-[hsl(var(--primary)/0.55)]",
+                    ].join(" "),
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive ? (
+                      <span
+                        aria-hidden
+                        className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full bg-[hsl(var(--primary))]"
+                      />
+                    ) : null}
+                    {item.iconUrl ? (
+                      <img src={item.iconUrl} width={14} height={14} alt="" className="shrink-0" />
+                    ) : (
+                      <Plug className="size-[14px] shrink-0" aria-hidden />
+                    )}
+                    <span className="truncate">{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </>
+        ) : null}
       </nav>
 
       {/* Footer — language + version */}

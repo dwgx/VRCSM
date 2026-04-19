@@ -17,9 +17,14 @@
     "screenshots": "Скриншоты",
     "logs": "Логи",
     "migrate": "Миграция",
+    "plugins": "Плагины",
     "settings": "Настройки",
     "language": "Язык",
-    "friendLog": "Лог друзей"
+    "friendLog": "Лог друзей",
+    "groups": "Группы",
+    "category": {
+      "plugins": "Плагины"
+    }
   },
   "profile": {
     "title": "Мой профиль",
@@ -52,7 +57,25 @@
     "liveContextDesc": "Важные id и текущие цели сессии для быстрой навигации.",
     "liveContextHint": "Используйте эти live-id как точки входа в нативные потоки друзей, аватаров, миров и избранного внутри VRCSM.",
     "openFriendsManager": "Присоединиться",
-    "openLibrary": "В библиотеку"
+    "openLibrary": "В библиотеку",
+    "edit": {
+      "bioLinks": "Ссылки в био (до 4)",
+      "addLink": "Добавить ссылку",
+      "linkPlaceholder": "https://…",
+      "noLinks": "Ссылок пока нет — нажмите «+ Добавить ссылку» выше",
+      "pronouns": "Местоимения",
+      "pronounsCustom": "свои…",
+      "languages": "Языки общения"
+    },
+    "stats": {
+      "joined": "Присоединился",
+      "joinedValue": "{{date}} ({{years}} лет)",
+      "trust": "Доверие",
+      "ageVerification": "Подтверждение возраста",
+      "ageVerified": "18+ подтверждено",
+      "ageUnverified": "Не подтверждено",
+      "languages": "Языки"
+    }
   },
   "screenshots": {
     "title": "Скриншоты",
@@ -124,6 +147,19 @@
     "requestInvite": "Запросить приглашение",
     "openFriendProfile": "Открыть профиль",
     "noSubscriptionSignals": "В данной сессии не были раскрыты специальные поля для определения подписки.",
+    "quickFilters": "Быстрые фильтры",
+    "onlyOnlineFriends": "Только онлайн друзья",
+    "onlyMyGroups": "Только мои группы",
+    "hideModerations": "Скрыть модерацию",
+    "runtimeMode": "Режим запуска",
+    "trustRankQuick": "Ранг доверия",
+    "vrcPlusQuick": "VRC+",
+    "linkedAccountsQuick": "Связанные аккаунты",
+    "socialPulse": "Соцсигналы",
+    "marketplaceQuick": "Магазин",
+    "favoriteAvatars": "Избранные аватары",
+    "favoriteWorlds": "Избранные миры",
+    "downloadReady": "К скачиванию",
     "block": "Блок",
     "mute": "Мут",
     "pickDownloadFolder": "Выберите папку для бандлов",
@@ -231,6 +267,22 @@
     "detailPaneTitle": "Подробности",
     "platform": "Платформа"
   },
+  "groups": {
+    "subtitle": "Все группы VRChat, в которых вы состоите: сначала представляемая группа, затем сортировка по онлайн-активности.",
+    "filterPlaceholder": "Фильтр групп…",
+    "representing": "Представляете",
+    "empty": "Вы ещё не вступили ни в одну группу VRChat.",
+    "noMatch": "Нет групп, подходящих под '{{filter}}'.",
+    "memberCount": "Участников: {{count}}",
+    "onlineCount": "Онлайн: {{count}}",
+    "viewOnVrchat": "Открыть на vrchat.com",
+    "seeOnline": "Показать онлайн",
+    "stats": {
+      "total": "Ваши группы",
+      "online": "Онлайн-участники",
+      "representing": "Представляете"
+    }
+  },
   "menu": {
     "file": "Файл",
     "edit": "Правка",
@@ -270,12 +322,39 @@
     "toolsSettings": "Настройки",
     "toolsSteamVR": "Настройки SteamVR",
     "toolsConfig": "Конфиг приложения",
+    "toolsPluginsMarket": "Магазин плагинов",
+    "toolsPluginsInstalled": "Установленные плагины",
     "windowResetLayout": "Сбросить макет",
     "helpAbout": "О VRCSM",
     "helpDocs": "Документация",
     "helpCheckUpdates": "Проверить обновления",
+    "helpCheckUpdatesFallback": "Проверить обновления…",
     "helpReportIssue": "Сообщить о проблеме",
     "helpKeyboard": "Сочетания клавиш"
+  },
+  "update": {
+    "title": "Обновление VRCSM",
+    "checking": "Проверка обновлений…",
+    "availableDesc": "Доступна новая версия VRCSM. Установите сейчас или оставайтесь на текущей версии.",
+    "readyDesc": "Установщик скачан и проверен. Нажмите «Установить», чтобы применить обновление — VRCSM перезапустится.",
+    "downloadingDesc": "Идёт загрузка — не закрывайте VRCSM, пока она не завершится.",
+    "upToDateDesc": "У вас уже последняя версия.",
+    "errorDesc": "Сейчас не удалось проверить обновления.",
+    "currentLabel": "Текущая",
+    "latestLabel": "Доступна",
+    "sizeLabel": "Размер загрузки",
+    "verifying": "Проверка SHA-256…",
+    "downloading": "Загрузка {{done}} / {{total}}",
+    "viewNotes": "Примечания к релизу",
+    "skip": "Пропустить эту версию",
+    "skipped": "Версия {{version}} пропущена",
+    "skipFailed": "Не удалось пропустить: {{msg}}",
+    "downloadFailed": "Ошибка загрузки: {{msg}}",
+    "installFailed": "Ошибка установки: {{msg}}",
+    "retry": "Проверить снова",
+    "later": "Позже",
+    "download": "Скачать и установить",
+    "installNow": "Установить сейчас (перезапуск)"
   },
   "radar": {
     "title": "Радар живого инстанса",
@@ -346,6 +425,7 @@
     "hide": "Скрыть",
     "show": "Показать",
     "unknown": "Неизвестно",
+    "remove": "Удалить",
     "sidebar": "Сайдбар"
   },
   "about": {
@@ -921,6 +1001,18 @@
       "runtimeDesc": "Информация о среде запуска на основе логов VRChat.",
       "runtimeMode": "Режим",
       "runtimeDetail": "Детали"
+    },
+    "steamvr": {
+      "saveDirty": "Сохранить настройки *",
+      "presetQuest3": "Quest 3 оптимизировано",
+      "presetQuest3Hint": "Настроено для Quest 3 через Steam Link",
+      "questSection": {
+        "title": "Неполадки Quest",
+        "body": "Дрожание по краям, мыло или зависания с чёрным экраном на Quest почти всегда связаны не с VRChat, а со слоем рантайма (Steam Link / Virtual Desktop / Oculus Link). Сначала попробуйте пресет Quest 3 Optimized выше, затем уменьшите Encoder Resolution, если дрожание не исчезло, отключите Space Warp / Motion Smoothing при двоении и проверьте, что в Windows включено GPU Scheduling.",
+        "odt": "Oculus Debug Tool",
+        "gpuScheduling": "Планирование GPU",
+        "guide": "Гид VRCSM"
+      }
     }
   },
   "profileCard": {
@@ -935,5 +1027,59 @@
     "wearAvatarTitle": "Надеть {{name}}",
     "copyAvatarId": "Скопировать ID аватара",
     "avatarIdCopied": "ID аватара скопирован"
+  },
+  "plugins": {
+    "installedLink": "Установленные плагины",
+    "market": {
+      "title": "Магазин плагинов",
+      "subtitle": "Устанавливайте официальные и сторонние плагины из официальной ленты VRCSM.",
+      "refresh": "Обновить",
+      "fetchError": "Не удалось загрузить ленту плагинов: {{detail}}",
+      "details": "Детали",
+      "install": "Установить",
+      "installing": "Установка…",
+      "installed": "Установлено",
+      "empty": "Нет доступных плагинов."
+    },
+    "detail": {
+      "notFound": "Плагин не найден в ленте.",
+      "backToMarket": "Назад в магазин",
+      "by": "Автор",
+      "homepage": "Домашняя страница",
+      "uninstall": "Удалить",
+      "bundledHint": "Встроенные плагины поставляются с VRCSM — отключайте вместо удаления.",
+      "description": "Описание",
+      "metadata": "Метаданные",
+      "hostMin": "Минимальная версия хоста",
+      "sha256": "SHA-256",
+      "downloadUrl": "URL загрузки",
+      "open": "Открыть"
+    },
+    "installed": {
+      "title": "Установленные плагины",
+      "subtitle": "Управляйте локально установленными плагинами и их состоянием.",
+      "openMarket": "Открыть магазин",
+      "empty": "Плагины не установлены.",
+      "col": {
+        "name": "Имя",
+        "version": "Версия",
+        "shape": "Тип",
+        "status": "Статус",
+        "actions": "Действия"
+      },
+      "enabled": "Включено",
+      "disabled": "Отключено",
+      "bundled": "Встроенный",
+      "bundledHint": "Встроенные плагины нельзя удалить.",
+      "open": "Открыть",
+      "enable": "Включить",
+      "disable": "Отключить",
+      "uninstall": "Удалить"
+    },
+    "host": {
+      "notInstalled": "Плагин {{id}} не установлен.",
+      "disabled": "Плагин {{id}} отключён.",
+      "noPanel": "Плагин {{id}} не предоставляет панель."
+    }
   }
 }

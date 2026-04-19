@@ -1187,38 +1187,21 @@ VerifyResult VrcApi::verifyTwoFactor(const std::string& method, const std::strin
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchFriends(bool offline)
 {
-    const std::string cookieHeader = getLoadedCookieHeader();
-    if (cookieHeader.empty())
-    {
-        return Error{"auth_expired", "Not signed in", 401};
-    }
-
-    // v0.2.0 keeps this intentionally boring: one page, 100 rows, enough
-    // for the first frontend slice without inventing pagination state.
-    const auto response = httpGet(
-        kApiHostW,
-        toWide(fmt::format(
-            "/api/1/auth/user/friends?offline={}&n=100",
-            offline ? "true" : "false")),
-        std::make_optional(cookieHeader));
-    if (auto err = checkStandardHttpError(response, "/auth/user/friends"))
-    {
-        return *err;
-    }
-
-    const auto doc = parseJsonBody(response, "/auth/user/friends");
-    if (!doc.is_array())
-    {
-        return Error{"api_error", "/auth/user/friends returned a non-array payload", 0};
-    }
-
-    std::vector<nlohmann::json> out;
-    out.reserve(doc.size());
-    for (const auto& item : doc)
-    {
-        out.push_back(item);
-    }
-    return out;
+    // v0.9.0: page through `/auth/user/friends` until the server returns
+    // fewer rows than we asked for. VRChat caps each page at ~100. Users
+    // with 200+ friends were previously seeing a silently-truncated list
+    // from the v0.2.0 single-shot implementation.
+    const std::string offlineFlag = offline ? "true" : "false";
+    return fetchPagedAuthedArray(
+        "/auth/user/friends",
+        [&offlineFlag](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/auth/user/friends?offline={}&n={}&offset={}",
+                offlineFlag,
+                limit,
+                offset));
+        });
 }
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchGroups()

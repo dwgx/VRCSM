@@ -8,6 +8,7 @@ interface TitleBarProps {
   onResetLayout?: () => void;
   onOpenAbout?: () => void;
   onOpenCommandPalette?: () => void;
+  onOpenUpdate?: () => void;
   vrcRunning: boolean;
 }
 
@@ -18,6 +19,7 @@ export function TitleBar({
   onResetLayout,
   onOpenAbout,
   onOpenCommandPalette,
+  onOpenUpdate,
   vrcRunning,
 }: TitleBarProps) {
   return (
@@ -27,6 +29,7 @@ export function TitleBar({
         onResetLayout={onResetLayout}
         onOpenAbout={onOpenAbout}
         onOpenCommandPalette={onOpenCommandPalette}
+        onOpenUpdate={onOpenUpdate}
       />
       <Toolbar
         currentPageLabel={currentPageLabel}

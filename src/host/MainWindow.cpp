@@ -154,8 +154,8 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         // Worker-thread PostMessageToWeb landed here. We own the
         // payload pointer; hand it to the WebView host which fires
         // the real WebView2 call on this (the UI) thread and then
-        // deletes the string.
-        auto* payload = reinterpret_cast<std::string*>(lParam);
+        // deletes the payload.
+        auto* payload = reinterpret_cast<WebPostPayload*>(lParam);
         if (m_webViewHost != nullptr)
         {
             m_webViewHost->DeliverWebMessage(payload);

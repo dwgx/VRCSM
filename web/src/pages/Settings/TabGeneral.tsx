@@ -95,22 +95,30 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
   ]), [t]);
   const runtimeSummary = useMemo(() => {
     const parsedEnv = report?.logs.environment;
-    const probeText = `${parsedEnv?.xr_device ?? ""} ${parsedEnv?.device_model ?? ""} ${parsedEnv?.platform ?? ""}`.toLowerCase();
-    if (parsedEnv?.xr_device || /quest|vive|index|oculus|pimax|openxr|openvr|xr/.test(probeText)) {
+    // VRChat writes literal "None" when no XR device is active. Strip that
+    // before classifying — otherwise desktop users get tagged as VR with a
+    // device name of "None".
+    const rawXr = parsedEnv?.xr_device?.trim() ?? "";
+    const xrDevice = rawXr && rawXr.toLowerCase() !== "none" ? rawXr : undefined;
+    const deviceModel = parsedEnv?.device_model?.trim() || undefined;
+    const platform = parsedEnv?.platform?.trim() || undefined;
+    const store = parsedEnv?.store?.trim() || undefined;
+    const probeText = `${xrDevice ?? ""} ${deviceModel ?? ""} ${platform ?? ""}`.toLowerCase();
+    if (xrDevice || /quest|vive|index|oculus|pimax|openvr|openxr/.test(probeText)) {
       return {
         label: t("settings.general.runtimeVr", { defaultValue: "VR" }),
-        detail: parsedEnv?.xr_device ?? parsedEnv?.device_model ?? parsedEnv?.platform ?? t("common.none"),
+        detail: xrDevice ?? deviceModel ?? platform ?? t("common.none"),
       };
     }
-    if (parsedEnv?.platform?.toLowerCase().includes("android")) {
+    if (platform?.toLowerCase().includes("android")) {
       return {
         label: t("settings.general.runtimeStandalone", { defaultValue: "Standalone" }),
-        detail: parsedEnv.device_model ?? parsedEnv.platform,
+        detail: deviceModel ?? platform ?? t("common.none"),
       };
     }
     return {
       label: t("settings.general.runtimeDesktop", { defaultValue: "Desktop" }),
-      detail: parsedEnv?.platform ?? parsedEnv?.store ?? parsedEnv?.device_model ?? t("common.none"),
+      detail: deviceModel ?? platform ?? store ?? t("common.none"),
     };
   }, [report?.logs.environment, t]);
 
@@ -161,7 +169,10 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
       toast.success(t("settings.app.factoryResetOkToast", {
         defaultValue: "VRCSM has been reset. Wait a moment...",
       }));
-      setTimeout(() => window.location.reload(), 1500);
+      // Use absolute replace instead of reload — avoids ERR_FILE_NOT_FOUND if
+      // the current location is a preview.local / plugin iframe URL that the
+      // reset just invalidated.
+      setTimeout(() => window.location.replace("https://app.vrcsm/"), 1500);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(t("settings.app.factoryResetFailed", {

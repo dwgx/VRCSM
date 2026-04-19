@@ -99,6 +99,10 @@ nlohmann::json FilterUserProfile(const nlohmann::json& user)
         {"currentAvatarImageUrl", JsonStringField(user, "currentAvatarImageUrl").value_or("")},
         {"currentAvatarThumbnailImageUrl", JsonStringField(user, "currentAvatarThumbnailImageUrl").value_or("")},
         {"profilePicOverride", JsonStringField(user, "profilePicOverride").value_or("")},
+        {"userIcon", JsonStringField(user, "userIcon").value_or("")},
+        {"pronouns", JsonStringField(user, "pronouns").value_or("")},
+        {"date_joined", JsonStringField(user, "date_joined").value_or("")},
+        {"ageVerificationStatus", JsonStringField(user, "ageVerificationStatus").value_or("")},
         {"developerType", JsonStringField(user, "developerType").value_or("")},
         {"last_login", JsonStringField(user, "last_login").value_or("")},
         {"last_activity", JsonStringField(user, "last_activity").value_or("")},
@@ -419,6 +423,52 @@ nlohmann::json IpcBridge::HandleUserUpdateProfile(const nlohmann::json& params, 
     if (const auto status = JsonStringField(params, "status"); status.has_value())
     {
         patch["status"] = *status;
+    }
+    if (const auto pronouns = JsonStringField(params, "pronouns"); pronouns.has_value())
+    {
+        patch["pronouns"] = *pronouns;
+    }
+    if (const auto userIcon = JsonStringField(params, "userIcon"); userIcon.has_value())
+    {
+        patch["userIcon"] = *userIcon;
+    }
+    if (const auto profilePicOverride = JsonStringField(params, "profilePicOverride"); profilePicOverride.has_value())
+    {
+        patch["profilePicOverride"] = *profilePicOverride;
+    }
+
+    // bioLinks — VRChat accepts up to 4 URL strings. We trim empties and cap
+    // the length here so a UI bug can't send garbage; the server also
+    // validates but we want a cleaner 400 at the edge.
+    if (params.contains("bioLinks") && params["bioLinks"].is_array())
+    {
+        nlohmann::json cleaned = nlohmann::json::array();
+        for (const auto& item : params["bioLinks"])
+        {
+            if (!item.is_string()) continue;
+            auto s = item.get<std::string>();
+            // Trim whitespace.
+            auto notWs = [](int c) { return !std::isspace(c); };
+            s.erase(s.begin(), std::find_if(s.begin(), s.end(), notWs));
+            s.erase(std::find_if(s.rbegin(), s.rend(), notWs).base(), s.end());
+            if (s.empty()) continue;
+            cleaned.push_back(std::move(s));
+            if (cleaned.size() >= 4) break;
+        }
+        patch["bioLinks"] = std::move(cleaned);
+    }
+
+    // Tags passthrough (used for language_* tags, e.g. ["language_eng", "language_jpn"]).
+    // The caller is expected to send the full tag set they want — VRChat's
+    // PUT /users/{id} replaces the `tags` array wholesale.
+    if (params.contains("tags") && params["tags"].is_array())
+    {
+        nlohmann::json cleaned = nlohmann::json::array();
+        for (const auto& item : params["tags"])
+        {
+            if (item.is_string()) cleaned.push_back(item.get<std::string>());
+        }
+        patch["tags"] = std::move(cleaned);
     }
 
     if (patch.empty())

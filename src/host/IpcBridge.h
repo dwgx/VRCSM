@@ -21,11 +21,28 @@ public:
     IpcBridge(const IpcBridge&) = delete;
     IpcBridge& operator=(const IpcBridge&) = delete;
 
-    void Dispatch(const std::string& jsonText);
+    // Dispatch a message whose origin is known. The origin is the URL
+    // (or just the host) of the frame that sent the message —
+    // `app.vrcsm` for the main SPA and `plugin.<id>.vrcsm` for a
+    // plugin iframe. Messages from a plugin origin are routed through
+    // the plugin-rpc permission gate; the main SPA retains full access
+    // to every handler.
+    void DispatchFromOrigin(const std::string& originUri, const std::string& jsonText);
 
-private:
+    // Backwards-compatible entry: assumes host origin. Tests and the
+    // legacy WebView2 message handler call this; production code uses
+    // DispatchFromOrigin.
+    void Dispatch(const std::string& jsonText)
+    {
+        DispatchFromOrigin("https://app.vrcsm/", jsonText);
+    }
+
+    // Exposed for InvokeHostHandler (free function in IpcBridge.cpp) that
+    // needs to iterate m_handlers by reference. Kept as a class-scope alias
+    // so the dispatch signature stays aligned with the registration map.
     using Handler = std::function<nlohmann::json(const nlohmann::json&, const std::optional<std::string>&)>;
 
+private:
     void RegisterHandlers();
     nlohmann::json HandleAppVersion(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandlePathProbe(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -42,6 +59,8 @@ private:
     nlohmann::json HandleJunctionRepair(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleShellPickFolder(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleShellOpenUrl(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFsListDir(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFsWritePlan(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleThumbnailsFetch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAuthStatus(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAuthLogin(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -51,6 +70,9 @@ private:
     nlohmann::json HandleAvatarPreviewRequest(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleGroupsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleHwApplyPreset(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleHwDetect(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleHwRecommend(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleModerationsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarBundleDownload(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -59,6 +81,12 @@ private:
     nlohmann::json HandleUserMe(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserGetProfile(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserUpdateProfile(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUpdateCheck(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUpdateDownload(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUpdateGetState(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUpdateInstall(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUpdateSkipVersion(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUpdateUnskipVersion(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleScreenshotsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleScreenshotsOpen(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleScreenshotsFolder(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -99,15 +127,51 @@ private:
     nlohmann::json HandleFriendNoteGet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendNoteSet(const nlohmann::json& params, const std::optional<std::string>& id);
 
+    // Plugin system — implementations live in bridges/PluginBridge.cpp.
+    // "callerPluginId" is non-empty only when the call originated
+    // from a plugin iframe (via plugin.rpc); the market/enable/
+    // uninstall methods reject non-empty caller ids.
+    nlohmann::json HandlePluginList(const nlohmann::json& params, const std::optional<std::string>& id,
+                                    const std::string& callerPluginId);
+    nlohmann::json HandlePluginInstall(const nlohmann::json& params, const std::optional<std::string>& id,
+                                       const std::string& callerPluginId);
+    nlohmann::json HandlePluginUninstall(const nlohmann::json& params, const std::optional<std::string>& id,
+                                         const std::string& callerPluginId);
+    nlohmann::json HandlePluginEnable(const nlohmann::json& params, const std::optional<std::string>& id,
+                                      const std::string& callerPluginId);
+    nlohmann::json HandlePluginDisable(const nlohmann::json& params, const std::optional<std::string>& id,
+                                       const std::string& callerPluginId);
+    nlohmann::json HandlePluginMarketFeed(const nlohmann::json& params, const std::optional<std::string>& id,
+                                          const std::string& callerPluginId);
+    nlohmann::json HandlePluginRpc(const nlohmann::json& params, const std::optional<std::string>& id,
+                                   const std::string& callerPluginId);
+
     void CloseTrackedWorldVisits(const std::string& leftAt);
 
-    void PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const;
-    void PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message) const;
-    void PostError(const std::optional<std::string>& id, const vrcsm::core::Error& err) const;
+    // `targetPluginId` (when non-empty) routes the response to the
+    // specific plugin iframe that issued the call — required because
+    // ICoreWebView2::PostWebMessageAsString only reaches the main
+    // frame. Defaults to "" → main SPA.
+    void PostResult(const std::optional<std::string>& id, const nlohmann::json& result,
+                    const std::string& targetPluginId = {}) const;
+    void PostEventToUi(std::string_view eventName, const nlohmann::json& data,
+                       const std::string& targetPluginId = {}) const;
+    void PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message,
+                   const std::string& targetPluginId = {}) const;
+    void PostError(const std::optional<std::string>& id, const vrcsm::core::Error& err,
+                   const std::string& targetPluginId = {}) const;
+
+    // Plugin-aware handler signature — identical to Handler but with
+    // the caller plugin id threaded through so bridges know whether a
+    // request came from a plugin iframe (and which one).
+    using PluginHandler = std::function<nlohmann::json(const nlohmann::json&,
+                                                        const std::optional<std::string>&,
+                                                        const std::string& /*callerPluginId*/)>;
 
     WebViewHost& m_host;
     std::shared_ptr<std::atomic<bool>> m_alive;
     std::unordered_map<std::string, Handler> m_handlers;
+    std::unordered_map<std::string, PluginHandler> m_pluginHandlers;
     std::unique_ptr<vrcsm::core::LogTailer> m_logTailer;
     vrcsm::core::TaskQueue m_previewQueue;
     vrcsm::core::VrcRadarEngine m_radarEngine;

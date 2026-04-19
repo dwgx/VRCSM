@@ -28,7 +28,19 @@ add_library(vrcsm_core STATIC
     UnitySerialized.cpp
     UnityMesh.cpp
     UnityPreview.cpp
+
+    # v0.8.0 plugin system — manifest, store, installer, registry, feed.
+    # PluginProcess (service/app shape) lives in its own file and
+    # lands with the AutoUploader port in v0.9.0 (Phase B).
+    plugins/PluginManifest.cpp
+    plugins/PluginStore.cpp
+    plugins/PluginInstaller.cpp
+    plugins/PluginRegistry.cpp
+    plugins/PluginFeed.cpp
 )
+
+add_subdirectory(updater)
+add_subdirectory(hw)
 
 target_include_directories(vrcsm_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -46,6 +58,8 @@ target_link_libraries(vrcsm_core PUBLIC
     unofficial::sqlite3::sqlite3
     lz4::lz4
     LibLZMA::LibLZMA
+    vrcsm_core_updater
+    vrcsm_core_hw
 )
 
 if(MSVC)

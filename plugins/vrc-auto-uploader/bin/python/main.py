@@ -1,0 +1,617 @@
+"""
+VRC Auto Uploader — Main Orchestrator
+Manages the full pipeline: extract → provision → inject → launch Unity → monitor.
+
+Usage:
+    python main.py setup                          # First-time environment detection
+    python main.py upload --package FILE          # Upload a single .unitypackage
+    python main.py batch  --dir DIR               # Extract & upload all models in DIR
+    python main.py extract --dir DIR              # Extract only (no upload)
+"""
+
+import os
+import sys
+import io
+import time
+import json
+import argparse
+import subprocess
+import shutil
+import threading
+import signal
+from pathlib import Path
+
+# Fix Unicode output on Chinese Windows (GBK console)
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+from config import Config
+from extractor import scan_model_directory, extract_model_dir, load_upload_plan
+from sanitizer import sanitize_package
+
+
+def _resolve_plan(args, base_dir: str) -> dict:
+    """Pick the upload plan from --plan if supplied, else auto-load
+    `.vrcsm-upload-plan.json` from base_dir. The panel writes that
+    file via the fs.writePlan IPC before showing the CLI prompt, so
+    the runner picks it up transparently."""
+    plan_arg = getattr(args, "plan", None)
+    if plan_arg:
+        try:
+            with open(plan_arg, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"[!] --plan file unreadable ({e}); falling back to auto-load.")
+    return load_upload_plan(base_dir)
+
+
+# ─── Constants ───────────────────────────────────────────────────────────────
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+UNITY_SCRIPTS_DIR = os.path.join(SCRIPT_DIR, "UnityScripts")
+
+# Required VPM packages to install in every temp project
+VPM_PACKAGES = [
+    ("com.vrchat.avatars", True),       # Core SDK — mandatory
+    ("jp.lilxyzw.liltoon", True),       # lilToon shader — most JP models need this
+    ("nadena.dev.modular-avatar", False), # Modular Avatar — nice to have
+]
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def run(cmd: list[str], cwd: str | None = None, check: bool = True,
+        timeout: int = 600) -> subprocess.CompletedProcess:
+    """Run a subprocess with nice logging."""
+    cmd_str = " ".join(f'"{c}"' if " " in c else c for c in cmd)
+    print(f"  $ {cmd_str}")
+    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                            timeout=timeout)
+    if check and result.returncode != 0:
+        print(f"  [!] Command failed (exit {result.returncode})")
+        if result.stderr:
+            for line in result.stderr.strip().split("\n")[:10]:
+                print(f"      {line}")
+        raise RuntimeError(f"Command failed: {cmd[0]}")
+    return result
+
+
+def tail_unity_log(log_path: str, stop_event: threading.Event):
+    """Tail the Unity Editor.log, printing [AutoUploader] lines in real-time."""
+    # Wait for log file to appear
+    for _ in range(120):
+        if os.path.isfile(log_path) or stop_event.is_set():
+            break
+        time.sleep(1)
+
+    if not os.path.isfile(log_path):
+        return
+
+    try:
+        with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+            # Start from beginning to catch early messages
+            while not stop_event.is_set():
+                line = f.readline()
+                if not line:
+                    time.sleep(0.3)
+                    continue
+                line = line.rstrip()
+                if "[AutoUploader]" in line:
+                    # Color coding
+                    if "ERROR" in line or "FAIL" in line:
+                        print(f"  \033[91m{line}\033[0m")
+                    elif "SUCCESS" in line:
+                        print(f"  \033[92m{line}\033[0m")
+                    elif "WARNING" in line or "WARN" in line:
+                        print(f"  \033[93m{line}\033[0m")
+                    else:
+                        print(f"  \033[96m{line}\033[0m")
+    except Exception:
+        pass
+
+
+# ─── Project Provisioning ────────────────────────────────────────────────────
+
+def provision_project(cfg: Config) -> str:
+    """Create a fresh Unity project with VRChat SDK + dependencies installed.
+    
+    Returns the path to the project directory.
+    """
+    project_path = cfg.temp_project_dir
+    
+    print("\n╔══════════════════════════════════════════╗")
+    print("║   Phase 1: Environment Provisioning      ║")
+    print("╚══════════════════════════════════════════╝\n")
+
+    # Backup existing upload results before deep-cleaning the project directory
+    result_file = os.path.join(project_path, "upload_results.json")
+    backup_file = os.path.join(SCRIPT_DIR, "upload_results_backup.json")
+    if os.path.isfile(result_file):
+        shutil.copy2(result_file, backup_file)
+
+    # Clean up previous project
+    if os.path.isdir(project_path):
+        print("[1/3] Cleaning old temp project...")
+        shutil.rmtree(project_path, ignore_errors=True)
+        time.sleep(1)
+
+    os.makedirs(project_path, exist_ok=True)
+    # Restore upload results to ensure progress continuity
+    if os.path.isfile(backup_file):
+        shutil.copy2(backup_file, os.path.join(project_path, "upload_results.json"))
+
+    # Create empty Unity project
+    print("[1/3] Creating empty Unity project (this takes ~1 minute)...")
+    run([cfg.unity_exe, "-createProject", project_path,
+         "-batchmode", "-nographics", "-quit"], timeout=300)
+
+    # Patch manifest.json to include standard VRC dependencies (NUnit, PostProcessing, etc.)
+    manifest_path = os.path.join(project_path, "Packages", "manifest.json")
+    if os.path.isfile(manifest_path):
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            deps = manifest.get("dependencies", {})
+            deps["com.unity.test-framework"] = "1.1.33"
+            deps["com.unity.postprocessing"] = "3.4.0"
+            deps["com.unity.textmeshpro"] = "3.0.6"
+            deps["com.unity.timeline"] = "1.7.6"
+            deps["com.unity.modules.animation"] = "1.0.0"
+            manifest["dependencies"] = deps
+            with open(manifest_path, "w", encoding="utf-8") as f:
+                json.dump(manifest, f, indent=2)
+            print("       ✓ Patched manifest.json with standard dependencies")
+        except Exception as e:
+            print(f"       ⚠ Failed to patch manifest.json: {e}")
+
+    # Install VPM packages
+    print("[2/3] Installing VRChat SDK & dependencies via vrc-get...")
+    for pkg_id, required in VPM_PACKAGES:
+        try:
+            run([cfg.vrc_get_exe, "install", "-p", project_path, pkg_id, "-y"],
+                timeout=120)
+            print(f"       ✓ {pkg_id}")
+        except RuntimeError:
+            if required:
+                raise
+            print(f"       ⚠ {pkg_id} (optional, skipped)")
+
+    # Inject our C# scripts (exclude backup files to prevent compile errors)
+    print("[3/3] Injecting AutoUploader scripts...")
+    editor_dir = os.path.join(project_path, "Assets", "Editor", "VRCAutoUploader")
+    os.makedirs(editor_dir, exist_ok=True)
+
+    injected = 0
+    for cs_file in Path(UNITY_SCRIPTS_DIR).glob("*.cs"):
+        # Skip backup files (e.g. AutoUploader_backup.cs)
+        if "_backup" in cs_file.stem.lower() or cs_file.stem.lower().endswith("_bak"):
+            print(f"       ⚠ Skipping backup file: {cs_file.name}")
+            continue
+        dest = os.path.join(editor_dir, cs_file.name)
+        shutil.copy2(str(cs_file), dest)
+        print(f"       → {cs_file.name}")
+        injected += 1
+    if injected == 0:
+        raise RuntimeError("No C# scripts found to inject. Check UnityScripts/ directory.")
+
+    print(f"\n[✓] Project ready at: {project_path}")
+    return project_path
+
+
+# ─── Upload Execution ────────────────────────────────────────────────────────
+
+def prepare_task_file(project_path: str, packages: list[dict]):
+    """Write the upload task list as JSON for the C# script to consume."""
+    tasks = []
+    for pkg in packages:
+        if pkg.get("package"):
+            tasks.append({
+                "name": pkg["name"],
+                "packagePath": os.path.abspath(pkg["package"]),
+                "avatarName": pkg["name"],
+                "originalDir": pkg.get("dir", "")
+            })
+
+    task_file = os.path.join(project_path, "upload_tasks.json")
+    with open(task_file, "w", encoding="utf-8") as f:
+        json.dump({"tasks": tasks}, f, indent=2, ensure_ascii=False)
+
+    print(f"[✓] Task file written: {len(tasks)} avatar(s) queued")
+    return task_file
+
+
+def launch_unity_upload(cfg: Config, project_path: str) -> bool:
+    """Launch Unity in GUI mode (minimized) to execute the upload.
+    
+    IMPORTANT: We do NOT use -batchmode or -nographics because the VRChat SDK
+    requires the Editor GUI to be initialized for VRCSdkControlPanel to work.
+    We use -executeMethod to trigger our script on startup.
+    """
+    print("\n╔══════════════════════════════════════════╗")
+    print("║   Phase 3: Unity Upload Execution        ║")
+    print("╚══════════════════════════════════════════╝\n")
+
+    # Determine log path
+    log_path = os.path.join(
+        os.environ.get("LOCALAPPDATA", ""),
+        "Unity", "Editor", "Editor.log"
+    )
+    # Also write to a project-local log for our scripts
+    local_log = os.path.join(project_path, "autouploader.log")
+
+    print(f"[*] Launching Unity (GUI mode, may take 2-5 minutes to open)...")
+    print(f"[*] Monitoring log: {log_path}")
+    print(f"[*] ────────────────────────────────────────")
+    print(f"[*] IMPORTANT: If this is your first time, Unity will open the")
+    print(f"[*] VRChat SDK Control Panel. You MUST log in manually once.")
+    print(f"[*] After login, the upload will proceed automatically.")
+    print(f"[*] ────────────────────────────────────────\n")
+
+    # Start log tail thread
+    stop_event = threading.Event()
+    tail_thread = threading.Thread(
+        target=tail_unity_log,
+        args=(log_path, stop_event),
+        daemon=True
+    )
+    tail_thread.start()
+
+    # Launch Unity — NOT in batchmode! SDK needs the GUI.
+    unity_cmd = [
+        cfg.unity_exe,
+        "-projectPath", project_path,
+        "-executeMethod", "VRCAutoUploader.AutoUploader.Execute",
+    ]
+
+    try:
+        process = subprocess.Popen(unity_cmd)
+        print(f"[*] Unity PID: {process.pid}")
+        print(f"[*] Waiting for Unity to finish...\n")
+        process.wait()
+    except KeyboardInterrupt:
+        print("\n[!] Interrupted — terminating Unity...")
+        process.terminate()
+        process.wait(timeout=30)
+    finally:
+        stop_event.set()
+        tail_thread.join(timeout=5)
+
+    # Check results
+    result_file = os.path.join(project_path, "upload_results.json")
+    if os.path.isfile(result_file):
+        with open(result_file, "r", encoding="utf-8") as f:
+            results = json.load(f)
+        
+        print("\n╔══════════════════════════════════════════╗")
+        print("║           Upload Results                  ║")
+        print("╚══════════════════════════════════════════╝\n")
+        
+        success = 0
+        failed = 0
+        for r in results.get("results", []):
+            status = r.get("status", "unknown")
+            name = r.get("name", "?")
+            if status == "success":
+                print(f"  ✓ {name}")
+                success += 1
+            else:
+                print(f"  ✗ {name}: {r.get('error', 'unknown error')}")
+                failed += 1
+        
+        print(f"\n  Total: {success} succeeded, {failed} failed")
+        return failed == 0
+    else:
+        print("\n[!] No result file found. Check Unity console for errors.")
+        return False
+
+
+# ─── Commands ────────────────────────────────────────────────────────────────
+
+def cmd_setup(args):
+    """First-time setup: detect environment."""
+    cfg = Config(SCRIPT_DIR)
+    print("\n╔══════════════════════════════════════════╗")
+    print("║   VRC Auto Uploader — Setup              ║")
+    print("╚══════════════════════════════════════════╝\n")
+
+    ok = cfg.detect_environment()
+    if ok:
+        print("\n[✓] All prerequisites found! You're ready to go.")
+        print("    Use 'python main.py upload --package FILE' to upload a single avatar")
+        print("    Use 'python main.py batch --dir DIR' to batch process a directory")
+    else:
+        print("\n[!] Some prerequisites are missing. Fix the errors above and re-run setup.")
+    return 0 if ok else 1
+
+
+def cmd_extract(args):
+    """Extract .unitypackage files from a model directory."""
+    target_dir = os.path.abspath(args.dir)
+    plan = _resolve_plan(args, target_dir)
+    print(f"\n[*] Scanning directory: {target_dir}\n")
+    results = scan_model_directory(target_dir, plan=plan)
+
+    found = sum(1 for r in results if r["package"])
+    total = len(results)
+    print(f"\n[✓] Extraction complete: {found}/{total} models have .unitypackage files")
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        print(f"    Results saved to: {args.output}")
+
+    return 0
+
+
+def cmd_upload(args):
+    """Upload a single .unitypackage file."""
+    cfg = Config(SCRIPT_DIR)
+    if not cfg.validate():
+        return 1
+
+    package_path = os.path.abspath(args.package)
+    if not os.path.isfile(package_path):
+        print(f"[!] File not found: {package_path}")
+        return 1
+
+    name = Path(package_path).stem
+
+    # Provision project
+    project_path = provision_project(cfg)
+
+    # Sanitize package
+    print("[*] Sanitizing package (stripping potentially hazardous C# scripts)...")
+    sanitized_dir = os.path.join(project_path, "SanitizedPackages")
+    os.makedirs(sanitized_dir, exist_ok=True)
+    safe_path = os.path.join(sanitized_dir, os.path.basename(package_path))
+    removed = sanitize_package(package_path, safe_path)
+    if removed > 0:
+        print(f"       ⚠ Removed {removed} hazardous files from package.")
+
+    # Prepare task
+    print("\n╔══════════════════════════════════════════╗")
+    print("║   Phase 2: Preparing Upload Task         ║")
+    print("╚══════════════════════════════════════════╝\n")
+
+    prepare_task_file(project_path, [{"name": name, "package": safe_path}])
+
+    # Launch Unity
+    success = launch_unity_upload(cfg, project_path)
+
+    # Cleanup
+    if success and not args.keep_project:
+        print("[*] Cleaning up temp project...")
+        shutil.rmtree(project_path, ignore_errors=True)
+
+    return 0 if success else 1
+
+
+def cmd_batch(args):
+    """Batch process: extract all archives in a directory, then upload all found packages."""
+    cfg = Config(SCRIPT_DIR)
+    if not cfg.validate():
+        return 1
+
+    target_dir = os.path.abspath(args.dir)
+    plan = _resolve_plan(args, target_dir)
+
+    # Phase 0: Extract
+    print(f"\n[*] Scanning and extracting from: {target_dir}\n")
+    results = scan_model_directory(target_dir, plan=plan)
+
+    packages = [r for r in results if r["package"]]
+    if not packages:
+        print("[!] No .unitypackage files found. Nothing to upload.")
+        return 1
+
+    print(f"\n[✓] Found {len(packages)} uploadable models")
+
+    if args.extract_only:
+        print("[*] --extract-only specified, skipping upload.")
+        return 0
+
+    # Confirm with user
+    print("\nModels to upload:")
+    for i, pkg in enumerate(packages, 1):
+        print(f"  {i}. {pkg['name']} → {os.path.basename(pkg['package'])}")
+
+    if not args.yes:
+        resp = input(f"\nProceed with uploading {len(packages)} avatar(s)? [y/N] ").strip()
+        if resp.lower() != "y":
+            print("[*] Cancelled.")
+            return 0
+
+    # Provision
+    project_path = provision_project(cfg)
+
+    # Sanitize packages
+    print("\n[*] Sanitizing packages (stripping potentially hazardous C# scripts)...")
+    sanitized_dir = os.path.join(project_path, "SanitizedPackages")
+    os.makedirs(sanitized_dir, exist_ok=True)
+    for pkg in packages:
+        safe_path = os.path.join(sanitized_dir, os.path.basename(pkg["package"]))
+        removed = sanitize_package(pkg["package"], safe_path)
+        pkg["package"] = safe_path
+        if removed > 0:
+            print(f"       ⚠ Removed {removed} hazardous files from {pkg['name']}")
+
+    # Prepare tasks
+    print("\n╔══════════════════════════════════════════╗")
+    print("║   Phase 2: Preparing Upload Tasks        ║")
+    print("╚══════════════════════════════════════════╝\n")
+
+    prepare_task_file(project_path, packages)
+
+    # Launch
+    success = launch_unity_upload(cfg, project_path)
+
+    # Cleanup
+    if success and not args.keep_project:
+        print("[*] Cleaning up temp project...")
+        shutil.rmtree(project_path, ignore_errors=True)
+
+    return 0 if success else 1
+
+
+# ─── Update Thumbnails ───────────────────────────────────────────────────────
+
+def cmd_fix_thumbnails(args):
+    """Re-upload the avatars from a previous backup to update their thumbnails/avatars."""
+    cfg = Config(SCRIPT_DIR)
+    if not cfg.validate():
+        return 1
+
+    target_dir = os.path.abspath(args.dir)
+    backup_file = os.path.abspath(args.results)
+    plan = _resolve_plan(args, target_dir)
+
+    if not os.path.isfile(backup_file):
+        print(f"[!] Results backup file not found: {backup_file}")
+        return 1
+
+    with open(backup_file, "r", encoding="utf-8") as f:
+        results_data = json.load(f)
+
+    # Create mapping of name -> blueprintId
+    blueprint_map = {}
+    for r in results_data.get("results", []):
+        if r.get("status") == "success" and r.get("blueprintId"):
+            blueprint_map[r["name"]] = r["blueprintId"]
+
+    if not blueprint_map:
+        print("[!] No successful uploads with blueprint IDs found in backup.")
+        return 1
+
+    print(f"\n[*] Found {len(blueprint_map)} previously successful uploads. Scanning directory: {target_dir}\n")
+    all_results = scan_model_directory(target_dir, plan=plan)
+    
+    packages = []
+    for pkg in all_results:
+        if pkg["package"] and pkg["name"] in blueprint_map:
+            pkg["blueprintId"] = blueprint_map[pkg["name"]]
+            packages.append(pkg)
+
+    if not packages:
+        print("[!] Could not match any previously uploaded packages in the target directory.")
+        return 1
+
+    print(f"\n[✓] Prepared {len(packages)} targeted avatar updates.")
+    
+    if not args.yes:
+        resp = input(f"\nProceed with updating {len(packages)} avatar(s)? [y/N] ").strip()
+        if resp.lower() != "y":
+            print("[*] Cancelled.")
+            return 0
+
+    project_path = provision_project(cfg)
+
+    print("\n[*] Sanitizing packages (stripping potentially hazardous C# scripts)...")
+    sanitized_dir = os.path.join(project_path, "SanitizedPackages")
+    os.makedirs(sanitized_dir, exist_ok=True)
+    for pkg in packages:
+        safe_path = os.path.join(sanitized_dir, os.path.basename(pkg["package"]))
+        removed = sanitize_package(pkg["package"], safe_path)
+        pkg["package"] = safe_path
+        if removed > 0:
+            print(f"       ⚠ Removed {removed} hazardous files from {pkg['name']}")
+
+    print("\n╔══════════════════════════════════════════╗")
+    print("║   Phase 2: Preparing Update Tasks        ║")
+    print("╚══════════════════════════════════════════╝\n")
+
+    tasks = []
+    for pkg in packages:
+        if pkg.get("package"):
+            tasks.append({
+                "name": pkg["name"],
+                "packagePath": os.path.abspath(pkg["package"]),
+                "avatarName": pkg["name"],
+                "originalDir": pkg.get("dir", ""),
+                "blueprintId": pkg.get("blueprintId", "")
+            })
+
+    task_file = os.path.join(project_path, "upload_tasks.json")
+    with open(task_file, "w", encoding="utf-8") as f:
+        json.dump({"tasks": tasks}, f, indent=2, ensure_ascii=False)
+
+    print(f"[✓] Update task file written: {len(tasks)} avatar(s) queued for overwrite")
+
+    success = launch_unity_upload(cfg, project_path)
+
+    if success and not args.keep_project:
+        print("[*] Cleaning up temp project...")
+        shutil.rmtree(project_path, ignore_errors=True)
+
+    return 0 if success else 1
+
+
+# ─── CLI Entry Point ─────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="VRChat Avatar Auto Uploader — Batch upload .unitypackage avatars",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python main.py setup                                    # First-time setup
+  python main.py upload --package "D:\\Model\\Azuki\\Azuki.unitypackage"
+  python main.py batch --dir "D:\\Model"                   # Upload all models in dir
+  python main.py extract --dir "D:\\Model"                 # Extract only, no upload
+        """
+    )
+    sub = parser.add_subparsers(dest="command", help="Available commands")
+
+    # setup
+    sub.add_parser("setup", help="Detect and configure environment")
+
+    # upload
+    p_upload = sub.add_parser("upload", help="Upload a single .unitypackage")
+    p_upload.add_argument("--package", required=True, help="Path to .unitypackage file")
+    p_upload.add_argument("--keep-project", action="store_true",
+                          help="Don't delete temp Unity project after upload")
+
+    # batch
+    p_batch = sub.add_parser("batch", help="Batch extract and upload from a directory")
+    p_batch.add_argument("--dir", required=True, help="Directory containing model folders")
+    p_batch.add_argument("--extract-only", action="store_true",
+                         help="Only extract archives, don't upload")
+    p_batch.add_argument("--yes", "-y", action="store_true",
+                         help="Skip confirmation prompt")
+    p_batch.add_argument("--keep-project", action="store_true",
+                         help="Don't delete temp Unity project after upload")
+    p_batch.add_argument("--plan", help="Path to .vrcsm-upload-plan.json (auto-loaded from --dir if omitted)")
+
+    # extract
+    p_extract = sub.add_parser("extract", help="Extract .unitypackage from model archives")
+    p_extract.add_argument("--dir", required=True, help="Directory to scan")
+    p_extract.add_argument("--output", "-o", help="Save results to JSON file")
+    p_extract.add_argument("--plan", help="Path to .vrcsm-upload-plan.json (auto-loaded from --dir if omitted)")
+
+    # fix-thumbnails
+    p_fix = sub.add_parser("fix-thumbnails", help="Update thumbnails for previously uploaded avatars")
+    p_fix.add_argument("--dir", required=True, help="Directory containing model folders")
+    p_fix.add_argument("--results", required=True, help="Path to upload_results_backup.json")
+    p_fix.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompt")
+    p_fix.add_argument("--keep-project", action="store_true", help="Don't delete temp Unity project after upload")
+    p_fix.add_argument("--plan", help="Path to .vrcsm-upload-plan.json (auto-loaded from --dir if omitted)")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return 1
+
+    commands = {
+        "setup": cmd_setup,
+        "upload": cmd_upload,
+        "batch": cmd_batch,
+        "extract": cmd_extract,
+        "fix-thumbnails": cmd_fix_thumbnails,
+    }
+
+    return commands[args.command](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

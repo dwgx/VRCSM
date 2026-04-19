@@ -18,9 +18,12 @@ import {
 import { StatusBar } from "@/components/StatusBar";
 import { ToolbarSearchProvider } from "@/components/Toolbar";
 import { AboutDialog } from "@/components/AboutDialog";
+import { UpdateDialog } from "@/components/UpdateDialog";
+import { FolderPickerHost } from "@/components/FolderPicker";
 import { CommandPalette, useCommandPalette } from "@/components/CommandPalette";
 import { ReportProvider, useReport } from "@/lib/report-context";
 import { AuthProvider } from "@/lib/auth-context";
+import { PluginRegistryProvider } from "@/lib/plugin-context";
 import { ipc } from "@/lib/ipc";
 import { getTrueCacheCategoryCount, getTrueCacheLabel } from "@/lib/report-metrics";
 import { formatDate } from "@/lib/utils";
@@ -38,6 +41,7 @@ const Library = lazy(() => import("@/pages/Library"));
 const Avatars = lazy(() => import("@/pages/Avatars"));
 const Worlds = lazy(() => import("@/pages/Worlds"));
 const Friends = lazy(() => import("@/pages/Friends"));
+const Groups = lazy(() => import("@/pages/Groups"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const VrchatWorkspace = lazy(() => import("@/pages/VrchatWorkspace"));
 const Screenshots = lazy(() => import("@/pages/Screenshots"));
@@ -46,6 +50,10 @@ const Radar = lazy(() => import("@/pages/Radar"));
 const Migrate = lazy(() => import("@/pages/Migrate"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const MemoryRadar = lazy(() => import("@/pages/MemoryRadar"));
+const PluginsMarket = lazy(() => import("@/pages/PluginsMarket"));
+const PluginDetail = lazy(() => import("@/pages/PluginDetail"));
+const PluginInstalled = lazy(() => import("@/pages/PluginInstalled"));
+const PluginHost = lazy(() => import("@/pages/PluginHost"));
 
 interface RouteShellMeta {
   breadcrumb: string[];
@@ -70,8 +78,9 @@ function AppContent() {
   const { status: vrcProcessStatus } = useVrcProcess();
   const vrcRunning = vrcProcessStatus.running;
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [shellVersion, setShellVersion] = useState("…");
-  const { updateAvailable } = useUpdateCheck();
+  const { updateAvailable, result: updateResult } = useUpdateCheck();
   const { open: commandOpen, setOpen: setCommandOpen } = useCommandPalette();
   const [sidebarHidden] = useUiPrefBoolean("vrcsm.layout.sidebar.hidden", false);
   const [dockHidden] = useUiPrefBoolean("vrcsm.layout.dock.hidden", false);
@@ -129,6 +138,14 @@ function AppContent() {
       "/settings": {
         title: t("nav.settings"),
         breadcrumb: [t("nav.category.project", { defaultValue: "Project" }), t("nav.settings")],
+      },
+      "/plugins": {
+        title: t("nav.plugins", { defaultValue: "Plugins" }),
+        breadcrumb: [t("nav.category.plugins", { defaultValue: "Plugins" }), t("plugins.market.title", { defaultValue: "Market" })],
+      },
+      "/plugins/installed": {
+        title: t("plugins.installed.title", { defaultValue: "Installed plugins" }),
+        breadcrumb: [t("nav.category.plugins", { defaultValue: "Plugins" }), t("plugins.installed.title", { defaultValue: "Installed" })],
       },
     }),
     [t],
@@ -292,6 +309,7 @@ function AppContent() {
                   onResetLayout={() => setLayoutResetToken((value) => value + 1)}
                   onOpenAbout={() => setAboutOpen(true)}
                   onOpenCommandPalette={() => setCommandOpen(true)}
+                  onOpenUpdate={() => setUpdateDialogOpen(true)}
                   vrcRunning={vrcRunning}
                 />
 
@@ -303,17 +321,16 @@ function AppContent() {
                       {" — "}
                       {t("updates.availableBody", {
                         defaultValue: "VRCSM {{version}} is now available.",
-                        version: updateAvailable.version,
+                        version: updateAvailable.latest ?? "",
                       })}
                     </div>
-                    <a
-                      href={updateAvailable.url}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setUpdateDialogOpen(true)}
                       className="inline-flex h-7 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                     >
                       {t("updates.download", { defaultValue: "Download" })}
-                    </a>
+                    </button>
                   </div>
                 )}
 
@@ -339,6 +356,7 @@ function AppContent() {
                                 <Route path="/avatars" element={<Avatars />} />
                                 <Route path="/worlds" element={<Worlds />} />
                                 <Route path="/friends" element={<Friends />} />
+                                <Route path="/groups" element={<Groups />} />
                                 <Route path="/profile" element={<Profile />} />
                                 <Route path="/vrchat" element={<VrchatWorkspace />} />
                                 <Route path="/screenshots" element={<Screenshots />} />
@@ -348,6 +366,10 @@ function AppContent() {
                                 <Route path="/migrate" element={<Migrate />} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route path="/tools/memory-radar" element={<MemoryRadar />} />
+                                <Route path="/plugins" element={<PluginsMarket />} />
+                                <Route path="/plugins/installed" element={<PluginInstalled />} />
+                                <Route path="/plugins/:id" element={<PluginDetail />} />
+                                <Route path="/p/:pluginId/*" element={<PluginHost />} />
                                 <Route path="*" element={<Navigate to="/" replace />} />
                               </Routes>
                             </Suspense>
@@ -388,6 +410,8 @@ function AppContent() {
             </Panel>
         </PanelGroup>
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+        <UpdateDialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen} initial={updateResult} />
+        <FolderPickerHost />
         <CommandPalette
           open={commandOpen}
           onOpenChange={setCommandOpen}
@@ -406,9 +430,11 @@ function App() {
       <AuthProvider>
         <VrcProcessProvider>
           <ReportProvider>
-            <RightDockProvider>
-              <AppContent />
-            </RightDockProvider>
+            <PluginRegistryProvider>
+              <RightDockProvider>
+                <AppContent />
+              </RightDockProvider>
+            </PluginRegistryProvider>
           </ReportProvider>
         </VrcProcessProvider>
       </AuthProvider>

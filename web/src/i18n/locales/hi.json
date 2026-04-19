@@ -17,9 +17,14 @@
     "screenshots": "स्क्रीनशॉट",
     "logs": "लॉग",
     "migrate": "माइग्रेट",
+    "plugins": "प्लगइन",
     "settings": "सेटिंग्स",
     "language": "भाषा",
-    "friendLog": "फ्रेंड लॉग"
+    "friendLog": "फ्रेंड लॉग",
+    "groups": "ग्रुप्स",
+    "category": {
+      "plugins": "प्लगइन"
+    }
   },
   "profile": {
     "title": "मेरा प्रोफ़ाइल",
@@ -52,7 +57,25 @@
     "liveContextDesc": "तेज़ नेविगेशन के लिए महत्वपूर्ण id और मौजूदा सेशन टारगेट।",
     "liveContextHint": "इन लाइव id को एंकर की तरह उपयोग करें ताकि VRCSM के अंदर मित्र, अवतार, वर्ल्ड और फेवरेट्स वर्कफ़्लो तक सीधे जा सकें।",
     "openFriendsManager": "दोस्तों से जुड़ें",
-    "openLibrary": "लाइब्रेरी खोलें"
+    "openLibrary": "लाइब्रेरी खोलें",
+    "edit": {
+      "bioLinks": "बायो लिंक (अधिकतम 4)",
+      "addLink": "लिंक जोड़ें",
+      "linkPlaceholder": "https://…",
+      "noLinks": "अभी कोई लिंक नहीं है, ऊपर + लिंक जोड़ें पर क्लिक करें",
+      "pronouns": "सर्वनाम",
+      "pronounsCustom": "कस्टम…",
+      "languages": "बोली जाने वाली भाषाएँ"
+    },
+    "stats": {
+      "joined": "जुड़े",
+      "joinedValue": "{{date}} ({{years}} वर्ष)",
+      "trust": "ट्रस्ट",
+      "ageVerification": "आयु सत्यापन",
+      "ageVerified": "18+ सत्यापित",
+      "ageUnverified": "असत्यापित",
+      "languages": "भाषाएँ"
+    }
   },
   "screenshots": {
     "title": "स्क्रीनशॉट",
@@ -124,6 +147,19 @@
     "requestInvite": "आमंत्रण अनुरोध करें",
     "openFriendProfile": "प्रोफ़ाइल खोलें",
     "noSubscriptionSignals": "इस सत्र में सदस्यता की जानकारी देने वाले विशेष फ़ील्ड उपलब्ध नहीं थे।",
+    "quickFilters": "त्वरित फ़िल्टर",
+    "onlyOnlineFriends": "केवल ऑनलाइन मित्र",
+    "onlyMyGroups": "केवल मेरे समूह",
+    "hideModerations": "मॉडरेशन छुपाएं",
+    "runtimeMode": "रनटाइम मोड",
+    "trustRankQuick": "ट्रस्ट रैंक",
+    "vrcPlusQuick": "VRC+",
+    "linkedAccountsQuick": "जुड़े अकाउंट",
+    "socialPulse": "सोशल पल्स",
+    "marketplaceQuick": "मार्केट",
+    "favoriteAvatars": "पसंदीदा अवतार",
+    "favoriteWorlds": "पसंदीदा वर्ल्ड",
+    "downloadReady": "डाउनलोड तैयार",
     "block": "ब्लॉक",
     "mute": "म्यूट",
     "pickDownloadFolder": "अवतार बंडल के लिए फ़ोल्डर चुनें",
@@ -231,6 +267,22 @@
     "detailPaneTitle": "विवरण",
     "platform": "प्लेटफ़ॉर्म"
   },
+  "groups": {
+    "subtitle": "आपके शामिल सभी VRChat ग्रुप्स, पहले आपके प्रतिनिधि ग्रुप के अनुसार, फिर ऑनलाइन गतिविधि के अनुसार क्रमबद्ध।",
+    "filterPlaceholder": "ग्रुप फ़िल्टर करें…",
+    "representing": "प्रतिनिधित्व कर रहे",
+    "empty": "आप अभी तक किसी भी VRChat ग्रुप में शामिल नहीं हुए हैं।",
+    "noMatch": "'{{filter}}' से मेल खाने वाले कोई ग्रुप नहीं हैं।",
+    "memberCount": "{{count}} सदस्य",
+    "onlineCount": "{{count}} ऑनलाइन",
+    "viewOnVrchat": "vrchat.com पर खोलें",
+    "seeOnline": "ऑनलाइन देखें",
+    "stats": {
+      "total": "आपके ग्रुप्स",
+      "online": "ऑनलाइन सदस्य",
+      "representing": "प्रतिनिधित्व"
+    }
+  },
   "menu": {
     "file": "फ़ाइल",
     "edit": "संपादन",
@@ -270,12 +322,39 @@
     "toolsSettings": "सेटिंग्स",
     "toolsSteamVR": "SteamVR सेटिंग्स",
     "toolsConfig": "ऐप कॉन्फ़िग",
+    "toolsPluginsMarket": "प्लगइन मार्केट",
+    "toolsPluginsInstalled": "इंस्टॉल किए गए प्लगइन",
     "windowResetLayout": "लेआउट रीसेट करें",
     "helpAbout": "VRCSM के बारे में",
     "helpDocs": "दस्तावेज़",
     "helpCheckUpdates": "अपडेट जांचें",
+    "helpCheckUpdatesFallback": "अपडेट जांचें…",
     "helpReportIssue": "समस्या रिपोर्ट करें",
     "helpKeyboard": "कीबोर्ड शॉर्टकट"
+  },
+  "update": {
+    "title": "VRCSM अपडेट",
+    "checking": "अपडेट जांचे जा रहे हैं…",
+    "availableDesc": "VRCSM का नया वर्शन उपलब्ध है। अभी इंस्टॉल करें या मौजूदा वर्शन पर बने रहें।",
+    "readyDesc": "इंस्टॉलर डाउनलोड और सत्यापित हो चुका है। लागू करने के लिए इंस्टॉल दबाएं, VRCSM रीस्टार्ट होगा।",
+    "downloadingDesc": "डाउनलोड हो रहा है, पूरा होने तक VRCSM बंद न करें।",
+    "upToDateDesc": "आप नवीनतम वर्शन पर हैं।",
+    "errorDesc": "अभी अपडेट जांचे नहीं जा सके।",
+    "currentLabel": "वर्तमान",
+    "latestLabel": "उपलब्ध",
+    "sizeLabel": "डाउनलोड आकार",
+    "verifying": "SHA-256 सत्यापित किया जा रहा है…",
+    "downloading": "{{done}} / {{total}} डाउनलोड हो रहा है",
+    "viewNotes": "रिलीज़ नोट्स",
+    "skip": "इस वर्शन को छोड़ें",
+    "skipped": "वर्शन {{version}} छोड़ा गया",
+    "skipFailed": "छोड़ना विफल: {{msg}}",
+    "downloadFailed": "डाउनलोड विफल: {{msg}}",
+    "installFailed": "इंस्टॉल विफल: {{msg}}",
+    "retry": "फिर जांचें",
+    "later": "बाद में",
+    "download": "डाउनलोड और इंस्टॉल करें",
+    "installNow": "अभी इंस्टॉल करें (रीस्टार्ट)"
   },
   "radar": {
     "title": "लाइव इंस्टेंस रडार",
@@ -346,6 +425,7 @@
     "hide": "छिपाएं",
     "show": "दिखाएं",
     "unknown": "अज्ञात",
+    "remove": "हटाएँ",
     "sidebar": "साइडबार"
   },
   "about": {
@@ -921,6 +1001,18 @@
       "runtimeDesc": "इस मशीन पर VRChat लॉग से पार्स किया गया अनुमानित पर्यावरण सारांश।",
       "runtimeMode": "रनटाइम मोड",
       "runtimeDetail": "डिटेक्ट किया गया विवरण"
+    },
+    "steamvr": {
+      "saveDirty": "सेटिंग्स सेव करें *",
+      "presetQuest3": "Quest 3 अनुकूलित",
+      "presetQuest3Hint": "Steam Link के जरिए Quest 3 के लिए ट्यून किया गया",
+      "questSection": {
+        "title": "Quest समस्या निवारण",
+        "body": "Quest पर किनारों का कांपना, धुंधलापन या काली स्क्रीन पर अटकना लगभग हमेशा runtime layer (Steam Link / Virtual Desktop / Oculus Link) की समस्या होती है, VRChat की नहीं। पहले ऊपर वाला Quest 3 Optimized preset आज़माएँ। अगर कांपना बना रहे तो Encoder Resolution कम करें, डबल-इमेज ghosting दिखे तो Space Warp / Motion Smoothing बंद करें, और यह भी पक्का करें कि Windows GPU Scheduling चालू हो।",
+        "odt": "Oculus Debug Tool",
+        "gpuScheduling": "GPU Scheduling",
+        "guide": "VRCSM गाइड"
+      }
     }
   },
   "profileCard": {
@@ -935,5 +1027,59 @@
     "wearAvatarTitle": "{{name}} पहनें",
     "copyAvatarId": "अवतार ID कॉपी करें",
     "avatarIdCopied": "अवतार ID कॉपी हो गई"
+  },
+  "plugins": {
+    "installedLink": "इंस्टॉल किए गए प्लगइन",
+    "market": {
+      "title": "प्लगइन मार्केट",
+      "subtitle": "VRCSM की आधिकारिक फ़ीड से ऑफ़िशियल और कम्युनिटी प्लगइन इंस्टॉल करें।",
+      "refresh": "रिफ्रेश",
+      "fetchError": "प्लगइन फ़ीड लोड नहीं हो सका: {{detail}}",
+      "details": "विवरण",
+      "install": "इंस्टॉल",
+      "installing": "इंस्टॉल हो रहा है…",
+      "installed": "इंस्टॉल किया गया",
+      "empty": "कोई प्लगइन उपलब्ध नहीं।"
+    },
+    "detail": {
+      "notFound": "फ़ीड में प्लगइन नहीं मिला।",
+      "backToMarket": "मार्केट पर वापस जाएँ",
+      "by": "लेखक",
+      "homepage": "होमपेज",
+      "uninstall": "अनइंस्टॉल",
+      "bundledHint": "बंडल किए गए प्लगइन VRCSM के साथ आते हैं — अनइंस्टॉल के बजाय डिसेबल करें।",
+      "description": "विवरण",
+      "metadata": "मेटाडेटा",
+      "hostMin": "न्यूनतम होस्ट वर्शन",
+      "sha256": "SHA-256",
+      "downloadUrl": "डाउनलोड URL",
+      "open": "खोलें"
+    },
+    "installed": {
+      "title": "इंस्टॉल किए गए प्लगइन",
+      "subtitle": "लोकल रूप से इंस्टॉल प्लगइन और उनकी स्थिति प्रबंधित करें।",
+      "openMarket": "मार्केट खोलें",
+      "empty": "कोई प्लगइन इंस्टॉल नहीं है।",
+      "col": {
+        "name": "नाम",
+        "version": "वर्शन",
+        "shape": "प्रकार",
+        "status": "स्थिति",
+        "actions": "क्रियाएँ"
+      },
+      "enabled": "सक्षम",
+      "disabled": "अक्षम",
+      "bundled": "बंडल",
+      "bundledHint": "बंडल प्लगइन अनइंस्टॉल नहीं किए जा सकते।",
+      "open": "खोलें",
+      "enable": "सक्षम करें",
+      "disable": "अक्षम करें",
+      "uninstall": "अनइंस्टॉल"
+    },
+    "host": {
+      "notInstalled": "प्लगइन {{id}} इंस्टॉल नहीं है।",
+      "disabled": "प्लगइन {{id}} अक्षम है।",
+      "noPanel": "प्लगइन {{id}} पैनल UI प्रदान नहीं करता।"
+    }
   }
 }

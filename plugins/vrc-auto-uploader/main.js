@@ -1,0 +1,725 @@
+/* VRCSM plugin panel — AutoUploader v0.9.2
+ *
+ * Runs inside a WebView2 iframe at `plugin.dev-vrcsm-autouploader.vrcsm`.
+ * Calls host handlers through `chrome.webview.postMessage` directly —
+ * WebView2 injects that object into every frame, and
+ * IpcBridge::DispatchFromOrigin identifies the caller by frame source
+ * (→ callerPluginId = "dev.vrcsm.autouploader") and routes the request
+ * through the `plugin.rpc` permission gate.
+ *
+ * v0.9.1: replaced the Win32 `shell.pickFolder` call with an in-panel
+ * folder browser backed by the new `fs.listDir` IPC — the native
+ * dialog frequently hid behind the WebView2 frame and was unusable.
+ *
+ * v0.9.2: scan walks the picked root's subfolders and shows an inline
+ * rename table. Each row has an editable "Upload as…" field; edits
+ * persist in localStorage keyed by the root path so collisions keep
+ * their renames across sessions. On upload, the panel writes a
+ * `.vrcsm-upload-plan.json` next to the root via the new narrow
+ * `fs.writePlan` IPC; the Python runner picks it up and applies the
+ * rename map before dispatching tasks to Unity.
+ *
+ * We deliberately do NOT use `window.parent.postMessage` relays — the
+ * relay path goes through the host SPA origin (app.vrcsm), which the
+ * plugin.rpc handler rejects with `invalid_caller` because it cannot
+ * verify the caller is really a plugin.
+ */
+
+(() => {
+  "use strict";
+
+  const pending = new Map();
+  let msgId = 0;
+
+  function nextId() {
+    msgId += 1;
+    return `au-${Date.now()}-${msgId}`;
+  }
+
+  function getWebview() {
+    return (
+      (typeof window !== "undefined" && window.chrome && window.chrome.webview) ||
+      null
+    );
+  }
+
+  function ipcCall(method, params) {
+    return new Promise((resolve, reject) => {
+      const wv = getWebview();
+      if (!wv) {
+        reject(new Error("chrome.webview unavailable — not running in VRCSM"));
+        return;
+      }
+      const id = nextId();
+      pending.set(id, { resolve, reject });
+
+      wv.postMessage(
+        JSON.stringify({
+          id,
+          method: "plugin.rpc",
+          params: { method, params: params ?? {} },
+        }),
+      );
+
+      setTimeout(() => {
+        if (pending.has(id)) {
+          pending.delete(id);
+          reject(new Error(`ipc timeout: ${method}`));
+        }
+      }, 60000);
+    });
+  }
+
+  const wv = getWebview();
+  if (wv) {
+    wv.addEventListener("message", (event) => {
+      let data;
+      try {
+        data =
+          typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+      } catch {
+        return;
+      }
+      if (!data || typeof data.id !== "string") return;
+      const handler = pending.get(data.id);
+      if (!handler) return;
+      pending.delete(data.id);
+      if (data.error) {
+        handler.reject(
+          new Error(data.error.message || data.error.code || "ipc error"),
+        );
+      } else {
+        handler.resolve(data.result);
+      }
+    });
+  }
+
+  // v0.9.1: `shell.pickFolder` opened a native IFileOpenDialog that
+  // was frequently invisible behind the WebView2 frame. Replaced with
+  // an in-panel modal backed by `fs.listDir` — read-only directory
+  // listing through the same `ipc:shell` permission.
+  function pickFolder(title) {
+    return openInlinePicker({
+      title: title || "Choose avatar root folder",
+      initialDir: state.folder || "",
+    });
+  }
+
+  // ── In-panel folder picker ────────────────────────────────────────────
+  const picker = {
+    backdrop: document.getElementById("picker-backdrop"),
+    title: document.getElementById("picker-title"),
+    pathEl: document.getElementById("picker-path"),
+    list: document.getElementById("picker-list"),
+    chooseBtn: document.getElementById("picker-choose"),
+    cancelBtn: document.getElementById("picker-cancel"),
+    closeBtn: document.getElementById("picker-close"),
+    upBtn: document.getElementById("picker-up"),
+    homeBtn: document.getElementById("picker-home"),
+    current: "",
+    parent: null,
+    resolve: null,
+    reqSeq: 0,
+  };
+
+  function pickerShow(title, initialDir) {
+    picker.backdrop.hidden = false;
+    picker.title.textContent = title;
+    pickerNavigate(initialDir || "");
+  }
+  function pickerHide() {
+    picker.backdrop.hidden = true;
+  }
+  function pickerFinish(result) {
+    const resolve = picker.resolve;
+    picker.resolve = null;
+    pickerHide();
+    if (resolve) resolve(result);
+  }
+  function openInlinePicker(opts) {
+    return new Promise((resolve) => {
+      picker.resolve = resolve;
+      pickerShow(opts.title || "Choose folder", opts.initialDir || "");
+    });
+  }
+  function escapeHtmlAttr(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+  async function pickerNavigate(path) {
+    const seq = ++picker.reqSeq;
+    picker.list.setAttribute("aria-busy", "true");
+    picker.list.innerHTML =
+      '<div class="picker-empty">Loading…</div>';
+    try {
+      const data = await ipcCall("fs.listDir", { path });
+      if (seq !== picker.reqSeq) return;
+      picker.current = data.path || "";
+      picker.parent = data.parent || null;
+      picker.pathEl.textContent = picker.current || "(This PC)";
+      picker.chooseBtn.disabled = !picker.current;
+
+      picker.list.innerHTML = "";
+      if (!picker.current) {
+        const roots = Array.isArray(data.roots) ? data.roots : [];
+        if (roots.length === 0) {
+          picker.list.innerHTML =
+            '<div class="picker-empty">No drives detected.</div>';
+        } else {
+          for (const root of roots) {
+            picker.list.appendChild(makeRow(root.path, root.label, true));
+          }
+        }
+      } else {
+        const dirs = (data.entries || []).filter((e) => e.isDir);
+        dirs.sort((a, b) => a.name.localeCompare(b.name));
+        if (dirs.length === 0) {
+          picker.list.innerHTML =
+            '<div class="picker-empty">No subfolders here.</div>';
+        } else {
+          for (const entry of dirs) {
+            const next = joinPath(picker.current, entry.name);
+            picker.list.appendChild(makeRow(next, entry.name, false));
+          }
+        }
+        if (data.truncated) {
+          const tail = document.createElement("div");
+          tail.className = "picker-empty";
+          tail.textContent = "List truncated at 2000 entries.";
+          picker.list.appendChild(tail);
+        }
+      }
+    } catch (e) {
+      if (seq !== picker.reqSeq) return;
+      picker.list.innerHTML =
+        '<div class="picker-error">' +
+        escapeHtmlAttr(e.message || String(e)) +
+        "</div>";
+      picker.chooseBtn.disabled = true;
+    } finally {
+      if (seq === picker.reqSeq) {
+        picker.list.setAttribute("aria-busy", "false");
+      }
+    }
+  }
+  function joinPath(base, name) {
+    if (!base) return name;
+    const sep = base.includes("\\") ? "\\" : "/";
+    return base.endsWith(sep) ? base + name : base + sep + name;
+  }
+  const ICON_DRIVE =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/></svg>';
+  const ICON_FOLDER =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>';
+
+  function makeRow(fullPath, label, isRoot) {
+    const row = document.createElement("div");
+    row.className = "picker-row" + (isRoot ? " root" : "");
+    row.innerHTML =
+      '<span class="icon">' +
+      (isRoot ? ICON_DRIVE : ICON_FOLDER) +
+      "</span>" +
+      '<span class="name">' +
+      escapeHtmlAttr(isRoot ? fullPath : label) +
+      "</span>" +
+      (isRoot && label
+        ? '<span class="meta">' + escapeHtmlAttr(label) + "</span>"
+        : "");
+    row.addEventListener("click", (e) => {
+      if (e.detail > 1) return;
+      pickerNavigate(fullPath);
+    });
+    row.addEventListener("dblclick", () => pickerNavigate(fullPath));
+    return row;
+  }
+  picker.cancelBtn.addEventListener("click", () =>
+    pickerFinish({ cancelled: true }),
+  );
+  picker.closeBtn.addEventListener("click", () =>
+    pickerFinish({ cancelled: true }),
+  );
+  picker.chooseBtn.addEventListener("click", () => {
+    if (!picker.current) return;
+    pickerFinish({ cancelled: false, path: picker.current });
+  });
+  picker.upBtn.addEventListener("click", () => {
+    pickerNavigate(picker.parent || "");
+  });
+  picker.homeBtn.addEventListener("click", () => {
+    pickerNavigate("");
+  });
+  picker.backdrop.addEventListener("click", (e) => {
+    if (e.target === picker.backdrop) pickerFinish({ cancelled: true });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (picker.backdrop.hidden) return;
+    if (e.key === "Escape") pickerFinish({ cancelled: true });
+  });
+
+  function openUrl(url) {
+    return ipcCall("shell.openUrl", { url });
+  }
+
+  // ─── State ────────────────────────────────────────────────────────────
+  const state = {
+    folder: null,
+    // `avatars`: [{origDir, uploadName, skip, dirty, collision}]
+    // `origDir` is the subdirectory name — the stable key used for
+    //   both localStorage and the plan file written to disk.
+    // `uploadName` is what the Python runner will rename to before
+    //   feeding Unity. Defaults to origDir, overridable per-row,
+    //   auto-suffixed on collision unless the user already set a
+    //   unique value.
+    avatars: [],
+    uploading: false,
+  };
+
+  // ─── DOM refs ─────────────────────────────────────────────────────────
+  const $folderBtn = document.getElementById("pick-folder");
+  const $folderDisplay = document.getElementById("folder-display");
+  const $scanBtn = document.getElementById("scan");
+  const $resetNamesBtn = document.getElementById("reset-names");
+  const $scanResult = document.getElementById("scan-result");
+  const $renameWrap = document.getElementById("rename-list-wrap");
+  const $renameBody = document.querySelector("#rename-list tbody");
+  const $renameSelectAll = document.getElementById("rename-select-all");
+  const $renameSummary = document.getElementById("rename-summary");
+  const $uploadBtn = document.getElementById("upload");
+  const $cancelBtn = document.getElementById("cancel");
+  const $progress = document.getElementById("progress");
+  const $progressLabel = document.getElementById("progress-label");
+  const $log = document.getElementById("log");
+  const $clearLog = document.getElementById("clear-log");
+
+  // ─── Rename memory (localStorage) ────────────────────────────────────
+  // Keyed by absolute root path so different model roots get
+  // independent rename maps. We only persist user-edited names —
+  // values that equal the original folder name get culled on save so
+  // stale entries don't accumulate forever.
+  function renameStorageKey(root) {
+    return "au:renames:" + root;
+  }
+  function loadRenames(root) {
+    try {
+      const raw = localStorage.getItem(renameStorageKey(root));
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  function saveRenames(root, map) {
+    try {
+      const trimmed = {};
+      for (const [k, v] of Object.entries(map)) {
+        if (typeof v === "string" && v && v !== k) trimmed[k] = v;
+      }
+      if (Object.keys(trimmed).length === 0) {
+        localStorage.removeItem(renameStorageKey(root));
+      } else {
+        localStorage.setItem(renameStorageKey(root), JSON.stringify(trimmed));
+      }
+    } catch (e) {
+      log("localStorage write failed: " + e.message, "warn");
+    }
+  }
+
+  // ─── Log ──────────────────────────────────────────────────────────────
+  function log(msg, kind) {
+    const row = document.createElement("div");
+    row.className = "entry" + (kind ? " " + kind : "");
+    const ts = new Date().toTimeString().slice(0, 8);
+    row.innerHTML = `<span class="ts">${ts}</span>${escapeHtml(msg)}`;
+    $log.appendChild(row);
+    $log.scrollTop = $log.scrollHeight;
+  }
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  // ─── Folder pick ──────────────────────────────────────────────────────
+  $folderBtn.addEventListener("click", async () => {
+    try {
+      const res = await pickFolder();
+      if (res?.cancelled) {
+        log("Folder selection cancelled.");
+        return;
+      }
+      if (!res?.path) {
+        log("No path returned from picker.", "warn");
+        return;
+      }
+      state.folder = res.path;
+      $folderDisplay.textContent = res.path;
+      $scanBtn.disabled = false;
+      $uploadBtn.disabled = true;
+      $renameWrap.hidden = true;
+      state.avatars = [];
+      log(`Folder set: ${res.path}`, "ok");
+    } catch (e) {
+      log(`Folder pick failed: ${e.message}`, "err");
+    }
+  });
+
+  // ─── Excluded folders ─────────────────────────────────────────────────
+  // Mirrors the deny-list inside extractor.py so the panel's "Found N
+  // avatars" count matches what the runner actually queues.
+  const EXCLUDED_DIRS = new Set([
+    "TempVRCProject",
+    "VRC-Auto-Uploader",
+    "tools",
+  ]);
+  function isAvatarDir(name) {
+    if (!name) return false;
+    if (name.startsWith(".")) return false;
+    if (name.startsWith("_")) return false;
+    return !EXCLUDED_DIRS.has(name);
+  }
+
+  // ─── Scan + render ────────────────────────────────────────────────────
+  $scanBtn.addEventListener("click", async () => {
+    if (!state.folder) return;
+    $scanBtn.disabled = true;
+    $resetNamesBtn.disabled = true;
+    $scanResult.textContent = "Scanning…";
+    state.avatars = [];
+    $renameBody.innerHTML = "";
+    $renameWrap.hidden = false;
+    log(`Scanning ${state.folder}…`);
+
+    try {
+      const data = await ipcCall("fs.listDir", { path: state.folder });
+      const dirs = (data.entries || [])
+        .filter((e) => e.isDir && isAvatarDir(e.name))
+        .map((e) => e.name)
+        .sort((a, b) => a.localeCompare(b));
+
+      if (dirs.length === 0) {
+        $scanResult.textContent = "No avatar subfolders found.";
+        log("No avatar subfolders found in that root.", "warn");
+        $renameWrap.hidden = true;
+        $scanBtn.disabled = false;
+        return;
+      }
+
+      const memory = loadRenames(state.folder);
+      state.avatars = dirs.map((origDir) => ({
+        origDir,
+        uploadName: memory[origDir] || origDir,
+        skip: false,
+        // Track whether the in-memory name diverges from the folder
+        // name so the row can be styled and the value persisted.
+        dirty: !!memory[origDir] && memory[origDir] !== origDir,
+      }));
+
+      reconcileCollisions();
+      renderRenameTable();
+      $scanResult.textContent = `Found ${dirs.length} avatar folder${dirs.length === 1 ? "" : "s"}.`;
+      const remembered = Object.keys(memory).length;
+      log(
+        `Scan complete — ${dirs.length} folder${dirs.length === 1 ? "" : "s"}` +
+          (remembered ? `, ${remembered} remembered rename${remembered === 1 ? "" : "s"} restored` : ""),
+        "ok",
+      );
+      $resetNamesBtn.disabled = false;
+      $uploadBtn.disabled = false;
+    } catch (e) {
+      $scanResult.textContent = "Scan failed.";
+      log(`Scan failed: ${e.message}`, "err");
+    } finally {
+      $scanBtn.disabled = false;
+    }
+  });
+
+  $resetNamesBtn.addEventListener("click", () => {
+    if (state.avatars.length === 0) return;
+    for (const a of state.avatars) {
+      a.uploadName = a.origDir;
+      a.dirty = false;
+    }
+    saveRenames(state.folder, {});
+    reconcileCollisions();
+    renderRenameTable();
+    log("All renames cleared for this root.", "ok");
+  });
+
+  $renameSelectAll.addEventListener("change", () => {
+    const skip = !$renameSelectAll.checked;
+    for (const a of state.avatars) a.skip = skip;
+    renderRenameTable();
+  });
+
+  // ─── Collision reconciliation ────────────────────────────────────────
+  // For any group of rows that resolve to the same uploadName, suffix
+  // the *non-dirty* members with `_2`, `_3`, ... so user-explicit names
+  // always win. Skipped rows are excluded from the duplicate count.
+  function reconcileCollisions() {
+    const counts = {};
+    for (const a of state.avatars) {
+      if (a.skip) continue;
+      const name = (a.uploadName || a.origDir).trim();
+      counts[name] = (counts[name] || 0) + 1;
+    }
+    const used = new Set(Object.keys(counts).filter((n) => counts[n] === 1));
+
+    for (const a of state.avatars) {
+      if (a.skip) {
+        a.collision = false;
+        continue;
+      }
+      const desired = (a.uploadName || a.origDir).trim() || a.origDir;
+      if (a.dirty) {
+        // Respect user input — flag duplicate if they typed a name
+        // that still collides with another row.
+        a.collision = (counts[desired] || 0) > 1;
+        used.add(desired);
+        continue;
+      }
+      if ((counts[desired] || 0) <= 1) {
+        a.uploadName = desired;
+        a.collision = false;
+        used.add(desired);
+        continue;
+      }
+      let suffix = 2;
+      let candidate = `${desired}_${suffix}`;
+      while (used.has(candidate)) {
+        suffix += 1;
+        candidate = `${desired}_${suffix}`;
+      }
+      a.uploadName = candidate;
+      a.collision = false;
+      used.add(candidate);
+    }
+  }
+
+  // ─── Table renderer ───────────────────────────────────────────────────
+  function renderRenameTable() {
+    $renameBody.innerHTML = "";
+    let active = 0;
+    let renamed = 0;
+    let collided = 0;
+    state.avatars.forEach((a, idx) => {
+      const tr = document.createElement("tr");
+      if (a.skip) tr.classList.add("skipped");
+
+      const tdSkip = document.createElement("td");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !a.skip;
+      cb.addEventListener("change", () => {
+        a.skip = !cb.checked;
+        reconcileCollisions();
+        renderRenameTable();
+      });
+      tdSkip.appendChild(cb);
+      tr.appendChild(tdSkip);
+
+      const tdOrig = document.createElement("td");
+      tdOrig.className = "orig";
+      tdOrig.textContent = a.origDir;
+      tr.appendChild(tdOrig);
+
+      const tdName = document.createElement("td");
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = a.uploadName;
+      input.spellcheck = false;
+      input.placeholder = a.origDir;
+      if (a.dirty) input.classList.add("dirty");
+      input.addEventListener("input", () => {
+        a.uploadName = input.value;
+        a.dirty = input.value.trim() !== a.origDir && input.value.trim() !== "";
+        input.classList.toggle("dirty", a.dirty);
+      });
+      input.addEventListener("change", () => {
+        commitRowEdit(a, input);
+      });
+      input.addEventListener("blur", () => {
+        commitRowEdit(a, input);
+      });
+      tdName.appendChild(input);
+      tr.appendChild(tdName);
+
+      const tdWarn = document.createElement("td");
+      tdWarn.className = "warn-cell" + (a.collision ? "" : " ok");
+      const pill = document.createElement("span");
+      pill.className = "pill";
+      pill.textContent = a.collision ? "dup" : "ok";
+      tdWarn.appendChild(pill);
+      tr.appendChild(tdWarn);
+
+      const tdActions = document.createElement("td");
+      if (a.dirty) {
+        const reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "btn ghost small";
+        reset.textContent = "↺";
+        reset.title = "Reset to folder name";
+        reset.addEventListener("click", () => {
+          a.uploadName = a.origDir;
+          a.dirty = false;
+          persistAvatars();
+          reconcileCollisions();
+          renderRenameTable();
+        });
+        tdActions.appendChild(reset);
+      }
+      tr.appendChild(tdActions);
+
+      $renameBody.appendChild(tr);
+      if (!a.skip) active += 1;
+      if (a.dirty) renamed += 1;
+      if (a.collision) collided += 1;
+    });
+
+    const bits = [
+      `${active} of ${state.avatars.length} will upload`,
+      renamed ? `${renamed} renamed` : null,
+      collided ? `<span style="color:var(--warn)">${collided} unresolved collisions</span>` : null,
+    ].filter(Boolean);
+    $renameSummary.innerHTML = bits.join(" · ");
+    $renameSelectAll.checked = active === state.avatars.length;
+    $renameSelectAll.indeterminate = active > 0 && active < state.avatars.length;
+  }
+
+  function commitRowEdit(avatar, input) {
+    const trimmed = input.value.trim();
+    if (!trimmed) {
+      avatar.uploadName = avatar.origDir;
+      avatar.dirty = false;
+      input.value = avatar.origDir;
+    } else {
+      avatar.uploadName = trimmed;
+      avatar.dirty = trimmed !== avatar.origDir;
+    }
+    persistAvatars();
+    reconcileCollisions();
+    renderRenameTable();
+  }
+
+  function persistAvatars() {
+    if (!state.folder) return;
+    const map = {};
+    for (const a of state.avatars) {
+      if (a.dirty && a.uploadName && a.uploadName !== a.origDir) {
+        map[a.origDir] = a.uploadName;
+      }
+    }
+    saveRenames(state.folder, map);
+  }
+
+  // ─── Upload — writes plan file + tells the user the runner cmd ────────
+  $uploadBtn.addEventListener("click", async () => {
+    if (!state.folder || state.uploading) return;
+    if (state.avatars.length === 0) {
+      log("Run Scan first to populate the avatar list.", "warn");
+      return;
+    }
+    const collided = state.avatars.filter((a) => a.collision && !a.skip);
+    if (collided.length > 0) {
+      log(
+        `Resolve ${collided.length} duplicate name${collided.length === 1 ? "" : "s"} before dispatching.`,
+        "err",
+      );
+      return;
+    }
+
+    state.uploading = true;
+    $uploadBtn.disabled = true;
+    $cancelBtn.disabled = false;
+    $progress.value = 0;
+    $progressLabel.textContent = "writing plan…";
+
+    const includes = state.avatars.filter((a) => !a.skip);
+    const renameMap = {};
+    const skipList = [];
+    for (const a of state.avatars) {
+      if (a.skip) {
+        skipList.push(a.origDir);
+      } else if (a.uploadName && a.uploadName !== a.origDir) {
+        renameMap[a.origDir] = a.uploadName;
+      }
+    }
+
+    const plan = {
+      schema: 1,
+      generatedAt: new Date().toISOString(),
+      tool: "vrcsm-autouploader-panel",
+      version: "0.9.2",
+      rootPath: state.folder,
+      avatars: includes.map((a) => ({ origDir: a.origDir, uploadName: a.uploadName })),
+      renameMap,
+      skip: skipList,
+    };
+
+    let planPath = "";
+    try {
+      const wr = await ipcCall("fs.writePlan", {
+        rootPath: state.folder,
+        content: JSON.stringify(plan, null, 2),
+      });
+      planPath = wr.path || "";
+      log(`Plan written: ${planPath} (${wr.bytes} bytes)`, "ok");
+    } catch (e) {
+      log(`Failed to write plan file: ${e.message}`, "err");
+      $progressLabel.textContent = "plan write failed";
+      state.uploading = false;
+      $uploadBtn.disabled = false;
+      $cancelBtn.disabled = true;
+      return;
+    }
+
+    log("Open a PowerShell next to VRCSM and run:", "warn");
+    log(
+      `  cd "%LocalAppData%\\VRCSM\\plugins\\dev.vrcsm.autouploader\\bin\\python"`,
+    );
+    log(`  python main.py batch --dir "${state.folder}" --plan "${planPath}" -y`);
+    log(
+      `Plan covers ${includes.length} avatar${includes.length === 1 ? "" : "s"}` +
+        (Object.keys(renameMap).length
+          ? `, ${Object.keys(renameMap).length} rename${Object.keys(renameMap).length === 1 ? "" : "s"}`
+          : "") +
+        (skipList.length ? `, ${skipList.length} skipped` : "") +
+        ".",
+      "ok",
+    );
+    log("The runner reads the plan and applies renames before Unity dispatch.");
+
+    $progressLabel.textContent = "plan ready — run the CLI";
+    $progress.value = 1;
+    state.uploading = false;
+    $cancelBtn.disabled = true;
+    $uploadBtn.disabled = false;
+  });
+
+  $cancelBtn.addEventListener("click", () => {
+    state.uploading = false;
+    $cancelBtn.disabled = true;
+    $uploadBtn.disabled = false;
+    $progressLabel.textContent = "cancelled";
+    log("Cancel requested.", "warn");
+  });
+
+  $clearLog.addEventListener("click", () => {
+    $log.innerHTML = "";
+  });
+
+  // ─── Boot ─────────────────────────────────────────────────────────────
+  log("VRCSM AutoUploader panel loaded — v0.9.2.", "ok");
+  if (wv) {
+    log("Ready. Pick a folder to begin.", "ok");
+  } else {
+    log(
+      "chrome.webview not available — panel must run inside VRCSM, not a standalone browser.",
+      "err",
+    );
+  }
+})();
