@@ -474,7 +474,8 @@
     "show": "显示",
     "sidebar": "侧边栏",
     "unknown": "未知",
-    "remove": "移除"
+    "remove": "移除",
+    "experimental": "测试版"
   },
   "about": {
     "title": "关于 VRCSM",

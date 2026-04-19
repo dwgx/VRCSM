@@ -426,7 +426,8 @@
     "show": "표시",
     "unknown": "알 수 없음",
     "remove": "제거",
-    "sidebar": "사이드바"
+    "sidebar": "사이드바",
+    "experimental": "베타"
   },
   "about": {
     "title": "VRCSM 정보",

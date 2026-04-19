@@ -461,7 +461,8 @@
     "show": "Show",
     "unknown": "Unknown",
     "remove": "Remove",
-    "sidebar": "Sidebar"
+    "sidebar": "Sidebar",
+    "experimental": "Beta"
   },
   "about": {
     "title": "About VRCSM",

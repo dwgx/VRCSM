@@ -32,6 +32,7 @@ interface NavItem {
   to: string;
   labelKey: string;
   icon: LucideIcon;
+  experimental?: boolean;
 }
 
 const items: NavItem[] = [
@@ -39,7 +40,7 @@ const items: NavItem[] = [
   { to: "/profile", labelKey: "nav.profile", icon: UserCircle2 },
   { to: "/vrchat", labelKey: "nav.vrchat", icon: Orbit },
   { to: "/friends", labelKey: "nav.friends", icon: Users },
-  { to: "/groups", labelKey: "nav.groups", icon: Users2 },
+  { to: "/groups", labelKey: "nav.groups", icon: Users2, experimental: true },
   { to: "/radar", labelKey: "nav.radar", icon: Radio },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
   { to: "/library", labelKey: "nav.library", icon: Heart },
@@ -48,7 +49,7 @@ const items: NavItem[] = [
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
-  { to: "/plugins", labelKey: "nav.plugins", icon: Plug },
+  { to: "/plugins", labelKey: "nav.plugins", icon: Plug, experimental: true },
   { to: "/settings", labelKey: "nav.settings", icon: SettingsIcon },
 ];
 
@@ -210,7 +211,12 @@ export function Sidebar() {
                   />
                 ) : null}
                 <item.icon className="size-[14px] shrink-0" aria-hidden />
-                <span>{t(item.labelKey)}</span>
+                <span className="flex-1 truncate">{t(item.labelKey)}</span>
+                {item.experimental ? (
+                  <span className="shrink-0 rounded-[3px] bg-[hsl(var(--warn-foreground,45_93%_47%)/0.15)] px-1 py-px text-[8px] font-semibold uppercase tracking-[0.06em] text-[hsl(var(--warn-foreground,45_93%_47%))]">
+                    {t("common.experimental", { defaultValue: "Beta" })}
+                  </span>
+                ) : null}
               </>
             )}
           </NavLink>

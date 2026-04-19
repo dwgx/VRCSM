@@ -426,7 +426,8 @@
     "show": "दिखाएं",
     "unknown": "अज्ञात",
     "remove": "हटाएँ",
-    "sidebar": "साइडबार"
+    "sidebar": "साइडबार",
+    "experimental": "बीटा"
   },
   "about": {
     "title": "VRCSM के बारे में",

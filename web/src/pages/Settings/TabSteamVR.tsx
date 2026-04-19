@@ -141,7 +141,12 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <CardTitle>{t("settings.steamvr.title", { defaultValue: "VR Streaming (Steam Link / SteamVR)" })}</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              {t("settings.steamvr.title", { defaultValue: "VR Streaming (Steam Link / SteamVR)" })}
+              <span className="shrink-0 rounded-[3px] bg-[hsl(45_93%_47%/0.15)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-[hsl(45_93%_47%)]">
+                {t("common.experimental", { defaultValue: "Beta" })}
+              </span>
+            </CardTitle>
             <CardDescription className="max-w-[60ch]">
               {hw.gpuVendor || t("settings.steamvr.unknownGpu", { defaultValue: "Unknown GPU" })}
               {hw.hmdModel ? ` | ${hw.hmdModel}${hw.hmdSerial ? ` (${hw.hmdSerial})` : ""} via ${hw.hmdDriver || "?"}` : ""}
