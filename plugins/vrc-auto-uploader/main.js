@@ -28,6 +28,209 @@
 (() => {
   "use strict";
 
+  // ── i18n ──────────────────────────────────────────────────────────────
+  const I18N = {
+    en: {
+      title: "VRChat Auto-Uploader",
+      subtitle: "Batch-upload .unitypackage avatars without the 25% failure rate.",
+      step1: "1 · Pick model root folder",
+      step1Hint: "Drop the folder that contains every avatar's .unitypackage (recursion supported).",
+      chooseFolder: "Choose folder…",
+      notSelected: "(not selected)",
+      step2: "2 · Scan + rename",
+      step2Hint: "Reads the subfolders of the chosen root; each one will be uploaded as an avatar.",
+      scan: "Scan",
+      resetNames: "Reset all to folder name",
+      step3: "3 · Upload",
+      step3Hint: "Runs the Unity Editor headless, one avatar at a time.",
+      startUpload: "Start upload batch",
+      cancel: "Cancel",
+      idle: "idle",
+      log: "Log",
+      clear: "Clear",
+      results: "Results",
+      thFolder: "Folder",
+      thUploadAs: "Upload as…",
+      thCollisions: "Collisions",
+      thName: "Name",
+      thStatus: "Status",
+      thNote: "Note",
+      pickerTitle: "Choose avatar root folder",
+      pickerUp: "▲ Up",
+      pickerHome: "This PC",
+      pickerHint: "Double-click a folder to descend.",
+      pickerChoose: "Choose this folder",
+    },
+    "zh-CN": {
+      title: "VRChat 自动上传器",
+      subtitle: "批量上传 .unitypackage 模型，告别 25% 的失败率。",
+      step1: "1 · 选择模型根目录",
+      step1Hint: "选择包含所有模型 .unitypackage 的文件夹（支持递归扫描）。",
+      chooseFolder: "选择文件夹…",
+      notSelected: "（未选择）",
+      step2: "2 · 扫描 + 重命名",
+      step2Hint: "读取根目录下的子文件夹，每个子文件夹将作为一个模型上传。",
+      scan: "扫描",
+      resetNames: "全部重置为文件夹名",
+      step3: "3 · 上传",
+      step3Hint: "使用 Unity 编辑器无头模式，逐个上传模型。",
+      startUpload: "开始批量上传",
+      cancel: "取消",
+      idle: "空闲",
+      log: "日志",
+      clear: "清空",
+      results: "结果",
+      thFolder: "文件夹",
+      thUploadAs: "上传名称…",
+      thCollisions: "冲突",
+      thName: "名称",
+      thStatus: "状态",
+      thNote: "备注",
+      pickerTitle: "选择模型根目录",
+      pickerUp: "▲ 上级",
+      pickerHome: "此电脑",
+      pickerHint: "双击文件夹进入。",
+      pickerChoose: "选择此文件夹",
+    },
+    ja: {
+      title: "VRChat 自動アップローダー",
+      subtitle: ".unitypackage アバターを一括アップロード。",
+      step1: "1 · モデルルートフォルダを選択",
+      step1Hint: "アバターの .unitypackage を含むフォルダを選択してください。",
+      chooseFolder: "フォルダを選択…",
+      notSelected: "（未選択）",
+      step2: "2 · スキャン + リネーム",
+      step2Hint: "ルート内のサブフォルダを読み取り、各フォルダをアバターとしてアップロードします。",
+      scan: "スキャン",
+      resetNames: "フォルダ名にリセット",
+      step3: "3 · アップロード",
+      step3Hint: "Unity エディタをヘッドレスで実行し、アバターを1つずつアップロードします。",
+      startUpload: "一括アップロード開始",
+      cancel: "キャンセル",
+      idle: "待機中",
+      log: "ログ",
+      clear: "クリア",
+      results: "結果",
+      thFolder: "フォルダ",
+      thUploadAs: "アップロード名…",
+      thCollisions: "重複",
+      thName: "名前",
+      thStatus: "ステータス",
+      thNote: "メモ",
+      pickerTitle: "アバタールートフォルダを選択",
+      pickerUp: "▲ 上へ",
+      pickerHome: "PC",
+      pickerHint: "ダブルクリックでフォルダに移動。",
+      pickerChoose: "このフォルダを選択",
+    },
+    ko: {
+      title: "VRChat 자동 업로더",
+      subtitle: ".unitypackage 아바타를 일괄 업로드합니다.",
+      step1: "1 · 모델 루트 폴더 선택",
+      chooseFolder: "폴더 선택…",
+      notSelected: "(선택 안 됨)",
+      step2: "2 · 스캔 + 이름 변경",
+      scan: "스캔",
+      resetNames: "폴더 이름으로 초기화",
+      step3: "3 · 업로드",
+      startUpload: "일괄 업로드 시작",
+      cancel: "취소",
+      idle: "대기",
+      log: "로그",
+      clear: "지우기",
+      results: "결과",
+      thFolder: "폴더",
+      thUploadAs: "업로드 이름…",
+      thCollisions: "충돌",
+      thName: "이름",
+      thStatus: "상태",
+      thNote: "메모",
+      pickerTitle: "아바타 루트 폴더 선택",
+      pickerUp: "▲ 위로",
+      pickerHome: "내 PC",
+      pickerHint: "더블클릭으로 폴더 이동.",
+      pickerChoose: "이 폴더 선택",
+    },
+    ru: {
+      title: "VRChat Авто-Загрузчик",
+      subtitle: "Пакетная загрузка .unitypackage аватаров.",
+      step1: "1 · Выберите корневую папку",
+      chooseFolder: "Выбрать папку…",
+      notSelected: "(не выбрано)",
+      step2: "2 · Сканирование + переименование",
+      scan: "Сканировать",
+      resetNames: "Сбросить все имена",
+      step3: "3 · Загрузка",
+      startUpload: "Начать пакетную загрузку",
+      cancel: "Отмена",
+      idle: "ожидание",
+      log: "Журнал",
+      clear: "Очистить",
+      results: "Результаты",
+      pickerTitle: "Выберите корневую папку аватаров",
+      pickerUp: "▲ Вверх",
+      pickerHome: "Мой ПК",
+      pickerChoose: "Выбрать эту папку",
+    },
+    th: {
+      title: "VRChat อัปโหลดอัตโนมัติ",
+      subtitle: "อัปโหลด .unitypackage อวาตาร์แบบแบตช์",
+      step1: "1 · เลือกโฟลเดอร์รูท",
+      chooseFolder: "เลือกโฟลเดอร์…",
+      notSelected: "(ยังไม่ได้เลือก)",
+      scan: "สแกน",
+      step3: "3 · อัปโหลด",
+      startUpload: "เริ่มอัปโหลดแบตช์",
+      cancel: "ยกเลิก",
+      log: "บันทึก",
+      clear: "ล้าง",
+      results: "ผลลัพธ์",
+      pickerTitle: "เลือกโฟลเดอร์รูทอวาตาร์",
+      pickerChoose: "เลือกโฟลเดอร์นี้",
+    },
+    hi: {
+      title: "VRChat ऑटो-अपलोडर",
+      subtitle: ".unitypackage अवतार बैच अपलोड करें।",
+      step1: "1 · मॉडल रूट फ़ोल्डर चुनें",
+      chooseFolder: "फ़ोल्डर चुनें…",
+      notSelected: "(चयनित नहीं)",
+      scan: "स्कैन",
+      step3: "3 · अपलोड",
+      startUpload: "बैच अपलोड शुरू करें",
+      cancel: "रद्द करें",
+      log: "लॉग",
+      clear: "साफ़ करें",
+      results: "परिणाम",
+      pickerTitle: "अवतार रूट फ़ोल्डर चुनें",
+      pickerChoose: "यह फ़ोल्डर चुनें",
+    },
+  };
+
+  function detectLocale() {
+    const nav = (navigator.language || "en").toLowerCase();
+    if (nav.startsWith("zh")) return "zh-CN";
+    if (nav.startsWith("ja")) return "ja";
+    if (nav.startsWith("ko")) return "ko";
+    if (nav.startsWith("ru")) return "ru";
+    if (nav.startsWith("th")) return "th";
+    if (nav.startsWith("hi")) return "hi";
+    return "en";
+  }
+
+  const locale = detectLocale();
+  const strings = { ...I18N.en, ...(I18N[locale] || {}) };
+
+  function t(key) { return strings[key] || key; }
+
+  function applyI18n() {
+    for (const el of document.querySelectorAll("[data-t]")) {
+      const key = el.getAttribute("data-t");
+      if (strings[key]) el.textContent = strings[key];
+    }
+    document.documentElement.lang = locale === "zh-CN" ? "zh-CN" : locale;
+  }
+  applyI18n();
+
   const pending = new Map();
   let msgId = 0;
 
