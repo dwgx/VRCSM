@@ -549,3 +549,68 @@ export interface FavoritesSyncResult {
   worlds: number;
   synced_at: string;
 }
+
+// ─── Plugins (v0.8.0) ────────────────────────────────────────────────
+
+export type PluginShape = "panel" | "service" | "app";
+
+export interface PluginAuthor {
+  name?: string;
+  url?: string;
+}
+
+export interface PluginEntry {
+  panel?: string;
+  service?: string;
+}
+
+export interface PluginManifestDto {
+  id: string;
+  name: string;
+  version: string;
+  hostMin: string;
+  shape: PluginShape;
+  entry?: PluginEntry;
+  permissions?: string[];
+  author?: PluginAuthor;
+  homepage?: string;
+  icon?: string;
+  description?: string;
+  i18n?: Record<string, Record<string, string>>;
+}
+
+export interface InstalledPluginDto extends PluginManifestDto {
+  enabled: boolean;
+  bundled: boolean;
+  installDir: string;
+  dataDir: string;
+  /** Empty string for disabled panels — only populated when enabled. */
+  virtualHost: string;
+}
+
+export interface MarketPluginEntry {
+  id: string;
+  name: string;
+  version: string;
+  hostMin: string;
+  shape: PluginShape;
+  description?: string;
+  homepage?: string;
+  authorName?: string;
+  authorUrl?: string;
+  iconUrl?: string;
+  download?: string;
+  sha256?: string;
+}
+
+export interface MarketFeedDto {
+  version: number;
+  generated: string;
+  plugins: MarketPluginEntry[];
+}
+
+export interface PluginInstallResult {
+  id: string;
+  version: string;
+  installDir: string;
+}

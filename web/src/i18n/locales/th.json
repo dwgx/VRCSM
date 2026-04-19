@@ -17,9 +17,14 @@
     "screenshots": "ภาพหน้าจอ",
     "logs": "บันทึก",
     "migrate": "ย้ายข้อมูล",
+    "plugins": "ปลั๊กอิน",
     "settings": "การตั้งค่า",
     "language": "ภาษา",
-    "friendLog": "บันทึกเพื่อน"
+    "friendLog": "บันทึกเพื่อน",
+    "groups": "กลุ่ม",
+    "category": {
+      "plugins": "ปลั๊กอิน"
+    }
   },
   "profile": {
     "title": "โปรไฟล์ของฉัน",
@@ -52,7 +57,25 @@
     "liveContextDesc": "id สำคัญและเป้าหมายเซสชันปัจจุบันสำหรับการนำทางอย่างรวดเร็ว",
     "liveContextHint": "ใช้ live id เหล่านี้เป็นจุดยึดสำหรับโฟลว์เพื่อน อวาตาร์ โลก และรายการโปรดแบบเนทีฟภายใน VRCSM",
     "openFriendsManager": "จอยเพื่อน",
-    "openLibrary": "เปิดคลัง"
+    "openLibrary": "เปิดคลัง",
+    "edit": {
+      "bioLinks": "ลิงก์ในโปรไฟล์ (สูงสุด 4 ลิงก์)",
+      "addLink": "เพิ่มลิงก์",
+      "linkPlaceholder": "https://…",
+      "noLinks": "ยังไม่มีลิงก์ กด + เพิ่มลิงก์ด้านบนได้เลย",
+      "pronouns": "สรรพนาม",
+      "pronounsCustom": "กำหนดเอง…",
+      "languages": "ภาษาที่พูด"
+    },
+    "stats": {
+      "joined": "เข้าร่วม",
+      "joinedValue": "{{date}} ({{years}} ปี)",
+      "trust": "ระดับความน่าเชื่อถือ",
+      "ageVerification": "การยืนยันอายุ",
+      "ageVerified": "ยืนยัน 18+ แล้ว",
+      "ageUnverified": "ยังไม่ยืนยัน",
+      "languages": "ภาษา"
+    }
   },
   "screenshots": {
     "title": "ภาพหน้าจอ",
@@ -124,6 +147,19 @@
     "requestInvite": "ขอรับคำเชิญ",
     "openFriendProfile": "เปิดโปรไฟล์",
     "noSubscriptionSignals": "ไม่มีฟิลด์เฉพาะสำหรับตรวจสอบสถานะการสมัครสมาชิกในเซสชันนี้",
+    "quickFilters": "ตัวกรองด่วน",
+    "onlyOnlineFriends": "เฉพาะเพื่อนออนไลน์",
+    "onlyMyGroups": "เฉพาะกลุ่มของฉัน",
+    "hideModerations": "ซ่อนการมอเดอเรชัน",
+    "runtimeMode": "โหมดการรัน",
+    "trustRankQuick": "ระดับความน่าเชื่อถือ",
+    "vrcPlusQuick": "VRC+",
+    "linkedAccountsQuick": "บัญชีที่เชื่อม",
+    "socialPulse": "สัญญาณสังคม",
+    "marketplaceQuick": "ตลาด",
+    "favoriteAvatars": "อวตารที่ชื่นชอบ",
+    "favoriteWorlds": "โลกที่ชื่นชอบ",
+    "downloadReady": "พร้อมดาวน์โหลด",
     "block": "บล็อก",
     "mute": "ปิดเสียง",
     "pickDownloadFolder": "เลือกโฟลเดอร์สำหรับโหลดอวตาร",
@@ -231,6 +267,22 @@
     "detailPaneTitle": "รายละเอียด",
     "platform": "แพลตฟอร์ม"
   },
+  "groups": {
+    "subtitle": "กลุ่ม VRChat ทั้งหมดที่คุณเข้าร่วม โดยเรียงกลุ่มที่กำลังเป็นตัวแทนไว้ก่อน แล้วค่อยเรียงตามความเคลื่อนไหวออนไลน์",
+    "filterPlaceholder": "กรองกลุ่ม…",
+    "representing": "กำลังเป็นตัวแทน",
+    "empty": "คุณยังไม่ได้เข้าร่วมกลุ่ม VRChat ใดเลย",
+    "noMatch": "ไม่มีกลุ่มที่ตรงกับ '{{filter}}'",
+    "memberCount": "{{count}} สมาชิก",
+    "onlineCount": "ออนไลน์ {{count}} คน",
+    "viewOnVrchat": "เปิดบน vrchat.com",
+    "seeOnline": "ดูคนออนไลน์",
+    "stats": {
+      "total": "กลุ่มของคุณ",
+      "online": "สมาชิกที่ออนไลน์",
+      "representing": "กำลังเป็นตัวแทน"
+    }
+  },
   "menu": {
     "file": "ไฟล์",
     "edit": "แก้ไข",
@@ -270,12 +322,39 @@
     "toolsSettings": "ตั้งค่า",
     "toolsSteamVR": "ตั้งค่า SteamVR",
     "toolsConfig": "การตั้งค่าแอป",
+    "toolsPluginsMarket": "ร้านค้าปลั๊กอิน",
+    "toolsPluginsInstalled": "ปลั๊กอินที่ติดตั้ง",
     "windowResetLayout": "รีเซ็ตเลย์เอาต์",
     "helpAbout": "เกี่ยวกับ VRCSM",
     "helpDocs": "เอกสาร",
     "helpCheckUpdates": "ตรวจสอบอัปเดต",
+    "helpCheckUpdatesFallback": "ตรวจสอบอัปเดต…",
     "helpReportIssue": "รายงานปัญหา",
     "helpKeyboard": "แป้นพิมพ์ลัด"
+  },
+  "update": {
+    "title": "อัปเดต VRCSM",
+    "checking": "กำลังตรวจสอบอัปเดต…",
+    "availableDesc": "มี VRCSM เวอร์ชันใหม่ให้ใช้งาน ติดตั้งตอนนี้หรืออยู่กับเวอร์ชันปัจจุบันก็ได้",
+    "readyDesc": "ดาวน์โหลดและตรวจสอบตัวติดตั้งเรียบร้อยแล้ว กดติดตั้งเพื่อใช้งานต่อได้เลย โดย VRCSM จะรีสตาร์ต",
+    "downloadingDesc": "กำลังดาวน์โหลด อย่าปิด VRCSM จนกว่าจะเสร็จ",
+    "upToDateDesc": "คุณใช้เวอร์ชันล่าสุดอยู่แล้ว",
+    "errorDesc": "ไม่สามารถตรวจสอบอัปเดตได้ในตอนนี้",
+    "currentLabel": "เวอร์ชันปัจจุบัน",
+    "latestLabel": "เวอร์ชันที่มี",
+    "sizeLabel": "ขนาดดาวน์โหลด",
+    "verifying": "กำลังตรวจสอบ SHA-256…",
+    "downloading": "กำลังดาวน์โหลด {{done}} / {{total}}",
+    "viewNotes": "บันทึกประจำรุ่น",
+    "skip": "ข้ามเวอร์ชันนี้",
+    "skipped": "ข้ามเวอร์ชัน {{version}} แล้ว",
+    "skipFailed": "ข้ามไม่สำเร็จ: {{msg}}",
+    "downloadFailed": "ดาวน์โหลดไม่สำเร็จ: {{msg}}",
+    "installFailed": "ติดตั้งไม่สำเร็จ: {{msg}}",
+    "retry": "ตรวจสอบใหม่",
+    "later": "ไว้ทีหลัง",
+    "download": "ดาวน์โหลดและติดตั้ง",
+    "installNow": "ติดตั้งตอนนี้ (รีสตาร์ต)"
   },
   "radar": {
     "title": "เรดาร์อินสแตนซ์แบบสด",
@@ -346,6 +425,7 @@
     "hide": "ซ่อน",
     "show": "แสดง",
     "unknown": "ไม่ทราบ",
+    "remove": "นำออก",
     "sidebar": "แถบข้าง"
   },
   "about": {
@@ -921,6 +1001,18 @@
       "runtimeDesc": "ข้อมูลสรุประบบที่อ่านจากล็อก VRChat ในเครื่องนี้",
       "runtimeMode": "โหมดระบบ",
       "runtimeDetail": "รายละเอียดที่พบ"
+    },
+    "steamvr": {
+      "saveDirty": "บันทึกการตั้งค่า *",
+      "presetQuest3": "ปรับให้เหมาะกับ Quest 3",
+      "presetQuest3Hint": "จูนมาสำหรับ Quest 3 ผ่าน Steam Link",
+      "questSection": {
+        "title": "แก้ปัญหา Quest",
+        "body": "อาการภาพสั่นตามขอบ ภาพเบลอ หรือค้างจอดำบน Quest ส่วนใหญ่เป็นปัญหาที่ชั้นรันไทม์ (Steam Link / Virtual Desktop / Oculus Link) ไม่ใช่ตัว VRChat เอง ลองใช้พรีเซ็ต Quest 3 ที่ปรับไว้ด้านบนก่อน ถ้ายังสั่นให้ลด Encoder Resolution ถ้าเห็นภาพซ้อนให้ปิด Space Warp / Motion Smoothing และตรวจสอบว่าเปิด GPU Scheduling ใน Windows แล้ว",
+        "odt": "Oculus Debug Tool",
+        "gpuScheduling": "GPU Scheduling",
+        "guide": "คู่มือ VRCSM"
+      }
     }
   },
   "profileCard": {
@@ -935,5 +1027,59 @@
     "wearAvatarTitle": "สวม {{name}}",
     "copyAvatarId": "คัดลอก ID อวาตาร์",
     "avatarIdCopied": "คัดลอก ID อวาตาร์แล้ว"
+  },
+  "plugins": {
+    "installedLink": "ปลั๊กอินที่ติดตั้ง",
+    "market": {
+      "title": "ร้านค้าปลั๊กอิน",
+      "subtitle": "ติดตั้งปลั๊กอินทางการและจากชุมชนจากฟีด VRCSM",
+      "refresh": "รีเฟรช",
+      "fetchError": "ดึงฟีดปลั๊กอินไม่สำเร็จ: {{detail}}",
+      "details": "รายละเอียด",
+      "install": "ติดตั้ง",
+      "installing": "กำลังติดตั้ง…",
+      "installed": "ติดตั้งแล้ว",
+      "empty": "ยังไม่มีปลั๊กอินให้ใช้งาน"
+    },
+    "detail": {
+      "notFound": "ไม่พบปลั๊กอินในฟีด",
+      "backToMarket": "กลับไปยังร้านค้า",
+      "by": "โดย",
+      "homepage": "หน้าแรก",
+      "uninstall": "ถอนการติดตั้ง",
+      "bundledHint": "ปลั๊กอินที่มาพร้อมกับ VRCSM ให้ปิดใช้งานแทนการถอนการติดตั้ง",
+      "description": "คำอธิบาย",
+      "metadata": "ข้อมูลเมตา",
+      "hostMin": "เวอร์ชันโฮสต์ขั้นต่ำ",
+      "sha256": "SHA-256",
+      "downloadUrl": "URL ดาวน์โหลด",
+      "open": "เปิด"
+    },
+    "installed": {
+      "title": "ปลั๊กอินที่ติดตั้ง",
+      "subtitle": "จัดการปลั๊กอินที่ติดตั้งในเครื่องและสถานะ",
+      "openMarket": "เปิดร้านค้า",
+      "empty": "ยังไม่มีปลั๊กอินที่ติดตั้ง",
+      "col": {
+        "name": "ชื่อ",
+        "version": "เวอร์ชัน",
+        "shape": "รูปแบบ",
+        "status": "สถานะ",
+        "actions": "การดำเนินการ"
+      },
+      "enabled": "เปิดใช้งาน",
+      "disabled": "ปิดใช้งาน",
+      "bundled": "มาพร้อมแอป",
+      "bundledHint": "ปลั๊กอินที่มาพร้อมแอปไม่สามารถถอนการติดตั้งได้",
+      "open": "เปิด",
+      "enable": "เปิดใช้งาน",
+      "disable": "ปิดใช้งาน",
+      "uninstall": "ถอนการติดตั้ง"
+    },
+    "host": {
+      "notInstalled": "ไม่ได้ติดตั้งปลั๊กอิน {{id}}",
+      "disabled": "ปลั๊กอิน {{id}} ถูกปิดใช้งาน",
+      "noPanel": "ปลั๊กอิน {{id}} ไม่มี UI แผงควบคุม"
+    }
   }
 }

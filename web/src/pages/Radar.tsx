@@ -42,6 +42,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ProfileCard } from "@/components/ProfileCard";
+import { useAuth } from "@/lib/auth-context";
 import { AvatarPopupBadge } from "@/components/AvatarPopupBadge";
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -1111,6 +1112,7 @@ function RadarEngine({
 
 function RadarHistoryAnalysis() {
   const { t } = useTranslation();
+  const { status: authStatus } = useAuth();
   const [scan, setScan] = useState<ScanLogsResponse | null>(null);
   const [loading, setLoadingState] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1301,6 +1303,11 @@ function RadarHistoryAnalysis() {
         totalDurationMs += Math.max(0, s.endMs - s.startMs);
       }
       for (const p of s.players) {
+        // Filter out the signed-in user — "most-encountered players" should
+        // not list yourself. Match both by userId (canonical) and by
+        // displayName (fallback for sessions where only the name was parsed).
+        if (authStatus.userId && p.userId === authStatus.userId) continue;
+        if (authStatus.displayName && p.displayName === authStatus.displayName) continue;
         playerSet.add(p.displayName);
         const key = p.userId ?? p.displayName;
         const hit = playerHits.get(key);
@@ -1321,7 +1328,7 @@ function RadarHistoryAnalysis() {
       topWorlds,
       topPlayers,
     };
-  }, [sessions]);
+  }, [sessions, authStatus.userId, authStatus.displayName]);
 
   useEffect(() => {
     const candidates = new Set<string>();

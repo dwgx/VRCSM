@@ -28,6 +28,7 @@
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="VRCSMINSTALLDIR" Name="VRCSM">
         <Directory Id="VRCSMWebDir" Name="web" />
+        <Directory Id="VRCSMPluginsDir" Name="plugins" />
       </Directory>
     </StandardDirectory>
 
@@ -40,6 +41,7 @@
     <Feature Id="Main" Title="VRCSM" Level="1">
       <ComponentGroupRef Id="HostFiles" />
       <ComponentGroupRef Id="WebFiles" />
+      <ComponentGroupRef Id="BundledPlugins" />
       <ComponentGroupRef Id="Shortcuts" />
     </Feature>
 
@@ -51,6 +53,10 @@
 
     <ComponentGroup Id="WebFiles" Directory="VRCSMWebDir">
       <Files Include="$(var.BuildDir)\web\**" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="BundledPlugins" Directory="VRCSMPluginsDir">
+      <Files Include="$(var.BuildDir)\plugins\**" />
     </ComponentGroup>
 
     <ComponentGroup Id="Shortcuts">

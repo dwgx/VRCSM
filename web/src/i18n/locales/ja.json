@@ -17,9 +17,14 @@
     "screenshots": "スクリーンショット",
     "logs": "ログ",
     "migrate": "移行",
+    "plugins": "プラグイン",
     "settings": "設定",
     "language": "言語",
-    "friendLog": "フレンドログ"
+    "friendLog": "フレンドログ",
+    "groups": "グループ",
+    "category": {
+      "plugins": "プラグイン"
+    }
   },
   "profile": {
     "title": "マイプロフィール",
@@ -52,7 +57,25 @@
     "liveContextDesc": "重要な ID と現在のセッション対象をすばやく確認できます。",
     "liveContextHint": "これらのライブ ID をアンカーとして、VRCSM 内のネイティブなフレンド、アバター、ワールド、Favorites ワークフローにつなげます。",
     "openFriendsManager": "フレンドにJoin",
-    "openLibrary": "ライブラリを開く"
+    "openLibrary": "ライブラリを開く",
+    "edit": {
+      "bioLinks": "自己紹介リンク（最大4件）",
+      "addLink": "リンクを追加",
+      "linkPlaceholder": "https://…",
+      "noLinks": "まだリンクはありません。上の「+ リンクを追加」をクリックしてください",
+      "pronouns": "代名詞",
+      "pronounsCustom": "カスタム…",
+      "languages": "話せる言語"
+    },
+    "stats": {
+      "joined": "参加日",
+      "joinedValue": "{{date}}（{{years}}年）",
+      "trust": "信頼",
+      "ageVerification": "年齢確認",
+      "ageVerified": "18歳以上確認済み",
+      "ageUnverified": "未確認",
+      "languages": "言語"
+    }
   },
   "screenshots": {
     "title": "スクリーンショット",
@@ -124,6 +147,19 @@
     "requestInvite": "招待をリクエスト",
     "openFriendProfile": "プロフィールを開く",
     "noSubscriptionSignals": "このセッションにはサブスクリプション判定用の専用フィールドがありませんでした。",
+    "quickFilters": "クイックフィルター",
+    "onlyOnlineFriends": "オンラインのフレンドのみ",
+    "onlyMyGroups": "自分のグループのみ",
+    "hideModerations": "モデレーションを非表示",
+    "runtimeMode": "実行モード",
+    "trustRankQuick": "信頼ランク",
+    "vrcPlusQuick": "VRC+",
+    "linkedAccountsQuick": "連携アカウント",
+    "socialPulse": "ソーシャル",
+    "marketplaceQuick": "マーケット",
+    "favoriteAvatars": "お気に入りアバター",
+    "favoriteWorlds": "お気に入りワールド",
+    "downloadReady": "ダウンロード可",
     "block": "ブロック",
     "mute": "ミュート",
     "pickDownloadFolder": "アバターバンドルの保存先フォルダを選択",
@@ -231,6 +267,22 @@
     "detailPaneTitle": "詳細",
     "platform": "プラットフォーム"
   },
+  "groups": {
+    "subtitle": "参加しているすべての VRChat グループです。代表設定中のグループを先頭に、その後オンライン活動順で並びます。",
+    "filterPlaceholder": "グループを絞り込み…",
+    "representing": "代表設定中",
+    "empty": "まだ VRChat グループに参加していません。",
+    "noMatch": "'{{filter}}' に一致するグループはありません。",
+    "memberCount": "{{count}} 人のメンバー",
+    "onlineCount": "{{count}} 人オンライン",
+    "viewOnVrchat": "vrchat.com で開く",
+    "seeOnline": "オンラインを表示",
+    "stats": {
+      "total": "あなたのグループ",
+      "online": "オンラインメンバー",
+      "representing": "代表設定中"
+    }
+  },
   "menu": {
     "file": "ファイル",
     "edit": "編集",
@@ -270,12 +322,39 @@
     "toolsSettings": "設定",
     "toolsSteamVR": "SteamVR 設定",
     "toolsConfig": "アプリ設定",
+    "toolsPluginsMarket": "プラグインマーケット",
+    "toolsPluginsInstalled": "インストール済みプラグイン",
     "windowResetLayout": "レイアウトをリセット",
     "helpAbout": "VRCSM について",
     "helpDocs": "ドキュメント",
     "helpCheckUpdates": "アップデートを確認",
+    "helpCheckUpdatesFallback": "アップデートを確認…",
     "helpReportIssue": "問題を報告",
     "helpKeyboard": "キーボードショートカット"
+  },
+  "update": {
+    "title": "VRCSM アップデート",
+    "checking": "アップデートを確認しています…",
+    "availableDesc": "新しい VRCSM が利用できます。今すぐインストールするか、現在のバージョンのまま使い続けられます。",
+    "readyDesc": "インストーラーのダウンロードと検証が完了しました。インストールを押すと適用され、VRCSM は再起動します。",
+    "downloadingDesc": "ダウンロード中です。完了するまで VRCSM を閉じないでください。",
+    "upToDateDesc": "最新バージョンをご利用中です。",
+    "errorDesc": "現在はアップデートを確認できませんでした。",
+    "currentLabel": "現在",
+    "latestLabel": "利用可能",
+    "sizeLabel": "ダウンロードサイズ",
+    "verifying": "SHA-256 を検証しています…",
+    "downloading": "ダウンロード中 {{done}} / {{total}}",
+    "viewNotes": "リリースノート",
+    "skip": "このバージョンをスキップ",
+    "skipped": "{{version}} をスキップしました",
+    "skipFailed": "スキップに失敗しました: {{msg}}",
+    "downloadFailed": "ダウンロードに失敗しました: {{msg}}",
+    "installFailed": "インストールに失敗しました: {{msg}}",
+    "retry": "再確認",
+    "later": "後で",
+    "download": "ダウンロードしてインストール",
+    "installNow": "今すぐインストール（再起動）"
   },
   "radar": {
     "title": "ライブインスタンスレーダー",
@@ -346,6 +425,7 @@
     "hide": "非表示",
     "show": "表示",
     "unknown": "不明",
+    "remove": "削除",
     "sidebar": "サイドバー"
   },
   "about": {
@@ -921,6 +1001,18 @@
       "runtimeDesc": "このPCのVRChatログから解析された実行環境の推測サマリー。",
       "runtimeMode": "ランタイムモード",
       "runtimeDetail": "検出された詳細"
+    },
+    "steamvr": {
+      "saveDirty": "設定を保存 *",
+      "presetQuest3": "Quest 3 最適化",
+      "presetQuest3Hint": "Steam Link 経由の Quest 3 向けに調整されています",
+      "questSection": {
+        "title": "Quest のトラブルシューティング",
+        "body": "Quest で起きる画面端の揺れ、ぼやけ、黒画面の停止は、ほとんどの場合 VRChat 本体ではなくランタイム層（Steam Link / Virtual Desktop / Oculus Link）の問題です。まずは上の Quest 3 最適化プリセットを試し、揺れが続く場合は Encoder Resolution を下げ、二重像のようなゴーストが出る場合は Space Warp / Motion Smoothing を無効にし、Windows の GPU スケジューリングが有効か確認してください。",
+        "odt": "Oculus Debug Tool",
+        "gpuScheduling": "GPU スケジューリング",
+        "guide": "VRCSM ガイド"
+      }
     }
   },
   "profileCard": {
@@ -935,5 +1027,59 @@
     "wearAvatarTitle": "{{name}} を着用",
     "copyAvatarId": "アバター ID をコピー",
     "avatarIdCopied": "アバター ID をコピーしました"
+  },
+  "plugins": {
+    "installedLink": "インストール済みプラグイン",
+    "market": {
+      "title": "プラグインマーケット",
+      "subtitle": "VRCSM の公式フィードから公式およびコミュニティのプラグインをインストールします。",
+      "refresh": "更新",
+      "fetchError": "プラグインフィードの取得に失敗しました: {{detail}}",
+      "details": "詳細",
+      "install": "インストール",
+      "installing": "インストール中…",
+      "installed": "インストール済み",
+      "empty": "利用可能なプラグインがありません。"
+    },
+    "detail": {
+      "notFound": "フィードにプラグインが見つかりません。",
+      "backToMarket": "マーケットへ戻る",
+      "by": "作者",
+      "homepage": "ホームページ",
+      "uninstall": "アンインストール",
+      "bundledHint": "同梱プラグインは VRCSM に同梱されています。アンインストールではなく無効化してください。",
+      "description": "説明",
+      "metadata": "メタデータ",
+      "hostMin": "最低ホストバージョン",
+      "sha256": "SHA-256",
+      "downloadUrl": "ダウンロード URL",
+      "open": "開く"
+    },
+    "installed": {
+      "title": "インストール済みプラグイン",
+      "subtitle": "ローカルにインストールされたプラグインと状態を管理します。",
+      "openMarket": "マーケットを開く",
+      "empty": "プラグインはインストールされていません。",
+      "col": {
+        "name": "名前",
+        "version": "バージョン",
+        "shape": "形態",
+        "status": "状態",
+        "actions": "操作"
+      },
+      "enabled": "有効",
+      "disabled": "無効",
+      "bundled": "同梱",
+      "bundledHint": "同梱プラグインはアンインストールできません。",
+      "open": "開く",
+      "enable": "有効化",
+      "disable": "無効化",
+      "uninstall": "アンインストール"
+    },
+    "host": {
+      "notInstalled": "プラグイン {{id}} はインストールされていません。",
+      "disabled": "プラグイン {{id}} は無効化されています。",
+      "noPanel": "プラグイン {{id}} にはパネル UI がありません。"
+    }
   }
 }

@@ -17,9 +17,11 @@
     "screenshots": "截图",
     "logs": "日志",
     "migrate": "迁移",
+    "plugins": "插件",
     "settings": "设置",
     "language": "语言",
     "friendLog": "好友日志",
+    "groups": "团体",
     "category": {
       "workspace": "工作区",
       "assets": "资产",
@@ -27,7 +29,8 @@
       "media": "媒体",
       "diagnostics": "诊断",
       "maintenance": "维护",
-      "project": "项目"
+      "project": "项目",
+      "plugins": "插件"
     }
   },
   "profile": {
@@ -61,7 +64,25 @@
     "openHomePortal": "打开 VRChat 主页",
     "liveContext": "当前上下文",
     "liveContextDesc": "把当前关键 ID 和会话目标集中到一处，方便继续跳转。",
-    "liveContextHint": "这些实时 ID 会作为锚点，直接衔接 VRCSM 里的好友、模型、地图和收藏工作流。"
+    "liveContextHint": "这些实时 ID 会作为锚点，直接衔接 VRCSM 里的好友、模型、地图和收藏工作流。",
+    "edit": {
+      "bioLinks": "简介链接（最多 4 个）",
+      "addLink": "添加链接",
+      "linkPlaceholder": "https://…",
+      "noLinks": "还没有链接，点击上面的 + 添加链接",
+      "pronouns": "人称代词",
+      "pronounsCustom": "自定义…",
+      "languages": "会说的语言"
+    },
+    "stats": {
+      "joined": "加入时间",
+      "joinedValue": "{{date}}（{{years}} 年）",
+      "trust": "信任等级",
+      "ageVerification": "年龄验证",
+      "ageVerified": "已验证 18+",
+      "ageUnverified": "未验证",
+      "languages": "语言"
+    }
   },
   "screenshots": {
     "title": "截图",
@@ -129,6 +150,19 @@
   },
   "vrchatWorkspace": {
     "title": "VRChat 工作区",
+    "quickFilters": "快速筛选",
+    "onlyOnlineFriends": "只看在线好友",
+    "onlyMyGroups": "只看我的团体",
+    "hideModerations": "隐藏屏蔽记录",
+    "runtimeMode": "运行模式",
+    "trustRankQuick": "信任等级",
+    "vrcPlusQuick": "VRC+",
+    "linkedAccountsQuick": "关联账号",
+    "socialPulse": "社交动态",
+    "marketplaceQuick": "市场概览",
+    "favoriteAvatars": "收藏模型",
+    "favoriteWorlds": "收藏地图",
+    "downloadReady": "可下载",
     "block": "拉黑",
     "mute": "静音",
     "saveToLibrary": "保存到库",
@@ -240,6 +274,22 @@
     "detailPaneTitle": "好友详情",
     "platform": "平台"
   },
+  "groups": {
+    "subtitle": "你加入的所有 VRChat 团体，优先按当前代表的团体排序，其次按在线活跃度排序。",
+    "filterPlaceholder": "筛选团体…",
+    "representing": "当前代表",
+    "empty": "你还没有加入任何 VRChat 团体。",
+    "noMatch": "没有团体匹配 '{{filter}}'。",
+    "memberCount": "{{count}} 名成员",
+    "onlineCount": "{{count}} 人在线",
+    "viewOnVrchat": "在 vrchat.com 打开",
+    "seeOnline": "查看在线成员",
+    "stats": {
+      "total": "你的团体",
+      "online": "在线成员",
+      "representing": "代表中"
+    }
+  },
   "menu": {
     "file": "文件",
     "edit": "编辑",
@@ -279,12 +329,39 @@
     "toolsSettings": "设置",
     "toolsSteamVR": "SteamVR 设置",
     "toolsConfig": "应用配置",
+    "toolsPluginsMarket": "插件商店",
+    "toolsPluginsInstalled": "已安装插件",
     "windowResetLayout": "重置布局",
     "helpAbout": "关于 VRCSM",
     "helpDocs": "文档",
     "helpCheckUpdates": "检查更新",
+    "helpCheckUpdatesFallback": "检查更新…",
     "helpReportIssue": "反馈问题",
     "helpKeyboard": "键盘快捷键"
+  },
+  "update": {
+    "title": "VRCSM 更新",
+    "checking": "正在检查更新…",
+    "availableDesc": "发现新版本的 VRCSM。现在安装，或继续使用当前版本。",
+    "readyDesc": "安装包已下载并校验完成。点击安装即可应用，VRCSM 会重启。",
+    "downloadingDesc": "正在下载，请不要在完成前关闭 VRCSM。",
+    "upToDateDesc": "你已经是最新版本。",
+    "errorDesc": "暂时无法检查更新。",
+    "currentLabel": "当前版本",
+    "latestLabel": "可用版本",
+    "sizeLabel": "下载大小",
+    "verifying": "正在校验 SHA-256…",
+    "downloading": "正在下载 {{done}} / {{total}}",
+    "viewNotes": "更新说明",
+    "skip": "跳过此版本",
+    "skipped": "已跳过版本 {{version}}",
+    "skipFailed": "跳过失败：{{msg}}",
+    "downloadFailed": "下载失败：{{msg}}",
+    "installFailed": "安装失败：{{msg}}",
+    "retry": "重新检查",
+    "later": "稍后",
+    "download": "下载并安装",
+    "installNow": "立即安装（重启）"
   },
   "radar": {
     "title": "实例探测雷达",
@@ -346,6 +423,18 @@
       }
     }
   },
+  "folderPicker": {
+    "title": "选择文件夹",
+    "hint": "双击进入子文件夹，选好后点击\"选定此文件夹\"。",
+    "thisPc": "此电脑",
+    "up": "上一级",
+    "refresh": "刷新",
+    "empty": "此目录下没有子文件夹。",
+    "noDrives": "未检测到驱动器。",
+    "noSelection": "（尚未选择）",
+    "truncated": "列表已在 2000 项处截断。",
+    "choose": "选定此文件夹"
+  },
   "common": {
     "loading": "加载中…",
     "retry": "重试",
@@ -384,7 +473,8 @@
     "hide": "隐藏",
     "show": "显示",
     "sidebar": "侧边栏",
-    "unknown": "未知"
+    "unknown": "未知",
+    "remove": "移除"
   },
   "about": {
     "title": "关于 VRCSM",
@@ -2818,6 +2908,8 @@
     "steamvr": {
       "title": "VR 串流设置 (SteamVR / Steam Link)",
       "quickPresets": "快速预设：",
+      "presetQuest3": "Quest 3 优化",
+      "presetQuest3Hint": "针对通过 Steam Link 使用的 Quest 3 调整",
       "presetPerformance": "流畅 (50Mbps)",
       "presetBalanced": "均衡 (100Mbps)",
       "presetQuality": "高画质 (150Mbps)",
@@ -2826,12 +2918,20 @@
       "steamvrIdle": "SteamVR 空闲",
       "reload": "刷新",
       "save": "保存设置",
+      "saveDirty": "保存设置 *",
       "saving": "保存中...",
       "enabled": "已启用",
       "disabled": "已禁用",
       "successSave": "成功更新 steamvr.vrsettings！",
       "errorSave": "保存 steamvr.vrsettings 失败：{{msg}}",
       "errorRead": "读取 steamvr.vrsettings 失败：{{msg}}",
+      "questSection": {
+        "title": "Quest 排障",
+        "body": "Quest 上的边缘抖动、画面发糊或黑屏卡住，几乎都属于运行时链路问题（Steam Link / Virtual Desktop / Oculus Link），而不是 VRChat 本身。先试试上面的 Quest 3 优化预设；如果还抖就降低 Encoder Resolution；如果出现重影就关闭 Space Warp / Motion Smoothing；并确认 Windows 已开启 GPU 调度。",
+        "odt": "Oculus 调试工具",
+        "gpuScheduling": "GPU 调度",
+        "guide": "VRCSM 指南"
+      },
       "targetBandwidth": {
         "label": "目标带宽 (Mbps)",
         "hint": "Steam Link 的码率上限，好路由可设 150-200。"
@@ -2889,5 +2989,60 @@
     "wearAvatarTitle": "穿上 {{name}}",
     "copyAvatarId": "复制模型 ID",
     "avatarIdCopied": "模型 ID 已复制"
+  },
+  "plugins": {
+    "installedLink": "已安装插件",
+    "market": {
+      "title": "插件商店",
+      "subtitle": "从 VRCSM 官方源安装官方及社区插件。",
+      "refresh": "刷新",
+      "fetchError": "获取插件列表失败：{{detail}}",
+      "fetchErrorHint": "远程商店源 dwgx.github.io/VRCSM/plugins.json 暂时无法访问。随 VRCSM 打包的 Hello Plugin 和 VRChat Auto-Uploader 已经装上并可直接从左侧栏打开使用；仅安装新的第三方插件会受影响。",
+      "details": "详情",
+      "install": "安装",
+      "installing": "安装中…",
+      "installed": "已安装",
+      "empty": "暂无可用插件。"
+    },
+    "detail": {
+      "notFound": "插件源中找不到该插件。",
+      "backToMarket": "返回商店",
+      "by": "作者",
+      "homepage": "主页",
+      "uninstall": "卸载",
+      "bundledHint": "内置插件随 VRCSM 发行 — 请禁用而非卸载。",
+      "description": "描述",
+      "metadata": "元数据",
+      "hostMin": "最低宿主版本",
+      "sha256": "SHA-256",
+      "downloadUrl": "下载地址",
+      "open": "打开"
+    },
+    "installed": {
+      "title": "已安装插件",
+      "subtitle": "管理本地已安装的插件及其状态。",
+      "openMarket": "打开商店",
+      "empty": "尚未安装任何插件。",
+      "col": {
+        "name": "名称",
+        "version": "版本",
+        "shape": "形态",
+        "status": "状态",
+        "actions": "操作"
+      },
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "bundled": "内置",
+      "bundledHint": "内置插件不可卸载。",
+      "open": "打开",
+      "enable": "启用",
+      "disable": "禁用",
+      "uninstall": "卸载"
+    },
+    "host": {
+      "notInstalled": "插件 {{id}} 未安装。",
+      "disabled": "插件 {{id}} 已被禁用。",
+      "noPanel": "插件 {{id}} 未提供面板界面。"
+    }
   }
 }

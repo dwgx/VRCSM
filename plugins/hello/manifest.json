@@ -1,0 +1,17 @@
+{
+  "id": "dev.vrcsm.hello",
+  "name": "Hello Plugin",
+  "version": "1.0.0",
+  "hostMin": "0.8.0",
+  "shape": "panel",
+  "entry": { "panel": "index.html" },
+  "permissions": ["ipc:vrc:cache"],
+  "author": { "name": "VRCSM", "url": "https://github.com/dwgx/VRCSM" },
+  "homepage": "https://github.com/dwgx/VRCSM",
+  "description": "Reference plugin — demonstrates the IPC bridge by calling scan and printing the number of cached bundles.",
+  "i18n": {
+    "en": { "greeting": "Hello from the reference plugin." },
+    "zh-CN": { "greeting": "来自参考插件的问候。" },
+    "ja": { "greeting": "リファレンスプラグインより。" }
+  }
+}

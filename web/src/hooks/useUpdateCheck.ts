@@ -1,52 +1,54 @@
-import { useState, useEffect } from "react";
-import { ipc } from "@/lib/ipc";
+import { useCallback, useEffect, useState } from "react";
+import { checkUpdate, type UpdateCheckResult } from "@/lib/update";
 
-export interface ReleaseInfo {
-  version: string;
-  url: string;
-  publishedAt: string;
+export interface UseUpdateCheckResult {
+  /** Latest release when an update is available and not skipped. null otherwise. */
+  updateAvailable: UpdateCheckResult | null;
+  /** Full check result, available even for up-to-date responses. */
+  result: UpdateCheckResult | null;
+  checking: boolean;
+  error: string | null;
+  /** Trigger a fresh check, bypassing the 5-minute host cache. */
+  recheck: () => Promise<UpdateCheckResult | null>;
 }
 
-export function useUpdateCheck() {
-  const [updateAvailable, setUpdateAvailable] = useState<ReleaseInfo | null>(null);
+/**
+ * Thin wrapper over the C++ updater: performs one background check on
+ * mount, exposes the result plus a re-check trigger. The host side
+ * already caches the GitHub response for 5 minutes, so calling this
+ * multiple times is cheap.
+ */
+export function useUpdateCheck(): UseUpdateCheckResult {
+  const [result, setResult] = useState<UpdateCheckResult | null>(null);
   const [checking, setChecking] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    async function check() {
-      try {
-        // First get current app version from host
-        const appInfo = await ipc.call<undefined, { version: string }>("app.version");
-        const currentVer = appInfo.version.replace(/^v/, "");
-
-        // Fetch latest release from GitHub API
-        const res = await fetch("https://api.github.com/repos/dwgx/VRCSM/releases/latest");
-        if (!res.ok) throw new Error("Failed to fetch latest release");
-        const data = await res.json();
-        
-        const latestVerStr = data.tag_name || "";
-        const latestVer = latestVerStr.replace(/^v/, "");
-        
-        if (alive) {
-          // simple string comparison, though semver parsing is robust, this works for x.y.z
-          if (latestVer && latestVer !== currentVer) {
-            setUpdateAvailable({
-              version: latestVerStr,
-              url: data.html_url,
-              publishedAt: data.published_at
-            });
-          }
-        }
-      } catch (err) {
-        console.warn("Update check failed:", err);
-      } finally {
-        if (alive) setChecking(false);
-      }
+  const run = useCallback(async (force: boolean): Promise<UpdateCheckResult | null> => {
+    setChecking(true);
+    setError(null);
+    try {
+      const info = await checkUpdate(force);
+      setResult(info);
+      return info;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+      return null;
+    } finally {
+      setChecking(false);
     }
-    
-    check();
-    return () => { alive = false; };
   }, []);
 
-  return { updateAvailable, checking };
+  useEffect(() => {
+    void run(false);
+  }, [run]);
+
+  const updateAvailable = result && result.available && !result.skipped ? result : null;
+
+  return {
+    updateAvailable,
+    result,
+    checking,
+    error,
+    recheck: () => run(true),
+  };
 }

@@ -6,6 +6,373 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [0.9.2] — 2026-04-19
+
+Fixes the v0.9.0 plugin-iframe IPC regression where responses from
+host handlers never reached plugin panels — the panel call would
+queue forever (the AutoUploader's "Loading…" hang on the folder
+picker was the visible symptom). Adds a real scan + rename UI to the
+AutoUploader so per-folder name overrides survive across sessions
+and feed straight through to Unity.
+
+### Fixed
+
+- **Plugin iframe IPC routing** (`src/host/WebViewHost.cpp`) — wired
+  `ICoreWebView2_4::add_FrameCreated` so the host now tracks every
+  plugin iframe by id and routes responses through
+  `ICoreWebView2Frame2::PostWebMessageAsString`. The top-level
+  `ICoreWebView2::PostWebMessageAsString` only reaches the main SPA
+  frame, so before this fix any reply targeted at a plugin frame
+  vanished silently and the panel hung waiting for a result.
+
+### Added
+
+- **`fs.writePlan` IPC** (`src/host/bridges/ShellBridge.cpp`) — narrow
+  write surface that emits exactly one file (`.vrcsm-upload-plan.json`)
+  inside an existing directory. JSON-validated, capped at 1MB. Granted
+  to plugins via `ipc:shell` so the AutoUploader panel can persist its
+  rename map without opening a general fs.write surface.
+- **AutoUploader scan + rename UI** (`plugins/vrc-auto-uploader/`) —
+  `Scan` now lists the picked root's avatar subfolders inline with
+  per-row "Upload as…" inputs, a per-row reset button, and a bulk
+  "skip" checkbox. Edits persist in `localStorage` keyed by the root
+  path; same-name folders auto-suffix (`name`, `name_2`, `name_3`, …)
+  but a user-typed name always wins. On `Start upload batch` the panel
+  writes `.vrcsm-upload-plan.json` next to the chosen root via
+  `fs.writePlan`, then prints the runner command with the matching
+  `--plan` argument.
+- **Plan-aware Python runner**
+  (`plugins/vrc-auto-uploader/bin/python/extractor.py`, `main.py`) —
+  `scan_model_directory` accepts an optional `plan` dict and applies
+  its `renameMap`/`skip` list before dispatching to Unity. `--plan`
+  was added to `batch`, `extract`, and `fix-thumbnails`; if omitted
+  the runner auto-loads `.vrcsm-upload-plan.json` from the picked
+  root so users running the CLI by hand also benefit.
+
+### Bumped
+
+- AutoUploader plugin manifest → `0.9.2` (`hostMin: 0.9.2`).
+- Top-level `VERSION` → `0.9.2`.
+
+## [0.9.1] — 2026-04-19
+
+Follow-up polish on v0.9.0 — the Win32 folder picker used by the
+AutoUploader plugin (and the main SPA's `pickFolder` helper) was
+frequently obscured behind the WebView2 frame. Replaced with a fully
+in-app folder browser so the dialog is guaranteed to render on top of
+the application.
+
+### Added
+
+- **`fs.listDir` IPC** (`src/host/bridges/ShellBridge.cpp`) — read-only
+  directory listing, 2000-entry cap, skips hidden/system by default,
+  returns drive roots with volume labels when given an empty path.
+  Runs on the thread pool (registered in `AsyncMethodSet`) so large
+  mounts don't freeze the UI. Granted to plugins via the existing
+  `ipc:shell` permission token.
+- **`<FolderPickerHost />` React component** (`web/src/components/FolderPicker.tsx`)
+  — shadcn dialog with breadcrumb nav, root-drive fallback, and a
+  "Choose this folder" confirmation. Mounts at the app shell and
+  registers itself with `ipc.pickFolder`, so every existing call site
+  (`VrchatWorkspace`, `Migrate`, future consumers) now opens the
+  in-app dialog instead of `IFileOpenDialog`.
+- **AutoUploader in-panel folder picker**
+  (`plugins/vrc-auto-uploader/index.html` + `style.css` + `main.js`)
+  — dedicated modal inside the iframe that consumes `fs.listDir`
+  directly via `plugin.rpc`. Keyboard `Esc` to dismiss, backdrop
+  click to cancel.
+
+### Changed
+
+- `ipc.pickFolder()` on the frontend prefers the in-app handler when
+  it's mounted and only falls back to `shell.pickFolder` for
+  headless/test contexts. The host IPC is kept in place for
+  backward-compatible plugin authors.
+- AutoUploader plugin `hostMin` bumped to `0.9.1` since the in-panel
+  picker requires the new `fs.listDir` handler.
+
+## [0.9.0] — 2026-04-19
+
+Phase B of the plugin-system rollout — the **VRChat Auto-Uploader** is now
+a first-class VRCSM plugin, with all four of the known 25%-failure-rate
+bugs fixed at the source. Ships alongside a thick batch of bug fixes the
+user hit in v0.8.1 while driving the app through a real workflow.
+
+### Added
+
+- **`dev.vrcsm.autouploader` plugin** (`plugins/vrc-auto-uploader/`) —
+  ported from the standalone [VRC-Auto-Uploader](https://github.com/dwgx/VRC-Auto-Uploader)
+  as a `shape: "panel"` plugin. Bundles the Python runner, the Unity
+  `AutoUploader.cs` / `PopupSuppressor.cs` editor scripts, and a thin
+  VRCSM panel UI (HTML + CSS + vanilla JS, no framework) for folder
+  selection + status tracking. Registered in the gh-pages feed as
+  version `0.9.0` with SHA-256
+  `b5cc2d8cad51571af4163dc5600f6ed5f9d2d3690eb61ac39715ec49935e6db3`.
+  The panel uses `plugin.rpc → shell.pickFolder / shell.openUrl`
+  through a new **`ipc:shell`** permission token (see below) rather
+  than shelling out directly.
+- **Four fixes against the historical 25% failure rate** (15/60 of the
+  user's own upload attempts failed with "Could not find
+  VRCAvatarDescriptor" in `upload_results_backup.json`):
+  1. `AutoUploader.cs` now waits on `AssetDatabase.importPackageCompleted` /
+     `importPackageFailed` / `importPackageCancelled` with a 120 s
+     timeout instead of a flat `Task.Delay(3000)` — big packages no
+     longer finish past the deadline and let `FindAvatarInScenes` run
+     before MonoScript resolution completes.
+  2. Static fields (`_currentTaskIndex`, `_isRunning`, `_sdkReady`)
+     are now backed by `SessionState.GetInt` / `SetBool`, so a domain
+     reload mid-batch (caused by a shader import or SDK update) no
+     longer restarts from task 0.
+  3. `sanitizer.py` extends `BAD_EXTENSIONS` with `.shader`, `.cginc`,
+     `.hlsl`, `.compute`, and `.raytrace` — these used to trigger the
+     compile-and-reload that caused fix #2 to fire in the first place.
+  4. `FindAvatarInScenes` gets one retry after a forced synchronous
+     `AssetDatabase.Refresh` when the first scan misses, and
+     `PopupSuppressor.cs` wraps `Clickable.Invoke` in a per-popup
+     try/catch so one mis-shaped dialog doesn't disable suppression
+     for the rest of the session.
+- **`ipc:shell` permission token** (`src/core/plugins/PluginRegistry.cpp`)
+  — grants `shell.pickFolder` + `shell.openUrl` to plugins that declare
+  it. First consumer is the AutoUploader panel.
+- **All VRChat language tags with Chinese + regional dialects.**
+  Profile language picker went from 30 hand-picked entries to 80+
+  covering Cantonese (粵語 `language_yue`), Wu (吴语 `language_wuu`),
+  Min Nan (闽南/潮汕/台语 `language_nan`), Hakka (`language_hak`),
+  Tibetan, Uighur, Mongolian, every major European/African/SE Asian
+  language VRChat's API actually accepts, sign languages including
+  JSL / CSL, and Esperanto / Latin. The 3-tag cap (`{count}/3`) is
+  gone — VRChat's server still limits, but the UI no longer blocks
+  you from trying more.
+
+### Fixed
+
+- **SteamVR Settings tab crashed with React error #310.** The cleanup
+  `useEffect` I added in v0.8.1 sat below the `if (!config) return null`
+  early-return; on the first render (`config == null`) the hook wasn't
+  registered, on the second (`config` loaded) it was — violating Rules
+  of Hooks. Moved the cleanup unconditionally above the early-return.
+- **Runtime detection showed "VR / None" for desktop users.** VRChat
+  writes the literal string `XR Device: None` into its log when no XR
+  device is active, and the detector took that as a truthy VR hint.
+  Both `detectRuntimeSummary` (VrchatWorkspace sidebar) and the
+  `runtimeSummary` memo in TabGeneral now treat the lowercase string
+  `"none"` as absent and fall through to the desktop branch with
+  `deviceModel` / `platform` instead.
+- **Radar's "Most-encountered players" listed the signed-in user.**
+  The aggregation over `sessions.players` now filters out rows where
+  `userId === authStatus.userId` (or `displayName` matches, for old
+  log entries that didn't carry a userId).
+- **Friends list took 1-3 s to paint anything.** The page now seeds
+  state from a `localStorage` cache on mount so the list renders
+  instantly, then kicks off the IPC refresh in the background and
+  overwrites + writes the cache back. On the C++ side,
+  `VrcApi::fetchFriends` went from a single-page 100-row fetch to
+  the same paginated helper `fetchGroups` / `fetchPlayerModerations`
+  use, so users with 200+ friends finally see all of them.
+- **VrchatWorkspace sticky Quick-filters bar scrolled with the
+  page.** The codex-generated `sticky top-[68px]` was sticking to
+  the inner scroll container at the wrong offset; rather than
+  fight the layout, the bar is now a normal non-sticky row at the
+  top of the main column. Backdrop-blur removed.
+- **Quick-filter labels rendered in English on non-English locales.**
+  The strings went through `t()` but the zh-CN / ja / ko / ru / th /
+  hi locale files didn't have the keys — added `vrchatWorkspace.
+  quickFilters / onlyOnlineFriends / onlyMyGroups / hideModerations`
+  to all six. English falls back to `defaultValue` so en.json is
+  unchanged.
+
+### Changed
+
+- `VERSION` → `0.9.0`, `web/package.json` → `0.9.0`, MSI filename
+  becomes `VRCSM-0.9.0-x64.msi`.
+- Plugin feed at `https://dwgx.github.io/VRCSM/plugins.json` now has
+  two entries (AutoUploader + Hello) and uses a real `generated`
+  timestamp.
+
+## [0.8.1] — 2026-04-19
+
+Quality-of-life release focused on the bits of the desktop app users
+touch every day — in-app updates that don't need a browser trip, the
+Profile page catching up with everything the VRChat website lets you
+edit, Settings surfaces that remember "yes, I actually want this
+saved", and a Quest-specific troubleshooting seam. All on top of the
+v0.8.0 plugin-system foundation.
+
+### Added
+
+- **In-app hot-update flow (`src/core/updater/` + `UpdateBridge.cpp` +
+  `components/UpdateDialog.tsx`).** VRCSM now talks to the GitHub
+  Releases API directly, pulls the signed MSI over WinHTTP with resume
+  support, verifies SHA-256 via BCrypt, and hands off to
+  `msiexec /i /passive /norestart` before closing itself. Users can
+  **Skip this version**, **Remind later**, or **Install now** — skipped
+  versions persist in `%LocalAppData%\VRCSM\updater-state.json` and
+  stop re-nagging. The 5-minute host cache + per-check state means
+  "Help → Check for updates" never hits GitHub twice in a burst.
+- **Profile editor now covers everything vrchat.com does.** Bio stays,
+  and alongside it: **bioLinks** (up to 4 URLs with add/remove/reorder),
+  **pronouns** (pick-list with custom fall-back), **spoken languages**
+  (up to 3 tags drawn from the same VRChat-recognised set as the
+  website — 30 entries from English through 中文 / 日本語 / हिन्दी),
+  plus a **stats strip** under the card that surfaces join date, trust
+  level, age-verification status, and language summary. The bridge
+  (`ApiBridge::HandleUserUpdateProfile`) deep-merges all new fields
+  into VRChat's `PUT /users/{id}` while preserving the server-side
+  fields we don't own (tags are merged with language_* replaced, the
+  rest preserved).
+- **Groups page (`/groups`).** Dedicated view of every VRChat group
+  you belong to, sorted by representative first, then by online
+  activity. Each card shows icon, banner, verified badge, member
+  counts, role summary, and jumps out to vrchat.com or the workspace
+  online-instance filter. Complements the Friends / Avatars / Worlds
+  triad and brings the navigation closer to the VRChat website's
+  coverage.
+- **Hardware detector + preset recommender (`src/core/hw/` +
+  `HwBridge.cpp`).** WMI-based CPU/GPU/RAM probe, HMD lookup via
+  SteamVR vrsettings and the Oculus registry, then a scored preset
+  pick (`ultra` / `high` / `balanced` / `low`) that drops straight
+  into the SteamVR writer used by the VR streaming tab. Optional
+  online enrichment pulls community profiles from
+  `https://dwgx.github.io/VRCSM/hw-profiles.json` when the user opts
+  in.
+- **`shadcn`-style Slider (`components/ui/slider.tsx`).** Tailwind-
+  only, no Radix dependency, keyboard- and mouse-accessible. Replaces
+  the two raw `<input type="range">` controls in VR Streaming
+  Settings and becomes the primitive for any future slider.
+- **Quest 3 troubleshooting section in VR Streaming Settings.** Card
+  appears automatically when a Quest HMD is detected. Ships the
+  **Quest 3 Optimized** preset (150 Mbps / 1.2× SS / 90 Hz), plus
+  deep-links to Oculus Debug Tool, Windows GPU scheduling, and the
+  VRCSM Quest-3 guide for the grid of "edge jitter / blur /
+  black-screen" complaints that are almost always runtime-layer, not
+  VRChat itself.
+
+### Changed
+
+- **VR Streaming settings no longer roll back on save.** The
+  `SteamVrConfig.Write` path was racing SteamVR's own autosave — if
+  the user edited something while the runtime was still winding down
+  we'd write, SteamVR would write over us, and the UI would refetch
+  our clobbered file and show the user "wait, why did my slider jump
+  back?" The save button is now **only enabled when there are
+  actually pending edits**, shows a small dot when the form is
+  dirty, and refetches **after a 1 s grace window** preserving any
+  edits the user made mid-save. Added an explicit "SteamVR must be
+  restarted for changes to take effect" toast so nobody thinks we're
+  secretly hot-reloading.
+- **VrchatWorkspace layout.** The one-long-column-then-a-sidebar
+  layout was causing users to scroll for a solid thousand pixels on
+  1080p monitors. Grid now breaks into two columns at `lg` (1024 px)
+  instead of `xl` (1280 px), gains a third compact stats column at
+  `2xl`, and the side panel is `sticky top-[68px]` so it tracks the
+  main column's scroll. Cards in the side column got a pass for
+  density: smaller type, flat elevation, stat tiles with icon +
+  label + value only.
+- **Sidebar gets a Groups entry** between Friends and Radar.
+  **Help → Check for updates** now opens the in-app `UpdateDialog`
+  instead of bouncing the user out to GitHub.
+- **Profile card surfaces pronouns inline** next to the display
+  name, matching the way VRChat's website places them.
+
+### Fixed
+
+- **Cache-clear no longer strands the window at
+  `ERR_FILE_NOT_FOUND`.** Factory-reset + page reload occasionally
+  fired while the view was sitting on a `preview.local` or
+  `plugin.*.vrcsm` URL that the reset had just invalidated —
+  WebView2's default error page would latch and the user had to kill
+  VRCSM to get back in. `WebViewHost` now installs a
+  `NavigationCompleted` watcher that detects failed navigations,
+  bounces to `https://app.vrcsm/index.html`, and falls back to a
+  self-hosted "UI resources are missing" page if the `web/` folder
+  itself is AWOL. `factoryReset` also uses `window.location.replace`
+  with an absolute URL instead of `window.location.reload` to avoid
+  inheriting a stale origin.
+
+### Security
+
+- The `NavigationCompleted` recovery path only navigates to the
+  fixed `app.vrcsm` root — no user-controlled URL can leak into it,
+  so an attacker who somehow coaxes the view into an error cannot
+  redirect via this fallback.
+
+## [0.8.0] — 2026-04-19
+
+Plugin system — Phase A. VRCSM grows a proper extension surface. First
+official plugin feed lives at `https://dwgx.github.io/VRCSM/plugins.json`
+and ships with a reference **Hello Plugin** bundled in the MSI so users
+can kick the tyres before installing anything third-party. The
+VRC-Auto-Uploader port is Phase B (v0.9.0).
+
+### Added
+
+- **Plugin core library (`src/core/plugins/`).** `PluginManifest` with
+  strict SemVer + shape (`panel` / `service` / `app`) + permission-token
+  parsing. `PluginStore` owns the on-disk layout at
+  `%LocalAppData%\VRCSM\plugins\<id>\` + `plugin-data\<id>\` +
+  `plugin-state.json`, mirrors bundled plugins from `<exeDir>\plugins\`
+  without touching Program Files, and refuses to uninstall bundled
+  entries (disable instead). `PluginInstaller` accepts `.vrcsmplugin`
+  zips via Windows `tar.exe`, verifies SHA-256 against the feed,
+  re-walks the extracted tree with `weakly_canonical` to reject any
+  symlink or zip-slip escape, and atomically swaps a staging dir into
+  place. `PluginRegistry` is the runtime singleton that exposes enabled
+  panel mappings and runs the IPC permission check. `PluginFeed` fetches
+  and 5-min-caches the market JSON over WinHTTP.
+- **IpcBridge origin gating — `DispatchFromOrigin(originUri, json)`.**
+  WebView2 iframes share `window.chrome.webview`, so a plugin iframe
+  could previously call every host handler. The bridge now classifies
+  messages by `ICoreWebView2WebMessageReceivedEventArgs::get_Source()`:
+  the main SPA (`app.vrcsm`) keeps full access, plugin origins
+  (`plugin.<sanitised-id>.vrcsm`) are whitelisted to
+  `plugin.rpc` / `plugin.self.info` / `plugin.self.i18n` plus the free
+  methods (`app.version`, `path.probe`, `process.vrcRunning`), and
+  anything else is rejected with `forbidden_origin`. Plugin RPC still
+  runs through the manifest permission table.
+- **Plugin bridge — 7 new IPC methods.** `plugin.list`,
+  `plugin.install`, `plugin.uninstall`, `plugin.enable`,
+  `plugin.disable`, `plugin.marketFeed`, `plugin.rpc`. Install/uninstall
+  refresh the WebView2 virtual-host mappings live, so no app restart is
+  needed after a plugin state change.
+- **React pages + iframe host.** `/plugins` (market), `/plugins/:id`
+  (detail), `/plugins/installed` (manage), `/p/:pluginId/*` (sandboxed
+  iframe with postMessage → `plugin.rpc` relay). Panel iframes use
+  `DENY_CORS` mapping so they can't fetch app.vrcsm assets. Plugin SDK
+  (`plugins/hello/sdk-bundle.js`) exposes `window.vrcsm.call(method)`
+  for plugin authors.
+- **Sidebar + command palette + menu bar** pick up installed panel
+  plugins dynamically — a newly-enabled plugin shows up as a nav entry
+  without an app restart.
+- **Hello Plugin (`plugins/hello/`).** Reference plugin shipped with
+  the MSI and published to the gh-pages feed. Calls `scan` through the
+  IPC bridge and prints cached-bundle counts. Useful both as an install-
+  flow smoke test and as a template for third-party authors.
+- **7-locale i18n** for every new string — en, zh-CN, ja, ko, ru, th, hi.
+- **gtest coverage** for manifest parsing, SemVer ordering, and ID
+  sanitisation (`tests/PluginManifestTests.cpp`).
+
+### Changed
+
+- **WiX MSI** adds a `BundledPlugins` component group under
+  `%LocalAppData%\VRCSM\plugins\` so the installer ships the Hello
+  Plugin alongside the web bundle. `cmake/sync-plugins.cmake` copies
+  `plugins/` into the build output as a post-build step, parallel to
+  the existing `sync-web-dist.cmake`.
+- **`IpcBridge::Dispatch(json)`** is now a thin wrapper around
+  `DispatchFromOrigin("https://app.vrcsm/", json)` — legacy callers and
+  tests continue to work unchanged.
+
+### Security
+
+- Plugin iframes get `COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS`
+  so plugin A cannot XHR plugin B or the main SPA.
+- `PluginInstaller` double-checks every extracted entry with
+  `weakly_canonical` against the staging root; symlinks and reparse
+  points are hard-rejected even though `tar.exe` already filters them.
+- SHA-256 verification is mandatory when the feed entry declares a
+  digest; a mismatch aborts the install before any directory is
+  touched.
+
 ## [0.3.0] — 2026-04-15
 
 "Surpass VRCX" sprint. v0.2.0 got the first cut of auth working but the

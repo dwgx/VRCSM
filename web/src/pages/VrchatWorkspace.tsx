@@ -34,6 +34,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -141,6 +142,62 @@ function WorkspaceActionCard({
   );
 }
 
+function CountPill({ count }: { count: number }) {
+  return (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[hsl(var(--secondary))] px-2 py-0.5 text-[10px] font-semibold leading-none text-[hsl(var(--secondary-foreground))]">
+      {count}
+    </span>
+  );
+}
+
+function SectionTitle({
+  title,
+  count,
+}: {
+  title: string;
+  count: number;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span>{title}</span>
+      <CountPill count={count} />
+    </div>
+  );
+}
+
+function SidebarFactCard({
+  icon: Icon,
+  label,
+  value,
+  children,
+}: {
+  icon: typeof Orbit;
+  label: string;
+  value: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Card elevation="flat">
+      <CardContent className="p-3">
+        <div className="flex items-start gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
+            <Icon className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+              {label}
+            </div>
+            <div className="min-w-0 text-[14px] font-semibold leading-tight text-[hsl(var(--foreground))]">
+              {value}
+            </div>
+            {children ? <div className="flex flex-wrap gap-2">{children}</div> : null}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function FavoriteTypeBadge({ item }: { item: FavoriteItem }) {
   const { t } = useTranslation();
   const type = normalizeFavoriteType(item.type);
@@ -245,13 +302,17 @@ function detectRuntimeSummary(report: ReturnType<typeof useReport>["report"]) {
     };
   }
 
-  const xrDevice = env.xr_device?.trim();
-  const deviceModel = env.device_model?.trim();
-  const platform = env.platform?.trim();
-  const store = env.store?.trim();
+  // VRChat writes the literal string "None" when no XR runtime is active —
+  // treat that as absent, otherwise we mis-classify desktop users as VR
+  // with a device name of "None".
+  const rawXr = env.xr_device?.trim() ?? "";
+  const xrDevice = rawXr && rawXr.toLowerCase() !== "none" ? rawXr : undefined;
+  const deviceModel = env.device_model?.trim() || undefined;
+  const platform = env.platform?.trim() || undefined;
+  const store = env.store?.trim() || undefined;
   const probeText = `${xrDevice ?? ""} ${deviceModel ?? ""} ${platform ?? ""}`.toLowerCase();
 
-  if (xrDevice || /quest|vive|index|oculus|pimax|windowsmr|xr|openvr|openxr/.test(probeText)) {
+  if (xrDevice || /quest|vive|index|oculus|pimax|windowsmr|openvr|openxr/.test(probeText)) {
     return {
       label: "VR",
       detail: xrDevice ?? deviceModel ?? platform ?? store ?? "XR runtime detected",
@@ -261,13 +322,13 @@ function detectRuntimeSummary(report: ReturnType<typeof useReport>["report"]) {
   if (platform?.toLowerCase().includes("android")) {
     return {
       label: "Standalone",
-      detail: deviceModel ?? platform,
+      detail: deviceModel ?? platform ?? "Quest / Pico / other standalone",
     };
   }
 
   return {
     label: "Desktop",
-    detail: platform ?? store ?? deviceModel ?? "Windows",
+    detail: deviceModel ?? platform ?? store ?? "Windows",
   };
 }
 
@@ -282,6 +343,9 @@ export default function VrchatWorkspace() {
   const [lastOfficialSyncAt, setLastOfficialSyncAt] = useState<string | null>(null);
   const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
   const [downloadBusyId, setDownloadBusyId] = useState<string | null>(null);
+  const [onlyOnlineFriends, setOnlyOnlineFriends] = useState(false);
+  const [onlyMyGroups, setOnlyMyGroups] = useState(false);
+  const [hideModerations, setHideModerations] = useState(false);
   const [showSidebar, setShowSidebar] = useUiPrefBoolean("vrcsm.layout.vrchat.sidebar.visible", true);
 
   const friendsQuery = useIpcQuery<{ offline: boolean }, FriendsListResult>(
@@ -387,6 +451,11 @@ export default function VrchatWorkspace() {
       friend: onlineMap.get(item.target_id) ?? null,
     }));
   }, [favoriteFriendItems, onlineFriends]);
+  const filteredFavoriteFriendsWithPresence = useMemo(() => {
+    return onlyOnlineFriends
+      ? favoriteFriendsWithPresence.filter(({ friend }) => Boolean(friend))
+      : favoriteFriendsWithPresence;
+  }, [favoriteFriendsWithPresence, onlyOnlineFriends]);
   const recentWorlds = useMemo(() => {
     const logs = report?.logs;
     if (!logs) return [];
@@ -476,6 +545,15 @@ export default function VrchatWorkspace() {
       };
     });
   }, [rawAuthUser]);
+  const activeLinkedAccounts = useMemo(
+    () => linkedAccounts.filter((item) => item.linked),
+    [linkedAccounts],
+  );
+  const filteredGroups = useMemo(() => {
+    return onlyMyGroups
+      ? groups.filter((group) => group.isRepresenting || (group.roles?.length ?? 0) > 0)
+      : groups;
+  }, [groups, onlyMyGroups]);
   const subscriptionSignalFacts = useMemo(() => {
     if (!rawAuthUser) {
       return [] as Array<{ key: string; value: string }>;
@@ -545,6 +623,7 @@ export default function VrchatWorkspace() {
   const recentDownloadFolder =
     typeof window !== "undefined" ? window.localStorage.getItem("vrcsm.avatarDownloadDir") : null;
   const runtimeSummary = useMemo(() => detectRuntimeSummary(report), [report]);
+  const currentTrustRank = useMemo(() => trustRank(rawAuthUserTags), [rawAuthUserTags]);
 
   useEffect(() => {
     if (lastOfficialSyncAt || officialItems.length === 0) return;
@@ -736,42 +815,43 @@ export default function VrchatWorkspace() {
         </div>
       </header>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>{t("friends.bucket.joinMe", { defaultValue: "Join Me" })}</CardDescription>
-            <CardTitle className="text-[22px]">{actionableFriends.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>{t("library.types.user", { defaultValue: "Users" })}</CardDescription>
-            <CardTitle className="text-[22px]">{favoriteFriendItems.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>{t("library.officialSync", { defaultValue: "VRChat favorites" })}</CardDescription>
-            <CardTitle className="text-[22px]">{officialItems.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>{t("worlds.title", { defaultValue: "Worlds" })}</CardDescription>
-            <CardTitle className="text-[22px]">{recentWorlds.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>{t("logs.environment", { defaultValue: "Environment" })}</CardDescription>
-            <CardTitle className="text-[22px]">{runtimeSummary.label}</CardTitle>
-            <div className="text-[11px] text-[hsl(var(--muted-foreground))]">{runtimeSummary.detail}</div>
-          </CardHeader>
-        </Card>
-      </div>
-
-      <div className={showSidebar ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]" : "grid gap-4"}>
+      <div
+        className={
+          showSidebar
+            ? "grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px_320px]"
+            : "grid gap-4"
+        }
+      >
         <div className="min-w-0 flex flex-col gap-4">
+          <Card elevation="flat">
+            <CardContent className="flex flex-wrap items-center gap-2 p-3">
+              <div className="mr-1 text-[11px] font-semibold text-[hsl(var(--foreground))]">
+                {t("vrchatWorkspace.quickFilters", { defaultValue: "Quick filters" })}
+              </div>
+              <Button
+                variant={onlyOnlineFriends ? "tonal" : "outline"}
+                size="sm"
+                onClick={() => setOnlyOnlineFriends((current) => !current)}
+              >
+                {t("vrchatWorkspace.onlyOnlineFriends", { defaultValue: "Only online friends" })}
+              </Button>
+              <Button
+                variant={onlyMyGroups ? "tonal" : "outline"}
+                size="sm"
+                onClick={() => setOnlyMyGroups((current) => !current)}
+              >
+                {t("vrchatWorkspace.onlyMyGroups", { defaultValue: "Only my groups" })}
+              </Button>
+              <Button
+                variant={hideModerations ? "tonal" : "outline"}
+                size="sm"
+                onClick={() => setHideModerations((current) => !current)}
+              >
+                {t("vrchatWorkspace.hideModerations", { defaultValue: "Hide moderations" })}
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card elevation="flat">
             <CardHeader>
               <CardTitle>{t("profile.quickActions", { defaultValue: "Native Workspace" })}</CardTitle>
@@ -782,7 +862,7 @@ export default function VrchatWorkspace() {
                 })}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
+            <CardContent className="grid gap-4 md:grid-cols-2">
               <WorkspaceActionCard
                 icon={Users}
                 title={t("friends.title")}
@@ -824,7 +904,12 @@ export default function VrchatWorkspace() {
 
           <CollapsibleCard
             elevation="flat"
-            title={t("profile.openFriendsManager", { defaultValue: "Join Friends" })}
+            title={(
+              <SectionTitle
+                title={t("profile.openFriendsManager", { defaultValue: "Join Friends" })}
+                count={actionableFriends.length}
+              />
+            )}
             description={authStatus.authed ? t("friends.subtitle") : t("friends.signInRequiredBody")}
             actions={(
               <Button variant="outline" size="sm" onClick={() => friendsQuery.refetch()} disabled={!authStatus.authed || friendsQuery.isFetching}>
@@ -835,172 +920,317 @@ export default function VrchatWorkspace() {
             storageKey="vrcsm.section.vrchat.joinFriends.open"
             contentClassName="space-y-3"
           >
+            {!authStatus.authed ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                <div className="font-medium text-[hsl(var(--foreground))]">{t("friends.signInRequired")}</div>
+                <div className="mt-1.5">{t("friends.signInRequiredBody")}</div>
+                <Button variant="tonal" size="sm" className="mt-3" onClick={() => setLoginOpen(true)}>
+                  <LogIn className="size-4" />
+                  {t("auth.signInWithVrchat")}
+                </Button>
+              </div>
+            ) : actionableFriends.length === 0 ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("vrchatWorkspace.noJoinable", {
+                  defaultValue: "No joinable friends are currently exposing an instance.",
+                })}
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[400px] pr-3">
+                <div className="space-y-3">
+                  {actionableFriends.slice(0, 8).map((friend) => {
+                    const loc = parseLocation(friend.location);
+                    const worldName =
+                      (loc.worldId && report?.logs.world_names[loc.worldId]) ||
+                      loc.worldId ||
+                      t("friends.location.world");
+                    const accessLabel = instanceTypeLabel(loc.instanceType);
+                    const canDirectJoin =
+                      loc.instanceType === "public" ||
+                      loc.instanceType === "friends" ||
+                      loc.instanceType === "friends+" ||
+                      loc.instanceType === "group" ||
+                      loc.instanceType === "group-public" ||
+                      loc.instanceType === "group-plus";
+                    const canRequestInvite =
+                      loc.instanceType === "invite" || loc.instanceType === "invite+";
+                    const rank = trustRank(friend.tags);
+                    return (
+                      <div
+                        key={friend.id}
+                        className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className={`text-[13px] font-semibold ${trustColorClass(rank)}`}>{friend.displayName}</div>
+                            <Badge variant={statusBadgeVariant(friend.status)}>{friend.status ?? "unknown"}</Badge>
+                            <Badge variant="muted">{t(trustLabelKey(rank))}</Badge>
+                          </div>
+                          <div className="mt-1 truncate text-[12px] text-[hsl(var(--foreground))]">{worldName}</div>
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+                            <span>{friend.statusDescription || t("common.none")}</span>
+                            <span>{relativeTime(friend.last_activity || friend.last_login) || t("common.none")}</span>
+                            {loc.region ? <span>{loc.region.toUpperCase()}</span> : null}
+                            {accessLabel ? <span>{accessLabel}</span> : null}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <Button
+                            variant="tonal"
+                            size="sm"
+                            onClick={() => {
+                              void openLaunchUrl(`vrchat://launch?id=${friend.location}`).catch((error: unknown) => {
+                                const message = error instanceof Error ? error.message : String(error);
+                                toast.error(t("worlds.launchFailed", { error: message }));
+                              });
+                            }}
+                          >
+                            <Play className="size-4" />
+                            {canDirectJoin
+                              ? t("vrchatWorkspace.joinFriend", { defaultValue: "Join friend" })
+                              : canRequestInvite
+                                ? t("vrchatWorkspace.requestInvite", { defaultValue: "Request invite" })
+                                : t("worlds.launchInVrc", { defaultValue: "Launch in VRChat" })}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              void openVrchatUserProfile(friend.id).catch((error: unknown) => {
+                                const message = error instanceof Error ? error.message : String(error);
+                                toast.error(t("worlds.openFailed", { error: message }));
+                              });
+                            }}
+                          >
+                            <Users className="size-4" />
+                            {t("vrchatWorkspace.openFriendProfile", { defaultValue: "Open profile" })}
+                          </Button>
+                          <Button
+                            variant={favoriteFriendIds.has(friend.id) ? "tonal" : "outline"}
+                            size="sm"
+                            disabled={favoriteBusyId === friend.id}
+                            onClick={() => {
+                              void handleToggleFriendFavorite(friend);
+                            }}
+                          >
+                            <Heart className={favoriteFriendIds.has(friend.id) ? "size-4 fill-current" : "size-4"} />
+                            {favoriteBusyId === friend.id
+                              ? t("library.syncing")
+                              : favoriteFriendIds.has(friend.id)
+                                ? t("library.remove")
+                                : t("vrchatWorkspace.saveToLibrary", {
+                                    defaultValue: "Save to library",
+                                  })}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            elevation="flat"
+            title={(
+              <SectionTitle
+                title={t("vrchatWorkspace.groupsTitle", { defaultValue: "Groups" })}
+                count={filteredGroups.length}
+              />
+            )}
+            description={t("vrchatWorkspace.groupsBody", {
+              defaultValue:
+                "Your VRChat groups from the signed-in session, surfaced natively inside the workspace.",
+            })}
+            storageKey="vrcsm.section.vrchat.groups.open"
+            contentClassName="space-y-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  {t("vrchatWorkspace.groupCount", {
+                    defaultValue: "{{count}} groups",
+                    count: filteredGroups.length,
+                  })}
+                </Badge>
+                {filteredGroups.some((group) => group.isRepresenting) ? (
+                  <Badge variant="success">
+                    {t("vrchatWorkspace.representing", { defaultValue: "Representing active" })}
+                  </Badge>
+                ) : null}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => groupsQuery.refetch()}
+                disabled={!authStatus.authed || groupsQuery.isFetching}
+              >
+                <RefreshCw className={groupsQuery.isFetching ? "size-4 animate-spin" : "size-4"} />
+                {t("common.refresh")}
+              </Button>
+            </div>
+
+            {!authStatus.authed ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("friends.signInRequiredBody")}
+              </div>
+            ) : filteredGroups.length === 0 ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("vrchatWorkspace.noGroups", {
+                  defaultValue: "No groups were returned for this account.",
+                })}
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[400px] pr-3">
+                <div className="space-y-3">
+                  {filteredGroups.slice(0, 6).map((group: WorkspaceGroup) => (
+                    <div
+                      key={group.id}
+                      className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
+                              {group.name || shortenId(group.id)}
+                            </div>
+                            {group.shortCode ? <Badge variant="muted">#{group.shortCode}</Badge> : null}
+                            {group.isRepresenting ? (
+                              <Badge variant="success">
+                                {t("vrchatWorkspace.representing", { defaultValue: "Representing" })}
+                              </Badge>
+                            ) : null}
+                            {group.isVerified ? (
+                              <Badge variant="secondary">
+                                {t("vrchatWorkspace.verified", { defaultValue: "Verified" })}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                            {group.id}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+                          <Users className="size-3.5" />
+                          <span>{group.onlineMemberCount}/{group.memberCount}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+                        {group.description || t("common.none")}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {group.privacy ? <Badge variant="muted">{group.privacy}</Badge> : null}
+                        {group.roles.slice(0, 3).map((role) => (
+                          <Badge key={`${group.id}:${role}`} variant="secondary">
+                            {role}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CollapsibleCard>
+
+          {!hideModerations ? (
+            <CollapsibleCard
+              elevation="flat"
+              title={(
+                <SectionTitle
+                  title={t("vrchatWorkspace.blocksMutesTitle", { defaultValue: "Blocks & Mutes" })}
+                  count={moderationItems.length}
+                />
+              )}
+              description={t("vrchatWorkspace.blocksMutesBody", {
+                defaultValue:
+                  "Current player moderation entries pulled from your signed-in VRChat session.",
+              })}
+              storageKey="vrcsm.section.vrchat.blocks.open"
+              contentClassName="space-y-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                    <Ban className="size-3.5" />
+                    {t("vrchatWorkspace.blocked", { defaultValue: "Blocked" })}
+                  </div>
+                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{blockedCount}</div>
+                </div>
+                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                    <VolumeX className="size-3.5" />
+                    {t("vrchatWorkspace.muted", { defaultValue: "Muted" })}
+                  </div>
+                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{mutedCount}</div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => moderationsQuery.refetch()}
+                  disabled={!authStatus.authed || moderationsQuery.isFetching}
+                >
+                  <RefreshCw className={moderationsQuery.isFetching ? "size-4 animate-spin" : "size-4"} />
+                  {t("common.refresh")}
+                </Button>
+              </div>
+
               {!authStatus.authed ? (
                 <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  <div className="font-medium text-[hsl(var(--foreground))]">{t("friends.signInRequired")}</div>
-                  <div className="mt-1.5">{t("friends.signInRequiredBody")}</div>
-                  <Button variant="tonal" size="sm" className="mt-3" onClick={() => setLoginOpen(true)}>
-                    <LogIn className="size-4" />
-                    {t("auth.signInWithVrchat")}
-                  </Button>
+                  {t("friends.signInRequiredBody")}
                 </div>
-              ) : actionableFriends.length === 0 ? (
+              ) : moderationItems.length === 0 ? (
                 <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("vrchatWorkspace.noJoinable", {
-                    defaultValue: "No joinable friends are currently exposing an instance.",
+                  {t("vrchatWorkspace.noModerations", {
+                    defaultValue: "No block or mute entries were returned for this account.",
                   })}
                 </div>
               ) : (
-                actionableFriends.slice(0, 8).map((friend) => {
-                  const loc = parseLocation(friend.location);
-                  const worldName =
-                    (loc.worldId && report?.logs.world_names[loc.worldId]) ||
-                    loc.worldId ||
-                    t("friends.location.world");
-                  const accessLabel = instanceTypeLabel(loc.instanceType);
-                  const canDirectJoin =
-                    loc.instanceType === "public" ||
-                    loc.instanceType === "friends" ||
-                    loc.instanceType === "friends+" ||
-                    loc.instanceType === "group" ||
-                    loc.instanceType === "group-public" ||
-                    loc.instanceType === "group-plus";
-                  const canRequestInvite =
-                    loc.instanceType === "invite" || loc.instanceType === "invite+";
-                  const rank = trustRank(friend.tags);
-                  return (
-                    <div
-                      key={friend.id}
-                      className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className={`text-[13px] font-semibold ${trustColorClass(rank)}`}>{friend.displayName}</div>
-                          <Badge variant={statusBadgeVariant(friend.status)}>{friend.status ?? "unknown"}</Badge>
-                          <Badge variant="muted">{t(trustLabelKey(rank))}</Badge>
-                        </div>
-                        <div className="mt-1 truncate text-[12px] text-[hsl(var(--foreground))]">{worldName}</div>
-                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[hsl(var(--muted-foreground))]">
-                          <span>{friend.statusDescription || t("common.none")}</span>
-                          <span>{relativeTime(friend.last_activity || friend.last_login) || t("common.none")}</span>
-                          {loc.region ? <span>{loc.region.toUpperCase()}</span> : null}
-                          {accessLabel ? <span>{accessLabel}</span> : null}
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 flex-wrap gap-2">
-                        <Button
-                          variant="tonal"
-                          size="sm"
-                          onClick={() => {
-                            void openLaunchUrl(`vrchat://launch?id=${friend.location}`).catch((error: unknown) => {
-                              const message = error instanceof Error ? error.message : String(error);
-                              toast.error(t("worlds.launchFailed", { error: message }));
-                            });
-                          }}
-                        >
-                          <Play className="size-4" />
-                          {canDirectJoin
-                            ? t("vrchatWorkspace.joinFriend", { defaultValue: "Join friend" })
-                            : canRequestInvite
-                              ? t("vrchatWorkspace.requestInvite", { defaultValue: "Request invite" })
-                              : t("worlds.launchInVrc", { defaultValue: "Launch in VRChat" })}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            void openVrchatUserProfile(friend.id).catch((error: unknown) => {
-                              const message = error instanceof Error ? error.message : String(error);
-                              toast.error(t("worlds.openFailed", { error: message }));
-                            });
-                          }}
-                        >
-                          <Users className="size-4" />
-                          {t("vrchatWorkspace.openFriendProfile", { defaultValue: "Open profile" })}
-                        </Button>
-                        <Button
-                          variant={favoriteFriendIds.has(friend.id) ? "tonal" : "outline"}
-                          size="sm"
-                          disabled={favoriteBusyId === friend.id}
-                          onClick={() => {
-                            void handleToggleFriendFavorite(friend);
-                          }}
-                        >
-                          <Heart className={favoriteFriendIds.has(friend.id) ? "size-4 fill-current" : "size-4"} />
-                          {favoriteBusyId === friend.id
-                            ? t("library.syncing")
-                            : favoriteFriendIds.has(friend.id)
-                              ? t("library.remove")
-                              : t("vrchatWorkspace.saveToLibrary", {
-                                  defaultValue: "Save to library",
-                                })}
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-          </CollapsibleCard>
-
-          <CollapsibleCard
-            elevation="flat"
-            title={t("worlds.title", { defaultValue: "Worlds" })}
-            description={t("worlds.subtitle", { defaultValue: "Recent worlds parsed from VRChat output logs." })}
-            storageKey="vrcsm.section.vrchat.worlds.open"
-            contentClassName="space-y-2"
-          >
-              {recentWorlds.length === 0 ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("worlds.empty")}
-                </div>
-              ) : (
-                recentWorlds.map((world) => (
-                  <div
-                    key={world.id}
-                    className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3 md:flex-row md:items-center md:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
-                        {world.name ?? t("worlds.unknownName")}
-                      </div>
-                      <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                        {world.id}
-                      </div>
-                      {world.lastSeen ? (
-                        <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">
-                          {formatDate(world.lastSeen)}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <Button variant="outline" size="sm" onClick={() => navigate(`/worlds?select=${encodeURIComponent(world.id)}`)}>
-                        <Globe2 className="size-4" />
-                        {t("library.open")}
-                      </Button>
-                      <Button
-                        variant="tonal"
-                        size="sm"
-                        onClick={() => {
-                          void openLaunchUrl(`vrchat://launch?id=${world.id}`).catch((error: unknown) => {
-                            const message = error instanceof Error ? error.message : String(error);
-                            toast.error(t("worlds.launchFailed", { error: message }));
-                          });
-                        }}
+                <ScrollArea className="max-h-[400px] pr-3">
+                  <div className="space-y-3">
+                    {moderationItems.slice(0, 8).map((item) => (
+                      <div
+                        key={item.id || `${item.type}:${item.targetUserId}`}
+                        className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
                       >
-                        <Play className="size-4" />
-                        {t("worlds.launchInVrc")}
-                      </Button>
-                    </div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
+                                {item.targetDisplayName || shortenId(item.targetUserId ?? item.id)}
+                              </div>
+                              <Badge variant={moderationVariant(item)}>
+                                {moderationLabel(item, t)}
+                              </Badge>
+                            </div>
+                            <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                              {item.targetUserId || item.id}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-[11px] text-[hsl(var(--muted-foreground))]">
+                            {item.created ? formatDate(item.created) : t("common.none")}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))
+                </ScrollArea>
               )}
-          </CollapsibleCard>
-        </div>
+            </CollapsibleCard>
+          ) : null}
 
-        <div className="min-w-0 flex flex-col gap-4">
           <CollapsibleCard
             elevation="flat"
-            title={t("library.officialSync", { defaultValue: "Sync VRChat favorites" })}
+            title={(
+              <SectionTitle
+                title={t("library.officialSync", { defaultValue: "Sync VRChat favorites" })}
+                count={officialItems.length}
+              />
+            )}
             description={t("library.subtitle", {
               defaultValue: "A unified local shelf for worlds, avatars, and future tagged collections.",
             })}
@@ -1013,35 +1243,36 @@ export default function VrchatWorkspace() {
             storageKey="vrcsm.section.vrchat.favorites.open"
             contentClassName="space-y-4"
           >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    {t("library.types.avatar")}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
-                    {officialAvatarItems.length}
-                  </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("library.types.avatar")}
                 </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    {t("library.types.world")}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
-                    {officialWorldItems.length}
-                  </div>
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
+                  {officialAvatarItems.length}
                 </div>
               </div>
-
-              {officialItems.length === 0 ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {authStatus.authed
-                    ? t("library.emptyBody", {
-                        defaultValue:
-                          "Sync avatars and worlds from your VRChat account first. They will land here as a native local list.",
-                      })
-                    : t("friends.signInRequiredBody")}
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("library.types.world")}
                 </div>
-              ) : (
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
+                  {officialWorldItems.length}
+                </div>
+              </div>
+            </div>
+
+            {officialItems.length === 0 ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {authStatus.authed
+                  ? t("library.emptyBody", {
+                      defaultValue:
+                        "Sync avatars and worlds from your VRChat account first. They will land here as a native local list.",
+                    })
+                  : t("friends.signInRequiredBody")}
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[400px] pr-3">
                 <div className="space-y-2">
                   {officialItems.slice(0, 10).map((item) => {
                     const type = normalizeFavoriteType(item.type);
@@ -1085,18 +1316,22 @@ export default function VrchatWorkspace() {
                     );
                   })}
                 </div>
-              )}
+              </ScrollArea>
+            )}
           </CollapsibleCard>
 
           <Card elevation="flat">
             <CardHeader>
-              <CardTitle>{t("library.types.user", { defaultValue: "Users" })}</CardTitle>
+              <CardTitle className="flex flex-wrap items-center gap-2">
+                <span>{t("library.types.user", { defaultValue: "Users" })}</span>
+                <CountPill count={filteredFavoriteFriendsWithPresence.length} />
+              </CardTitle>
               <CardDescription>
                 {t("library.defaultCollectionHint", { defaultValue: "Default cross-type local shelf" })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {favoriteFriendsWithPresence.length === 0 ? (
+              {filteredFavoriteFriendsWithPresence.length === 0 ? (
                 <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
                   {t("library.emptyBody", {
                     defaultValue:
@@ -1104,248 +1339,148 @@ export default function VrchatWorkspace() {
                   })}
                 </div>
               ) : (
-                favoriteFriendsWithPresence.slice(0, 10).map(({ item, friend }) => {
-                  const loc = friend ? parseLocation(friend.location) : null;
-                  const canJoin = friend && loc?.kind === "world";
-                  return (
-                    <div
-                      key={item.target_id}
-                      className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
-                            {item.display_name ?? shortenId(item.target_id)}
+                <ScrollArea className="max-h-[400px] pr-3">
+                  <div className="space-y-2">
+                    {filteredFavoriteFriendsWithPresence.slice(0, 10).map(({ item, friend }) => {
+                      const loc = friend ? parseLocation(friend.location) : null;
+                      const canJoin = friend && loc?.kind === "world";
+                      return (
+                        <div
+                          key={item.target_id}
+                          className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
+                                {item.display_name ?? shortenId(item.target_id)}
+                              </div>
+                              <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                                {item.target_id}
+                              </div>
+                            </div>
+                            <Badge variant={friend ? statusBadgeVariant(friend.status) : "muted"}>
+                              {friend?.status ?? t("friends.location.offline")}
+                            </Badge>
                           </div>
-                          <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                            {item.target_id}
+                          <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                            {canJoin
+                              ? (loc?.worldId && report?.logs.world_names[loc.worldId]) || loc?.worldId || t("friends.location.world")
+                              : item.note || t("common.none")}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" size="sm" onClick={() => navigate("/friends")}>
+                              <Users className="size-4" />
+                              {t("friends.detailPaneTitle")}
+                            </Button>
+                            {canJoin ? (
+                              <Button
+                                variant="tonal"
+                                size="sm"
+                                onClick={() => {
+                                  void openLaunchUrl(`vrchat://launch?id=${friend.location}`).catch((error: unknown) => {
+                                    const message = error instanceof Error ? error.message : String(error);
+                                    toast.error(t("worlds.launchFailed", { error: message }));
+                                  });
+                                }}
+                              >
+                                <Play className="size-4" />
+                                {t("profile.openFriendsManager", { defaultValue: "Join friend" })}
+                              </Button>
+                            ) : null}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                void openVrchatUserProfile(item.target_id).catch((error: unknown) => {
+                                  const message = error instanceof Error ? error.message : String(error);
+                                  toast.error(t("worlds.openFailed", { error: message }));
+                                });
+                              }}
+                            >
+                              <Users className="size-4" />
+                              {t("vrchatWorkspace.openFriendProfile", { defaultValue: "Open profile" })}
+                            </Button>
                           </div>
                         </div>
-                        <Badge variant={friend ? statusBadgeVariant(friend.status) : "muted"}>
-                          {friend?.status ?? t("friends.location.offline")}
-                        </Badge>
-                      </div>
-                      <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                        {canJoin
-                          ? (loc?.worldId && report?.logs.world_names[loc.worldId]) || loc?.worldId || t("friends.location.world")
-                          : item.note || t("common.none")}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm" onClick={() => navigate("/friends")}>
-                          <Users className="size-4" />
-                          {t("friends.detailPaneTitle")}
-                        </Button>
-                        {canJoin ? (
-                          <Button
-                            variant="tonal"
-                            size="sm"
-                            onClick={() => {
-                              void openLaunchUrl(`vrchat://launch?id=${friend.location}`).catch((error: unknown) => {
-                                const message = error instanceof Error ? error.message : String(error);
-                                toast.error(t("worlds.launchFailed", { error: message }));
-                              });
-                            }}
-                          >
-                            <Play className="size-4" />
-                            {t("profile.openFriendsManager", { defaultValue: "Join friend" })}
-                          </Button>
-                        ) : null}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            void openVrchatUserProfile(item.target_id).catch((error: unknown) => {
-                              const message = error instanceof Error ? error.message : String(error);
-                              toast.error(t("worlds.openFailed", { error: message }));
-                            });
-                          }}
-                        >
-                          <Users className="size-4" />
-                          {t("vrchatWorkspace.openFriendProfile", { defaultValue: "Open profile" })}
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
 
           <CollapsibleCard
             elevation="flat"
-            title={t("vrchatWorkspace.groupsTitle", { defaultValue: "Groups" })}
-            description={t("vrchatWorkspace.groupsBody", {
-              defaultValue:
-                "Your VRChat groups from the signed-in session, surfaced natively inside the workspace.",
-            })}
-            storageKey="vrcsm.section.vrchat.groups.open"
-            contentClassName="space-y-3"
+            title={(
+              <SectionTitle
+                title={t("worlds.title", { defaultValue: "Worlds" })}
+                count={recentWorlds.length}
+              />
+            )}
+            description={t("worlds.subtitle", { defaultValue: "Recent worlds parsed from VRChat output logs." })}
+            storageKey="vrcsm.section.vrchat.worlds.open"
+            contentClassName="space-y-2"
           >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">
-                    {t("vrchatWorkspace.groupCount", {
-                      defaultValue: "{{count}} groups",
-                      count: groups.length,
-                    })}
-                  </Badge>
-                  {groups.some((group) => group.isRepresenting) ? (
-                    <Badge variant="success">
-                      {t("vrchatWorkspace.representing", { defaultValue: "Representing active" })}
-                    </Badge>
-                  ) : null}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => groupsQuery.refetch()}
-                  disabled={!authStatus.authed || groupsQuery.isFetching}
-                >
-                  <RefreshCw className={groupsQuery.isFetching ? "size-4 animate-spin" : "size-4"} />
-                  {t("common.refresh")}
-                </Button>
+            {recentWorlds.length === 0 ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("worlds.empty")}
               </div>
-
-              {!authStatus.authed ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("friends.signInRequiredBody")}
-                </div>
-              ) : groups.length === 0 ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("vrchatWorkspace.noGroups", {
-                    defaultValue: "No groups were returned for this account.",
-                  })}
-                </div>
-              ) : (
-                groups.slice(0, 6).map((group: WorkspaceGroup) => (
-                  <div
-                    key={group.id}
-                    className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
+            ) : (
+              <ScrollArea className="max-h-[400px] pr-3">
+                <div className="space-y-2">
+                  {recentWorlds.map((world) => (
+                    <div
+                      key={world.id}
+                      className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3 md:flex-row md:items-center md:justify-between"
+                    >
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
-                            {group.name || shortenId(group.id)}
-                          </div>
-                          {group.shortCode ? <Badge variant="muted">#{group.shortCode}</Badge> : null}
-                          {group.isRepresenting ? (
-                            <Badge variant="success">
-                              {t("vrchatWorkspace.representing", { defaultValue: "Representing" })}
-                            </Badge>
-                          ) : null}
-                          {group.isVerified ? (
-                            <Badge variant="secondary">
-                              {t("vrchatWorkspace.verified", { defaultValue: "Verified" })}
-                            </Badge>
-                          ) : null}
+                        <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
+                          {world.name ?? t("worlds.unknownName")}
                         </div>
                         <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                          {group.id}
+                          {world.id}
                         </div>
+                        {world.lastSeen ? (
+                          <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+                            {formatDate(world.lastSeen)}
+                          </div>
+                        ) : null}
                       </div>
-                      <div className="flex shrink-0 items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
-                        <Users className="size-3.5" />
-                        <span>{group.onlineMemberCount}/{group.memberCount}</span>
+                      <div className="flex shrink-0 gap-2">
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/worlds?select=${encodeURIComponent(world.id)}`)}>
+                          <Globe2 className="size-4" />
+                          {t("library.open")}
+                        </Button>
+                        <Button
+                          variant="tonal"
+                          size="sm"
+                          onClick={() => {
+                            void openLaunchUrl(`vrchat://launch?id=${world.id}`).catch((error: unknown) => {
+                              const message = error instanceof Error ? error.message : String(error);
+                              toast.error(t("worlds.launchFailed", { error: message }));
+                            });
+                          }}
+                        >
+                          <Play className="size-4" />
+                          {t("worlds.launchInVrc")}
+                        </Button>
                       </div>
                     </div>
-                    <div className="mt-2 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
-                      {group.description || t("common.none")}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {group.privacy ? <Badge variant="muted">{group.privacy}</Badge> : null}
-                      {group.roles.slice(0, 3).map((role) => (
-                        <Badge key={`${group.id}:${role}`} variant="secondary">
-                          {role}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </CollapsibleCard>
 
           <CollapsibleCard
             elevation="flat"
-            title={t("vrchatWorkspace.blocksMutesTitle", { defaultValue: "Blocks & Mutes" })}
-            description={t("vrchatWorkspace.blocksMutesBody", {
-              defaultValue:
-                "Current player moderation entries pulled from your signed-in VRChat session.",
-            })}
-            storageKey="vrcsm.section.vrchat.blocks.open"
-            contentClassName="space-y-3"
-          >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <Ban className="size-3.5" />
-                    {t("vrchatWorkspace.blocked", { defaultValue: "Blocked" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{blockedCount}</div>
-                </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <VolumeX className="size-3.5" />
-                    {t("vrchatWorkspace.muted", { defaultValue: "Muted" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{mutedCount}</div>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => moderationsQuery.refetch()}
-                  disabled={!authStatus.authed || moderationsQuery.isFetching}
-                >
-                  <RefreshCw className={moderationsQuery.isFetching ? "size-4 animate-spin" : "size-4"} />
-                  {t("common.refresh")}
-                </Button>
-              </div>
-
-              {!authStatus.authed ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("friends.signInRequiredBody")}
-                </div>
-              ) : moderationItems.length === 0 ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("vrchatWorkspace.noModerations", {
-                    defaultValue: "No block or mute entries were returned for this account.",
-                  })}
-                </div>
-              ) : (
-                moderationItems.slice(0, 8).map((item) => (
-                  <div
-                    key={item.id || `${item.type}:${item.targetUserId}`}
-                    className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
-                            {item.targetDisplayName || shortenId(item.targetUserId ?? item.id)}
-                          </div>
-                          <Badge variant={moderationVariant(item)}>
-                            {moderationLabel(item, t)}
-                          </Badge>
-                        </div>
-                        <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                          {item.targetUserId || item.id}
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-[11px] text-[hsl(var(--muted-foreground))]">
-                        {item.created ? formatDate(item.created) : t("common.none")}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-          </CollapsibleCard>
-
-          <CollapsibleCard
-            elevation="flat"
-            title={t("vrchatWorkspace.inventoryTitle", { defaultValue: "Inventory" })}
+            title={(
+              <SectionTitle
+                title={t("vrchatWorkspace.inventoryTitle", { defaultValue: "Inventory" })}
+                count={avatarHistoryItems.length}
+              />
+            )}
             description={t("vrchatWorkspace.inventoryBody", {
               defaultValue:
                 "Recent avatars seen across local cache, log parsing, and avatar history persisted by VRCSM.",
@@ -1353,40 +1488,130 @@ export default function VrchatWorkspace() {
             storageKey="vrcsm.section.vrchat.inventory.open"
             contentClassName="space-y-3"
           >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <Box className="size-3.5" />
-                    {t("vrchatWorkspace.localAvatarData", { defaultValue: "Local avatar data" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
-                    {report?.local_avatar_data.item_count ?? 0}
-                  </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  <Box className="size-3.5" />
+                  {t("vrchatWorkspace.localAvatarData", { defaultValue: "Local avatar data" })}
                 </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <Sparkles className="size-3.5" />
-                    {t("vrchatWorkspace.avatarHistory", { defaultValue: "Avatar history" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
-                    {avatarHistoryItems.length}
-                  </div>
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
+                  {report?.local_avatar_data.item_count ?? 0}
                 </div>
               </div>
-
-              {avatarHistoryItems.length === 0 ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("vrchatWorkspace.noInventory", {
-                    defaultValue: "No persisted avatar history yet. Wear avatars or inspect them to let VRCSM build inventory.",
-                  })}
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  <Sparkles className="size-3.5" />
+                  {t("vrchatWorkspace.avatarHistory", { defaultValue: "Avatar history" })}
                 </div>
-              ) : (
-                avatarHistoryItems.map((item: AvatarHistoryItem) => (
-                  <div
-                    key={item.avatar_id}
-                    className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
+                  {avatarHistoryItems.length}
+                </div>
+              </div>
+            </div>
+
+            {avatarHistoryItems.length === 0 ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("vrchatWorkspace.noInventory", {
+                  defaultValue: "No persisted avatar history yet. Wear avatars or inspect them to let VRCSM build inventory.",
+                })}
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[400px] pr-3">
+                <div className="space-y-3">
+                  {avatarHistoryItems.map((item: AvatarHistoryItem) => (
+                    <div
+                      key={item.avatar_id}
+                      className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
+                              {item.avatar_name || shortenId(item.avatar_id)}
+                            </div>
+                            {item.avatar_name && (downloadNameCounts.get(item.avatar_name.trim()) ?? 0) > 1 ? (
+                              <Badge variant="warning">
+                                {t("avatars.duplicateNameHint", {
+                                  defaultValue: "Same name, different ID",
+                                })}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                            {item.avatar_id}
+                          </div>
+                          <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+                            {item.author_name || t("common.none")}
+                            {item.first_seen_on ? ` · ${item.first_seen_on}` : ""}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-[11px] text-[hsl(var(--muted-foreground))]">
+                          {item.first_seen_at ? formatDate(item.first_seen_at) : t("common.none")}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/avatars?select=${encodeURIComponent(item.avatar_id)}`)}
+                        >
+                          <Shirt className="size-4" />
+                          {t("library.open")}
+                        </Button>
+                        <Button
+                          variant="tonal"
+                          size="sm"
+                          disabled={downloadBusyId === item.avatar_id}
+                          onClick={() => {
+                            void handleDownloadAvatar(item);
+                          }}
+                        >
+                          <Download className="size-4" />
+                          {downloadBusyId === item.avatar_id
+                            ? t("library.syncing")
+                            : t("vrchatWorkspace.downloadBundle", { defaultValue: "Download bundle" })}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            elevation="flat"
+            title={(
+              <SectionTitle
+                title={t("vrchatWorkspace.downloadTitle", { defaultValue: "Download" })}
+                count={downloadCandidates.length}
+              />
+            )}
+            description={t("vrchatWorkspace.downloadBody", {
+              defaultValue:
+                "Download recent avatar bundles directly from the signed-in VRChat session into a local folder you choose.",
+            })}
+            storageKey="vrcsm.section.vrchat.download.open"
+            contentClassName="space-y-3"
+          >
+            {!authStatus.authed ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("friends.signInRequiredBody")}
+              </div>
+            ) : downloadCandidates.length === 0 ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("vrchatWorkspace.noDownloadCandidates", {
+                  defaultValue: "No recent avatars are available as download candidates yet.",
+                })}
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[400px] pr-3">
+                <div className="space-y-3">
+                  {downloadCandidates.map((item) => (
+                    <div
+                      key={`download:${item.avatar_id}`}
+                      className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
+                    >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
@@ -1405,118 +1630,46 @@ export default function VrchatWorkspace() {
                         </div>
                         <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">
                           {item.author_name || t("common.none")}
-                          {item.first_seen_on ? ` · ${item.first_seen_on}` : ""}
                         </div>
                       </div>
-                      <div className="shrink-0 text-[11px] text-[hsl(var(--muted-foreground))]">
-                        {item.first_seen_at ? formatDate(item.first_seen_at) : t("common.none")}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/avatars?select=${encodeURIComponent(item.avatar_id)}`)}
+                        >
+                          <Shirt className="size-4" />
+                          {t("library.open")}
+                        </Button>
+                        <Button
+                          variant="tonal"
+                          size="sm"
+                          disabled={downloadBusyId === item.avatar_id}
+                          onClick={() => {
+                            void handleDownloadAvatar(item);
+                          }}
+                        >
+                          <Download className="size-4" />
+                          {downloadBusyId === item.avatar_id
+                            ? t("library.syncing")
+                            : t("vrchatWorkspace.downloadBundle", { defaultValue: "Download bundle" })}
+                        </Button>
                       </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/avatars?select=${encodeURIComponent(item.avatar_id)}`)}
-                      >
-                        <Shirt className="size-4" />
-                        {t("library.open")}
-                      </Button>
-                      <Button
-                        variant="tonal"
-                        size="sm"
-                        disabled={downloadBusyId === item.avatar_id}
-                        onClick={() => {
-                          void handleDownloadAvatar(item);
-                        }}
-                      >
-                        <Download className="size-4" />
-                        {downloadBusyId === item.avatar_id
-                          ? t("library.syncing")
-                          : t("vrchatWorkspace.downloadBundle", { defaultValue: "Download bundle" })}
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </CollapsibleCard>
 
           <CollapsibleCard
             elevation="flat"
-            title={t("vrchatWorkspace.downloadTitle", { defaultValue: "Download" })}
-            description={t("vrchatWorkspace.downloadBody", {
-              defaultValue:
-                "Download recent avatar bundles directly from the signed-in VRChat session into a local folder you choose.",
-            })}
-            storageKey="vrcsm.section.vrchat.download.open"
-            contentClassName="space-y-3"
-          >
-              {!authStatus.authed ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("friends.signInRequiredBody")}
-                </div>
-              ) : downloadCandidates.length === 0 ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("vrchatWorkspace.noDownloadCandidates", {
-                    defaultValue: "No recent avatars are available as download candidates yet.",
-                  })}
-                </div>
-              ) : (
-                downloadCandidates.map((item) => (
-                  <div
-                    key={`download:${item.avatar_id}`}
-                    className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
-                          {item.avatar_name || shortenId(item.avatar_id)}
-                        </div>
-                        {item.avatar_name && (downloadNameCounts.get(item.avatar_name.trim()) ?? 0) > 1 ? (
-                          <Badge variant="warning">
-                            {t("avatars.duplicateNameHint", {
-                              defaultValue: "Same name, different ID",
-                            })}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                        {item.avatar_id}
-                      </div>
-                      <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">
-                        {item.author_name || t("common.none")}
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/avatars?select=${encodeURIComponent(item.avatar_id)}`)}
-                      >
-                        <Shirt className="size-4" />
-                        {t("library.open")}
-                      </Button>
-                      <Button
-                        variant="tonal"
-                        size="sm"
-                        disabled={downloadBusyId === item.avatar_id}
-                        onClick={() => {
-                          void handleDownloadAvatar(item);
-                        }}
-                      >
-                        <Download className="size-4" />
-                        {downloadBusyId === item.avatar_id
-                          ? t("library.syncing")
-                          : t("vrchatWorkspace.downloadBundle", { defaultValue: "Download bundle" })}
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-          </CollapsibleCard>
-
-          <CollapsibleCard
-            elevation="flat"
-            title={t("vrchatWorkspace.marketplaceTitle", { defaultValue: "Marketplace" })}
+            title={(
+              <SectionTitle
+                title={t("vrchatWorkspace.marketplaceTitle", { defaultValue: "Marketplace" })}
+                count={topInventoryAuthors.length + marketplaceFacts.length}
+              />
+            )}
             description={t("vrchatWorkspace.marketplaceBody", {
               defaultValue:
                 "Ownership and acquisition signals pulled from official favorites, local avatar inventory, recent bundle targets, and any commerce-related fields exposed by the active VRChat session.",
@@ -1524,91 +1677,100 @@ export default function VrchatWorkspace() {
             storageKey="vrcsm.section.vrchat.marketplace.open"
             contentClassName="space-y-3"
           >
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <Shirt className="size-3.5" />
-                    {t("vrchatWorkspace.favoriteAvatars", { defaultValue: "Favorite avatars" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{officialAvatarItems.length}</div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  <Shirt className="size-3.5" />
+                  {t("vrchatWorkspace.favoriteAvatars", { defaultValue: "Favorite avatars" })}
                 </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <Globe2 className="size-3.5" />
-                    {t("vrchatWorkspace.favoriteWorlds", { defaultValue: "Favorite worlds" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{officialWorldItems.length}</div>
-                </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <Download className="size-3.5" />
-                    {t("vrchatWorkspace.downloadReady", { defaultValue: "Download-ready" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{downloadCandidates.length}</div>
-                </div>
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{officialAvatarItems.length}</div>
               </div>
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  <Globe2 className="size-3.5" />
+                  {t("vrchatWorkspace.favoriteWorlds", { defaultValue: "Favorite worlds" })}
+                </div>
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{officialWorldItems.length}</div>
+              </div>
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  <Download className="size-3.5" />
+                  {t("vrchatWorkspace.downloadReady", { defaultValue: "Download-ready" })}
+                </div>
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{downloadCandidates.length}</div>
+              </div>
+            </div>
 
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate("/library")}>
+                <LibraryBig className="size-4" />
+                {t("profile.openLibrary", { defaultValue: "Open library" })}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate("/avatars")}>
+                <Shirt className="size-4" />
+                {t("profile.openAvatarManager", { defaultValue: "Open avatars" })}
+              </Button>
+            </div>
+
+            {recentDownloadFolder ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3 text-[11px] text-[hsl(var(--muted-foreground))]">
+                <div className="text-[10px] uppercase tracking-[0.08em]">{t("vrchatWorkspace.downloadFolder", { defaultValue: "Download folder" })}</div>
+                <div className="mt-1 break-all font-mono text-[hsl(var(--foreground))]">{recentDownloadFolder}</div>
+              </div>
+            ) : null}
+
+            {topInventoryAuthors.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-[11px] font-semibold text-[hsl(var(--foreground))]">
+                  {t("vrchatWorkspace.topCreators", { defaultValue: "Top creators in local inventory" })}
+                </div>
+                <ScrollArea className="max-h-[400px] pr-3">
+                  <div className="space-y-2">
+                    {topInventoryAuthors.map((item) => (
+                      <div
+                        key={item.author}
+                        className="flex items-center justify-between rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
+                      >
+                        <div className="truncate text-[12px] text-[hsl(var(--foreground))]">{item.author}</div>
+                        <Badge variant="secondary">
+                          {t("vrchatWorkspace.inventoryCount", {
+                            defaultValue: "{{count}} avatars",
+                            count: item.count,
+                          })}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            ) : (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("vrchatWorkspace.noMarketplaceSignals", {
+                  defaultValue: "No local ownership signals yet. Favorite, inspect, or download avatars to let VRCSM build this surface.",
+                })}
+              </div>
+            )}
+
+            {marketplaceFacts.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigate("/library")}>
-                  <LibraryBig className="size-4" />
-                  {t("profile.openLibrary", { defaultValue: "Open library" })}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => navigate("/avatars")}>
-                  <Shirt className="size-4" />
-                  {t("profile.openAvatarManager", { defaultValue: "Open avatars" })}
-                </Button>
+                {marketplaceFacts.slice(0, 8).map((fact) => (
+                  <Badge key={fact.key} variant="muted" className="gap-1.5 px-2.5 py-1">
+                    <Sparkles className="size-3" />
+                    {fact.key}: {fact.value}
+                  </Badge>
+                ))}
               </div>
-
-              {recentDownloadFolder ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3 text-[11px] text-[hsl(var(--muted-foreground))]">
-                  <div className="text-[10px] uppercase tracking-[0.08em]">{t("vrchatWorkspace.downloadFolder", { defaultValue: "Download folder" })}</div>
-                  <div className="mt-1 break-all font-mono text-[hsl(var(--foreground))]">{recentDownloadFolder}</div>
-                </div>
-              ) : null}
-
-              {topInventoryAuthors.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="text-[11px] font-semibold text-[hsl(var(--foreground))]">
-                    {t("vrchatWorkspace.topCreators", { defaultValue: "Top creators in local inventory" })}
-                  </div>
-                  {topInventoryAuthors.map((item) => (
-                    <div
-                      key={item.author}
-                      className="flex items-center justify-between rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
-                    >
-                      <div className="truncate text-[12px] text-[hsl(var(--foreground))]">{item.author}</div>
-                      <Badge variant="secondary">
-                        {t("vrchatWorkspace.inventoryCount", {
-                          defaultValue: "{{count}} avatars",
-                          count: item.count,
-                        })}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("vrchatWorkspace.noMarketplaceSignals", {
-                    defaultValue: "No local ownership signals yet. Favorite, inspect, or download avatars to let VRCSM build this surface.",
-                  })}
-                </div>
-              )}
-
-              {marketplaceFacts.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {marketplaceFacts.slice(0, 8).map((fact) => (
-                    <Badge key={fact.key} variant="muted" className="gap-1.5 px-2.5 py-1">
-                      <Sparkles className="size-3" />
-                      {fact.key}: {fact.value}
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
+            ) : null}
           </CollapsibleCard>
 
           <CollapsibleCard
             elevation="flat"
-            title={t("vrchatWorkspace.accountLinkTitle", { defaultValue: "Account Link" })}
+            title={(
+              <SectionTitle
+                title={t("vrchatWorkspace.accountLinkTitle", { defaultValue: "Account Link" })}
+                count={activeLinkedAccounts.length}
+              />
+            )}
             description={t("vrchatWorkspace.accountLinkBody", {
               defaultValue:
                 "Linked platform and identity fields resolved from the signed-in VRChat session, surfaced locally without bouncing out to the web panel.",
@@ -1616,80 +1778,89 @@ export default function VrchatWorkspace() {
             storageKey="vrcsm.section.vrchat.account.open"
             contentClassName="space-y-3"
           >
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <UserCircle2 className="size-3.5" />
-                    {t("vrchatWorkspace.linkedProviders", { defaultValue: "Linked providers" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
-                    {linkedAccounts.filter((item) => item.linked).length}
-                  </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  <UserCircle2 className="size-3.5" />
+                  {t("vrchatWorkspace.linkedProviders", { defaultValue: "Linked providers" })}
                 </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    {t("auth.username", { defaultValue: "Username" })}
-                  </div>
-                  <div className="mt-1 truncate text-[14px] font-semibold text-[hsl(var(--foreground))]">
-                    {findScalarField(rawAuthUser, ["username"])?.value ?? t("common.none")}
-                  </div>
-                </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    {t("friends.platform", { defaultValue: "Platform" })}
-                  </div>
-                  <div className="mt-1 truncate text-[14px] font-semibold text-[hsl(var(--foreground))]">
-                    {findScalarField(rawAuthUser, ["last_platform", "platform"])?.value ?? t("common.none")}
-                  </div>
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
+                  {activeLinkedAccounts.length}
                 </div>
               </div>
-
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => authUserQuery.refetch()}
-                  disabled={!authStatus.authed || authUserQuery.isFetching}
-                >
-                  <RefreshCw className={authUserQuery.isFetching ? "size-4 animate-spin" : "size-4"} />
-                  {t("common.refresh")}
-                </Button>
-              </div>
-
-              {!authStatus.authed ? (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("friends.signInRequiredBody")}
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("auth.username", { defaultValue: "Username" })}
                 </div>
-              ) : (
-                linkedAccounts.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-[13px] font-semibold text-[hsl(var(--foreground))]">{item.label}</div>
-                        <div className="mt-1 break-all text-[11px] text-[hsl(var(--muted-foreground))]">
-                          {item.value ?? t("vrchatWorkspace.notLinked", { defaultValue: "Not linked" })}
+                <div className="mt-1 truncate text-[14px] font-semibold text-[hsl(var(--foreground))]">
+                  {findScalarField(rawAuthUser, ["username"])?.value ?? t("common.none")}
+                </div>
+              </div>
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("friends.platform", { defaultValue: "Platform" })}
+                </div>
+                <div className="mt-1 truncate text-[14px] font-semibold text-[hsl(var(--foreground))]">
+                  {findScalarField(rawAuthUser, ["last_platform", "platform"])?.value ?? t("common.none")}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => authUserQuery.refetch()}
+                disabled={!authStatus.authed || authUserQuery.isFetching}
+              >
+                <RefreshCw className={authUserQuery.isFetching ? "size-4 animate-spin" : "size-4"} />
+                {t("common.refresh")}
+              </Button>
+            </div>
+
+            {!authStatus.authed ? (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("friends.signInRequiredBody")}
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[400px] pr-3">
+                <div className="space-y-3">
+                  {linkedAccounts.map((item) => (
+                    <div
+                      key={item.label}
+                      className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-semibold text-[hsl(var(--foreground))]">{item.label}</div>
+                          <div className="mt-1 break-all text-[11px] text-[hsl(var(--muted-foreground))]">
+                            {item.value ?? t("vrchatWorkspace.notLinked", { defaultValue: "Not linked" })}
+                          </div>
+                          {item.key ? (
+                            <div className="mt-1 font-mono text-[10px] text-[hsl(var(--muted-foreground))]">{item.key}</div>
+                          ) : null}
                         </div>
-                        {item.key ? (
-                          <div className="mt-1 font-mono text-[10px] text-[hsl(var(--muted-foreground))]">{item.key}</div>
-                        ) : null}
+                        <Badge variant={item.linked ? "success" : "muted"}>
+                          {item.linked
+                            ? t("vrchatWorkspace.linked", { defaultValue: "Linked" })
+                            : t("vrchatWorkspace.notLinked", { defaultValue: "Not linked" })}
+                        </Badge>
                       </div>
-                      <Badge variant={item.linked ? "success" : "muted"}>
-                        {item.linked
-                          ? t("vrchatWorkspace.linked", { defaultValue: "Linked" })
-                          : t("vrchatWorkspace.notLinked", { defaultValue: "Not linked" })}
-                      </Badge>
                     </div>
-                  </div>
-                ))
-              )}
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </CollapsibleCard>
 
           <CollapsibleCard
             elevation="flat"
-            title={t("vrchatWorkspace.subscriptionsTitle", { defaultValue: "Subscriptions" })}
+            title={(
+              <SectionTitle
+                title={t("vrchatWorkspace.subscriptionsTitle", { defaultValue: "Subscriptions" })}
+                count={subscriptionSignalFacts.length + subscriptionTagFacts.length}
+              />
+            )}
             description={t("vrchatWorkspace.subscriptionsBody", {
               defaultValue:
                 "Supporter and subscription state inferred from the authenticated user payload plus local VRChat settings signals stored on this machine.",
@@ -1697,73 +1868,340 @@ export default function VrchatWorkspace() {
             storageKey="vrcsm.section.vrchat.subscriptions.open"
             contentClassName="space-y-3"
           >
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    <Heart className="size-3.5" />
-                    {t("vrchatWorkspace.subscriptionStatus", { defaultValue: "Status" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
-                    {subscriptionActive
-                      ? t("vrchatWorkspace.subscriptionActive", { defaultValue: "Active" })
-                      : t("vrchatWorkspace.subscriptionInactive", { defaultValue: "Inactive" })}
-                  </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  <Heart className="size-3.5" />
+                  {t("vrchatWorkspace.subscriptionStatus", { defaultValue: "Status" })}
                 </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    {t("vrchatWorkspace.subscriptionSignals", { defaultValue: "Signals" })}
-                  </div>
-                  <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
-                    {subscriptionSignalFacts.length + subscriptionTagFacts.length}
-                  </div>
-                </div>
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    {t("vrchatWorkspace.lastExpiredSubscription", { defaultValue: "Last expired" })}
-                  </div>
-                  <div className="mt-1 truncate text-[14px] font-semibold text-[hsl(var(--foreground))]">
-                    {lastExpiredSubscriptionValue ?? t("common.none")}
-                  </div>
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
+                  {subscriptionActive
+                    ? t("vrchatWorkspace.subscriptionActive", { defaultValue: "Active" })
+                    : t("vrchatWorkspace.subscriptionInactive", { defaultValue: "Inactive" })}
                 </div>
               </div>
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("vrchatWorkspace.subscriptionSignals", { defaultValue: "Signals" })}
+                </div>
+                <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
+                  {subscriptionSignalFacts.length + subscriptionTagFacts.length}
+                </div>
+              </div>
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("vrchatWorkspace.lastExpiredSubscription", { defaultValue: "Last expired" })}
+                </div>
+                <div className="mt-1 truncate text-[14px] font-semibold text-[hsl(var(--foreground))]">
+                  {lastExpiredSubscriptionValue ?? t("common.none")}
+                </div>
+              </div>
+            </div>
 
-              {subscriptionTagFacts.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {subscriptionTagFacts.slice(0, 8).map((tag) => (
-                    <Badge
-                      key={tag.key}
-                      variant={tag.key.toLowerCase() === "system_supporter" ? "success" : "muted"}
-                      className="gap-1.5 px-2.5 py-1"
+            {subscriptionTagFacts.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {subscriptionTagFacts.slice(0, 8).map((tag) => (
+                  <Badge
+                    key={tag.key}
+                    variant={tag.key.toLowerCase() === "system_supporter" ? "success" : "muted"}
+                    className="gap-1.5 px-2.5 py-1"
+                  >
+                    <Sparkles className="size-3" />
+                    {tag.value}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+
+            {subscriptionSignalFacts.length > 0 ? (
+              <ScrollArea className="max-h-[400px] pr-3">
+                <div className="space-y-3">
+                  {subscriptionSignalFacts.map((fact) => (
+                    <div
+                      key={fact.key}
+                      className="flex items-center justify-between rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
                     >
-                      <Sparkles className="size-3" />
-                      {tag.value}
-                    </Badge>
+                      <div className="min-w-0">
+                        <div className="text-[12px] font-semibold text-[hsl(var(--foreground))]">{fact.key}</div>
+                        <div className="mt-1 break-all text-[11px] text-[hsl(var(--muted-foreground))]">{fact.value}</div>
+                      </div>
+                      <Badge variant="secondary">{t("vrchatWorkspace.liveSignal", { defaultValue: "Live signal" })}</Badge>
+                    </div>
                   ))}
                 </div>
-              ) : null}
-
-              {subscriptionSignalFacts.length > 0 ? (
-                subscriptionSignalFacts.map((fact) => (
-                  <div
-                    key={fact.key}
-                    className="flex items-center justify-between rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-[12px] font-semibold text-[hsl(var(--foreground))]">{fact.key}</div>
-                      <div className="mt-1 break-all text-[11px] text-[hsl(var(--muted-foreground))]">{fact.value}</div>
-                    </div>
-                    <Badge variant="secondary">{t("vrchatWorkspace.liveSignal", { defaultValue: "Live signal" })}</Badge>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
-                  {t("vrchatWorkspace.noSubscriptionSignals", {
-                    defaultValue: "No dedicated subscription fields were exposed by this session.",
-                  })}
-                </div>
-              )}
+              </ScrollArea>
+            ) : (
+              <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-4 py-4 text-[12px] text-[hsl(var(--muted-foreground))]">
+                {t("vrchatWorkspace.noSubscriptionSignals", {
+                  defaultValue: "No dedicated subscription fields were exposed by this session.",
+                })}
+              </div>
+            )}
           </CollapsibleCard>
         </div>
+
+        {showSidebar ? (
+          <div className="min-w-0 flex flex-col gap-4">
+            <SidebarFactCard
+              icon={Orbit}
+              label={t("vrchatWorkspace.runtimeMode", { defaultValue: "Runtime mode" })}
+              value={runtimeSummary.label}
+            >
+              <Badge variant="muted" className="max-w-full truncate">
+                {runtimeSummary.detail}
+              </Badge>
+            </SidebarFactCard>
+
+            <SidebarFactCard
+              icon={UserCircle2}
+              label={t("vrchatWorkspace.trustRankQuick", { defaultValue: "Trust rank" })}
+              value={(
+                <Badge variant="secondary" className={`max-w-full ${trustColorClass(currentTrustRank)}`}>
+                  {authStatus.authed ? t(trustLabelKey(currentTrustRank)) : t("common.unknown", { defaultValue: "Unknown" })}
+                </Badge>
+              )}
+            />
+
+            <SidebarFactCard
+              icon={Heart}
+              label={t("vrchatWorkspace.vrcPlusQuick", { defaultValue: "VRC+" })}
+              value={(
+                <Badge variant={subscriptionActive ? "success" : "muted"}>
+                  {subscriptionActive
+                    ? t("vrchatWorkspace.subscriptionActive", { defaultValue: "Active" })
+                    : t("vrchatWorkspace.subscriptionInactive", { defaultValue: "Inactive" })}
+                </Badge>
+              )}
+            >
+              <Badge variant="muted">
+                {t("vrchatWorkspace.subscriptionSignals", {
+                  defaultValue: "Signals",
+                })}: {subscriptionSignalFacts.length + subscriptionTagFacts.length}
+              </Badge>
+            </SidebarFactCard>
+
+            <SidebarFactCard
+              icon={Users}
+              label={t("vrchatWorkspace.linkedAccountsQuick", { defaultValue: "Linked accounts" })}
+              value={(
+                <div className="flex flex-wrap gap-2">
+                  {activeLinkedAccounts.length > 0 ? (
+                    activeLinkedAccounts.map((item) => (
+                      <Badge key={item.label} variant="secondary">
+                        {item.label}
+                      </Badge>
+                    ))
+                  ) : (
+                    <Badge variant="muted">
+                      {t("vrchatWorkspace.notLinked", { defaultValue: "Not linked" })}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            />
+
+            <Card elevation="flat">
+              <CardContent className="grid gap-3 p-3">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("vrchatWorkspace.socialPulse", { defaultValue: "Social pulse" })}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("friends.title", { defaultValue: "Friends" })}
+                    </div>
+                    <div className="mt-1 text-[16px] font-semibold text-[hsl(var(--foreground))]">{onlineFriends.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("worlds.title", { defaultValue: "Worlds" })}
+                    </div>
+                    <div className="mt-1 text-[16px] font-semibold text-[hsl(var(--foreground))]">{recentWorlds.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.favoriteAvatars", { defaultValue: "Favorite avatars" })}
+                    </div>
+                    <div className="mt-1 text-[16px] font-semibold text-[hsl(var(--foreground))]">{officialAvatarItems.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.favoriteWorlds", { defaultValue: "Favorite worlds" })}
+                    </div>
+                    <div className="mt-1 text-[16px] font-semibold text-[hsl(var(--foreground))]">{officialWorldItems.length}</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card elevation="flat">
+              <CardContent className="grid gap-3 p-3">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("vrchatWorkspace.marketplaceQuick", { defaultValue: "Marketplace" })}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.downloadReady", { defaultValue: "Download-ready" })}
+                    </div>
+                    <div className="mt-1 text-[16px] font-semibold text-[hsl(var(--foreground))]">{downloadCandidates.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.avatarHistory", { defaultValue: "Avatar history" })}
+                    </div>
+                    <div className="mt-1 text-[16px] font-semibold text-[hsl(var(--foreground))]">{avatarHistoryItems.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.linkedProviders", { defaultValue: "Linked providers" })}
+                    </div>
+                    <div className="mt-1 text-[16px] font-semibold text-[hsl(var(--foreground))]">{activeLinkedAccounts.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.subscriptionSignals", { defaultValue: "Signals" })}
+                    </div>
+                    <div className="mt-1 text-[16px] font-semibold text-[hsl(var(--foreground))]">
+                      {subscriptionSignalFacts.length + subscriptionTagFacts.length}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
+
+        {showSidebar ? (
+          <div className="hidden min-w-0 flex-col gap-4 2xl:flex">
+            <Card elevation="flat">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-[14px]">
+                  {t("vrchatWorkspace.quickStats", { defaultValue: "Quick stats" })}
+                </CardTitle>
+                <CardDescription>
+                  {t("vrchatWorkspace.quickStatsBody", {
+                    defaultValue: "High-density counters for the parts of VRChat workspace that change most often.",
+                  })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("friends.bucket.joinMe", { defaultValue: "Join Me" })}
+                    </div>
+                    <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{actionableFriends.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("library.types.user", { defaultValue: "Users" })}
+                    </div>
+                    <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{filteredFavoriteFriendsWithPresence.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.groupsTitle", { defaultValue: "Groups" })}
+                    </div>
+                    <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{filteredGroups.length}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.blocked", { defaultValue: "Blocked" })}
+                    </div>
+                    <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{blockedCount}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.muted", { defaultValue: "Muted" })}
+                    </div>
+                    <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">{mutedCount}</div>
+                  </div>
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.localAvatarData", { defaultValue: "Local avatar data" })}
+                    </div>
+                    <div className="mt-1 text-[18px] font-semibold text-[hsl(var(--foreground))]">
+                      {report?.local_avatar_data.item_count ?? 0}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card elevation="flat">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-[14px]">
+                  {t("vrchatWorkspace.accountLinkTitle", { defaultValue: "Account Link" })}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                    {t("auth.username", { defaultValue: "Username" })}
+                  </div>
+                  <div className="mt-1 truncate text-[14px] font-semibold text-[hsl(var(--foreground))]">
+                    {findScalarField(rawAuthUser, ["username"])?.value ?? t("common.none")}
+                  </div>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                    {t("friends.platform", { defaultValue: "Platform" })}
+                  </div>
+                  <div className="mt-1 truncate text-[14px] font-semibold text-[hsl(var(--foreground))]">
+                    {findScalarField(rawAuthUser, ["last_platform", "platform"])?.value ?? t("common.none")}
+                  </div>
+                </div>
+                {recentDownloadFolder ? (
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("vrchatWorkspace.downloadFolder", { defaultValue: "Download folder" })}
+                    </div>
+                    <div className="mt-1 break-all font-mono text-[11px] text-[hsl(var(--foreground))]">
+                      {recentDownloadFolder}
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card elevation="flat">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-[14px]">
+                  {t("vrchatWorkspace.topCreators", { defaultValue: "Top creators in local inventory" })}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {topInventoryAuthors.length > 0 ? (
+                  <ScrollArea className="max-h-[400px] pr-3">
+                    <div className="space-y-2">
+                      {topInventoryAuthors.map((item) => (
+                        <div
+                          key={item.author}
+                          className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-2"
+                        >
+                          <div className="truncate text-[12px] text-[hsl(var(--foreground))]">{item.author}</div>
+                          <Badge variant="secondary">
+                            {t("vrchatWorkspace.inventoryCount", {
+                              defaultValue: "{{count}} avatars",
+                              count: item.count,
+                            })}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] px-3 py-3 text-[12px] text-[hsl(var(--muted-foreground))]">
+                    {t("vrchatWorkspace.noMarketplaceSignals", {
+                      defaultValue: "No local ownership signals yet. Favorite, inspect, or download avatars to let VRCSM build this surface.",
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
       </div>
 
       <LoginForm open={loginOpen} onOpenChange={setLoginOpen} />

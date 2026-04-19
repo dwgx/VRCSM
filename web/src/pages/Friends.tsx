@@ -418,10 +418,34 @@ function friendToProfile(friend: Friend): VrcUserProfile {
   };
 }
 
+const FRIENDS_CACHE_KEY = "vrcsm.friends.cache.v1";
+
+function readFriendsCache(): FriendsListResult | null {
+  try {
+    const raw = localStorage.getItem(FRIENDS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.friends)) return parsed as FriendsListResult;
+  } catch {
+    // ignore — corrupt cache, treat as empty
+  }
+  return null;
+}
+
+function writeFriendsCache(data: FriendsListResult): void {
+  try {
+    localStorage.setItem(FRIENDS_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // quota exceeded / private mode — skip silently
+  }
+}
+
 export default function Friends() {
   const { t } = useTranslation();
   const { status, error: authError } = useAuth();
-  const [data, setData] = useState<FriendsListResult | null>(null);
+  // Seed from localStorage so the UI has something to paint immediately
+  // while the IPC round-trip to the VRChat API resolves (commonly 1-3s).
+  const [data, setData] = useState<FriendsListResult | null>(() => readFriendsCache());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -477,7 +501,10 @@ export default function Friends() {
       .call<{ offline: boolean }, FriendsListResult>("friends.list", {
         offline: showOffline,
       })
-      .then((result) => setData(result))
+      .then((result) => {
+        setData(result);
+        writeFriendsCache(result);
+      })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);

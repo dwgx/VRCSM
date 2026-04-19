@@ -17,9 +17,11 @@
     "screenshots": "Screenshots",
     "logs": "Logs",
     "migrate": "Migrate",
+    "plugins": "Plugins",
     "settings": "Settings",
     "language": "Language",
     "friendLog": "Friend Log",
+    "groups": "Groups",
     "category": {
       "workspace": "Workspace",
       "assets": "Assets",
@@ -27,7 +29,8 @@
       "media": "Media",
       "diagnostics": "Diagnostics",
       "maintenance": "Maintenance",
-      "project": "Project"
+      "project": "Project",
+      "plugins": "Plugins"
     }
   },
   "profile": {
@@ -61,7 +64,25 @@
     "liveContextDesc": "Important ids and current session targets for quick navigation.",
     "liveContextHint": "Use these live ids as anchors for the native friends, avatars, worlds, and favorites workflows inside VRCSM.",
     "openFriendsManager": "Join Friends",
-    "openLibrary": "Open library"
+    "openLibrary": "Open library",
+    "edit": {
+      "bioLinks": "Bio Links (up to 4)",
+      "addLink": "Add link",
+      "linkPlaceholder": "https://…",
+      "noLinks": "No links yet — click + Add link above",
+      "pronouns": "Pronouns",
+      "pronounsCustom": "custom…",
+      "languages": "Spoken Languages"
+    },
+    "stats": {
+      "joined": "Joined",
+      "joinedValue": "{{date}} ({{years}}y)",
+      "trust": "Trust",
+      "ageVerification": "Age Verification",
+      "ageVerified": "Verified 18+",
+      "ageUnverified": "Unverified",
+      "languages": "Languages"
+    }
   },
   "screenshots": {
     "title": "Screenshots",
@@ -240,6 +261,22 @@
     "detailPaneTitle": "Details",
     "platform": "Platform"
   },
+  "groups": {
+    "subtitle": "Every VRChat group you belong to — sorted by your representative first, then by online activity.",
+    "filterPlaceholder": "Filter groups…",
+    "representing": "Representing",
+    "empty": "You haven't joined any VRChat groups yet.",
+    "noMatch": "No groups match '{{filter}}'.",
+    "memberCount": "{{count}} members",
+    "onlineCount": "{{count}} online",
+    "viewOnVrchat": "Open on vrchat.com",
+    "seeOnline": "See online",
+    "stats": {
+      "total": "Your groups",
+      "online": "Online members",
+      "representing": "Representing"
+    }
+  },
   "menu": {
     "file": "File",
     "edit": "Edit",
@@ -279,12 +316,39 @@
     "toolsSettings": "Settings",
     "toolsSteamVR": "SteamVR Settings",
     "toolsConfig": "App Config",
+    "toolsPluginsMarket": "Plugin Market",
+    "toolsPluginsInstalled": "Installed Plugins",
     "windowResetLayout": "Reset Layout",
     "helpAbout": "About VRCSM",
     "helpDocs": "Documentation",
     "helpCheckUpdates": "Check for Updates",
+    "helpCheckUpdatesFallback": "Check for updates…",
     "helpReportIssue": "Report an Issue",
     "helpKeyboard": "Keyboard Shortcuts"
+  },
+  "update": {
+    "title": "VRCSM Update",
+    "checking": "Checking for updates…",
+    "availableDesc": "A newer VRCSM is available. Install now or stay on the current version.",
+    "readyDesc": "The installer is downloaded and verified. Click Install to apply — VRCSM will restart.",
+    "downloadingDesc": "Downloading — do not close VRCSM until this completes.",
+    "upToDateDesc": "You're on the latest version.",
+    "errorDesc": "Could not check for updates right now.",
+    "currentLabel": "Current",
+    "latestLabel": "Available",
+    "sizeLabel": "Download size",
+    "verifying": "Verifying SHA-256…",
+    "downloading": "Downloading {{done}} / {{total}}",
+    "viewNotes": "Release notes",
+    "skip": "Skip this version",
+    "skipped": "Skipped version {{version}}",
+    "skipFailed": "Failed to skip: {{msg}}",
+    "downloadFailed": "Download failed: {{msg}}",
+    "installFailed": "Install failed: {{msg}}",
+    "retry": "Re-check",
+    "later": "Later",
+    "download": "Download & install",
+    "installNow": "Install now (restart)"
   },
   "radar": {
     "title": "Live Instance Radar",
@@ -346,6 +410,18 @@
       }
     }
   },
+  "folderPicker": {
+    "title": "Choose a folder",
+    "hint": "Navigate into a folder, then click Choose this folder.",
+    "thisPc": "This PC",
+    "up": "Up",
+    "refresh": "Refresh",
+    "empty": "No subfolders here.",
+    "noDrives": "No drives detected.",
+    "noSelection": "(nothing selected)",
+    "truncated": "List truncated at 2000 entries.",
+    "choose": "Choose this folder"
+  },
   "common": {
     "loading": "Loading…",
     "retry": "Retry",
@@ -384,6 +460,7 @@
     "hide": "Hide",
     "show": "Show",
     "unknown": "Unknown",
+    "remove": "Remove",
     "sidebar": "Sidebar"
   },
   "about": {
@@ -1025,6 +1102,8 @@
     "steamvr": {
       "title": "VR Streaming Settings (SteamVR / Steam Link)",
       "quickPresets": "Quick Presets:",
+      "presetQuest3": "Quest 3 Optimized",
+      "presetQuest3Hint": "Tuned for Quest 3 via Steam Link",
       "presetPerformance": "Performance (50Mbps)",
       "presetBalanced": "Balanced (100Mbps)",
       "presetQuality": "Quality (150Mbps)",
@@ -1033,12 +1112,20 @@
       "steamvrIdle": "SteamVR is Idle",
       "reload": "Reload",
       "save": "Save Settings",
+      "saveDirty": "Save Settings *",
       "saving": "Saving...",
       "enabled": "Enabled",
       "disabled": "Disabled",
       "successSave": "Successfully updated steamvr.vrsettings!",
       "errorSave": "Failed to save steamvr.vrsettings: {{msg}}",
       "errorRead": "Failed to read steamvr.vrsettings: {{msg}}",
+      "questSection": {
+        "title": "Quest troubleshooting",
+        "body": "Edge jitter, blurriness or black-screen stalls on Quest are almost always runtime-layer (Steam Link / Virtual Desktop / Oculus Link), not VRChat itself. Try the Quest 3 Optimized preset above, lower Encoder Resolution if jitter persists, disable Space Warp / Motion Smoothing if double-image ghosting shows up, and confirm Windows GPU Scheduling is on.",
+        "odt": "Oculus Debug Tool",
+        "gpuScheduling": "GPU scheduling",
+        "guide": "VRCSM guide"
+      },
       "targetBandwidth": {
         "label": "Target Bandwidth (Mbps)",
         "hint": "Bitrate limit for Steam Link. Up to 150-200 for good routers."
@@ -1096,5 +1183,59 @@
     "wearAvatarTitle": "Wear {{name}}",
     "copyAvatarId": "Copy Avatar ID",
     "avatarIdCopied": "Avatar ID copied"
+  },
+  "plugins": {
+    "installedLink": "Installed plugins",
+    "market": {
+      "title": "Plugin Market",
+      "subtitle": "Install official and community plugins served from the VRCSM feed.",
+      "refresh": "Refresh",
+      "fetchError": "Failed to fetch plugin feed: {{detail}}",
+      "details": "Details",
+      "install": "Install",
+      "installing": "Installing…",
+      "installed": "Installed",
+      "empty": "No plugins available."
+    },
+    "detail": {
+      "notFound": "Plugin not found in the feed.",
+      "backToMarket": "Back to market",
+      "by": "by",
+      "homepage": "Homepage",
+      "uninstall": "Uninstall",
+      "bundledHint": "Bundled plugins ship with VRCSM — disable instead of uninstalling.",
+      "description": "Description",
+      "metadata": "Metadata",
+      "hostMin": "Minimum host",
+      "sha256": "SHA-256",
+      "downloadUrl": "Download URL",
+      "open": "Open"
+    },
+    "installed": {
+      "title": "Installed plugins",
+      "subtitle": "Manage locally-installed plugins and their state.",
+      "openMarket": "Open market",
+      "empty": "No plugins installed.",
+      "col": {
+        "name": "Name",
+        "version": "Version",
+        "shape": "Shape",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "bundled": "Bundled",
+      "bundledHint": "Bundled plugins cannot be uninstalled.",
+      "open": "Open",
+      "enable": "Enable",
+      "disable": "Disable",
+      "uninstall": "Uninstall"
+    },
+    "host": {
+      "notInstalled": "Plugin {{id}} is not installed.",
+      "disabled": "Plugin {{id}} is disabled.",
+      "noPanel": "Plugin {{id}} does not expose a panel UI."
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -216,13 +216,29 @@ function Avatar3DPreview({ seed, size = 96 }: { seed: string; size?: number }) {
  * private/deleted. No "loading spinner everywhere" — local data renders
  * instantly and API data fills in as it arrives.
  */
-function AvatarInspector({ selected }: { selected: AugmentedAvatar }) {
+function AvatarInspector({
+  selected,
+  onCanonicalName,
+}: {
+  selected: AugmentedAvatar;
+  onCanonicalName?: (avatarId: string, name: string) => void;
+}) {
   const { t } = useTranslation();
   const { status: authStatus } = useAuth();
   const { details, loading: detailsLoading } = useAvatarDetails(
     selected.avatar_id,
   );
   const [switching, setSwitching] = useState(false);
+
+  // Broadcast the API-resolved name back up so the left list can show
+  // the same label the inspector is showing, even when LocalAvatarData
+  // has a stale or user-renamed copy on disk.
+  useEffect(() => {
+    const name = details?.name?.trim();
+    if (name && onCanonicalName) {
+      onCanonicalName(selected.avatar_id, name);
+    }
+  }, [details?.name, selected.avatar_id, onCanonicalName]);
 
   async function handleSelectAvatar() {
     if (!authStatus.authed) {
@@ -491,6 +507,7 @@ function AvatarRow({
   isSelected,
   isFavorited,
   duplicateNameCount,
+  canonicalName,
   onSelect,
   onToggleFavorite,
 }: {
@@ -498,11 +515,26 @@ function AvatarRow({
   isSelected: boolean;
   isFavorited: boolean;
   duplicateNameCount: number;
+  canonicalName?: string | null;
   onSelect: () => void;
   onToggleFavorite: (thumbnailUrl: string | null) => void;
 }) {
   const { t } = useTranslation();
-  const display = item.display_name ?? shortenId(item.avatar_id);
+  // Prefer the VRChat API's canonical name when it has been fetched for
+  // this avatar (by the inspector). Falls back to the LocalAvatarData
+  // cached name, then the shortened id. Without this, the left list
+  // shows one name ("超聪明Kipfel") while the inspector on the right
+  // shows a completely different authored name ("AKALII by nikkie")
+  // because LocalAvatarData stored whatever VRChat wrote when the file
+  // was last cached — which can diverge from the live API.
+  const display =
+    (canonicalName && canonicalName.trim()) ||
+    item.display_name ||
+    shortenId(item.avatar_id);
+  const nameMismatch =
+    canonicalName &&
+    item.display_name &&
+    canonicalName.trim() !== item.display_name.trim();
   return (
     <button
       type="button"
@@ -531,7 +563,17 @@ function AvatarRow({
           <div className="truncate text-[12.5px] font-medium text-[hsl(var(--foreground))]">
             {display}
           </div>
-          {duplicateNameCount > 1 ? (
+          {nameMismatch ? (
+            <span
+              className="shrink-0 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.12)] px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[hsl(var(--primary))]"
+              title={t("avatars.localNameWas", {
+                defaultValue: "Cached as: {{name}}",
+                name: item.display_name ?? "",
+              })}
+            >
+              {t("avatars.renamedHint", { defaultValue: "Renamed" })}
+            </span>
+          ) : duplicateNameCount > 1 ? (
             <span className="shrink-0 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
               {t("avatars.duplicateNameHint", {
                 defaultValue: "Same name",
@@ -559,6 +601,14 @@ function Avatars() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
   const { toggleFavorite } = useFavoriteActions();
+  // Canonical name cache: `avatarId → API-fetched display name`. Populated
+  // by the inspector each time it resolves a new avatar, read back by the
+  // left-list rows so a single avatar never shows two different names
+  // across the list and the inspector header.
+  const [canonicalNames, setCanonicalNames] = useState<Record<string, string>>({});
+  const registerCanonicalName = useCallback((avatarId: string, name: string) => {
+    setCanonicalNames((prev) => (prev[avatarId] === name ? prev : { ...prev, [avatarId]: name }));
+  }, []);
 
   useEffect(() => {
     const selectedFromRoute = searchParams.get("select");
@@ -627,12 +677,17 @@ function Avatars() {
   const displayNameCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of items) {
-      const name = item.display_name?.trim();
+      // Count by the name we actually *display* (canonical when known,
+      // cached-on-disk name otherwise). Otherwise the "Same name" badge
+      // fires on the stale disk-cache name even after the inspector has
+      // already shown the user this is really a different avatar.
+      const canonical = canonicalNames[item.avatar_id]?.trim();
+      const name = (canonical || item.display_name?.trim() || "").trim();
       if (!name) continue;
       counts.set(name, (counts.get(name) ?? 0) + 1);
     }
     return counts;
-  }, [items]);
+  }, [items, canonicalNames]);
 
   // Warm the thumbnail cache as soon as the avatar list lands so the
   // row icons + inspector preview don't each trigger individual fetches
@@ -748,7 +803,12 @@ function Avatars() {
                       item={item}
                       isSelected={selected?.avatar_id === item.avatar_id}
                       isFavorited={favoriteIds.avatar.has(item.avatar_id)}
-                      duplicateNameCount={displayNameCounts.get(item.display_name?.trim() ?? "") ?? 0}
+                      duplicateNameCount={displayNameCounts.get(
+                        (canonicalNames[item.avatar_id]?.trim() ||
+                          item.display_name?.trim() ||
+                          "").trim(),
+                      ) ?? 0}
+                      canonicalName={canonicalNames[item.avatar_id]}
                       onSelect={() => setSelectedId(item.avatar_id)}
                       onToggleFavorite={(thumbnailUrl) =>
                         handleToggleFavorite(item, thumbnailUrl)
@@ -768,7 +828,7 @@ function Avatars() {
           {/* Inspector pane — 3D preview + metadata */}
           <div className="sticky top-4 h-[calc(100vh-140px)] min-w-0 overflow-y-auto overflow-x-hidden scrollbar-none rounded-[var(--radius-lg)]">
             {selected ? (
-              <AvatarInspector selected={selected} />
+              <AvatarInspector selected={selected} onCanonicalName={registerCanonicalName} />
             ) : (
               <Card elevation="flat" className="flex items-center justify-center p-0">
                 <div className="flex flex-col items-center gap-2 py-10 text-[12px] text-[hsl(var(--muted-foreground))]">

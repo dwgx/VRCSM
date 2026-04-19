@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/lib/ipc";
+import { useInstalledPanelPlugins } from "@/lib/plugin-context";
 import { useUiPrefBoolean, writeUiPrefBoolean } from "@/lib/ui-prefs";
 
 interface MenuBarProps {
@@ -11,6 +12,7 @@ interface MenuBarProps {
   onResetLayout?: () => void;
   onOpenAbout?: () => void;
   onOpenCommandPalette?: () => void;
+  onOpenUpdate?: () => void;
 }
 
 type MenuItemDef =
@@ -49,6 +51,7 @@ export function MenuBar({
   onResetLayout,
   onOpenAbout,
   onOpenCommandPalette,
+  onOpenUpdate,
 }: MenuBarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -60,6 +63,18 @@ export function MenuBar({
   const [activeItemIndex, setActiveItemIndex] = useState(0);
   const [, setSidebarHidden] = useUiPrefBoolean("vrcsm.layout.sidebar.hidden", false);
   const [, setDockHidden] = useUiPrefBoolean("vrcsm.layout.dock.hidden", false);
+  const panelPlugins = useInstalledPanelPlugins();
+
+  const pluginGoItems: MenuItemDef[] = panelPlugins.length > 0
+    ? [
+        { kind: "separator", id: "go-sep-plugins" },
+        ...panelPlugins.map((p) => ({
+          id: `go-plugin-${p.id}`,
+          label: p.name,
+          action: () => navigate(`/p/${encodeURIComponent(p.id)}`),
+        })),
+      ]
+    : [];
 
   const menus: MenuDef[] = [
     {
@@ -162,6 +177,7 @@ export function MenuBar({
         { id: "go-friends", label: t("menu.goFriends"), action: () => navigate("/friends") },
         { id: "go-profile", label: t("menu.goProfile"), action: () => navigate("/profile") },
         { id: "go-vrchat", label: t("menu.goVrchat"), action: () => navigate("/vrchat") },
+        ...pluginGoItems,
       ],
     },
     {
@@ -172,6 +188,17 @@ export function MenuBar({
         { id: "tools-settings", label: t("menu.toolsSettings"), action: () => navigate("/settings") },
         { id: "tools-config", label: t("menu.toolsConfig"), action: () => navigate("/settings") },
         { id: "tools-steamvr", label: t("menu.toolsSteamVR"), action: () => navigate("/settings") },
+        { kind: "separator", id: "tools-sep-plugins" },
+        {
+          id: "tools-plugins-market",
+          label: t("menu.toolsPluginsMarket", { defaultValue: "Plugin Market" }),
+          action: () => navigate("/plugins"),
+        },
+        {
+          id: "tools-plugins-installed",
+          label: t("menu.toolsPluginsInstalled", { defaultValue: "Installed Plugins" }),
+          action: () => navigate("/plugins/installed"),
+        },
       ],
     },
     {
@@ -186,7 +213,7 @@ export function MenuBar({
         {
           id: "help-check-updates",
           label: t("menu.helpCheckUpdates"),
-          action: () => void ipc.call("shell.openUrl", { url: "https://github.com/dwgx/vrcsm/releases" }),
+          action: () => onOpenUpdate?.(),
         },
         {
           id: "help-report-issue",

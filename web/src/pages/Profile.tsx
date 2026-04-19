@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Globe2, LogIn, RefreshCcw, Shirt, Sword, Users, LibraryBig, Orbit } from "lucide-react";
+import { BadgeCheck, Calendar, Globe2, Languages, LogIn, RefreshCcw, ShieldCheck, Shirt, Sword, Users, LibraryBig, Orbit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileCard, type VrcUserProfile, type VrcStatus } from "@/components/ProfileCard";
@@ -20,6 +20,95 @@ interface UpdateProfileRequest {
   bio?: string;
   statusDescription?: string;
   status?: VrcStatus;
+  bioLinks?: string[];
+  pronouns?: string;
+  userIcon?: string;
+  profilePicOverride?: string;
+  tags?: string[];
+}
+
+function ProfileStatsStrip({ profile }: { profile: VrcUserProfile }) {
+  const { t, i18n } = useTranslation();
+  const joinedDate = profile.date_joined
+    ? new Date(profile.date_joined).toLocaleDateString(i18n.resolvedLanguage ?? i18n.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+  const joinedYearsAgo = profile.date_joined
+    ? Math.floor((Date.now() - new Date(profile.date_joined).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    : null;
+  const languages = (profile.tags ?? []).filter((tag) => tag.startsWith("language_"));
+  const ageVerified = profile.ageVerificationStatus === "verified";
+  const trustTag = (profile.tags ?? []).find(
+    (tag) => tag === "system_trust_veteran" || tag === "system_trust_trusted" || tag === "system_trust_known" || tag === "system_trust_basic",
+  );
+  const trustLabel = trustTag?.replace("system_trust_", "") ?? "visitor";
+
+  const items: Array<{ icon: typeof Calendar; label: string; value: string; highlight?: boolean }> = [];
+  if (joinedDate) {
+    items.push({
+      icon: Calendar,
+      label: t("profile.stats.joined", { defaultValue: "Joined" }),
+      value: joinedYearsAgo && joinedYearsAgo > 0
+        ? t("profile.stats.joinedValue", {
+            defaultValue: "{{date}} ({{years}}y)",
+            date: joinedDate,
+            years: joinedYearsAgo,
+          })
+        : joinedDate,
+    });
+  }
+  items.push({
+    icon: ShieldCheck,
+    label: t("profile.stats.trust", { defaultValue: "Trust" }),
+    value: trustLabel,
+    highlight: trustTag === "system_trust_trusted" || trustTag === "system_trust_veteran",
+  });
+  if (profile.ageVerificationStatus) {
+    items.push({
+      icon: BadgeCheck,
+      label: t("profile.stats.ageVerification", { defaultValue: "Age Verification" }),
+      value: ageVerified
+        ? t("profile.stats.ageVerified", { defaultValue: "Verified 18+" })
+        : t("profile.stats.ageUnverified", { defaultValue: "Unverified" }),
+      highlight: ageVerified,
+    });
+  }
+  if (languages.length > 0) {
+    items.push({
+      icon: Languages,
+      label: t("profile.stats.languages", { defaultValue: "Languages" }),
+      value: languages.map((l) => l.replace("language_", "").toUpperCase()).join(" · "),
+    });
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {items.map((item, i) => (
+        <div
+          key={i}
+          className={
+            "rounded-[var(--radius-md)] border px-3 py-2 " +
+            (item.highlight
+              ? "border-[hsl(var(--primary)/0.4)] bg-[hsl(var(--primary)/0.05)]"
+              : "border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))]")
+          }
+        >
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+            <item.icon className="size-3.5" />
+            {item.label}
+          </div>
+          <div className="mt-0.5 truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
+            {item.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function Profile() {
@@ -129,12 +218,16 @@ export default function Profile() {
   }, [status.authed, status.userId, status.displayName]);
 
   async function handleSave(patch: Partial<VrcUserProfile>) {
-    await ipc.call<UpdateProfileRequest, void>("user.updateProfile", {
-      bio: patch.bio,
-      statusDescription: patch.statusDescription,
-      status: patch.status,
-    });
-    // Refresh
+    const payload: UpdateProfileRequest = {};
+    if (patch.bio !== undefined) payload.bio = patch.bio;
+    if (patch.statusDescription !== undefined) payload.statusDescription = patch.statusDescription;
+    if (patch.status !== undefined) payload.status = patch.status;
+    if (patch.pronouns !== undefined) payload.pronouns = patch.pronouns;
+    if (patch.userIcon !== undefined) payload.userIcon = patch.userIcon;
+    if (patch.profilePicOverride !== undefined) payload.profilePicOverride = patch.profilePicOverride;
+    if (patch.bioLinks !== undefined) payload.bioLinks = patch.bioLinks;
+    if (patch.tags !== undefined) payload.tags = patch.tags;
+    await ipc.call<UpdateProfileRequest, void>("user.updateProfile", payload);
     load();
   }
 
@@ -212,6 +305,8 @@ export default function Profile() {
             editable
             onSave={handleSave}
           />
+
+          <ProfileStatsStrip profile={profile} />
 
           <div className={showLiveContext && hasLiveContext ? "grid gap-4 lg:grid-cols-[1.2fr_0.8fr]" : "grid gap-4"}>
             <Card>

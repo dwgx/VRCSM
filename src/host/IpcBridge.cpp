@@ -11,6 +11,8 @@
 #include "../core/PathProbe.h"
 #include "../core/ProcessGuard.h"
 
+#include "../core/plugins/PluginRegistry.h"
+
 #include <future>
 #include <thread>
 #include <unordered_set>
@@ -103,6 +105,8 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "config.write",
         "migrate.preflight",
         "junction.repair",
+        "fs.listDir",
+        "fs.writePlan",
         "thumbnails.fetch",
         "auth.status",
         "auth.user",
@@ -144,6 +148,35 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "friendLog.forUser",
         "friendNote.get",
         "friendNote.set",
+        "hw.applyPreset",
+        "hw.detect",
+        "hw.recommend",
+        "update.check",
+        "update.download",
+
+        // Plugin system — all async because they touch the filesystem,
+        // network (market feed fetch), or spawn subprocesses (Phase B).
+        "plugin.list",
+        "plugin.install",
+        "plugin.uninstall",
+        "plugin.enable",
+        "plugin.disable",
+        "plugin.marketFeed",
+        "plugin.rpc",
+    };
+    return kMethods;
+}
+
+// Methods reachable from inside a plugin iframe. Everything else
+// must go through `plugin.rpc` which goes through the permission
+// gate. This is the origin-security seam — a plugin that tries to
+// call `delete.execute` directly gets a forbidden_origin error.
+const std::unordered_set<std::string>& PluginReachableMethods()
+{
+    static const std::unordered_set<std::string> kMethods = {
+        "plugin.rpc",
+        "plugin.self.info",
+        "plugin.self.i18n",
     };
     return kMethods;
 }
@@ -248,7 +281,7 @@ void IpcBridge::CloseTrackedWorldVisits(const std::string& leftAt)
 
 // ── Dispatch ────────────────────────────────────────────────────────
 
-void IpcBridge::Dispatch(const std::string& jsonText)
+void IpcBridge::DispatchFromOrigin(const std::string& originUri, const std::string& jsonText)
 {
     std::optional<std::string> id;
 
@@ -260,10 +293,59 @@ void IpcBridge::Dispatch(const std::string& jsonText)
         const std::string method = envelope.at("method").get<std::string>();
         const nlohmann::json params = envelope.value("params", nlohmann::json::object());
 
+        // ── Origin classification ──
+        // Empty caller id means "host SPA" (app.vrcsm) — full access.
+        // Non-empty means "plugin iframe <id>" — everything except the
+        // plugin-self whitelist must tunnel through plugin.rpc.
+        std::string callerPluginId;
+        if (auto pid = vrcsm::core::plugins::PluginRegistry::PluginIdFromOrigin(originUri))
+        {
+            callerPluginId = *pid;
+        }
+
+        if (!callerPluginId.empty() && PluginReachableMethods().count(method) == 0)
+        {
+            PostError(id, "forbidden_origin",
+                      fmt::format("plugin iframe may not call '{}' directly — "
+                                  "wrap the call with plugin.rpc", method),
+                      callerPluginId);
+            return;
+        }
+
+        // ── Plugin-handler path (takes callerPluginId) ──
+        if (auto pit = m_pluginHandlers.find(method); pit != m_pluginHandlers.end())
+        {
+            auto handler = pit->second;
+            const auto capturedId = id;
+            GetIpcPool().enqueue([this, handler = std::move(handler), params, capturedId,
+                                   alive = m_alive, callerPluginId]()
+            {
+                try
+                {
+                    auto result = handler(params, capturedId, callerPluginId);
+                    if (*alive) PostResult(capturedId, result, callerPluginId);
+                }
+                catch (const IpcException& ex)
+                {
+                    if (*alive) PostError(capturedId, ex.err, callerPluginId);
+                }
+                catch (const std::exception& ex)
+                {
+                    if (*alive) PostError(capturedId, "handler_error", ex.what(), callerPluginId);
+                }
+                catch (...)
+                {
+                    if (*alive) PostError(capturedId, "handler_error", "Unknown handler failure", callerPluginId);
+                }
+            });
+            return;
+        }
+
+        // ── Regular handler path ──
         const auto it = m_handlers.find(method);
         if (it == m_handlers.end())
         {
-            PostError(id, "method_not_found", fmt::format("Unknown IPC method: {}", method));
+            PostError(id, "method_not_found", fmt::format("Unknown IPC method: {}", method), callerPluginId);
             return;
         }
 
@@ -272,24 +354,24 @@ void IpcBridge::Dispatch(const std::string& jsonText)
         {
             auto handler = it->second;
             const auto capturedId = id;
-            GetIpcPool().enqueue([this, handler = std::move(handler), params, capturedId, alive = m_alive, method]()
+            GetIpcPool().enqueue([this, handler = std::move(handler), params, capturedId, alive = m_alive, method, callerPluginId]()
             {
                 try
                 {
                     auto result = handler(params, capturedId);
-                    if (*alive) PostResult(capturedId, result);
+                    if (*alive) PostResult(capturedId, result, callerPluginId);
                 }
                 catch (const IpcException& ex)
                 {
-                    if (*alive) PostError(capturedId, ex.err);
+                    if (*alive) PostError(capturedId, ex.err, callerPluginId);
                 }
                 catch (const std::exception& ex)
                 {
-                    if (*alive) PostError(capturedId, "handler_error", ex.what());
+                    if (*alive) PostError(capturedId, "handler_error", ex.what(), callerPluginId);
                 }
                 catch (...)
                 {
-                    if (*alive) PostError(capturedId, "handler_error", "Unknown handler failure");
+                    if (*alive) PostError(capturedId, "handler_error", "Unknown handler failure", callerPluginId);
                 }
             });
             return;
@@ -297,19 +379,19 @@ void IpcBridge::Dispatch(const std::string& jsonText)
 
         try
         {
-            PostResult(id, it->second(params, id));
+            PostResult(id, it->second(params, id), callerPluginId);
         }
         catch (const IpcException& ex)
         {
-            PostError(id, ex.err);
+            PostError(id, ex.err, callerPluginId);
         }
         catch (const std::exception& ex)
         {
-            PostError(id, "handler_error", ex.what());
+            PostError(id, "handler_error", ex.what(), callerPluginId);
         }
         catch (...)
         {
-            PostError(id, "handler_error", "Unknown handler failure");
+            PostError(id, "handler_error", "Unknown handler failure", callerPluginId);
         }
     }
     catch (const std::exception& ex)
@@ -320,6 +402,30 @@ void IpcBridge::Dispatch(const std::string& jsonText)
     {
         PostError(id, "invalid_request", "Unknown dispatch failure");
     }
+}
+
+// Dispatch a plain method by name from within the host (used by
+// plugin.rpc to invoke a whitelisted inner method on behalf of a
+// plugin after the permission gate has allowed it). Runs on the
+// calling thread — the caller is already off the UI thread.
+//
+// Defined here because it needs access to m_handlers which is a
+// private member. Exposed to PluginBridge.cpp via a declaration at
+// the top of that file.
+nlohmann::json InvokeHostHandler(IpcBridge& bridge,
+                                  std::unordered_map<std::string, IpcBridge::Handler>& handlers,
+                                  const std::string& method,
+                                  const nlohmann::json& params,
+                                  const std::optional<std::string>& id)
+{
+    (void)bridge;
+    const auto it = handlers.find(method);
+    if (it == handlers.end())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "method_not_found", fmt::format("plugin.rpc: unknown method '{}'", method), 0});
+    }
+    return it->second(params, id);
 }
 
 // ── Handler Registration ────────────────────────────────────────────
@@ -335,7 +441,15 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("process.vrcRunning", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleProcessVrcRunning(p, id); });
     m_handlers.emplace("shell.pickFolder", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellPickFolder(p, id); });
     m_handlers.emplace("shell.openUrl", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellOpenUrl(p, id); });
+    m_handlers.emplace("fs.listDir", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsListDir(p, id); });
+    m_handlers.emplace("fs.writePlan", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsWritePlan(p, id); });
     m_handlers.emplace("app.factoryReset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAppFactoryReset(p, id); });
+    m_handlers.emplace("update.check", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUpdateCheck(p, id); });
+    m_handlers.emplace("update.download", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUpdateDownload(p, id); });
+    m_handlers.emplace("update.install", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUpdateInstall(p, id); });
+    m_handlers.emplace("update.skipVersion", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUpdateSkipVersion(p, id); });
+    m_handlers.emplace("update.unskipVersion", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUpdateUnskipVersion(p, id); });
+    m_handlers.emplace("update.getState", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUpdateGetState(p, id); });
 
     // Cache
     m_handlers.emplace("scan", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleScan(p, id); });
@@ -378,6 +492,9 @@ void IpcBridge::RegisterHandlers()
     });
     m_handlers.emplace("friends.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsList(p, id); });
     m_handlers.emplace("groups.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGroupsList(p, id); });
+    m_handlers.emplace("hw.applyPreset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwApplyPreset(p, id); });
+    m_handlers.emplace("hw.detect", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwDetect(p, id); });
+    m_handlers.emplace("hw.recommend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwRecommend(p, id); });
     m_handlers.emplace("moderations.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleModerationsList(p, id); });
     m_handlers.emplace("avatar.bundle.download", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarBundleDownload(p, id); });
     m_handlers.emplace("avatar.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarDetails(p, id); });
@@ -423,11 +540,23 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("friendLog.forUser", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendLogForUser(p, id); });
     m_handlers.emplace("friendNote.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendNoteGet(p, id); });
     m_handlers.emplace("friendNote.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendNoteSet(p, id); });
+
+    // Plugin system — registered in the separate plugin-handlers map
+    // because they take a third parameter (callerPluginId) so
+    // DispatchFromOrigin can thread the origin through.
+    m_pluginHandlers.emplace("plugin.list", [this](const nlohmann::json& p, const std::optional<std::string>& id, const std::string& c) { return HandlePluginList(p, id, c); });
+    m_pluginHandlers.emplace("plugin.install", [this](const nlohmann::json& p, const std::optional<std::string>& id, const std::string& c) { return HandlePluginInstall(p, id, c); });
+    m_pluginHandlers.emplace("plugin.uninstall", [this](const nlohmann::json& p, const std::optional<std::string>& id, const std::string& c) { return HandlePluginUninstall(p, id, c); });
+    m_pluginHandlers.emplace("plugin.enable", [this](const nlohmann::json& p, const std::optional<std::string>& id, const std::string& c) { return HandlePluginEnable(p, id, c); });
+    m_pluginHandlers.emplace("plugin.disable", [this](const nlohmann::json& p, const std::optional<std::string>& id, const std::string& c) { return HandlePluginDisable(p, id, c); });
+    m_pluginHandlers.emplace("plugin.marketFeed", [this](const nlohmann::json& p, const std::optional<std::string>& id, const std::string& c) { return HandlePluginMarketFeed(p, id, c); });
+    m_pluginHandlers.emplace("plugin.rpc", [this](const nlohmann::json& p, const std::optional<std::string>& id, const std::string& c) { return HandlePluginRpc(p, id, c); });
 }
 
 // ── Post helpers ────────────────────────────────────────────────────
 
-void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann::json& result) const
+void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann::json& result,
+                           const std::string& targetPluginId) const
 {
     nlohmann::json response{
         {"result", result}
@@ -437,10 +566,21 @@ void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann:
         response["id"] = *id;
     }
 
-    m_host.PostMessageToWeb(response.dump());
+    m_host.PostMessageToWeb(response.dump(), targetPluginId);
 }
 
-void IpcBridge::PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message) const
+void IpcBridge::PostEventToUi(std::string_view eventName, const nlohmann::json& data,
+                              const std::string& targetPluginId) const
+{
+    nlohmann::json envelope{
+        {"event", eventName},
+        {"data", data}
+    };
+    m_host.PostMessageToWeb(envelope.dump(), targetPluginId);
+}
+
+void IpcBridge::PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message,
+                          const std::string& targetPluginId) const
 {
     nlohmann::json response{
         {"error", {
@@ -453,10 +593,11 @@ void IpcBridge::PostError(const std::optional<std::string>& id, std::string_view
         response["id"] = *id;
     }
 
-    m_host.PostMessageToWeb(response.dump());
+    m_host.PostMessageToWeb(response.dump(), targetPluginId);
 }
 
-void IpcBridge::PostError(const std::optional<std::string>& id, const vrcsm::core::Error& err) const
+void IpcBridge::PostError(const std::optional<std::string>& id, const vrcsm::core::Error& err,
+                          const std::string& targetPluginId) const
 {
     nlohmann::json errJson;
     to_json(errJson, err);
@@ -465,5 +606,5 @@ void IpcBridge::PostError(const std::optional<std::string>& id, const vrcsm::cor
     {
         response["id"] = *id;
     }
-    m_host.PostMessageToWeb(response.dump());
+    m_host.PostMessageToWeb(response.dump(), targetPluginId);
 }

@@ -22,11 +22,13 @@ import {
   ExternalLink,
   PanelLeftClose,
   PanelBottomClose,
+  Plug,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/lib/ipc";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { useInstalledPanelPlugins } from "@/lib/plugin-context";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -105,6 +107,8 @@ export function CommandPalette({
     [close],
   );
 
+  const panelPlugins = useInstalledPanelPlugins();
+
   const commands: CommandEntry[] = useMemo(
     () => [
       // Navigation
@@ -120,6 +124,8 @@ export function CommandPalette({
       { id: "nav-vrchat", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("menu.goVrchat"), icon: <Globe className="size-3.5" />, action: () => navigate("/vrchat"), keywords: "vrchat workspace" },
       { id: "nav-screenshots", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("menu.goScreenshots"), icon: <Camera className="size-3.5" />, action: () => navigate("/screenshots"), keywords: "screenshots media" },
       { id: "nav-migrate", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("menu.toolsMigrate"), icon: <Shuffle className="size-3.5" />, action: () => navigate("/migrate"), keywords: "migrate cache junction" },
+      { id: "nav-plugins", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("nav.plugins", { defaultValue: "Plugins" }), icon: <Plug className="size-3.5" />, action: () => navigate("/plugins"), keywords: "plugins market extensions" },
+      { id: "nav-plugins-installed", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("plugins.installed.title", { defaultValue: "Installed plugins" }), icon: <Plug className="size-3.5" />, action: () => navigate("/plugins/installed"), keywords: "plugins installed manage" },
       { id: "nav-settings", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("menu.toolsSettings"), icon: <SettingsIcon className="size-3.5" />, shortcut: "Ctrl+,", action: () => navigate("/settings"), keywords: "settings preferences" },
 
       // Actions
@@ -129,8 +135,18 @@ export function CommandPalette({
       { id: "act-about", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.helpAbout"), icon: <Info className="size-3.5" />, action: () => onOpenAbout?.(), keywords: "about version" },
       { id: "act-docs", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.helpDocs"), icon: <ExternalLink className="size-3.5" />, action: () => void ipc.call("shell.openUrl", { url: "https://github.com/dwgx/vrcsm" }), keywords: "docs github help" },
       { id: "act-issues", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.helpReportIssue"), icon: <ExternalLink className="size-3.5" />, action: () => void ipc.call("shell.openUrl", { url: "https://github.com/dwgx/vrcsm/issues/new" }), keywords: "report issue bug github" },
+
+      // Dynamic: one entry per enabled panel plugin.
+      ...panelPlugins.map((p) => ({
+        id: `plugin-open-${p.id}`,
+        section: t("cmd.sections.plugins", { defaultValue: "Plugins" }),
+        label: p.name,
+        icon: <Plug className="size-3.5" />,
+        action: () => navigate(`/p/${encodeURIComponent(p.id)}`),
+        keywords: `plugin ${p.id} ${p.name}`,
+      })),
     ],
-    [navigate, onRescan, onOpenAbout, setSidebarHidden, setDockHidden, t],
+    [navigate, onRescan, onOpenAbout, setSidebarHidden, setDockHidden, t, panelPlugins],
   );
 
   useEffect(() => {
