@@ -11,22 +11,57 @@ import shutil
 import platform
 import subprocess
 import urllib.request
+import winreg
 from typing import Callable, Optional
 
 CONFIG_FILE = "config.json"
 VRC_GET_VERSION = "v1.9.1"
 VRC_GET_URL = f"https://github.com/vrc-get/vrc-get/releases/download/{VRC_GET_VERSION}/x86_64-pc-windows-msvc-vrc-get.exe"
 
-# Standard Unity Hub install paths on Windows
 UNITY_SEARCH_PATHS = [
     r"C:\Program Files\Unity\Hub\Editor",
     r"D:\Program Files\Unity\Hub\Editor",
     r"E:\Program Files\Unity\Hub\Editor",
+    r"F:\Program Files\Unity\Hub\Editor",
     os.path.expandvars(r"%LOCALAPPDATA%\Unity\Hub\Editor"),
+    os.path.expandvars(r"%ProgramFiles%\Unity\Hub\Editor"),
 ]
 
-# VRChat currently requires this specific Unity version
 REQUIRED_UNITY_VERSION = "2022.3.22f1"
+COMPATIBLE_PREFIXES = ("2022.3", "2022.2", "2021.3", "2019.4")
+
+
+def _registry_unity_paths() -> list[str]:
+    """Read Unity install locations from Windows Registry."""
+    paths = []
+    for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        for subkey in (r"SOFTWARE\Unity Technologies\Installer",
+                       r"SOFTWARE\Unity\UnityEditor"):
+            try:
+                with winreg.OpenKey(hive, subkey) as key:
+                    i = 0
+                    while True:
+                        try:
+                            name = winreg.EnumKey(key, i)
+                            with winreg.OpenKey(key, name) as vk:
+                                loc, _ = winreg.QueryValueEx(vk, "Location x64")
+                                if loc and os.path.isdir(loc):
+                                    paths.append(loc)
+                        except (FileNotFoundError, OSError):
+                            pass
+                        i += 1
+            except (FileNotFoundError, OSError):
+                pass
+    hub_pref = os.path.join(os.environ.get("APPDATA", ""), "UnityHub", "secondaryInstallPath.json")
+    if os.path.isfile(hub_pref):
+        try:
+            with open(hub_pref, "r") as f:
+                custom = json.load(f)
+                if isinstance(custom, str) and os.path.isdir(custom):
+                    paths.append(custom)
+        except Exception:
+            pass
+    return paths
 
 
 def find_all_unity_installations() -> list[dict]:
@@ -35,7 +70,9 @@ def find_all_unity_installations() -> list[dict]:
     """
     installations = []
     seen = set()
-    for base in UNITY_SEARCH_PATHS:
+    search = list(UNITY_SEARCH_PATHS)
+    search.extend(_registry_unity_paths())
+    for base in search:
         if not os.path.isdir(base):
             continue
         for version_dir in os.listdir(base):
@@ -46,9 +83,19 @@ def find_all_unity_installations() -> list[dict]:
                     "version": version_dir,
                     "path": candidate,
                     "is_recommended": version_dir == REQUIRED_UNITY_VERSION,
-                    "is_compatible": version_dir.startswith("2022.3"),
+                    "is_compatible": any(version_dir.startswith(p) for p in COMPATIBLE_PREFIXES),
                 })
-    installations.sort(key=lambda x: (not x["is_recommended"], not x["is_compatible"], x["version"]), reverse=False)
+            exe_root = os.path.join(base, "Editor", "Unity.exe")
+            if os.path.isfile(exe_root) and exe_root not in seen:
+                seen.add(exe_root)
+                ver = os.path.basename(base)
+                installations.append({
+                    "version": ver,
+                    "path": exe_root,
+                    "is_recommended": ver == REQUIRED_UNITY_VERSION,
+                    "is_compatible": any(ver.startswith(p) for p in COMPATIBLE_PREFIXES),
+                })
+    installations.sort(key=lambda x: (not x["is_recommended"], not x["is_compatible"], x["version"]))
     return installations
 
 

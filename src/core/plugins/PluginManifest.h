@@ -89,6 +89,11 @@ struct PluginManifest
     // imposing i18next inside the plugin.
     nlohmann::json i18n;
 
+    // When false, the plugin ships with the MSI but is NOT auto-copied
+    // to the user's plugins directory on first launch. Users must install
+    // it manually from the Plugins Market page. Defaults to true.
+    bool autoInstall{true};
+
     bool hasPanel() const noexcept
     {
         return shape == PluginShape::Panel || shape == PluginShape::App;
