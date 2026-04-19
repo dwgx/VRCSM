@@ -25,6 +25,16 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { ipc } from "@/lib/ipc";
 import type { Friend, WorldDetails } from "@/lib/types";
@@ -179,11 +189,15 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
 
   // --- Action states -----------------------------------------------------------
   const [wearBusy, setWearBusy] = useState(false);
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
 
   // --- Derived data ------------------------------------------------------------
   const rank = trustRank(friend?.tags ?? []);
   const dotColor = trustDotColor(rank);
   const avatarUrl =
+    profile?.profilePicOverride ??
+    profile?.currentAvatarImageUrl ??
+    profile?.currentAvatarThumbnailImageUrl ??
     friend?.profilePicOverride ??
     friend?.currentAvatarThumbnailImageUrl ??
     friend?.currentAvatarImageUrl ??
@@ -502,23 +516,41 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                 variant="outline"
                 size="sm"
                 className="h-7 text-[11px] gap-1.5 text-red-400 border-red-400/40 hover:bg-red-400/10"
-                onClick={async () => {
-                  if (!confirm(t("friendDetail.blockConfirm", {
-                    defaultValue: "Are you sure you want to block {{name}}?",
-                    name: friend?.displayName,
-                  }))) return;
-                  try {
-                    await ipc.call("user.block", { userId: friend?.id });
-                    toast.success(t("friendDetail.blocked", { defaultValue: "User blocked" }));
-                    onClose();
-                  } catch (e) {
-                    toast.error(e instanceof Error ? e.message : String(e));
-                  }
-                }}
+                onClick={() => setBlockConfirmOpen(true)}
               >
                 <Ban className="size-3.5" />
                 {t("friendDetail.block", { defaultValue: "Block" })}
               </Button>
+              <AlertDialog open={blockConfirmOpen} onOpenChange={setBlockConfirmOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("friendDetail.blockConfirmTitle", { defaultValue: "Block User" })}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("friendDetail.blockConfirm", {
+                        defaultValue: "Are you sure you want to block {{name}}? This will prevent them from interacting with you in VRChat.",
+                        name: friend?.displayName,
+                      })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("common.cancel", { defaultValue: "Cancel" })}</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      onClick={async () => {
+                        try {
+                          await ipc.call("user.block", { userId: friend?.id });
+                          toast.success(t("friendDetail.blocked", { defaultValue: "User blocked" }));
+                          onClose();
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : String(e));
+                        }
+                      }}
+                    >
+                      {t("friendDetail.block", { defaultValue: "Block" })}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
 
               <Button
                 variant="outline"
