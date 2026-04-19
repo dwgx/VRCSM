@@ -27,7 +27,8 @@ import {
   useFavoriteItems,
 } from "@/lib/library";
 import type { AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
-import { Eye, Sliders, Search, User, Info, Lock, Box, Sword, Heart, Shirt, Globe2, Loader2 } from "lucide-react";
+import { Eye, Sliders, Search, User, Info, Lock, Box, Sword, Heart, Globe2, Loader2 } from "lucide-react";
+import { SmartWearButton } from "@/components/SmartWearButton";
 
 type AugmentedAvatar = LocalAvatarItem & {
   display_name?: string;
@@ -599,8 +600,6 @@ function PublicAvatarSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AvatarSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [wearing, setWearing] = useState<string | null>(null);
-
   const doSearch = useCallback(async () => {
     const q = query.trim();
     if (!q || !status.authed) return;
@@ -614,24 +613,6 @@ function PublicAvatarSearch() {
       setSearching(false);
     }
   }, [query, status.authed]);
-
-  const handleWear = useCallback(async (av: AvatarSearchResult) => {
-    setWearing(av.id);
-    try {
-      await ipc.call("avatar.select", { avatarId: av.id });
-      toast.success(t("avatars.search.woreAvatar", {
-        defaultValue: "Now wearing: {{name}}",
-        name: av.name,
-      }));
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      toast.error(msg.includes("403")
-        ? t("avatars.search.notCloneable", { defaultValue: "This avatar does not allow cloning." })
-        : msg);
-    } finally {
-      setWearing(null);
-    }
-  }, [t]);
 
   if (!status.authed) return null;
 
@@ -688,17 +669,7 @@ function PublicAvatarSearch() {
                   {av.authorName}
                 </span>
               </div>
-              <button
-                type="button"
-                disabled={wearing === av.id}
-                onClick={() => handleWear(av)}
-                className="flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.08)] px-2 py-1 text-[10px] font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.18)] disabled:opacity-50 transition-colors"
-              >
-                <Shirt className="size-3" />
-                {wearing === av.id
-                  ? t("avatars.search.wearing", { defaultValue: "…" })
-                  : t("avatars.search.wear", { defaultValue: "Wear" })}
-              </button>
+              <SmartWearButton avatarId={av.id} avatarName={av.name} variant="pill" />
             </div>
           ))}
         </div>
