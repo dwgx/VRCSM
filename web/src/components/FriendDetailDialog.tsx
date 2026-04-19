@@ -195,13 +195,13 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
   const rank = trustRank(friend?.tags ?? []);
   const dotColor = trustDotColor(rank);
   const avatarUrl =
-    profile?.profilePicOverride ??
-    profile?.currentAvatarImageUrl ??
-    profile?.currentAvatarThumbnailImageUrl ??
-    friend?.profilePicOverride ??
-    friend?.currentAvatarThumbnailImageUrl ??
-    friend?.currentAvatarImageUrl ??
-    null;
+    profile?.profilePicOverride
+    || profile?.currentAvatarImageUrl
+    || profile?.currentAvatarThumbnailImageUrl
+    || friend?.profilePicOverride
+    || friend?.currentAvatarThumbnailImageUrl
+    || friend?.currentAvatarImageUrl
+    || null;
   const isVrcPlus = (friend?.tags ?? []).some((t) => t === "system_supporter");
   const langTags = (profile?.tags ?? friend?.tags ?? [])
     .filter((t) => t.startsWith("language_"))
