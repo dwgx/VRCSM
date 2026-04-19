@@ -423,7 +423,7 @@ const FriendRow = memo(function FriendRow({
                 }}
               >
                 <Play className="mr-1 size-3 shrink-0" />
-                <span className="font-semibold">{t("worlds.instanceBadge", { defaultValue: "Join Room" })}</span>
+                <span className="font-semibold">{t("friends.joinRoom", { defaultValue: "Join Room" })}</span>
               </Button>
             ) : null}
             <Button
@@ -882,20 +882,30 @@ export default function Friends() {
               </button>
             </div>
             <ProfileCard user={selectedFriend} />
-            {selectedFriend.location && selectedFriend.location !== "offline" && selectedFriend.location !== "private" ? (
-              <Button
-                variant="default"
-                className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => {
-                  ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                    url: `vrchat://launch?id=${selectedFriend.location}`,
-                  }).catch(console.error);
-                }}
-              >
-                <Play className="mr-2 size-4" />
-                {t("worlds.instanceBadge", { defaultValue: "加入房间" })}
-              </Button>
-            ) : null}
+            <div className="mt-2 flex gap-1.5">
+              {selectedFriend.currentAvatarId ? (
+                <CloneAvatarButton
+                  userId={selectedFriend.id!}
+                  avatarId={selectedFriend.currentAvatarId}
+                  avatarName={selectedFriend.currentAvatarName}
+                />
+              ) : null}
+              {selectedFriend.location && selectedFriend.location !== "offline" && selectedFriend.location !== "private" ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                      url: `vrchat://launch?id=${selectedFriend.location}`,
+                    }).catch(console.error);
+                  }}
+                >
+                  <Play className="mr-1 size-3" />
+                  {t("friends.joinRoom", { defaultValue: "Join Room" })}
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
