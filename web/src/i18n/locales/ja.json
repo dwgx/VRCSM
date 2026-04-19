@@ -426,7 +426,8 @@
     "show": "表示",
     "unknown": "不明",
     "remove": "削除",
-    "sidebar": "サイドバー"
+    "sidebar": "サイドバー",
+    "experimental": "ベータ"
   },
   "about": {
     "title": "VRCSM について",

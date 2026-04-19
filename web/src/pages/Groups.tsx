@@ -93,8 +93,11 @@ export default function Groups() {
     <div className="flex flex-col gap-4 animate-fade-in">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-[22px] font-semibold leading-none tracking-tight">
+          <h1 className="flex items-center gap-2 text-[22px] font-semibold leading-none tracking-tight">
             {t("nav.groups", { defaultValue: "Groups" })}
+            <span className="shrink-0 rounded-[3px] bg-[hsl(45_93%_47%/0.15)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-[hsl(45_93%_47%)]">
+              {t("common.experimental", { defaultValue: "Beta" })}
+            </span>
           </h1>
           <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
             {t("groups.subtitle", {

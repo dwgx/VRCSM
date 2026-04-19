@@ -426,7 +426,8 @@
     "show": "Показать",
     "unknown": "Неизвестно",
     "remove": "Удалить",
-    "sidebar": "Сайдбар"
+    "sidebar": "Сайдбар",
+    "experimental": "Бета"
   },
   "about": {
     "title": "О VRCSM",

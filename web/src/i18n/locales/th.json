@@ -426,7 +426,8 @@
     "show": "แสดง",
     "unknown": "ไม่ทราบ",
     "remove": "นำออก",
-    "sidebar": "แถบข้าง"
+    "sidebar": "แถบข้าง",
+    "experimental": "เบต้า"
   },
   "about": {
     "title": "เกี่ยวกับ VRCSM",
