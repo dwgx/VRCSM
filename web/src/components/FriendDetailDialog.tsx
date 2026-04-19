@@ -577,6 +577,43 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
             )}
           </div>
 
+          {/* ========== 5b. Avatar History (BEYOND VRCX) ========== */}
+          {(() => {
+            const avatarEvents = (logData?.items ?? []).filter(
+              (e) => e.event_type === "avatar.changed" && e.new_value,
+            );
+            const seen = new Set<string>();
+            const unique = avatarEvents.filter((e) => {
+              if (seen.has(e.new_value!)) return false;
+              seen.add(e.new_value!);
+              return true;
+            });
+            if (unique.length === 0) return null;
+            return (
+              <div className="border-b border-[hsl(var(--border)/0.4)] px-5 py-4">
+                <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
+                  <Shirt className="size-3" />
+                  {t("friendDetail.avatarHistory", { defaultValue: "Avatar History" })}
+                  <span className="font-mono text-[hsl(var(--muted-foreground)/0.5)]">({unique.length})</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {unique.slice(0, 10).map((ev, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded px-2 py-1 text-[10px] hover:bg-[hsl(var(--muted)/0.5)]">
+                      <Shirt className="size-3 shrink-0 text-purple-400" />
+                      <span className="flex-1 truncate text-[hsl(var(--foreground)/0.8)]">
+                        {ev.new_value}
+                      </span>
+                      <SmartWearButton avatarName={ev.new_value} variant="compact" />
+                      <span className="shrink-0 font-mono text-[9px] text-[hsl(var(--muted-foreground))]">
+                        {relativeTime(ev.occurred_at)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ========== 6. Friend Note ========== */}
           <div className="px-5 py-4">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
