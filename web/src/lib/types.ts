@@ -394,6 +394,8 @@ export interface Friend {
   displayName: string;
   currentAvatarImageUrl: string | null;
   currentAvatarThumbnailImageUrl: string | null;
+  /** avtr_xxx UUID of the friend's current avatar. */
+  currentAvatarId?: string | null;
   /** Display name of the friend's current avatar. May be absent. */
   currentAvatarName?: string | null;
   statusDescription: string | null;

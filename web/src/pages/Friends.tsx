@@ -114,7 +114,7 @@ function FriendAvatar({ friend }: { friend: Friend }) {
   );
 }
 
-function CloneAvatarButton({ userId, avatarName }: { userId: string; avatarName?: string }) {
+function CloneAvatarButton({ userId, avatarId: directId, avatarName }: { userId: string; avatarId?: string | null; avatarName?: string }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
@@ -122,10 +122,13 @@ function CloneAvatarButton({ userId, avatarName }: { userId: string; avatarName?
     e.stopPropagation();
     setBusy(true);
     try {
-      const { profile } = await ipc.call<{ userId: string }, { profile: { currentAvatarId?: string } | null }>(
-        "user.getProfile", { userId },
-      );
-      const avatarId = profile?.currentAvatarId;
+      let avatarId = directId;
+      if (!avatarId) {
+        const { profile } = await ipc.call<{ userId: string }, { profile: { currentAvatarId?: string } | null }>(
+          "user.getProfile", { userId },
+        );
+        avatarId = profile?.currentAvatarId;
+      }
       if (!avatarId) {
         toast.error(t("friends.cloneNoAvatar", { defaultValue: "Could not resolve this user's current avatar." }));
         return;
@@ -311,7 +314,7 @@ const FriendRow = memo(function FriendRow({
                       {friend.currentAvatarName}
                     </span>
                   ) : null}
-                  <CloneAvatarButton userId={friend.id} avatarName={friend.currentAvatarName ?? undefined} />
+                  <CloneAvatarButton userId={friend.id} avatarId={friend.currentAvatarId} avatarName={friend.currentAvatarName ?? undefined} />
                 </div>
               </>
             ) : null}

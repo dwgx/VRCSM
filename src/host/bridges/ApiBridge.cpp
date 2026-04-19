@@ -65,6 +65,8 @@ nlohmann::json FilterFriend(const nlohmann::json& friendJson)
         {"last_activity", JsonStringField(friendJson, "last_activity").value_or("")},
         {"profilePicOverride", JsonStringField(friendJson, "profilePicOverride").value_or("")},
         {"userIcon", JsonStringField(friendJson, "userIcon").value_or("")},
+        {"currentAvatarId", JsonStringField(friendJson, "currentAvatar").value_or("")},
+        {"currentAvatarName", JsonStringField(friendJson, "currentAvatarName").value_or("")},
     };
 
     nlohmann::json tags = nlohmann::json::array();
