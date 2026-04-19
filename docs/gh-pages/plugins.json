@@ -11,7 +11,7 @@
       "description": "Batch-uploads avatar .unitypackage files to VRChat with the 25% failure rate patched — event-based ImportPackage wait, SessionState persistence, shader-extension sanitizer, and popup suppressor with per-dialog try/catch.",
       "homepage": "https://github.com/dwgx/VRCSM/tree/main/plugins/vrc-auto-uploader",
       "download": "https://dwgx.github.io/VRCSM/plugins/vrc-auto-uploader-0.9.0.vrcsmplugin",
-      "sha256": "a3ef7fbc3e57db760dc2a418a5aa5019472b4d36e26a950e477ac397bdcfa726",
+      "sha256": "789b03a697d0ce17e4d472ccddd4eb72160f63c99b28f35bcd1835ce0ce9365f",
       "author": {
         "name": "dwgx",
         "url": "https://github.com/dwgx"
