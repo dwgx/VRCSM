@@ -23,8 +23,6 @@ import {
   UserPlus,
   UserMinus,
   ArrowRightLeft,
-  Monitor,
-  Smartphone,
   FileClock,
   Radio,
   ChevronDown,
@@ -43,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { ProfileCard } from "@/components/ProfileCard";
 import { useAuth } from "@/lib/auth-context";
-import { AvatarPopupBadge } from "@/components/AvatarPopupBadge";
+
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { cn } from "@/lib/utils";
@@ -256,6 +254,29 @@ function PlayerProfileDialog({ userId, displayName }: { userId: string | null; d
   );
 }
 
+function PlayerAvatar({ userId, size = 20 }: { userId: string | null; size?: number }) {
+  const { data } = useIpcQuery<{ userId: string }, { profile: { currentAvatarThumbnailImageUrl?: string; profilePicOverride?: string } | null }>(
+    "user.getProfile",
+    { userId: userId! },
+    { staleTime: 300_000, enabled: !!userId },
+  );
+  const url = data?.profile?.profilePicOverride || data?.profile?.currentAvatarThumbnailImageUrl;
+  return (
+    <div
+      className="shrink-0 overflow-hidden rounded-full bg-[hsl(var(--canvas))] border border-[hsl(var(--border)/0.5)]"
+      style={{ width: size, height: size }}
+    >
+      {url ? (
+        <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <Users className="size-2.5 text-[hsl(var(--muted-foreground)/0.5)]" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Trust rank color dot component ────────────────────────────────────────
 function TrustDot({ tags }: { tags: string[] | undefined }) {
   if (!tags || tags.length === 0) return null;
@@ -268,19 +289,6 @@ function TrustDot({ tags }: { tags: string[] | undefined }) {
       title={rank}
     />
   );
-}
-
-// ── Platform icon component ───────────────────────────────────────────────
-function PlatformIcon({ platform }: { platform: string | null | undefined }) {
-  if (!platform) return null;
-  const lower = platform.toLowerCase();
-  if (lower.includes("android") || lower.includes("quest")) {
-    return <span title="Quest / Android"><Smartphone className="size-3 text-[hsl(var(--muted-foreground))]" /></span>;
-  }
-  if (lower.includes("windows") || lower.includes("pc") || lower === "standalonewindows") {
-    return <span title="PC"><Monitor className="size-3 text-[hsl(var(--muted-foreground))]" /></span>;
-  }
-  return null;
 }
 
 function WearAvatarBtn({ userId, avatarName }: { userId?: string | null; avatarName?: string | null }) {
@@ -368,7 +376,7 @@ function RadarEngine({
   // ── Player trust rank tags cache ─────────────────────────────────────
   const [playerTags, setPlayerTags] = useState<Record<string, string[]>>({});
   // ── Player platform cache ────────────────────────────────────────────
-  const [playerPlatform, setPlayerPlatform] = useState<Record<string, string>>({});
+  // playerPlatform removed — avatars now show in compact pills via PlayerAvatar
   const [recentSessionEvents, setRecentSessionEvents] = useState<RecentSessionEvent[]>([]);
   const [showRecentHistory, setShowRecentHistory] = useUiPrefBoolean("vrcsm.layout.radar.recentHistory.visible", true);
   const currentWorldRef = useRef<WorldSwitchEvent | null>(null);
@@ -381,10 +389,10 @@ function RadarEngine({
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
-  // Scroll timeline to bottom when new entries arrive, if autoScroll is enabled
   useEffect(() => {
-    if (autoScroll) {
-      timelineEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (autoScroll && timelineScrollRef.current) {
+      const el = timelineScrollRef.current;
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
   }, [timeline, autoScroll]);
 
@@ -414,9 +422,7 @@ function RadarEngine({
           if (tags && Array.isArray(tags)) {
             setPlayerTags(prev => ({ ...prev, [p.userId!]: tags }));
           }
-          if (platform && typeof platform === "string") {
-            setPlayerPlatform(prev => ({ ...prev, [p.userId!]: platform }));
-          }
+          void platform;
         })
         .catch(() => {/* silently ignore */});
     }
@@ -1022,54 +1028,32 @@ function RadarEngine({
               </Badge>
             </div>
           </CardHeader>
-            <CardContent className="p-4 bg-black/5 flex-1 overflow-y-auto">
+            <CardContent className="px-3 py-2.5 bg-black/5 flex-1 overflow-y-auto">
             {activeArray.length === 0 ? (
                <div className="h-full flex items-center justify-center flex-col gap-2">
                  <Users className="size-10 text-[hsl(var(--muted-foreground)/0.2)]" />
                  <span className="text-[12px] text-[hsl(var(--muted-foreground))]">{t("radar.trackingWait", { defaultValue: "Tracking will populate as players join..." })}</span>
                </div>
             ) : (
-               <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+               <div className="flex flex-wrap gap-1.5">
                  {activeArray.map((p, idx) => (
                     <Dialog key={idx}>
                       <DialogTrigger asChild>
-                        <div className="group relative flex flex-col border border-[hsl(var(--border)/0.7)] bg-[hsl(var(--card))] rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:border-[hsl(var(--primary)/0.5)] transition-all duration-200 cursor-pointer">
-                           <div className="px-3 py-2 flex items-center justify-between border-b border-[hsl(var(--border)/0.3)] bg-[hsl(var(--muted)/0.3)]">
-                              <div className="flex items-center gap-1.5 min-w-0 pr-2">
-                                <TrustDot tags={p.userId ? playerTags[p.userId] : undefined} />
-                                <span className="text-[13px] font-semibold text-[hsl(var(--foreground))] truncate drop-shadow-sm">
-                                  {p.displayName}
-                                </span>
-                                <PlatformIcon platform={p.userId ? playerPlatform[p.userId] : undefined} />
-                              </div>
-                              <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))] tracking-tighter shrink-0">
-                                {p.joinTime ? formatTimePart(p.joinTime) : t("radar.unknownTime", { defaultValue: "Unknown" })}
-                              </span>
-                           </div>
-                           <div className="p-3 flex flex-col gap-2 relative">
-                             {p.userId && (
-                               <div className="text-[10px] font-mono text-[hsl(var(--muted-foreground))] bg-black/10 px-1.5 py-0.5 rounded w-fit select-all">
-                                 {shortId(p.userId)}
-                               </div>
-                             )}
-
-                             <div className="min-h-[24px] flex items-center">
-                               {p.avatarIdOrName ? (
-                                 <div className="flex gap-2 items-center flex-wrap">
-                                   <Shirt className="size-3 text-[hsl(var(--primary)/0.7)]" />
-                                   {p.avatarIdOrName.startsWith('avtr_') ? (
-                                      <AvatarPopupBadge avatarId={p.avatarIdOrName} />
-                                   ) : (
-                                      <span className="text-[11px] text-[hsl(var(--muted-foreground))] italic truncate max-w-[140px]">{p.avatarIdOrName}</span>
-                                   )}
-                                   <WearAvatarBtn userId={p.userId} avatarName={p.avatarIdOrName} />
-                                 </div>
-                               ) : (
-                                 <span className="text-[11px] text-[hsl(var(--muted-foreground)/0.5)] italic">{t("radar.unknownAvatar", { defaultValue: "Unknown Avatar" })}</span>
-                               )}
-                             </div>
-                           </div>
-                        </div>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border)/0.7)] bg-[hsl(var(--card))] pl-0.5 pr-2 py-0.5 hover:border-[hsl(var(--primary)/0.5)] hover:bg-[hsl(var(--primary)/0.06)] transition-colors"
+                        >
+                          <PlayerAvatar userId={p.userId} size={20} />
+                          <TrustDot tags={p.userId ? playerTags[p.userId] : undefined} />
+                          <span className="text-[11px] font-medium text-[hsl(var(--foreground))] truncate max-w-[120px]">
+                            {p.displayName}
+                          </span>
+                          {p.avatarIdOrName ? (
+                            <span className="text-[9px] text-[hsl(var(--muted-foreground))] italic truncate max-w-[80px]">
+                              {p.avatarIdOrName.startsWith("avtr_") ? "avtr…" : p.avatarIdOrName}
+                            </span>
+                          ) : null}
+                        </button>
                       </DialogTrigger>
                       <PlayerProfileDialog userId={p.userId} displayName={p.displayName} />
                     </Dialog>
