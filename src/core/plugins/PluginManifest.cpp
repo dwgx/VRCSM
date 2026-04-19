@@ -277,6 +277,9 @@ Result<PluginManifest> ParsePluginManifest(const nlohmann::json& doc)
     // i18n passthrough
     if (doc.contains("i18n") && doc["i18n"].is_object()) m.i18n = doc["i18n"];
 
+    if (doc.contains("autoInstall") && doc["autoInstall"].is_boolean())
+        m.autoInstall = doc["autoInstall"].get<bool>();
+
     return m;
 }
 

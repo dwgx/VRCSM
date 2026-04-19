@@ -305,6 +305,7 @@ void PluginStore::MirrorBundledLocked()
 
         const auto dirName = SanitizePluginId(m.id);
         if (dirName != m.id) continue;  // skip malformed
+        if (!m.autoInstall) continue;   // user must install manually
 
         const auto targetDir = dst / toWide(m.id);
         bool needCopy = true;
