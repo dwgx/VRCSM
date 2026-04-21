@@ -69,12 +69,23 @@ AuthStore& AuthStore::Instance()
     return store;
 }
 
+AuthStore::~AuthStore()
+{
+    // Best-effort scrub on orderly process exit. Doesn't help against
+    // OS-kill or unhandled crashes (destructor never runs), but any
+    // normal "user quits the app" path wipes the cookie material before
+    // the heap buffer goes back to the CRT free-list.
+    std::lock_guard<std::mutex> lock(m_mutex);
+    secureClearString(m_authCookie);
+    secureClearString(m_twoFactorCookie);
+}
+
 bool AuthStore::Load()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    m_authCookie.clear();
-    m_twoFactorCookie.clear();
+    secureClearString(m_authCookie);
+    secureClearString(m_twoFactorCookie);
 
     const auto path = ResolveSessionPath();
     const auto encryptedBytes = ReadFileBytes(path);
@@ -108,9 +119,11 @@ bool AuthStore::Load()
 
     try
     {
-        const std::string jsonText(
+        std::string jsonText(
             reinterpret_cast<const char*>(decrypted.pbData),
             reinterpret_cast<const char*>(decrypted.pbData) + decrypted.cbData);
+        auto wipeJson = wil::scope_exit([&]() { secureClearString(jsonText); });
+
         const auto doc = nlohmann::json::parse(jsonText);
         if (!doc.is_object())
         {
@@ -132,8 +145,8 @@ bool AuthStore::Load()
     catch (const std::exception& ex)
     {
         spdlog::warn("AuthStore: failed to parse decrypted session.dat: {}", ex.what());
-        m_authCookie.clear();
-        m_twoFactorCookie.clear();
+        secureClearString(m_authCookie);
+        secureClearString(m_twoFactorCookie);
         return false;
     }
 }
@@ -146,7 +159,8 @@ bool AuthStore::Save() const
         {"auth", m_authCookie},
         {"twoFactorAuth", m_twoFactorCookie},
     };
-    const std::string payload = doc.dump();
+    std::string payload = doc.dump();
+    auto wipePayload = wil::scope_exit([&]() { secureClearString(payload); });
 
     DATA_BLOB plain = MakeBlob(payload.data(), payload.size());
     DATA_BLOB entropy = MakeBlob(kEntropy.data(), kEntropy.size());
@@ -184,16 +198,26 @@ bool AuthStore::Save() const
 void AuthStore::SetCookies(std::string auth, std::string twoFactor)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
+    // Scrub whatever was in place before the move so stale cookie bytes
+    // don't linger in the heap buffer of the about-to-be-overwritten member.
+    secureClearString(m_authCookie);
+    secureClearString(m_twoFactorCookie);
     m_authCookie = std::move(auth);
     m_twoFactorCookie = std::move(twoFactor);
+    // After the move, `auth`/`twoFactor` are in a valid-but-unspecified
+    // state. For SSO strings the inline buffer may still hold the original
+    // bytes; for heap strings the move steals the pointer and the locals
+    // are empty. Either way, wiping is cheap insurance.
+    secureClearString(auth);
+    secureClearString(twoFactor);
 }
 
 void AuthStore::Clear()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    m_authCookie.clear();
-    m_twoFactorCookie.clear();
+    secureClearString(m_authCookie);
+    secureClearString(m_twoFactorCookie);
 
     std::error_code ec;
     std::filesystem::remove(ResolveSessionPath(), ec);

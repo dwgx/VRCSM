@@ -79,7 +79,7 @@ private:
     std::unique_ptr<ProcessMemoryReader> reader_;
     SnapshotCallback callback_;
     std::chrono::milliseconds interval_;
-    HANDLE pollThread_ = nullptr;
+    std::thread pollThread_;
 
     // Cached base addresses (ASLR-stable within a VRChat session)
     uint64_t gaBase_ = 0;

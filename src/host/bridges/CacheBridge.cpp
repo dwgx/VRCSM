@@ -63,5 +63,20 @@ nlohmann::json IpcBridge::HandleDeleteDryRun(const nlohmann::json& params, const
 
 nlohmann::json IpcBridge::HandleDeleteExecute(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    return ToJson(vrcsm::core::SafeDelete::Execute(params));
+    // SafeDelete::Execute returns a dual-shape json: {"deleted": N} on success,
+    // {"error": {code, message}} on failure. The bridge must convert the error
+    // shape into an IpcException so the dispatch layer posts a proper error
+    // response — otherwise the frontend receives it as a successful result and
+    // silently believes the delete succeeded.
+    auto result = vrcsm::core::SafeDelete::Execute(params);
+    if (result.is_object() && result.contains("error") && result["error"].is_object())
+    {
+        const auto& err = result["error"];
+        throw IpcException(vrcsm::core::Error{
+            err.value("code", std::string("delete_failed")),
+            err.value("message", std::string("unknown delete error")),
+            0,
+        });
+    }
+    return result;
 }

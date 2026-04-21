@@ -9,6 +9,7 @@ add_executable(vrcsm WIN32
     IpcBridge.cpp
     StringUtil.cpp
     VrchatPaths.cpp
+    UrlProtocol.cpp
 
     # Domain-specific IPC handler implementations (split from IpcBridge.cpp)
     bridges/AuthBridge.cpp
@@ -25,6 +26,7 @@ add_executable(vrcsm WIN32
     bridges/PluginBridge.cpp
     bridges/UpdateBridge.cpp
     bridges/PipelineBridge.cpp
+    bridges/VectorBridge.cpp
 )
 
 set(VRCSM_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")

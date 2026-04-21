@@ -211,6 +211,42 @@ public:
     //     total_avatars_seen, total_hours_in_world }
     Result<nlohmann::json> StatsOverview();
 
+    // ─── avatar_embeddings (v0.11 experimental visual search) ────
+    //
+    // `avatar_embeddings_meta` is a plain table (avatar_id + model +
+    // created_at). `avatar_embeddings_vec` is a vec0 virtual table doing
+    // the actual nearest-neighbour search. We keep them in sync by
+    // avatar_id rather than rowid so callers don't need to thread an
+    // integer around. Only populated when the Visual Avatar Search
+    // experimental flag is on in the frontend — the host always has
+    // the schema ready so toggling never requires a restart.
+
+    struct AvatarEmbeddingInsert
+    {
+        std::string avatar_id;
+        // Model output vector. For CLIP ViT-B/32 this is 512 floats.
+        // Stored as a raw BLOB (little-endian float32 array).
+        std::vector<float> embedding;
+        std::string model_version;  // e.g. "clip-vit-b32-quant-v1"
+    };
+    Result<std::monostate> UpsertAvatarEmbedding(const AvatarEmbeddingInsert& e);
+
+    struct AvatarEmbeddingMatch
+    {
+        std::string avatar_id;
+        float distance;
+    };
+    Result<std::vector<AvatarEmbeddingMatch>> SearchAvatarEmbeddings(
+        const std::vector<float>& queryEmbedding,
+        int k);
+
+    // Avatar IDs we know about (avatar_history + avatar-typed favorites)
+    // but haven't embedded yet. Frontend uses this to drive its
+    // background indexing queue.
+    Result<std::vector<std::string>> GetUnindexedAvatarIds();
+
+    Result<std::monostate> DeleteAvatarEmbedding(const std::string& avatar_id);
+
     ~Database();
     Database(const Database&) = delete;
     Database& operator=(const Database&) = delete;

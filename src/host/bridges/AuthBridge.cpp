@@ -50,8 +50,17 @@ nlohmann::json IpcBridge::HandleAuthStatus(const nlohmann::json&, const std::opt
 
 nlohmann::json IpcBridge::HandleAuthLogin(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const auto username = JsonStringField(params, "username").value_or("");
-    const auto password = JsonStringField(params, "password").value_or("");
+    // Own the credential strings so we can wipe them on every return path.
+    // The `params` JSON still holds its own copy of the password — the
+    // dispatch layer owns that object's lifetime — but we at least scrub
+    // the named locals that get handed down into VrcApi.
+    auto username = JsonStringField(params, "username").value_or("");
+    auto password = JsonStringField(params, "password").value_or("");
+    auto wipeCreds = wil::scope_exit([&]()
+    {
+        vrcsm::core::secureClearString(username);
+        vrcsm::core::secureClearString(password);
+    });
 
     if (username.empty() || password.empty())
     {

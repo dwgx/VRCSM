@@ -179,7 +179,38 @@ Result<MigrateSummary> Migrator::execute(
     const auto sourcePath = utf8Path(plan.source);
     const auto targetPath = utf8Path(plan.target);
 
+    // Sidecar backup path. We rename the source here once the copy is
+    // verified, instead of deleting outright — if the junction step fails
+    // we can atomically restore. Suffix chosen to be obviously ours and
+    // unlikely to collide with any VRChat filename.
+    const std::filesystem::path backupPath = sourcePath.wstring() + L".vrcsm-bak";
+
+    // Re-verify VRChat isn't running. preflight() was called earlier,
+    // possibly before a user-confirmation dialog — the user may have
+    // launched VRChat while the confirmation sat on screen. Once we start
+    // touching the cache directory, a live VRChat can lock files and leave
+    // the source in a half-copied state.
+    {
+        const auto vrc = ProcessGuard::IsVRChatRunning();
+        if (vrc.running)
+        {
+            return Error{"vrchat_running",
+                "VRChat was launched between preflight and execute — aborting"};
+        }
+    }
+
+    // Refuse if a leftover backup exists from a prior failed run. Better
+    // to surface the stale state to the user than to silently overwrite
+    // or silently inherit corrupt data.
     std::error_code ec;
+    if (std::filesystem::exists(backupPath, ec))
+    {
+        return Error{"backup_exists",
+            "A leftover backup from a previous migration exists at " +
+            toUtf8(backupPath.wstring()) + " — please remove it manually before retrying"};
+    }
+    ec.clear();
+
     std::filesystem::create_directories(targetPath, ec);
     if (ec)
     {
@@ -246,21 +277,82 @@ Result<MigrateSummary> Migrator::execute(
         return Error{"verify_failed", "byte count mismatch after copy"};
     }
 
-    emit("remove", bytesDone, totalStats.bytes, filesDone, totalStats.files, "removing source");
-    std::filesystem::remove_all(sourcePath, ec);
-    if (ec) return Error{"remove_failed", ec.message()};
+    // ── Atomic swap: rename source → backup, then create junction. ──
+    // If the rename fails, nothing has been destroyed yet. If the junction
+    // step fails after the rename, we rename the backup back over the
+    // original path.
+    emit("swap", bytesDone, totalStats.bytes, filesDone, totalStats.files,
+         "swapping source to backup");
+    std::filesystem::rename(sourcePath, backupPath, ec);
+    if (ec)
+    {
+        return Error{"source_rename_failed", ec.message()};
+    }
 
-    emit("junction", bytesDone, totalStats.bytes, filesDone, totalStats.files, "creating junction");
+    emit("junction", bytesDone, totalStats.bytes, filesDone, totalStats.files,
+         "creating junction");
     auto jr = JunctionUtil::createJunction(sourcePath, targetPath);
     if (!isOk(jr))
     {
+        // Restore the backup — rename is atomic, so on success the user's
+        // cache is exactly where it started.
+        std::error_code restoreEc;
+        std::filesystem::rename(backupPath, sourcePath, restoreEc);
+        if (restoreEc)
+        {
+            return Error{"junction_failed_restore_failed",
+                "junction: " + error(jr).message +
+                "; restore from " + toUtf8(backupPath.wstring()) +
+                " failed: " + restoreEc.message()};
+        }
         return Error{"junction_failed", error(jr).message};
     }
+
+    // Junction claims success. Verify it actually resolves — a broken
+    // reparse point is indistinguishable from a real one via CreateFile
+    // until you try to read. If it's broken, tear it down and restore.
+    emit("junction_verify", bytesDone, totalStats.bytes, filesDone, totalStats.files,
+         "verifying junction");
+    std::error_code probeEc;
+    const bool junctionLivesAtSource =
+        std::filesystem::is_directory(sourcePath, probeEc) && !probeEc;
+    if (!junctionLivesAtSource)
+    {
+        std::error_code cleanupEc;
+        std::filesystem::remove(sourcePath, cleanupEc);  // remove the junction
+        std::error_code restoreEc;
+        std::filesystem::rename(backupPath, sourcePath, restoreEc);
+        if (restoreEc)
+        {
+            return Error{"junction_verify_failed_restore_failed",
+                "junction created but not readable; restore from " +
+                toUtf8(backupPath.wstring()) + " failed: " + restoreEc.message()};
+        }
+        return Error{"junction_verify_failed",
+            "junction created but source path is not a readable directory"};
+    }
+
+    // All green — drop the backup. If removal fails, the migration itself
+    // still succeeded (the user now has a working junction); just surface
+    // it in the summary message so the user can delete manually.
+    emit("cleanup", bytesDone, totalStats.bytes, filesDone, totalStats.files,
+         "removing backup");
+    std::error_code backupRmEc;
+    std::filesystem::remove_all(backupPath, backupRmEc);
 
     summary.ok = true;
     summary.bytesCopied = bytesDone;
     summary.filesCopied = filesDone;
-    summary.message = "migration complete";
+    if (backupRmEc)
+    {
+        summary.message = "migration complete (backup left at " +
+                          toUtf8(backupPath.wstring()) +
+                          " — safe to delete manually)";
+    }
+    else
+    {
+        summary.message = "migration complete";
+    }
     emit("done", bytesDone, totalStats.bytes, filesDone, totalStats.files, summary.message);
     return summary;
 }

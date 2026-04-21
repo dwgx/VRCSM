@@ -28,6 +28,7 @@ public:
 
 private:
     AuthStore() = default;
+    ~AuthStore();
 
     std::filesystem::path ResolveSessionPath() const;
 

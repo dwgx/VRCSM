@@ -74,7 +74,9 @@ private:
                 task = std::move(m_queue.front());
                 m_queue.pop();
             }
-            try { task(); } catch (...) { /* swallow — bridge catches upstream */ }
+            try { task(); }
+            catch (const std::exception& ex) { spdlog::error("[ipc-pool] unhandled exception in worker: {}", ex.what()); }
+            catch (...) { spdlog::error("[ipc-pool] unhandled non-std exception in worker"); }
         }
     }
 
@@ -116,6 +118,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "friends.list",
         "groups.list",
         "moderations.list",
+        "calendar.list",
         "avatar.bundle.download",
         "avatar.details",
         "world.details",
@@ -151,6 +154,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "favorites.syncOfficial",
         "favorites.export",
         "favorites.import",
+        "friendLog.insert",
         "friendLog.recent",
         "friendLog.forUser",
         "friendNote.get",
@@ -181,6 +185,18 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "hw.recommend",
         "update.check",
         "update.download",
+
+        // VRChat process-memory probes — must run off-UI or the WebView2
+        // message loop stalls while we walk GB-scale address space.
+        "memory.status",
+        "radar.poll",
+
+        // Experimental visual avatar search (v0.11). All four are DB-
+        // backed and go through m_mutex, so keep them off the UI thread.
+        "vector.upsertEmbedding",
+        "vector.search",
+        "vector.getUnindexed",
+        "vector.removeEmbedding",
 
         // Plugin system — all async because they touch the filesystem,
         // network (market feed fetch), or spawn subprocesses (Phase B).
@@ -540,6 +556,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("hw.detect", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwDetect(p, id); });
     m_handlers.emplace("hw.recommend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwRecommend(p, id); });
     m_handlers.emplace("moderations.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleModerationsList(p, id); });
+    m_handlers.emplace("calendar.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarList(p, id); });
     m_handlers.emplace("avatar.bundle.download", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarBundleDownload(p, id); });
     m_handlers.emplace("avatar.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarDetails(p, id); });
     m_handlers.emplace("world.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldDetails(p, id); });
@@ -608,10 +625,19 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("favorites.syncOfficial", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesSyncOfficial(p, id); });
     m_handlers.emplace("favorites.export", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesExport(p, id); });
     m_handlers.emplace("favorites.import", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesImport(p, id); });
+    m_handlers.emplace("friendLog.insert", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendLogInsert(p, id); });
     m_handlers.emplace("friendLog.recent", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendLogRecent(p, id); });
     m_handlers.emplace("friendLog.forUser", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendLogForUser(p, id); });
     m_handlers.emplace("friendNote.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendNoteGet(p, id); });
     m_handlers.emplace("friendNote.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendNoteSet(p, id); });
+
+    // Experimental visual avatar search (v0.11) — guarded on the frontend
+    // by the avatarVisualSearch experimental flag. The handlers are always
+    // registered; if the flag is off the frontend simply never calls them.
+    m_handlers.emplace("vector.upsertEmbedding", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVectorUpsertEmbedding(p, id); });
+    m_handlers.emplace("vector.search",          [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVectorSearch(p, id); });
+    m_handlers.emplace("vector.getUnindexed",    [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVectorGetUnindexed(p, id); });
+    m_handlers.emplace("vector.removeEmbedding", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVectorRemoveEmbedding(p, id); });
 
     // Plugin system — registered in the separate plugin-handlers map
     // because they take a third parameter (callerPluginId) so

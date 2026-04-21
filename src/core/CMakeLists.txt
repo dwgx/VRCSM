@@ -42,6 +42,32 @@ add_library(vrcsm_core STATIC
     plugins/PluginInstaller.cpp
     plugins/PluginRegistry.cpp
     plugins/PluginFeed.cpp
+
+    # v0.11 experimental: sqlite-vec vendored amalgamation
+    # (asg017/sqlite-vec v0.1.9, Apache-2.0/MIT dual-licensed).
+    # Statically linked into the single sqlite3 instance; registered via
+    # sqlite3_auto_extension in Database::Open.
+    ${CMAKE_SOURCE_DIR}/third_party/sqlite-vec/sqlite-vec.c
+)
+
+# sqlite-vec.c compiled with SQLITE_CORE so it uses the main sqlite3.h
+# rather than sqlite3ext.h's dynamic loader shim, and wrapped with
+# warning suppressions appropriate for a vendored C amalgamation.
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/third_party/sqlite-vec/sqlite-vec.c
+    PROPERTIES
+    COMPILE_DEFINITIONS "SQLITE_CORE=1"
+)
+if(MSVC)
+    set_source_files_properties(
+        ${CMAKE_SOURCE_DIR}/third_party/sqlite-vec/sqlite-vec.c
+        PROPERTIES
+        COMPILE_FLAGS "/w"
+    )
+endif()
+
+target_include_directories(vrcsm_core PRIVATE
+    ${CMAKE_SOURCE_DIR}/third_party/sqlite-vec
 )
 
 add_subdirectory(updater)
