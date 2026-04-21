@@ -134,6 +134,7 @@ private:
     nlohmann::json HandleNotificationsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleNotificationsAccept(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleNotificationsRespond(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleNotificationsSee(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleNotificationsHide(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleNotificationsClear(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleMessageSend(const nlohmann::json& params, const std::optional<std::string>& id);

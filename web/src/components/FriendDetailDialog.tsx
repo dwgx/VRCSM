@@ -14,6 +14,7 @@ import {
   History,
   StickyNote,
   Save,
+  Send,
   Users,
   MapPin,
 } from "lucide-react";
@@ -198,6 +199,29 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
 
   // --- Action states -----------------------------------------------------------
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+
+  // --- DM compose --------------------------------------------------------------
+  const [messageText, setMessageText] = useState("");
+  const [messageSending, setMessageSending] = useState(false);
+  const sendMessage = useCallback(async () => {
+    if (!friend?.id || !messageText.trim()) return;
+    try {
+      setMessageSending(true);
+      await ipc.sendMessage(friend.id, messageText.trim());
+      setMessageText("");
+      toast.success(t("friendDetail.messageSent", { defaultValue: "Message sent" }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setMessageSending(false);
+    }
+  }, [friend?.id, messageText, t]);
+
+  // Reset compose when switching between friends so an in-progress
+  // message doesn't leak into the next dialog open.
+  useEffect(() => {
+    setMessageText("");
+  }, [friend?.id]);
 
   // --- Derived data ------------------------------------------------------------
   const rank = trustRank(friend?.tags ?? []);
@@ -628,6 +652,60 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
               </div>
             );
           })()}
+
+          {/* ========== 5b. Send Message ========== */}
+          <div className="px-5 py-4 border-t border-[hsl(var(--border)/0.4)]">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
+              <Send className="size-3" />
+              {t("friendDetail.sendMessage", { defaultValue: "Send a message" })}
+            </div>
+            <textarea
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value.slice(0, 2000))}
+              placeholder={t("friendDetail.messagePlaceholder", {
+                defaultValue: "Hi! Want to hop into a world?",
+              })}
+              className={cn(
+                "w-full resize-none rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.5)]",
+                "bg-[hsl(var(--canvas))] px-2.5 py-1.5 text-[11px] text-[hsl(var(--foreground))]",
+                "placeholder:text-[hsl(var(--muted-foreground)/0.5)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))] transition-all",
+              )}
+              rows={2}
+              maxLength={2000}
+              onKeyDown={(e) => {
+                // Ctrl/⌘+Enter sends — matches Discord's muscle memory.
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !messageSending) {
+                  e.preventDefault();
+                  void sendMessage();
+                }
+              }}
+            />
+            <div className="flex items-center justify-between mt-1.5">
+              <div className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                {messageText.length > 0 ? `${messageText.length} / 2000` : ""}
+                {/* VRChat silently drops DMs to non-friends — surface it
+                   inline so the user understands a missing reply isn't
+                   our bug. */}
+                {messageText.length === 0 ? (
+                  <span>
+                    {t("friendDetail.messageHint", {
+                      defaultValue: "Ctrl+Enter to send. VRChat drops DMs from non-friends.",
+                    })}
+                  </span>
+                ) : null}
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                disabled={messageSending || messageText.trim().length === 0}
+                onClick={() => void sendMessage()}
+              >
+                {messageSending ? <Loader2 className="size-3 animate-spin" /> : <Send className="size-3" />}
+                {t("friendDetail.send", { defaultValue: "Send" })}
+              </Button>
+            </div>
+          </div>
 
           {/* ========== 6. Friend Note ========== */}
           <div className="px-5 py-4">

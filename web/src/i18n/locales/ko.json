@@ -114,6 +114,21 @@
     "selectAvatarNeedsAuth": "먼저 VRChat 에 로그인하세요",
     "selectAvatarFailed": "전환 실패"
   },
+  "notifications": {
+    "title": "알림",
+    "empty": "알림이 없습니다",
+    "loading": "불러오는 중…",
+    "unread": "읽지 않음",
+    "refresh": "새로 고침",
+    "clearAll": "모두 지우기",
+    "accept": "수락",
+    "reply": "답장",
+    "hide": "숨기기",
+    "accepted": "수락됨",
+    "replied": "답장을 보냈습니다",
+    "cleared": "받은편지함을 비웠습니다",
+    "inviteAccept": "지금 갑니다!"
+  },
   "auth": {
     "signIn": "로그인",
     "signInWithVrchat": "VRChat 으로 로그인",

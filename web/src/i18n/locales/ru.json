@@ -114,6 +114,21 @@
     "selectAvatarNeedsAuth": "Сначала войдите в VRChat",
     "selectAvatarFailed": "Не удалось переключить аватар"
   },
+  "notifications": {
+    "title": "Уведомления",
+    "empty": "Нет уведомлений",
+    "loading": "Загрузка…",
+    "unread": "непрочитано",
+    "refresh": "Обновить",
+    "clearAll": "Очистить",
+    "accept": "Принять",
+    "reply": "Ответить",
+    "hide": "Скрыть",
+    "accepted": "Принято",
+    "replied": "Ответ отправлен",
+    "cleared": "Папка очищена",
+    "inviteAccept": "Уже иду!"
+  },
   "auth": {
     "signIn": "Войти",
     "signInWithVrchat": "Войти через VRChat",

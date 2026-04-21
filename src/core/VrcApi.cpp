@@ -1770,6 +1770,39 @@ Result<nlohmann::json> VrcApi::respondNotification(
     return nlohmann::json{{"ok", true}};
 }
 
+Result<nlohmann::json> VrcApi::seeNotification(const std::string& notificationId)
+{
+    if (notificationId.empty())
+    {
+        return Error{"invalid_params", "Empty notificationId", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto response = httpRequest(
+        L"PUT", kApiHostW,
+        toWide(fmt::format("/api/1/auth/user/notifications/{}/see?apiKey={}",
+                           notificationId, kApiKey)),
+        headers, "", false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("notifications/see returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
 Result<nlohmann::json> VrcApi::hideNotification(const std::string& notificationId)
 {
     if (notificationId.empty())

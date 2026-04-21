@@ -120,6 +120,16 @@ nlohmann::json IpcBridge::HandleNotificationsRespond(const nlohmann::json& param
     return unwrapResult(vrcsm::core::VrcApi::respondNotification(*id, slot, message));
 }
 
+nlohmann::json IpcBridge::HandleNotificationsSee(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto id = JsonStringField(params, "notificationId");
+    if (!id.has_value() || id->empty())
+    {
+        throw std::runtime_error("notifications.see: missing 'notificationId'");
+    }
+    return unwrapResult(vrcsm::core::VrcApi::seeNotification(*id));
+}
+
 nlohmann::json IpcBridge::HandleNotificationsHide(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto id = JsonStringField(params, "notificationId");
@@ -154,29 +164,31 @@ nlohmann::json IpcBridge::HandleMessageSend(const nlohmann::json& params, const 
 
 namespace
 {
-// VRCSM's own Discord application id. Replace via VrcConfig key
-// `discordClientId` if the project ever rotates it. Hardcoding a
-// placeholder lets the feature work out of the box for the common case
-// where the user hasn't registered their own app.
-//
-// TODO(release): register a real app at https://discord.com/developers/applications
-// and put its snowflake here.
-constexpr const char* kDefaultDiscordClientId = "1234567890000000000";
+// Discord application id. There is intentionally no built-in default —
+// every user must register their own app at
+// https://discord.com/developers/applications and pass the snowflake
+// through `params.clientId` (the frontend persists it to VrcConfig).
+// Refusing the connection without a real id avoids "why does my
+// Discord show generic VRCSM" complaints when the project hasn't
+// shipped its own published app yet.
+
 }
 
 nlohmann::json IpcBridge::HandleDiscordSetActivity(const nlohmann::json& params, const std::optional<std::string>&)
 {
+    const auto overrideId = JsonStringField(params, "clientId");
+    if (!overrideId.has_value() || overrideId->empty())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "discord_not_configured",
+            "Discord application client_id missing — set it under Settings → Discord",
+            0});
+    }
+
     if (!m_discordRpc)
     {
         m_discordRpc = std::make_unique<vrcsm::core::DiscordRpc>();
-        // Allow an override via params so the frontend can feed whatever
-        // client id the user has configured, otherwise fall back to the
-        // built-in default.
-        const auto overrideId = JsonStringField(params, "clientId");
-        m_discordRpc->SetClientId(
-            overrideId.has_value() && !overrideId->empty()
-                ? *overrideId
-                : std::string(kDefaultDiscordClientId));
+        m_discordRpc->SetClientId(*overrideId);
         m_discordRpc->Start();
     }
 
@@ -291,13 +303,78 @@ nlohmann::json IpcBridge::HandleScreenshotsWatcherStart(const nlohmann::json& pa
         throw std::runtime_error("screenshots.watcher.start: unable to resolve VRChat screenshots folder");
     }
 
+    // Auto-inject can be disabled per call — useful if a plugin wants
+    // to handle metadata itself and only needs the watcher notification.
+    const bool autoInject =
+        !(params.is_object() &&
+          params.contains("autoInject") &&
+          params["autoInject"].is_boolean() &&
+          !params["autoInject"].get<bool>());
+
     const bool ok = m_screenshotWatcher->Start(folder,
-        [this](const std::filesystem::path& path)
+        [this, autoInject](const std::filesystem::path& path)
         {
-            // Notify the UI that a new screenshot landed so the page
-            // can refresh without a polling scan.
+            nlohmann::json metadata;
+
+            if (autoInject)
+            {
+                // Pull the current radar snapshot so world/instance/player
+                // data from the moment of capture survives into the PNG —
+                // matching VRCX's signature feature. Radar is
+                // process-memory-read only; if VRChat isn't attached we
+                // just skip the VRC fields.
+                try
+                {
+                    const auto snap = m_radarEngine.PollOnce();
+                    if (snap.vrcAttached)
+                    {
+                        if (!snap.worldId.empty()) metadata["vrcsm:world"] = snap.worldId;
+                        if (!snap.instanceId.empty()) metadata["vrcsm:instance"] = snap.instanceId;
+
+                        auto players = nlohmann::json::array();
+                        std::string playerNames;
+                        for (const auto& p : snap.players)
+                        {
+                            nlohmann::json entry{
+                                {"displayName", p.displayName},
+                                {"userId", p.userId},
+                                {"isLocal", p.isLocal},
+                            };
+                            players.push_back(std::move(entry));
+                            if (!playerNames.empty()) playerNames += ", ";
+                            playerNames += p.displayName;
+                        }
+                        metadata["vrcsm:players"] = players.dump();
+                        if (!playerNames.empty())
+                        {
+                            // Also provide a pre-flattened human-readable
+                            // player list so tools like exiftool show
+                            // something useful without JSON parsing.
+                            metadata["Description"] =
+                                fmt::format("Players: {}", playerNames);
+                        }
+                    }
+                }
+                catch (const std::exception& ex)
+                {
+                    spdlog::warn("screenshots.auto-inject: radar poll failed: {}", ex.what());
+                }
+
+                // Always stamp when + by whom regardless of radar state.
+                metadata["vrcsm:capturedAt"] = vrcsm::core::nowIso();
+                metadata["vrcsm:app"] = "VRCSM " VRCSM_VERSION_STRING;
+                metadata["Software"] = "VRCSM " VRCSM_VERSION_STRING;
+
+                (void)vrcsm::core::InjectPngTextFromJson(path, metadata);
+            }
+
+            // Fire the UI event after (best-effort) injection so Screenshots.tsx
+            // can show the image with metadata already in place.
             PostEventToUi("screenshots.new",
-                nlohmann::json{{"path", vrcsm::core::toUtf8(path.wstring())}});
+                nlohmann::json{
+                    {"path", vrcsm::core::toUtf8(path.wstring())},
+                    {"metadata", std::move(metadata)},
+                });
         });
 
     return nlohmann::json{

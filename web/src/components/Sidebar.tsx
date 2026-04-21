@@ -17,6 +17,7 @@ import {
   Users2,
   Radio,
   Orbit,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -50,6 +51,7 @@ const items: NavItem[] = [
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
   { to: "/plugins", labelKey: "nav.plugins", icon: Plug, experimental: true },
+  { to: "/tools/osc", labelKey: "nav.osc", icon: Zap, experimental: true },
   { to: "/settings", labelKey: "nav.settings", icon: SettingsIcon },
 ];
 

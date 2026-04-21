@@ -23,7 +23,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SettingRow } from "./components/SettingRow";
-import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { useUiPrefBoolean, useUiPrefString } from "@/lib/ui-prefs";
+import { DISCORD_PREF_CLIENT_ID, DISCORD_PREF_ENABLED } from "@/lib/useDiscordPresence";
 import { cn } from "@/lib/utils";
 import { useReport } from "@/lib/report-context";
 import type { AppVersion } from "@/lib/types";
@@ -41,6 +42,13 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
   const [showRadarTimeline, setShowRadarTimeline] = useUiPrefBoolean("vrcsm.layout.radar.timeline.visible", true);
   const [showVrchatSidebar, setShowVrchatSidebar] = useUiPrefBoolean("vrcsm.layout.vrchat.sidebar.visible", true);
   const [showFriendsDetail, setShowFriendsDetail] = useUiPrefBoolean("vrcsm.layout.friends.detail.visible", true);
+
+  // Discord Rich Presence — opt-in, requires the user to register
+  // their own application at https://discord.com/developers/applications
+  // and paste the snowflake here. Disabled by default.
+  const [discordEnabled, setDiscordEnabled] = useUiPrefBoolean(DISCORD_PREF_ENABLED, false);
+  const [discordClientId, setDiscordClientId] = useUiPrefString(DISCORD_PREF_CLIENT_ID, "");
+  const [screenshotsAutoInject, setScreenshotsAutoInject] = useUiPrefBoolean("vrcsm.screenshots.autoInject", true);
 
   const [clearCacheOpen, setClearCacheOpen] = useState(false);
   const [clearCacheWorking, setClearCacheWorking] = useState(false);
@@ -419,6 +427,93 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
               }}
               className="w-24 h-8 text-[12px]"
             />
+          </SettingRow>
+        </CardContent>
+      </Card>
+
+      {/* Discord Rich Presence — opt-in. Requires the user to register
+          their own Discord app and paste the snowflake here. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.discord.title", { defaultValue: "Discord Rich Presence" })}</CardTitle>
+          <CardDescription>
+            {t("settings.discord.desc", {
+              defaultValue:
+                "Show your current VRChat world and player count in your Discord status. Register a Discord app at discord.com/developers/applications and paste its Application ID below.",
+            })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <SettingRow
+            label={t("settings.discord.enabled.label", { defaultValue: "Enable Rich Presence" })}
+            hint={t("settings.discord.enabled.desc", {
+              defaultValue: "Push activity to Discord whenever the VRChat instance changes.",
+            })}
+          >
+            <Button
+              variant={discordEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDiscordEnabled(!discordEnabled)}
+              className="h-7 px-3 text-[12px]"
+            >
+              {discordEnabled
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.discord.clientId.label", { defaultValue: "Application ID" })}
+            hint={t("settings.discord.clientId.desc", {
+              defaultValue: "The 18-19 digit snowflake from your Discord developer dashboard.",
+            })}
+          >
+            <Input
+              value={discordClientId}
+              onChange={(e) => setDiscordClientId(e.target.value.replace(/\D/g, "").slice(0, 20))}
+              placeholder="1234567890000000000"
+              className="h-8 w-[220px] font-mono text-[12px]"
+            />
+          </SettingRow>
+        </CardContent>
+      </Card>
+
+      {/* Screenshot metadata — VRCX-style PNG tEXt chunk auto-tagging. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.screenshots.title", { defaultValue: "Screenshot metadata" })}</CardTitle>
+          <CardDescription>
+            {t("settings.screenshots.desc", {
+              defaultValue:
+                "Auto-tag new VRChat captures with the world ID, instance, and player list at the moment of capture. Tags survive in the PNG and are readable by exiftool / VRCX.",
+            })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <SettingRow
+            label={t("settings.screenshots.autoInject.label", { defaultValue: "Inject metadata on new captures" })}
+            hint={t("settings.screenshots.autoInject.desc", {
+              defaultValue: "Watches %USERPROFILE%\\Pictures\\VRChat. Inject is best-effort — radar must be attached to capture players.",
+            })}
+          >
+            <Button
+              variant={screenshotsAutoInject ? "default" : "outline"}
+              size="sm"
+              onClick={async () => {
+                const next = !screenshotsAutoInject;
+                setScreenshotsAutoInject(next);
+                try {
+                  if (next) await ipc.screenshotsWatcherStart();
+                  else await ipc.screenshotsWatcherStop();
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : String(err));
+                }
+              }}
+              className="h-7 px-3 text-[12px]"
+            >
+              {screenshotsAutoInject
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
           </SettingRow>
         </CardContent>
       </Card>

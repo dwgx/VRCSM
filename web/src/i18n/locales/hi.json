@@ -114,6 +114,21 @@
     "selectAvatarNeedsAuth": "पहले VRChat में साइन-इन करें",
     "selectAvatarFailed": "स्विच विफल"
   },
+  "notifications": {
+    "title": "सूचनाएँ",
+    "empty": "कोई सूचना नहीं",
+    "loading": "लोड हो रहा है…",
+    "unread": "अपठित",
+    "refresh": "रिफ्रेश",
+    "clearAll": "सब साफ़ करें",
+    "accept": "स्वीकारें",
+    "reply": "उत्तर दें",
+    "hide": "छिपाएँ",
+    "accepted": "स्वीकार किया",
+    "replied": "उत्तर भेजा गया",
+    "cleared": "इनबॉक्स साफ़ किया",
+    "inviteAccept": "अभी आ रहा हूँ!"
+  },
   "auth": {
     "signIn": "साइन इन",
     "signInWithVrchat": "VRChat से साइन इन",

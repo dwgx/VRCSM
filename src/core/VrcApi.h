@@ -192,6 +192,11 @@ public:
         int responseSlot,
         const std::string& message);
 
+    /// Mark a notification as seen (unread → read) via PUT
+    /// `/api/1/auth/user/notifications/{id}/see`. Fire-and-forget —
+    /// lets the inbox badge reset on other clients.
+    static Result<nlohmann::json> seeNotification(const std::string& notificationId);
+
     /// Mark a notification hidden (delete from inbox) via PUT
     /// `/api/1/auth/user/notifications/{id}/hide`.
     static Result<nlohmann::json> hideNotification(const std::string& notificationId);
