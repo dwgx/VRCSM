@@ -23,8 +23,16 @@
     "friendLog": "บันทึกเพื่อน",
     "groups": "กลุ่ม",
     "category": {
-      "plugins": "ปลั๊กอิน"
-    }
+      "plugins": "ปลั๊กอิน",
+      "assets": "แอสเซท",
+      "diagnostics": "การวินิจฉัย",
+      "maintenance": "การบำรุงรักษา",
+      "media": "สื่อ",
+      "project": "โปรเจกต์",
+      "social": "โซเชียล",
+      "workspace": "พื้นที่ทำงาน"
+    },
+    "osc": "เครื่องมือ OSC"
   },
   "profile": {
     "title": "โปรไฟล์ของฉัน",
@@ -197,9 +205,9 @@
     "linkedAccountsQuick": "บัญชีที่เชื่อม",
     "socialPulse": "สัญญาณสังคม",
     "marketplaceQuick": "ตลาด",
-    "favoriteAvatars": "อวตารที่ชื่นชอบ",
-    "favoriteWorlds": "โลกที่ชื่นชอบ",
-    "downloadReady": "พร้อมดาวน์โหลด",
+    "favoriteAvatars": "อวตารโปรด",
+    "favoriteWorlds": "เวิลด์โปรด",
+    "downloadReady": "พร้อมโหลด",
     "block": "บล็อก",
     "mute": "ปิดเสียง",
     "pickDownloadFolder": "เลือกโฟลเดอร์สำหรับโหลดอวตาร",
@@ -230,9 +238,6 @@
     "noDownloadCandidates": "ยังไม่มีอวตารล่าสุดให้โหลดได้",
     "marketplaceTitle": "ร้านค้า",
     "marketplaceBody": "ข้อมูลการเป็นเจ้าของจากอวตารที่ชอบ, คลังในเครื่อง, ไฟล์ที่โหลดล่าสุด และข้อมูลจากเซสชัน VRChat",
-    "favoriteAvatars": "อวตารโปรด",
-    "favoriteWorlds": "เวิลด์โปรด",
-    "downloadReady": "พร้อมโหลด",
     "downloadFolder": "โฟลเดอร์ดาวน์โหลด",
     "topCreators": "ผู้สร้างยอดฮิตในเครื่อง",
     "inventoryCount": "{{count}} อวตาร",
@@ -249,7 +254,15 @@
     "subscriptionInactive": "ไม่ได้ใช้งาน",
     "subscriptionSignals": "สัญญาณ",
     "lastExpiredSubscription": "หมดอายุล่าสุด",
-    "liveSignal": "เรียลไทม์"
+    "liveSignal": "เรียลไทม์",
+    "tabs": {
+      "avatars": "อวาตาร์",
+      "friends": "เพื่อน",
+      "overview": "ภาพรวม",
+      "social": "โซเชียล",
+      "vrcPlus": "VRC+",
+      "worlds": "โลก"
+    }
   },
   "friends": {
     "title": "เพื่อน",
@@ -431,7 +444,30 @@
       "desc": "ดึงมาจากฐานข้อมูลเหตุการณ์ผู้เล่นแบบถาวร",
       "open": "เปิดบันทึก",
       "empty": "ยังไม่มีเหตุการณ์เซสชันที่บันทึกไว้"
-    }
+    },
+    "analysis": {
+      "aggregate": {
+        "avatarChanges": "การเปลี่ยนอวาตาร์",
+        "totalSessions": "เซสชัน",
+        "uniquePlayers": "ผู้เล่นที่ไม่ซ้ำกัน",
+        "uniqueWorlds": "โลกที่ไม่ซ้ำกัน"
+      },
+      "empty": "ไม่พบเซสชันในบันทึกของเครื่อง",
+      "ongoing": "กำลังดำเนินการ",
+      "openFromOffline": "เรียกดูการวิเคราะห์ย้อนหลัง",
+      "session": {
+        "noPlayers": "ไม่มีบันทึกเหตุการณ์ของผู้เล่น",
+        "players": "ผู้เล่น",
+        "timeline": "ไทม์ไลน์"
+      },
+      "sessions": "ประวัติเซสชัน",
+      "sessionsDesc": "สร้างใหม่จากบันทึกของเครื่อง — ล่าสุดก่อน",
+      "tab": "การวิเคราะห์ย้อนหลัง",
+      "topPlayers": "ผู้เล่นที่พบมากที่สุด",
+      "topWorlds": "โลกที่เยี่ยมชมมากที่สุด"
+    },
+    "vrcNotRunning": "VRChat ไม่ได้ทำงานอยู่",
+    "vrcNotRunningHint": "เริ่ม VRChat เพื่อตรวจสอบห้องและผู้เล่นแบบเรียลไทม์"
   },
   "common": {
     "enabled": "เปิดใช้งาน",
@@ -457,8 +493,6 @@
     "browse": "เรียกดู…",
     "repair": "ซ่อมแซม",
     "copy": "คัดลอก",
-    "enabled": "เปิดใช้งาน",
-    "disabled": "ปิดใช้งาน",
     "path": "พาธ",
     "created": "สร้างเมื่อ",
     "updated": "อัปเดตเมื่อ",
@@ -469,7 +503,13 @@
     "unknown": "ไม่ทราบ",
     "remove": "นำออก",
     "sidebar": "แถบข้าง",
-    "experimental": "เบต้า"
+    "experimental": "เบต้า",
+    "copied": "คัดลอกแล้ว",
+    "copyFailed": "คัดลอกไม่สำเร็จ",
+    "copyId": "คัดลอก ID",
+    "noDescription": "ไม่มีคำอธิบาย...",
+    "openInBrowser": "เปิดในเบราว์เซอร์",
+    "openOnVrchat": "เปิดบนเว็บไซต์ VRChat"
   },
   "about": {
     "title": "เกี่ยวกับ VRCSM",
@@ -1063,7 +1103,13 @@
       "runtimeTitle": "ตรวจสอบระบบ",
       "runtimeDesc": "ข้อมูลสรุประบบที่อ่านจากล็อก VRChat ในเครื่องนี้",
       "runtimeMode": "โหมดระบบ",
-      "runtimeDetail": "รายละเอียดที่พบ"
+      "runtimeDetail": "รายละเอียดที่พบ",
+      "layoutDesc": "ควบคุมแผงด้านข้างให้แสดงเป็นค่าเริ่มต้นในแอป",
+      "layoutTitle": "เค้าโครงพื้นที่ทำงาน",
+      "profileContext": "บริบทโปรไฟล์แบบเรียลไทม์",
+      "profileContextHint": "แสดงบริบทของอวาตาร์และโลกแบบเรียลไทม์ด้านขวาในโปรไฟล์ของฉัน",
+      "worldInspector": "ตัวตรวจสอบโลก",
+      "worldInspectorHint": "เปิดตัวตรวจสอบโลกที่ปรับขนาดได้ไว้ข้างรายการแผนที่"
     },
     "steamvr": {
       "saveDirty": "บันทึกการตั้งค่า *",
@@ -1075,7 +1121,107 @@
         "odt": "Oculus Debug Tool",
         "gpuScheduling": "GPU Scheduling",
         "guide": "คู่มือ VRCSM"
-      }
+      },
+      "automaticBandwidth": {
+        "hint": "ให้ SteamVR ลดบิตเรตแบบไดนามิกเมื่อสัญญาณแย่",
+        "label": "แบนด์วิดท์อัตโนมัติ"
+      },
+      "disabled": "ปิดการใช้งาน",
+      "enabled": "เปิดการใช้งาน",
+      "errorRead": "อ่าน steamvr.vrsettings ไม่สำเร็จ: {{msg}}",
+      "errorSave": "บันทึก steamvr.vrsettings ไม่สำเร็จ: {{msg}}",
+      "motionSmoothing": {
+        "hint": "สร้างเฟรมชดเชยเมื่อแล็ก ดีสำหรับเวลาการเรนเดอร์เฟรมที่แย่ แต่อาจทำให้เกิดภาพซ้อนได้",
+        "label": "การทำภาพเคลื่อนไหวให้ราบรื่น"
+      },
+      "presetApplied": "ใช้พรีเซ็ตแล้ว",
+      "presetBalanced": "สมดุล (100Mbps)",
+      "presetPerformance": "ประสิทธิภาพ (50Mbps)",
+      "presetQuality": "คุณภาพ (150Mbps)",
+      "quickPresets": "พรีเซ็ตด่วน:",
+      "refreshRate": {
+        "hint": "ต้องตรงกับอัตรารีเฟรชที่ชุดหูฟังรองรับ (72, 80, 90, 120)",
+        "label": "อัตรารีเฟรช (Hz)"
+      },
+      "reload": "โหลดซ้ำ",
+      "save": "บันึกการตั้งค่า",
+      "saving": "กำลังบันทึก...",
+      "steamvrIdle": "SteamVR ไม่ได้ทำงาน",
+      "steamvrRunning": "SteamVR กำลังทำงาน",
+      "successSave": "อัปเดต steamvr.vrsettings สำเร็จ!",
+      "supersampleFiltering": {
+        "hint": "ลดรอยหยัก แต่อาจทำให้ภาพเบลอเล็กน้อย",
+        "label": "การกรอง Supersample"
+      },
+      "supersampleManualOverride": {
+        "hint": "บังคับใช้สเกลที่กำหนดเองแทนการปรับอัตโนมัติ",
+        "label": "ปรับ Supersample แบบกำหนดเอง"
+      },
+      "supersampleScale": {
+        "hint": "สเกลการเรนเดอร์ (1.0 = ปกติ, 1.5 = คมชัดสูง, ต้องใช้ GPU ที่ดี)",
+        "label": "สเกล Supersampling"
+      },
+      "targetBandwidth": {
+        "hint": "ขีดจำกัดบิตเรตสำหรับ Steam Link สูงสุด 150-200 สำหรับเราเตอร์ที่ดี",
+        "label": "แบนด์วิดท์เป้าหมาย (Mbps)"
+      },
+      "title": "การตั้งค่าสตรีม VR (SteamVR / Steam Link)"
+    },
+    "configJson": {
+      "cacheDirectory": {
+        "hint": "พาธแบบสัมบูรณ์ไปยังโฟลเดอร์แคชที่กำหนดเอง",
+        "label": "โฟลเดอร์แคช"
+      },
+      "cacheSize": {
+        "hint": "ขนาดสูงสุดของแคช VRChat ในหน่วยกิกะไบต์",
+        "label": "ขนาดแคช (GB)"
+      },
+      "cameraResHeight": {
+        "hint": "ความละเอียดของรูปภาพกล้อง",
+        "label": "ความสูงรูปภาพกล้อง"
+      },
+      "cameraResWidth": {
+        "hint": "ความละเอียดของรูปภาพกล้อง",
+        "label": "ความกว้างรูปภาพกล้อง"
+      },
+      "customLoadScreenLogo": {
+        "hint": "พาธแบบสัมบูรณ์ไปยังโลโก้ PNG ที่กำหนดเองสำหรับหน้าจอโหลด",
+        "label": "โลโก้หน้าจอโหลดที่กำหนดเอง"
+      },
+      "description": "พารามิเตอร์ของ Core Engine ที่อยู่ใน AppData/LocalLow ตรวจสอบให้แน่ใจว่าได้บันทึกการเปลี่ยนแปลง",
+      "desktopReticle": {
+        "hint": "แสดงจุดกากบาทตรงกลางในโหมดเดสก์ท็อป",
+        "label": "เป้าเล็งบนเดสก์ท็อป"
+      },
+      "disabled": "ปิดการใช้งาน",
+      "enabled": "เปิดการใช้งาน",
+      "errorRead": "อ่าน config.json ไม่สำเร็จ: {{msg}}",
+      "errorSave": "บันทึก config.json ไม่สำเร็จ: {{msg}}",
+      "fpsLimitDesktop": {
+        "hint": "อัตราเฟรมสูงสุดในโหมดเดสก์ท็อป (0 = ไม่จำกัด)",
+        "label": "FPS Limit (เดสก์ท็อป)"
+      },
+      "fpsLimitVr": {
+        "hint": "อัตราเฟรมสูงสุดในโหมด VR (0 = ไม่จำกัด)",
+        "label": "FPS Limit (VR)"
+      },
+      "ignoreParticles": {
+        "hint": "ปรับปรุงประสิทธิภาพอย่างมากในโลกที่มีคนเยอะ",
+        "label": "ละเว้นพาร์ติเคิล"
+      },
+      "reload": "โหลดซ้ำ",
+      "save": "บันทึกการตั้งค่า",
+      "saving": "กำลังบันทึก...",
+      "successSave": "อัปเดต config.json สำเร็จ!",
+      "title": "การตั้งค่าแอป (config.json)",
+      "vrcIdle": "VRChat ไม่ได้ใช้งาน",
+      "vrcRunning": "VRChat กำลังทำงาน"
+    },
+    "tabs": {
+      "config": "การตั้งค่าแอป (config.json)",
+      "general": "ทั่วไป",
+      "registry": "เรจิสทรี VRChat",
+      "steamvr": "SteamVR"
     }
   },
   "profileCard": {
@@ -1143,6 +1289,33 @@
       "notInstalled": "ไม่ได้ติดตั้งปลั๊กอิน {{id}}",
       "disabled": "ปลั๊กอิน {{id}} ถูกปิดใช้งาน",
       "noPanel": "ปลั๊กอิน {{id}} ไม่มี UI แผงควบคุม"
+    }
+  },
+  "avatar": {
+    "popup": {
+      "containsAssetUrl": "มี Asset URL ที่ถูกต้อง",
+      "fileSize": "ขนาดไฟล์",
+      "platforms": "แพลตฟอร์ม",
+      "unknown": "ไม่ทราบ",
+      "unspecified": "ไม่ได้ระบุ"
+    }
+  },
+  "folderPicker": {
+    "choose": "เลือกโฟลเดอร์นี้",
+    "empty": "ไม่มีโฟลเดอร์ย่อยที่นี่",
+    "hint": "นำทางไปยังโฟลเดอร์ แล้วคลิกเลือกโฟลเดอร์นี้",
+    "noDrives": "ไม่พบไดรฟ์",
+    "noSelection": "(ไม่ได้เลือกอะไร)",
+    "refresh": "รีเฟรช",
+    "thisPc": "พีซีเครื่องนี้",
+    "title": "เลือกโฟลเดอร์",
+    "truncated": "แสดงรายการสูงสุดที่ 2000 รายการ",
+    "up": "ขึ้น"
+  },
+  "world": {
+    "popup": {
+      "favorites": "รายการโปรด",
+      "visits": "การเข้าชม"
     }
   }
 }

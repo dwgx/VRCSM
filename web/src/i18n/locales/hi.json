@@ -23,8 +23,16 @@
     "friendLog": "फ्रेंड लॉग",
     "groups": "ग्रुप्स",
     "category": {
-      "plugins": "प्लगइन"
-    }
+      "plugins": "प्लगइन",
+      "assets": "एसेट्स",
+      "diagnostics": "डायग्नोस्टिक्स",
+      "maintenance": "रखरखाव",
+      "media": "मीडिया",
+      "project": "प्रोजेक्ट",
+      "social": "सोशल",
+      "workspace": "वर्कस्पेस"
+    },
+    "osc": "OSC टूल्स"
   },
   "profile": {
     "title": "मेरा प्रोफ़ाइल",
@@ -198,8 +206,8 @@
     "socialPulse": "सोशल पल्स",
     "marketplaceQuick": "मार्केट",
     "favoriteAvatars": "पसंदीदा अवतार",
-    "favoriteWorlds": "पसंदीदा वर्ल्ड",
-    "downloadReady": "डाउनलोड तैयार",
+    "favoriteWorlds": "पसंदीदा दुनिया",
+    "downloadReady": "डाउनलोड के लिए तैयार",
     "block": "ब्लॉक",
     "mute": "म्यूट",
     "pickDownloadFolder": "अवतार बंडल के लिए फ़ोल्डर चुनें",
@@ -230,9 +238,6 @@
     "noDownloadCandidates": "कोई भी हालिया अवतार अभी डाउनलोड के लिए उपलब्ध नहीं है।",
     "marketplaceTitle": "मार्केटप्लेस",
     "marketplaceBody": "आधिकारिक पसंदीदा, स्थानीय अवतार इन्वेंट्री, हाल के बंडल लक्ष्य और सक्रिय VRChat सेशन द्वारा प्रदर्शित किसी भी वाणिज्य-संबंधित क्षेत्रों से खींचे गए स्वामित्व और अधिग्रहण संकेत।",
-    "favoriteAvatars": "पसंदीदा अवतार",
-    "favoriteWorlds": "पसंदीदा दुनिया",
-    "downloadReady": "डाउनलोड के लिए तैयार",
     "downloadFolder": "डाउनलोड फ़ोल्डर",
     "topCreators": "स्थानीय इन्वेंट्री में शीर्ष निर्माता",
     "inventoryCount": "{{count}} अवतार",
@@ -249,7 +254,15 @@
     "subscriptionInactive": "इनएक्टिव",
     "subscriptionSignals": "सिग्नल",
     "lastExpiredSubscription": "पिछला समाप्त",
-    "liveSignal": "लाइव सिग्नल"
+    "liveSignal": "लाइव सिग्नल",
+    "tabs": {
+      "avatars": "अवतार",
+      "friends": "दोस्त",
+      "overview": "अवलोकन",
+      "social": "सोशल",
+      "vrcPlus": "VRC+",
+      "worlds": "दुनिया"
+    }
   },
   "friends": {
     "title": "मित्र",
@@ -431,7 +444,30 @@
       "desc": "स्थायी player-event डेटाबेस से लिया गया।",
       "open": "लॉग खोलें",
       "empty": "अभी तक कोई recorded session event नहीं है।"
-    }
+    },
+    "analysis": {
+      "aggregate": {
+        "avatarChanges": "अवतार में बदलाव",
+        "totalSessions": "सत्र",
+        "uniquePlayers": "अद्वितीय खिलाड़ी",
+        "uniqueWorlds": "अद्वितीय दुनिया"
+      },
+      "empty": "स्थानीय लॉग्स में कोई सत्र नहीं मिला।",
+      "ongoing": "जारी है",
+      "openFromOffline": "ऐतिहासिक विश्लेषण ब्राउज़ करें",
+      "session": {
+        "noPlayers": "कोई खिलाड़ी इवेंट दर्ज नहीं हुआ।",
+        "players": "खिलाड़ी",
+        "timeline": "टाइमलाइन"
+      },
+      "sessions": "सत्र इतिहास",
+      "sessionsDesc": "स्थानीय लॉग्स से पुनर्निर्मित — सबसे नया पहले।",
+      "tab": "ऐतिहासिक विश्लेषण",
+      "topPlayers": "सबसे ज्यादा मिले खिलाड़ी",
+      "topWorlds": "सबसे अधिक विज़िट की गई दुनिया"
+    },
+    "vrcNotRunning": "VRChat नहीं चल रहा है",
+    "vrcNotRunningHint": "वास्तविक समय में कमरों और खिलाड़ियों की निगरानी के लिए VRChat शुरू करें"
   },
   "common": {
     "enabled": "सक्षम",
@@ -457,8 +493,6 @@
     "browse": "ब्राउज़…",
     "repair": "मरम्मत",
     "copy": "कॉपी",
-    "enabled": "सक्षम",
-    "disabled": "अक्षम",
     "path": "पाथ",
     "created": "बनाया गया",
     "updated": "अपडेट किया गया",
@@ -469,7 +503,13 @@
     "unknown": "अज्ञात",
     "remove": "हटाएँ",
     "sidebar": "साइडबार",
-    "experimental": "बीटा"
+    "experimental": "बीटा",
+    "copied": "कॉपी किया गया",
+    "copyFailed": "कॉपी विफल",
+    "copyId": "ID कॉपी करें",
+    "noDescription": "कोई विवरण नहीं...",
+    "openInBrowser": "ब्राउज़र में खोलें",
+    "openOnVrchat": "VRChat वेबसाइट पर खोलें"
   },
   "about": {
     "title": "VRCSM के बारे में",
@@ -1063,7 +1103,13 @@
       "runtimeTitle": "रनटाइम डिटेक्शन",
       "runtimeDesc": "इस मशीन पर VRChat लॉग से पार्स किया गया अनुमानित पर्यावरण सारांश।",
       "runtimeMode": "रनटाइम मोड",
-      "runtimeDetail": "डिटेक्ट किया गया विवरण"
+      "runtimeDetail": "डिटेक्ट किया गया विवरण",
+      "layoutDesc": "नियंत्रित करें कि पूरे ऐप में कौन से साइड पैनल डिफ़ॉल्ट रूप से दिखाई दें।",
+      "layoutTitle": "वर्कस्पेस लेआउट",
+      "profileContext": "प्रोफ़ाइल लाइव संदर्भ",
+      "profileContextHint": "मेरी प्रोफ़ाइल पर दाईं ओर लाइव अवतार और दुनिया का संदर्भ दिखाएं।",
+      "worldInspector": "दुनिया इंस्पेक्टर",
+      "worldInspectorHint": "मैप सूची के बगल में आकार बदलने योग्य दुनिया इंस्पेक्टर को खुला रखें।"
     },
     "steamvr": {
       "saveDirty": "सेटिंग्स सेव करें *",
@@ -1075,7 +1121,107 @@
         "odt": "Oculus Debug Tool",
         "gpuScheduling": "GPU Scheduling",
         "guide": "VRCSM गाइड"
-      }
+      },
+      "automaticBandwidth": {
+        "hint": "खराब सिग्नल पर SteamVR को डायनामिक रूप से बिटरेट कम करने दें।",
+        "label": "स्वचालित बैंडविड्थ"
+      },
+      "disabled": "अक्षम",
+      "enabled": "सक्षम",
+      "errorRead": "steamvr.vrsettings पढ़ने में विफल: {{msg}}",
+      "errorSave": "steamvr.vrsettings सहेजने में विफल: {{msg}}",
+      "motionSmoothing": {
+        "hint": "लैग होने पर फ़्रेम को सिंथेसाइज़ करता है। खराब फ़्रेमटाइम के लिए अच्छा है, लेकिन घोस्टिंग का कारण बन सकता है।",
+        "label": "मोशन स्मूथिंग"
+      },
+      "presetApplied": "प्रीसेट लागू किया गया।",
+      "presetBalanced": "संतुलित (100Mbps)",
+      "presetPerformance": "प्रदर्शन (50Mbps)",
+      "presetQuality": "गुणवत्ता (150Mbps)",
+      "quickPresets": "त्वरित प्रीसेट:",
+      "refreshRate": {
+        "hint": "हेडसेट की अनुमत ताज़ा दरों (72, 80, 90, 120) से मेल खाना चाहिए",
+        "label": "रीफ्रेश रेट (Hz)"
+      },
+      "reload": "पुनः लोड करें",
+      "save": "सेटिंग्स सहेजें",
+      "saving": "सहेजा जा रहा है...",
+      "steamvrIdle": "SteamVR निष्क्रिय है",
+      "steamvrRunning": "SteamVR चल रहा है",
+      "successSave": "steamvr.vrsettings सफलतापूर्वक अपडेट किया गया!",
+      "supersampleFiltering": {
+        "hint": "थोड़े धुंधलेपन की कीमत पर अलियासिंग कम करता है",
+        "label": "सुपरसैंपल फ़िल्टरिंग"
+      },
+      "supersampleManualOverride": {
+        "hint": "स्वतः समायोजित करने के बजाय कस्टम स्केल को बाध्य करता है।",
+        "label": "सुपरसैंपल मैन्युअल ओवरराइड"
+      },
+      "supersampleScale": {
+        "hint": "रेंडर स्केल (1.0 = मूल, 1.5 = उच्च स्पष्टता, अच्छे GPU की आवश्यकता है)",
+        "label": "सुपरसैंपलिंग स्केल"
+      },
+      "targetBandwidth": {
+        "hint": "Steam Link के लिए बिटरेट सीमा। अच्छे राउटर के लिए 150-200 तक।",
+        "label": "लक्षित बैंडविड्थ (Mbps)"
+      },
+      "title": "VR स्ट्रीमिंग सेटिंग्स (SteamVR / Steam Link)"
+    },
+    "configJson": {
+      "cacheDirectory": {
+        "hint": "कस्टम कैश डायरेक्टरी का पूर्ण पथ",
+        "label": "कैश डायरेक्टरी"
+      },
+      "cacheSize": {
+        "hint": "गीगाबाइट्स में VRChat कैश का अधिकतम आकार",
+        "label": "कैश आकार (GB)"
+      },
+      "cameraResHeight": {
+        "hint": "कैमरा फ़ोटो का रिज़ॉल्यूशन",
+        "label": "कैमरा फ़ोटो की ऊंचाई"
+      },
+      "cameraResWidth": {
+        "hint": "कैमरा फ़ोटो का रिज़ॉल्यूशन",
+        "label": "कैमरा फ़ोटो की चौड़ाई"
+      },
+      "customLoadScreenLogo": {
+        "hint": "लोडिंग स्क्रीन के लिए कस्टम PNG लोगो का पूर्ण पथ",
+        "label": "कस्टम लोडिंग स्क्रीन लोगो"
+      },
+      "description": "AppData/LocalLow में स्थित कोर इंजन पैरामीटर। बदलावों को सहेजना न भूलें।",
+      "desktopReticle": {
+        "hint": "डेस्कटॉप मोड में सेंटर डॉट क्रॉसहेयर दिखाएं",
+        "label": "डेस्कटॉप रेटिकल"
+      },
+      "disabled": "अक्षम",
+      "enabled": "सक्षम",
+      "errorRead": "config.json पढ़ने में विफल: {{msg}}",
+      "errorSave": "config.json सहेजने में विफल: {{msg}}",
+      "fpsLimitDesktop": {
+        "hint": "डेस्कटॉप मोड में अधिकतम फ़्रेमरेट (0 = असीमित)",
+        "label": "FPS सीमा (डेस्कटॉप)"
+      },
+      "fpsLimitVr": {
+        "hint": "VR मोड में अधिकतम फ़्रेमरेट (0 = असीमित)",
+        "label": "FPS सीमा (VR)"
+      },
+      "ignoreParticles": {
+        "hint": "भीड़-भाड़ वाली दुनिया में प्रदर्शन में नाटकीय रूप से सुधार करता है",
+        "label": "पार्टिकल्स को अनदेखा करें"
+      },
+      "reload": "पुनः लोड करें",
+      "save": "कॉन्फ़िग सहेजें",
+      "saving": "सहेजा जा रहा है...",
+      "successSave": "config.json सफलतापूर्वक अपडेट किया गया!",
+      "title": "ऐप कॉन्फ़िग (config.json)",
+      "vrcIdle": "VRChat निष्क्रिय है",
+      "vrcRunning": "VRChat चल रहा है"
+    },
+    "tabs": {
+      "config": "ऐप कॉन्फ़िग (config.json)",
+      "general": "सामान्य",
+      "registry": "VRChat रजिस्ट्री",
+      "steamvr": "SteamVR"
     }
   },
   "profileCard": {
@@ -1143,6 +1289,33 @@
       "notInstalled": "प्लगइन {{id}} इंस्टॉल नहीं है।",
       "disabled": "प्लगइन {{id}} अक्षम है।",
       "noPanel": "प्लगइन {{id}} पैनल UI प्रदान नहीं करता।"
+    }
+  },
+  "avatar": {
+    "popup": {
+      "containsAssetUrl": "मान्य asset URL शामिल है",
+      "fileSize": "फ़ाइल आकार",
+      "platforms": "प्लेटफॉर्म्स",
+      "unknown": "अज्ञात",
+      "unspecified": "अनिर्दिष्ट"
+    }
+  },
+  "folderPicker": {
+    "choose": "यह फ़ोल्डर चुनें",
+    "empty": "यहाँ कोई सबफ़ोल्डर नहीं है।",
+    "hint": "फ़ोल्डर में नेविगेट करें, फिर 'यह फ़ोल्डर चुनें' पर क्लिक करें।",
+    "noDrives": "कोई ड्राइव नहीं मिली।",
+    "noSelection": "(कुछ भी नहीं चुना गया)",
+    "refresh": "रीफ्रेश करें",
+    "thisPc": "यह पीसी",
+    "title": "फ़ोल्डर चुनें",
+    "truncated": "सूची 2000 प्रविष्टियों पर काट दी गई।",
+    "up": "ऊपर"
+  },
+  "world": {
+    "popup": {
+      "favorites": "पसंदीदा",
+      "visits": "विज़िट्स"
     }
   }
 }

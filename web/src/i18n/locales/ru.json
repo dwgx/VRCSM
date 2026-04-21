@@ -23,8 +23,16 @@
     "friendLog": "Лог друзей",
     "groups": "Группы",
     "category": {
-      "plugins": "Плагины"
-    }
+      "plugins": "Плагины",
+      "assets": "Ассеты",
+      "diagnostics": "Диагностика",
+      "maintenance": "Обслуживание",
+      "media": "Медиа",
+      "project": "Проект",
+      "social": "Социальное",
+      "workspace": "Рабочая среда"
+    },
+    "osc": "Инструменты OSC"
   },
   "profile": {
     "title": "Мой профиль",
@@ -199,7 +207,7 @@
     "marketplaceQuick": "Магазин",
     "favoriteAvatars": "Избранные аватары",
     "favoriteWorlds": "Избранные миры",
-    "downloadReady": "К скачиванию",
+    "downloadReady": "Готово к скачиванию",
     "block": "Блок",
     "mute": "Мут",
     "pickDownloadFolder": "Выберите папку для бандлов",
@@ -230,9 +238,6 @@
     "noDownloadCandidates": "Недавних аватаров для скачивания пока нет.",
     "marketplaceTitle": "Маркетплейс",
     "marketplaceBody": "Данные о владении из избранного, инвентаря, скачанных бандлов и сессии VRChat.",
-    "favoriteAvatars": "Избранные аватары",
-    "favoriteWorlds": "Избранные миры",
-    "downloadReady": "Готово к скачиванию",
     "downloadFolder": "Папка загрузок",
     "topCreators": "Популярные авторы",
     "inventoryCount": "Аватаров: {{count}}",
@@ -249,7 +254,15 @@
     "subscriptionInactive": "Неактивна",
     "subscriptionSignals": "Сигналы",
     "lastExpiredSubscription": "Истекла",
-    "liveSignal": "Лайв-сигнал"
+    "liveSignal": "Лайв-сигнал",
+    "tabs": {
+      "avatars": "Аватары",
+      "friends": "Друзья",
+      "overview": "Обзор",
+      "social": "Общение",
+      "vrcPlus": "VRC+",
+      "worlds": "Миры"
+    }
   },
   "friends": {
     "title": "Друзья",
@@ -431,11 +444,34 @@
       "desc": "Берется из постоянной базы событий игроков.",
       "open": "Открыть лог",
       "empty": "Пока нет записанных событий сессии."
-    }
+    },
+    "analysis": {
+      "aggregate": {
+        "avatarChanges": "Смены аватара",
+        "totalSessions": "Сессии",
+        "uniquePlayers": "Уникальные игроки",
+        "uniqueWorlds": "Уникальные миры"
+      },
+      "empty": "В локальных логах сессии не найдены.",
+      "ongoing": "Текущая",
+      "openFromOffline": "Просмотр истории анализа",
+      "session": {
+        "noPlayers": "События игроков не зафиксированы.",
+        "players": "Игроки",
+        "timeline": "Хронология"
+      },
+      "sessions": "История сессий",
+      "sessionsDesc": "Восстановлено из локальных логов (сначала новые).",
+      "tab": "История анализа",
+      "topPlayers": "Часто встречаемые игроки",
+      "topWorlds": "Часто посещаемые миры"
+    },
+    "vrcNotRunning": "VRChat не запущен",
+    "vrcNotRunningHint": "Запустите VRChat для мониторинга комнат и игроков в реальном времени"
   },
   "common": {
     "enabled": "Включено",
-    "disabled": "Отключено",
+    "disabled": "Выключено",
     "loading": "Загрузка…",
     "retry": "Повторить",
     "rescan": "Пересканировать",
@@ -457,8 +493,6 @@
     "browse": "Обзор…",
     "repair": "Исправить",
     "copy": "Копировать",
-    "enabled": "Включено",
-    "disabled": "Выключено",
     "path": "Путь",
     "created": "Создано",
     "updated": "Обновлено",
@@ -469,7 +503,13 @@
     "unknown": "Неизвестно",
     "remove": "Удалить",
     "sidebar": "Сайдбар",
-    "experimental": "Бета"
+    "experimental": "Бета",
+    "copied": "Скопировано",
+    "copyFailed": "Ошибка копирования",
+    "copyId": "Скопировать ID",
+    "noDescription": "Нет описания...",
+    "openInBrowser": "Открыть в браузере",
+    "openOnVrchat": "Открыть на сайте VRChat"
   },
   "about": {
     "title": "О VRCSM",
@@ -1063,7 +1103,13 @@
       "runtimeTitle": "Среда выполнения",
       "runtimeDesc": "Информация о среде запуска на основе логов VRChat.",
       "runtimeMode": "Режим",
-      "runtimeDetail": "Детали"
+      "runtimeDetail": "Детали",
+      "layoutDesc": "Управление боковыми панелями, видимыми по умолчанию.",
+      "layoutTitle": "Макет рабочей среды",
+      "profileContext": "Живой контекст профиля",
+      "profileContextHint": "Показывать справа текущий аватар и контекст мира в «Моем профиле».",
+      "worldInspector": "Инспектор миров",
+      "worldInspectorHint": "Держать открытым инспектор миров рядом со списком карт."
     },
     "steamvr": {
       "saveDirty": "Сохранить настройки *",
@@ -1075,7 +1121,107 @@
         "odt": "Oculus Debug Tool",
         "gpuScheduling": "Планирование GPU",
         "guide": "Гид VRCSM"
-      }
+      },
+      "automaticBandwidth": {
+        "hint": "Позволить SteamVR динамически снижать битрейт при слабом сигнале.",
+        "label": "Автоматическая пропускная способность"
+      },
+      "disabled": "Выключено",
+      "enabled": "Включено",
+      "errorRead": "Ошибка чтения steamvr.vrsettings: {{msg}}",
+      "errorSave": "Ошибка сохранения steamvr.vrsettings: {{msg}}",
+      "motionSmoothing": {
+        "hint": "Синтезирует кадры при лагах. Полезно при плохом фреймтайме, но может вызывать артефакты двоения.",
+        "label": "Сглаживание движений"
+      },
+      "presetApplied": "Пресет применен.",
+      "presetBalanced": "Сбалансированный (100Mbps)",
+      "presetPerformance": "Производительность (50Mbps)",
+      "presetQuality": "Качество (150Mbps)",
+      "quickPresets": "Быстрые пресеты:",
+      "refreshRate": {
+        "hint": "Должно совпадать с поддерживаемой частотой обновления гарнитуры (72, 80, 90, 120)",
+        "label": "Частота обновления (Hz)"
+      },
+      "reload": "Перезагрузить",
+      "save": "Сохранить настройки",
+      "saving": "Сохранение...",
+      "steamvrIdle": "SteamVR простаивает",
+      "steamvrRunning": "SteamVR запущен",
+      "successSave": "Файл steamvr.vrsettings успешно обновлен!",
+      "supersampleFiltering": {
+        "hint": "Уменьшает ступенчатость ценой легкого размытия",
+        "label": "Фильтрация суперсэмплинга"
+      },
+      "supersampleManualOverride": {
+        "hint": "Принудительно использует пользовательский масштаб вместо автоподстройки.",
+        "label": "Ручное переопределение суперсэмплинга"
+      },
+      "supersampleScale": {
+        "hint": "Масштаб рендера (1.0 = родной, 1.5 = высокая четкость, требует хорошую GPU)",
+        "label": "Масштаб суперсэмплинга"
+      },
+      "targetBandwidth": {
+        "hint": "Лимит битрейта для Steam Link. До 150-200 для хороших роутеров.",
+        "label": "Целевая пропускная способность (Mbps)"
+      },
+      "title": "Настройки стриминга VR (SteamVR / Steam Link)"
+    },
+    "configJson": {
+      "cacheDirectory": {
+        "hint": "Абсолютный путь к пользовательской папке кэша",
+        "label": "Папка кэша"
+      },
+      "cacheSize": {
+        "hint": "Максимальный размер кэша VRChat в гигабайтах",
+        "label": "Размер кэша (ГБ)"
+      },
+      "cameraResHeight": {
+        "hint": "Разрешение фотографий с камеры",
+        "label": "Высота фото"
+      },
+      "cameraResWidth": {
+        "hint": "Разрешение фотографий с камеры",
+        "label": "Ширина фото"
+      },
+      "customLoadScreenLogo": {
+        "hint": "Абсолютный путь к пользовательскому .png логотипу экрана загрузки",
+        "label": "Логотип экрана загрузки"
+      },
+      "description": "Параметры ядра из AppData/LocalLow. Не забудьте сохранить изменения.",
+      "desktopReticle": {
+        "hint": "Показывать центральную точку-прицел в режиме Desktop",
+        "label": "Прицел Desktop"
+      },
+      "disabled": "Выключено",
+      "enabled": "Включено",
+      "errorRead": "Ошибка чтения config.json: {{msg}}",
+      "errorSave": "Ошибка сохранения config.json: {{msg}}",
+      "fpsLimitDesktop": {
+        "hint": "Максимальная частота кадров в режиме Desktop (0 = без ограничений)",
+        "label": "Лимит FPS (Desktop)"
+      },
+      "fpsLimitVr": {
+        "hint": "Максимальная частота кадров в режиме VR (0 = без ограничений)",
+        "label": "Лимит FPS (VR)"
+      },
+      "ignoreParticles": {
+        "hint": "Значительно улучшает производительность в переполненных мирах",
+        "label": "Игнорировать частицы"
+      },
+      "reload": "Перезагрузить",
+      "save": "Сохранить конфиг",
+      "saving": "Сохранение...",
+      "successSave": "Файл config.json успешно обновлен!",
+      "title": "Конфиг приложения (config.json)",
+      "vrcIdle": "VRChat простаивает",
+      "vrcRunning": "VRChat запущен"
+    },
+    "tabs": {
+      "config": "Конфиг приложения (config.json)",
+      "general": "Общие",
+      "registry": "Реестр VRChat",
+      "steamvr": "SteamVR"
     }
   },
   "profileCard": {
@@ -1143,6 +1289,33 @@
       "notInstalled": "Плагин {{id}} не установлен.",
       "disabled": "Плагин {{id}} отключён.",
       "noPanel": "Плагин {{id}} не предоставляет панель."
+    }
+  },
+  "avatar": {
+    "popup": {
+      "containsAssetUrl": "Содержит корректный URL ассета",
+      "fileSize": "РАЗМЕР ФАЙЛА",
+      "platforms": "ПЛАТФОРМЫ",
+      "unknown": "Неизвестно",
+      "unspecified": "Не указано"
+    }
+  },
+  "folderPicker": {
+    "choose": "Выбрать эту папку",
+    "empty": "Здесь нет вложенных папок.",
+    "hint": "Перейдите в папку, затем нажмите «Выбрать эту папку».",
+    "noDrives": "Диски не обнаружены.",
+    "noSelection": "(ничего не выбрано)",
+    "refresh": "Обновить",
+    "thisPc": "Этот компьютер",
+    "title": "Выберите папку",
+    "truncated": "Список обрезан до 2000 элементов.",
+    "up": "Вверх"
+  },
+  "world": {
+    "popup": {
+      "favorites": "ИЗБРАННОЕ",
+      "visits": "ПОСЕЩЕНИЯ"
     }
   }
 }

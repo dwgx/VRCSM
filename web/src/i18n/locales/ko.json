@@ -23,8 +23,16 @@
     "friendLog": "친구 로그",
     "groups": "그룹",
     "category": {
-      "plugins": "플러그인"
-    }
+      "plugins": "플러그인",
+      "assets": "에셋",
+      "diagnostics": "진단",
+      "maintenance": "유지보수",
+      "media": "미디어",
+      "project": "프로젝트",
+      "social": "소셜",
+      "workspace": "워크스페이스"
+    },
+    "osc": "OSC 도구"
   },
   "profile": {
     "title": "내 프로필",
@@ -197,8 +205,8 @@
     "linkedAccountsQuick": "연결된 계정",
     "socialPulse": "소셜",
     "marketplaceQuick": "마켓",
-    "favoriteAvatars": "즐겨찾기 아바타",
-    "favoriteWorlds": "즐겨찾기 월드",
+    "favoriteAvatars": "즐겨찾기한 아바타",
+    "favoriteWorlds": "즐겨찾기한 월드",
     "downloadReady": "다운로드 가능",
     "block": "차단",
     "mute": "뮤트",
@@ -230,9 +238,6 @@
     "noDownloadCandidates": "아직 다운로드할 수 있는 최근 아바타가 없습니다.",
     "marketplaceTitle": "마켓플레이스",
     "marketplaceBody": "공식 즐겨찾기, 로컬 아바타 인벤토리, 최근 번들 대상 및 활성 VRChat 세션의 상점 관련 정보를 통해 수집한 보유 및 획득 정보입니다.",
-    "favoriteAvatars": "즐겨찾기한 아바타",
-    "favoriteWorlds": "즐겨찾기한 월드",
-    "downloadReady": "다운로드 가능",
     "downloadFolder": "다운로드 폴더",
     "topCreators": "로컬 인벤토리의 인기 크리에이터",
     "inventoryCount": "아바타 {{count}}개",
@@ -249,7 +254,15 @@
     "subscriptionInactive": "비활성",
     "subscriptionSignals": "신호",
     "lastExpiredSubscription": "최근 만료됨",
-    "liveSignal": "실시간 신호"
+    "liveSignal": "실시간 신호",
+    "tabs": {
+      "avatars": "아바타",
+      "friends": "친구",
+      "overview": "개요",
+      "social": "소셜",
+      "vrcPlus": "VRC+",
+      "worlds": "월드"
+    }
   },
   "friends": {
     "title": "친구",
@@ -431,11 +444,34 @@
       "desc": "영속 플레이어 이벤트 데이터베이스에서 가져옵니다.",
       "open": "로그 열기",
       "empty": "아직 기록된 세션 이벤트가 없습니다."
-    }
+    },
+    "analysis": {
+      "aggregate": {
+        "avatarChanges": "아바타 변경 횟수",
+        "totalSessions": "세션",
+        "uniquePlayers": "고유 플레이어",
+        "uniqueWorlds": "고유 월드"
+      },
+      "empty": "로컬 로그에 세션이 없습니다.",
+      "ongoing": "진행 중",
+      "openFromOffline": "과거 분석 찾아보기",
+      "session": {
+        "noPlayers": "기록된 플레이어 이벤트가 없습니다.",
+        "players": "플레이어",
+        "timeline": "타임라인"
+      },
+      "sessions": "세션 기록",
+      "sessionsDesc": "로컬 로그에서 재구성됨 — 최신순.",
+      "tab": "과거 분석",
+      "topPlayers": "가장 많이 만난 플레이어",
+      "topWorlds": "가장 많이 방문한 월드"
+    },
+    "vrcNotRunning": "VRChat이 실행 중이 아닙니다",
+    "vrcNotRunningHint": "실시간으로 방과 플레이어를 모니터링하려면 VRChat을 시작하세요"
   },
   "common": {
-    "enabled": "활성화",
-    "disabled": "비활성화",
+    "enabled": "사용",
+    "disabled": "사용 안 함",
     "loading": "불러오는 중…",
     "retry": "다시 시도",
     "rescan": "다시 스캔",
@@ -457,8 +493,6 @@
     "browse": "찾아보기…",
     "repair": "복구",
     "copy": "복사",
-    "enabled": "사용",
-    "disabled": "사용 안 함",
     "path": "경로",
     "created": "생성",
     "updated": "업데이트",
@@ -469,7 +503,13 @@
     "unknown": "알 수 없음",
     "remove": "제거",
     "sidebar": "사이드바",
-    "experimental": "베타"
+    "experimental": "베타",
+    "copied": "복사됨",
+    "copyFailed": "복사 실패",
+    "copyId": "ID 복사",
+    "noDescription": "설명 없음...",
+    "openInBrowser": "브라우저에서 열기",
+    "openOnVrchat": "VRChat 웹사이트에서 열기"
   },
   "about": {
     "title": "VRCSM 정보",
@@ -1063,7 +1103,13 @@
       "runtimeTitle": "런타임 환경 감지",
       "runtimeDesc": "이 PC의 VRChat 로그를 분석하여 감지한 실행 환경 요약입니다.",
       "runtimeMode": "실행 모드",
-      "runtimeDetail": "감지된 세부 정보"
+      "runtimeDetail": "감지된 세부 정보",
+      "layoutDesc": "앱 전체에서 기본적으로 표시되는 측면 패널을 제어합니다.",
+      "layoutTitle": "워크스페이스 레이아웃",
+      "profileContext": "프로필 라이브 컨텍스트",
+      "profileContextHint": "내 프로필의 오른쪽에 라이브 아바타 및 월드 컨텍스트를 표시합니다.",
+      "worldInspector": "월드 인스펙터",
+      "worldInspectorHint": "맵 목록 옆에 크기 조정 가능한 월드 인스펙터를 열어둡니다."
     },
     "steamvr": {
       "saveDirty": "설정 저장 *",
@@ -1075,7 +1121,107 @@
         "odt": "Oculus Debug Tool",
         "gpuScheduling": "GPU 스케줄링",
         "guide": "VRCSM 가이드"
-      }
+      },
+      "automaticBandwidth": {
+        "hint": "신호가 약할 때 SteamVR이 동적으로 비트레이트를 낮추도록 허용합니다.",
+        "label": "자동 대역폭"
+      },
+      "disabled": "비활성화됨",
+      "enabled": "활성화됨",
+      "errorRead": "steamvr.vrsettings 읽기 실패: {{msg}}",
+      "errorSave": "steamvr.vrsettings 저장 실패: {{msg}}",
+      "motionSmoothing": {
+        "hint": "지연 시 프레임을 합성합니다. 프레임 타임이 좋지 않을 때 유용하지만 고스팅 아티팩트가 발생할 수 있습니다.",
+        "label": "모션 스무딩"
+      },
+      "presetApplied": "사전 설정이 적용되었습니다.",
+      "presetBalanced": "균형 (100Mbps)",
+      "presetPerformance": "성능 (50Mbps)",
+      "presetQuality": "품질 (150Mbps)",
+      "quickPresets": "빠른 사전 설정:",
+      "refreshRate": {
+        "hint": "헤드셋의 허용된 주사율과 일치해야 합니다 (72, 80, 90, 120)",
+        "label": "주사율 (Hz)"
+      },
+      "reload": "다시 불러오기",
+      "save": "설정 저장",
+      "saving": "저장 중...",
+      "steamvrIdle": "SteamVR 대기 중",
+      "steamvrRunning": "SteamVR 실행 중",
+      "successSave": "steamvr.vrsettings를 성공적으로 업데이트했습니다!",
+      "supersampleFiltering": {
+        "hint": "약간의 흐림 효과를 대가로 앨리어싱을 줄입니다",
+        "label": "슈퍼샘플 필터링"
+      },
+      "supersampleManualOverride": {
+        "hint": "자동 조정 대신 사용자 지정 비율을 강제합니다.",
+        "label": "슈퍼샘플 수동 재정의"
+      },
+      "supersampleScale": {
+        "hint": "렌더링 비율 (1.0 = 네이티브, 1.5 = 높은 선명도, 좋은 GPU 필요)",
+        "label": "슈퍼샘플링 비율"
+      },
+      "targetBandwidth": {
+        "hint": "Steam Link의 비트레이트 제한입니다. 좋은 라우터의 경우 최대 150-200까지 가능합니다.",
+        "label": "목표 대역폭 (Mbps)"
+      },
+      "title": "VR 스트리밍 설정 (SteamVR / Steam Link)"
+    },
+    "configJson": {
+      "cacheDirectory": {
+        "hint": "사용자 지정 캐시 디렉터리의 절대 경로",
+        "label": "캐시 디렉터리"
+      },
+      "cacheSize": {
+        "hint": "VRChat 캐시의 최대 크기(기가바이트)",
+        "label": "캐시 크기 (GB)"
+      },
+      "cameraResHeight": {
+        "hint": "카메라 사진의 해상도",
+        "label": "카메라 사진 높이"
+      },
+      "cameraResWidth": {
+        "hint": "카메라 사진의 해상도",
+        "label": "카메라 사진 너비"
+      },
+      "customLoadScreenLogo": {
+        "hint": "로딩 화면을 위한 사용자 지정 PNG 로고의 절대 경로",
+        "label": "사용자 지정 로딩 화면 로고"
+      },
+      "description": "AppData/LocalLow에 위치한 핵심 엔진 매개변수입니다. 변경 사항을 반드시 저장하세요.",
+      "desktopReticle": {
+        "hint": "데스크톱 모드에서 중앙 점 십자선 표시",
+        "label": "데스크톱 십자선"
+      },
+      "disabled": "비활성화됨",
+      "enabled": "활성화됨",
+      "errorRead": "config.json 읽기 실패: {{msg}}",
+      "errorSave": "config.json 저장 실패: {{msg}}",
+      "fpsLimitDesktop": {
+        "hint": "데스크톱 모드의 최대 프레임 속도 (0 = 무제한)",
+        "label": "FPS 제한 (데스크톱)"
+      },
+      "fpsLimitVr": {
+        "hint": "VR 모드의 최대 프레임 속도 (0 = 무제한)",
+        "label": "FPS 제한 (VR)"
+      },
+      "ignoreParticles": {
+        "hint": "혼잡한 월드에서 성능을 크게 향상시킵니다",
+        "label": "파티클 무시"
+      },
+      "reload": "다시 불러오기",
+      "save": "설정 저장",
+      "saving": "저장 중...",
+      "successSave": "config.json을 성공적으로 업데이트했습니다!",
+      "title": "앱 설정 (config.json)",
+      "vrcIdle": "VRChat 대기 중",
+      "vrcRunning": "VRChat 실행 중"
+    },
+    "tabs": {
+      "config": "앱 설정 (config.json)",
+      "general": "일반",
+      "registry": "VRChat 레지스트리",
+      "steamvr": "SteamVR"
     }
   },
   "profileCard": {
@@ -1143,6 +1289,33 @@
       "notInstalled": "플러그인 {{id}} 이(가) 설치되어 있지 않습니다.",
       "disabled": "플러그인 {{id}} 이(가) 비활성화되어 있습니다.",
       "noPanel": "플러그인 {{id}} 은(는) 패널 UI 를 제공하지 않습니다."
+    }
+  },
+  "avatar": {
+    "popup": {
+      "containsAssetUrl": "유효한 에셋 URL 포함",
+      "fileSize": "파일 크기",
+      "platforms": "플랫폼",
+      "unknown": "알 수 없음",
+      "unspecified": "지정되지 않음"
+    }
+  },
+  "folderPicker": {
+    "choose": "이 폴더 선택",
+    "empty": "하위 폴더가 없습니다.",
+    "hint": "폴더로 이동한 후 이 폴더 선택을 클릭하세요.",
+    "noDrives": "드라이브가 감지되지 않았습니다.",
+    "noSelection": "(선택 없음)",
+    "refresh": "새로고침",
+    "thisPc": "내 PC",
+    "title": "폴더 선택",
+    "truncated": "목록이 2000개 항목으로 잘렸습니다.",
+    "up": "위로"
+  },
+  "world": {
+    "popup": {
+      "favorites": "즐겨찾기",
+      "visits": "방문"
     }
   }
 }

@@ -23,8 +23,16 @@
     "friendLog": "フレンドログ",
     "groups": "グループ",
     "category": {
-      "plugins": "プラグイン"
-    }
+      "plugins": "プラグイン",
+      "assets": "アセット",
+      "diagnostics": "診断",
+      "maintenance": "メンテナンス",
+      "media": "メディア",
+      "project": "プロジェクト",
+      "social": "ソーシャル",
+      "workspace": "ワークスペース"
+    },
+    "osc": "OSCツール"
   },
   "profile": {
     "title": "マイプロフィール",
@@ -199,7 +207,7 @@
     "marketplaceQuick": "マーケット",
     "favoriteAvatars": "お気に入りアバター",
     "favoriteWorlds": "お気に入りワールド",
-    "downloadReady": "ダウンロード可",
+    "downloadReady": "ダウンロード可能",
     "block": "ブロック",
     "mute": "ミュート",
     "pickDownloadFolder": "アバターバンドルの保存先フォルダを選択",
@@ -230,9 +238,6 @@
     "noDownloadCandidates": "ダウンロード可能な最近のアバターはまだありません。",
     "marketplaceTitle": "マーケットプレイス",
     "marketplaceBody": "公式のお気に入り、ローカルのアバターインベントリ、最近のダウンロード対象、アクティブなVRChatセッションの商取引関連データから所有状況などを表示します。",
-    "favoriteAvatars": "お気に入りアバター",
-    "favoriteWorlds": "お気に入りワールド",
-    "downloadReady": "ダウンロード可能",
     "downloadFolder": "ダウンロードフォルダ",
     "topCreators": "ローカルインベントリの人気クリエイター",
     "inventoryCount": "{{count}}体のアバター",
@@ -249,7 +254,15 @@
     "subscriptionInactive": "非アクティブ",
     "subscriptionSignals": "シグナル",
     "lastExpiredSubscription": "直近の期限切れ",
-    "liveSignal": "ライブシグナル"
+    "liveSignal": "ライブシグナル",
+    "tabs": {
+      "avatars": "アバター",
+      "friends": "フレンド",
+      "overview": "概要",
+      "social": "ソーシャル",
+      "vrcPlus": "VRC+",
+      "worlds": "ワールド"
+    }
   },
   "friends": {
     "title": "フレンド",
@@ -431,7 +444,30 @@
       "desc": "永続化されたプレイヤーイベントデータベースから取得されます。",
       "open": "ログを開く",
       "empty": "記録されたセッションイベントはまだありません。"
-    }
+    },
+    "analysis": {
+      "aggregate": {
+        "avatarChanges": "アバター変更回数",
+        "totalSessions": "セッション",
+        "uniquePlayers": "ユニークプレイヤー",
+        "uniqueWorlds": "ユニークワールド"
+      },
+      "empty": "ローカルログにセッションが見つかりません。",
+      "ongoing": "進行中",
+      "openFromOffline": "過去の分析を閲覧",
+      "session": {
+        "noPlayers": "プレイヤーイベントが記録されていません。",
+        "players": "プレイヤー",
+        "timeline": "タイムライン"
+      },
+      "sessions": "セッション履歴",
+      "sessionsDesc": "ローカルログから再構築 — 新しい順。",
+      "tab": "過去の分析",
+      "topPlayers": "最も遭遇したプレイヤー",
+      "topWorlds": "最も訪れたワールド"
+    },
+    "vrcNotRunning": "VRChatは起動していません",
+    "vrcNotRunningHint": "リアルタイムでルームやプレイヤーを監視するには、VRChatを起動してください"
   },
   "common": {
     "loading": "読み込み中…",
@@ -457,8 +493,6 @@
     "browse": "参照…",
     "repair": "修復",
     "copy": "コピー",
-    "enabled": "有効",
-    "disabled": "無効",
     "path": "パス",
     "created": "作成",
     "updated": "更新",
@@ -469,7 +503,13 @@
     "unknown": "不明",
     "remove": "削除",
     "sidebar": "サイドバー",
-    "experimental": "ベータ"
+    "experimental": "ベータ",
+    "copied": "コピーしました",
+    "copyFailed": "コピーに失敗しました",
+    "copyId": "IDをコピー",
+    "noDescription": "説明がありません...",
+    "openInBrowser": "ブラウザで開く",
+    "openOnVrchat": "VRChatのWebサイトで開く"
   },
   "about": {
     "title": "VRCSM について",
@@ -1063,7 +1103,13 @@
       "runtimeTitle": "ランタイム検出",
       "runtimeDesc": "このPCのVRChatログから解析された実行環境の推測サマリー。",
       "runtimeMode": "ランタイムモード",
-      "runtimeDetail": "検出された詳細"
+      "runtimeDetail": "検出された詳細",
+      "layoutDesc": "アプリ全体でデフォルトで表示し続けるサイドパネルを制御します。",
+      "layoutTitle": "ワークスペースレイアウト",
+      "profileContext": "プロフィールのライブコンテキスト",
+      "profileContextHint": "マイプロフィールで、右側に現在のアバターとワールドのコンテキストを表示します。",
+      "worldInspector": "ワールドインスペクター",
+      "worldInspectorHint": "マップリストの横にサイズ変更可能なワールドインスペクターを開いたままにします。"
     },
     "steamvr": {
       "saveDirty": "設定を保存 *",
@@ -1075,7 +1121,107 @@
         "odt": "Oculus Debug Tool",
         "gpuScheduling": "GPU スケジューリング",
         "guide": "VRCSM ガイド"
-      }
+      },
+      "automaticBandwidth": {
+        "hint": "電波状態が悪い場合、SteamVRにビットレートを動的に下げさせます。",
+        "label": "自動帯域幅"
+      },
+      "disabled": "無効",
+      "enabled": "有効",
+      "errorRead": "steamvr.vrsettingsの読み込みに失敗しました: {{msg}}",
+      "errorSave": "steamvr.vrsettingsの保存に失敗しました: {{msg}}",
+      "motionSmoothing": {
+        "hint": "ラグ発生時にフレームを合成します。フレームタイムが悪い場合に有効ですが、ゴーストのアーティファクトを引き起こす可能性があります。",
+        "label": "モーションスムージング"
+      },
+      "presetApplied": "プリセットを適用しました。",
+      "presetBalanced": "バランス (100Mbps)",
+      "presetPerformance": "パフォーマンス (50Mbps)",
+      "presetQuality": "品質 (150Mbps)",
+      "quickPresets": "クイックプリセット:",
+      "refreshRate": {
+        "hint": "ヘッドセットの許容リフレッシュレート（72、80、90、120）と一致する必要があります",
+        "label": "リフレッシュレート (Hz)"
+      },
+      "reload": "再読み込み",
+      "save": "設定を保存",
+      "saving": "保存中...",
+      "steamvrIdle": "SteamVRは待機中です",
+      "steamvrRunning": "SteamVRは起動中です",
+      "successSave": "steamvr.vrsettingsを正常に更新しました！",
+      "supersampleFiltering": {
+        "hint": "わずかなぼやけと引き換えにエイリアシングを軽減します",
+        "label": "スーパーサンプルフィルタリング"
+      },
+      "supersampleManualOverride": {
+        "hint": "自動調整の代わりにカスタムスケールを強制します。",
+        "label": "スーパーサンプル手動オーバーライド"
+      },
+      "supersampleScale": {
+        "hint": "レンダリングスケール（1.0 = ネイティブ、1.5 = 高精細、高性能なGPUが必要）",
+        "label": "スーパーサンプリングスケール"
+      },
+      "targetBandwidth": {
+        "hint": "Steam Linkのビットレート制限。良いルーターなら最大150〜200。",
+        "label": "ターゲット帯域幅 (Mbps)"
+      },
+      "title": "VRストリーミング設定 (SteamVR / Steam Link)"
+    },
+    "configJson": {
+      "cacheDirectory": {
+        "hint": "カスタムキャッシュディレクトリの絶対パス",
+        "label": "キャッシュディレクトリ"
+      },
+      "cacheSize": {
+        "hint": "VRChatキャッシュの最大サイズ（ギガバイト）",
+        "label": "キャッシュサイズ (GB)"
+      },
+      "cameraResHeight": {
+        "hint": "カメラ写真の解像度",
+        "label": "カメラ写真の高さ"
+      },
+      "cameraResWidth": {
+        "hint": "カメラ写真の解像度",
+        "label": "カメラ写真の幅"
+      },
+      "customLoadScreenLogo": {
+        "hint": "ロード画面用のカスタムPNGロゴへの絶対パス",
+        "label": "カスタムロード画面ロゴ"
+      },
+      "description": "AppData/LocalLowにあるコアエンジンのパラメーターです。必ず変更を保存してください。",
+      "desktopReticle": {
+        "hint": "デスクトップモードで中央にドットのクロスヘアを表示します",
+        "label": "デスクトップレティクル"
+      },
+      "disabled": "無効",
+      "enabled": "有効",
+      "errorRead": "config.jsonの読み込みに失敗しました: {{msg}}",
+      "errorSave": "config.jsonの保存に失敗しました: {{msg}}",
+      "fpsLimitDesktop": {
+        "hint": "デスクトップモードの最大フレームレート（0 = 無制限）",
+        "label": "FPS制限 (デスクトップ)"
+      },
+      "fpsLimitVr": {
+        "hint": "VRモードの最大フレームレート（0 = 無制限）",
+        "label": "FPS制限 (VR)"
+      },
+      "ignoreParticles": {
+        "hint": "混雑したワールドでのパフォーマンスを劇的に向上させます",
+        "label": "パーティクルを無視"
+      },
+      "reload": "再読み込み",
+      "save": "設定を保存",
+      "saving": "保存中...",
+      "successSave": "config.jsonを正常に更新しました！",
+      "title": "アプリ設定 (config.json)",
+      "vrcIdle": "VRChatは待機中です",
+      "vrcRunning": "VRChatは起動中です"
+    },
+    "tabs": {
+      "config": "アプリ設定 (config.json)",
+      "general": "一般",
+      "registry": "VRChatレジストリ",
+      "steamvr": "SteamVR"
     }
   },
   "profileCard": {
@@ -1143,6 +1289,33 @@
       "notInstalled": "プラグイン {{id}} はインストールされていません。",
       "disabled": "プラグイン {{id}} は無効化されています。",
       "noPanel": "プラグイン {{id}} にはパネル UI がありません。"
+    }
+  },
+  "avatar": {
+    "popup": {
+      "containsAssetUrl": "有効なアセットURLを含みます",
+      "fileSize": "ファイルサイズ",
+      "platforms": "プラットフォーム",
+      "unknown": "不明",
+      "unspecified": "未指定"
+    }
+  },
+  "folderPicker": {
+    "choose": "このフォルダーを選択",
+    "empty": "サブフォルダーはありません。",
+    "hint": "フォルダーに移動し、「このフォルダーを選択」をクリックしてください。",
+    "noDrives": "ドライブが検出されませんでした。",
+    "noSelection": "（未選択）",
+    "refresh": "更新",
+    "thisPc": "PC",
+    "title": "フォルダーの選択",
+    "truncated": "リストは2000件で切り捨てられました。",
+    "up": "上へ"
+  },
+  "world": {
+    "popup": {
+      "favorites": "お気に入り",
+      "visits": "訪問数"
     }
   }
 }
