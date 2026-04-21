@@ -32,7 +32,8 @@
       "social": "ソーシャル",
       "workspace": "ワークスペース"
     },
-    "osc": "OSCツール"
+    "osc": "OSCツール",
+    "worldHistory": "ワールド履歴"
   },
   "profile": {
     "title": "マイプロフィール",
@@ -1217,10 +1218,53 @@
       "vrcIdle": "VRChatは待機中です",
       "vrcRunning": "VRChatは起動中です"
     },
+    "experimental": {
+      "heading": "実験的機能",
+      "blurb": "これらの機能は現在開発中です。未完成な部分、予期しないリソース使用、時折の不具合が予想されます。いつでもオフにでき、設定はローカルに保存されます。",
+      "toggleOn": "オン",
+      "toggleOff": "オフ",
+      "flags": {
+        "avatarVisualSearch": {
+          "name": "アバターの画像検索",
+          "description": "ローカルAIモデルを使用して、画像に似ているアバターを視覚的に検索します。アバターカードの右クリックメニューに「似ているものを探す」アクションを追加します。",
+          "warning": "初回使用時に約150MBのCLIPモデルをダウンロードします。すべての処理はローカルで実行され、何もアップロードされません。大規模なキャッシュのインデックス作成には数分かかることがあり、WebGPUがない場合はCPU負荷が高くなります。"
+        }
+      },
+      "visualSearch": {
+        "title": "アバターの画像検索",
+        "openSearch": "検索を開く",
+        "rebuildIndex": "インデックスを再構築",
+        "indexing": "インデックス作成中...",
+        "dialogTitle": "アバターの画像検索 (実験的機能)",
+        "noImage": "画像がありません",
+        "dropPrompt": "画像をドロップするか、貼り付け (Ctrl+V)、または",
+        "chooseFile": "ファイルを選択",
+        "modelFooter": "モデル: {{version}} · 512-dim · すべての処理はローカルで実行されます",
+        "search": "検索",
+        "searching": "検索中...",
+        "openInWeb": "VRChat Webで開く",
+        "copyId": "IDをコピー",
+        "noResults": "まだ結果がありません。インデックスが空の場合は、まず設定 → 実験的機能 →「インデックスを再構築」を行ってください。",
+        "stageLoadingModel": "モデルを読み込み中",
+        "stagePreparingModel": "モデルを準備中",
+        "stageEnumerating": "未インデックスのアバターを列挙中",
+        "stageResolvingThumbs": "{{count}}個のアバターのサムネイルを解決中",
+        "stageEmbedding": "画像を埋め込み中",
+        "stageSearching": "検索中",
+        "stageDone": "完了",
+        "stageNothingToIndex": "インデックス対象なし",
+        "embedProgress": "埋め込み完了 {{done}}/{{total}}",
+        "embedProgressSkipped": "埋め込み完了 {{done}}/{{total}} ({{skipped}}件スキップ)",
+        "noUnindexed": "未インデックスのアバターはありません ({{time}})",
+        "indexedSummary": "{{time}}に{{count}}個のアバターをインデックスしました",
+        "indexedSummarySkipped": "{{time}}に{{count}}個のアバターをインデックスしました ({{skipped}}件スキップ)"
+      }
+    },
     "tabs": {
       "config": "アプリ設定 (config.json)",
       "general": "一般",
       "registry": "VRChatレジストリ",
+      "experimental": "実験的機能",
       "steamvr": "SteamVR"
     }
   },
@@ -1317,5 +1361,25 @@
       "favorites": "お気に入り",
       "visits": "訪問数"
     }
+  },
+  "calendar": {
+    "tileTitle": "今後のVRChatイベント",
+    "loading": "読み込み中...",
+    "untitledEvent": "無題のイベント"
+  },
+  "worldHistory": {
+    "title": "ワールド履歴",
+    "subtitle": "過去100件の訪問 · VRChatのログ追跡機能によって記録",
+    "loading": "読み込み中...",
+    "errorPrefix": "エラー: {{detail}}",
+    "empty": "まだワールド訪問が記録されていません。VRChatを起動してワールドに参加すると、VRCSMがゲームログから訪問を記録します。",
+    "unknownWorld": "(不明なワールド)",
+    "stillInWorld": "ワールドに滞在中",
+    "instanceLabel": "インスタンス",
+    "openAction": "開く"
+  },
+  "strangerAlert": {
+    "title": "知らないユーザーがあなたの{{access}}インスタンスに参加しました",
+    "unknownUser": "(不明なユーザー)"
   }
 }
