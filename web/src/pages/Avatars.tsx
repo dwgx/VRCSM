@@ -27,7 +27,7 @@ import {
   useFavoriteItems,
 } from "@/lib/library";
 import type { AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
-import { Eye, Sliders, Search, User, Info, Lock, Box, Sword, Heart, Globe2, Loader2 } from "lucide-react";
+import { Eye, Sliders, Search, User, Info, Lock, Box, Heart, Globe2, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 
 type AugmentedAvatar = LocalAvatarItem & {
@@ -229,7 +229,7 @@ function AvatarInspector({
   const { details, loading: detailsLoading } = useAvatarDetails(
     selected.avatar_id,
   );
-  const [switching, setSwitching] = useState(false);
+
 
   // Broadcast the API-resolved name back up so the left list can show
   // the same label the inspector is showing, even when LocalAvatarData
@@ -241,32 +241,6 @@ function AvatarInspector({
     }
   }, [details?.name, selected.avatar_id, onCanonicalName]);
 
-  async function handleSelectAvatar() {
-    if (!authStatus.authed) {
-      toast.error(t("avatars_extra.selectAvatarNeedsAuth"));
-      return;
-    }
-    setSwitching(true);
-    try {
-      const res = await ipc.call<{ avatarId: string }, { ok: boolean }>(
-        "avatar.select",
-        { avatarId: selected.avatar_id },
-      );
-      if (res.ok) {
-        toast.success(t("avatars_extra.selectAvatarDone"));
-      } else {
-        toast.error(t("avatars_extra.selectAvatarFailed"));
-      }
-    } catch (e) {
-      toast.error(
-        `${t("avatars_extra.selectAvatarFailed")}: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
-    } finally {
-      setSwitching(false);
-    }
-  }
 
   // API-sourced display name beats logs beats "unknown".
   const displayName =
@@ -429,18 +403,11 @@ function AvatarInspector({
 
           {/* Switch avatar button — only when signed in */}
           {authStatus.authed ? (
-            <Button
-              variant="tonal"
-              size="sm"
-              onClick={handleSelectAvatar}
-              disabled={switching}
-              className="self-start"
-            >
-              <Sword />
-              {switching
-                ? t("common.loading")
-                : t("avatars_extra.selectAvatar")}
-            </Button>
+            <SmartWearButton
+              avatarId={selected.avatar_id}
+              avatarName={displayName}
+              variant="button"
+            />
           ) : null}
 
           {/* ID badges + cache path */}
