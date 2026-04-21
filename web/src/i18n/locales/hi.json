@@ -32,7 +32,8 @@
       "social": "सोशल",
       "workspace": "वर्कस्पेस"
     },
-    "osc": "OSC टूल्स"
+    "osc": "OSC टूल्स",
+    "worldHistory": "विश्व इतिहास"
   },
   "profile": {
     "title": "मेरा प्रोफ़ाइल",
@@ -838,7 +839,7 @@
     "pathConfigDesc": "स्रोत वर्तमान कैश स्थान है। दूसरे ड्राइव पर कोई लक्ष्य चुनें या टाइप करें।",
     "source": "स्रोत",
     "target": "लक्ष्य",
-    "targetPlaceholder": "VRChatCache\\…",
+    "targetPlaceholder": "VRChatCache…",
     "advancedOptions": "उन्नत विकल्प",
     "advancedHint": "माइग्रेशन पाइपलाइन इस क्रम में चलती है: preflight check, file copy, hash verification, source removal और NTFS junction creation। डेटा सुरक्षा के लिए सभी चरण अनिवार्य हैं।",
     "runPreflight": "Preflight चलाएं",
@@ -1217,11 +1218,54 @@
       "vrcIdle": "VRChat निष्क्रिय है",
       "vrcRunning": "VRChat चल रहा है"
     },
+    "experimental": {
+      "heading": "प्रायोगिक सुविधाएँ",
+      "blurb": "ये सुविधाएँ सक्रिय विकास में हैं। कुछ कमियों, अप्रत्याशित संसाधन उपयोग और कभी-कभी टूटने की अपेक्षा करें। इन्हें किसी भी समय बंद किया जा सकता है — स्थिति स्थानीय रूप से बनी रहती है।",
+      "toggleOn": "चालू",
+      "toggleOff": "बंद",
+      "flags": {
+        "avatarVisualSearch": {
+          "name": "विज़ुअल अवतार खोज",
+          "description": "एक स्थानीय AI मॉडल का उपयोग करके किसी छवि के समान दिखने वाले अवतार खोजें। अवतार कार्ड पर 'समान खोजें' राइट-क्लिक क्रिया जोड़ता है।",
+          "warning": "पहली बार उपयोग करने पर ~150 MB का CLIP मॉडल डाउनलोड होता है। सभी प्रोसेसिंग स्थानीय रूप से चलती है; कुछ भी अपलोड नहीं किया जाता है। एक बड़े कैश को इंडेक्स करने में कई मिनट लग सकते हैं और WebGPU के बिना यह CPU-गहन है।"
+        }
+      },
+      "visualSearch": {
+        "title": "विज़ुअल अवतार खोज",
+        "openSearch": "खोज खोलें",
+        "rebuildIndex": "इंडेक्स फिर से बनाएँ",
+        "indexing": "इंडेक्सिंग...",
+        "dialogTitle": "विज़ुअल अवतार खोज (प्रायोगिक)",
+        "noImage": "कोई छवि नहीं",
+        "dropPrompt": "एक छवि छोड़ें, पेस्ट करें (Ctrl+V), या",
+        "chooseFile": "एक फ़ाइल चुनें",
+        "modelFooter": "मॉडल: {{version}} · 512-dim · सभी प्रोसेसिंग स्थानीय रूप से चलती है",
+        "search": "खोजें",
+        "searching": "खोज रहा है...",
+        "openInWeb": "VRChat वेब में खोलें",
+        "copyId": "आईडी कॉपी करें",
+        "noResults": "अभी तक कोई परिणाम नहीं। यदि इंडेक्स खाली है, तो पहले सेटिंग्स → प्रायोगिक → \"इंडेक्स फिर से बनाएँ\" पर जाएँ।",
+        "stageLoadingModel": "मॉडल लोड हो रहा है",
+        "stagePreparingModel": "मॉडल तैयार हो रहा है",
+        "stageEnumerating": "गैर-इंडेक्स किए गए अवतारों की गणना हो रही है",
+        "stageResolvingThumbs": "{{count}} अवतारों के लिए थंबनेल हल हो रहे हैं",
+        "stageEmbedding": "छवि एम्बेड हो रही है",
+        "stageSearching": "खोज रहा है",
+        "stageDone": "पूर्ण",
+        "stageNothingToIndex": "इंडेक्स करने के लिए कुछ नहीं",
+        "embedProgress": "{{done}}/{{total}} एम्बेड किए गए",
+        "embedProgressSkipped": "{{done}}/{{total}} एम्बेड किए गए ({{skipped}} छोड़े गए)",
+        "noUnindexed": "कोई गैर-इंडेक्स किया गया अवतार नहीं ({{time}})",
+        "indexedSummary": "{{count}} अवतार {{time}} पर इंडेक्स किए गए",
+        "indexedSummarySkipped": "{{count}} अवतार इंडेक्स किए गए ({{skipped}} छोड़े गए) {{time}} पर"
+      }
+    },
     "tabs": {
       "config": "ऐप कॉन्फ़िग (config.json)",
       "general": "सामान्य",
       "registry": "VRChat रजिस्ट्री",
-      "steamvr": "SteamVR"
+      "steamvr": "SteamVR",
+      "experimental": "प्रायोगिक"
     }
   },
   "profileCard": {
@@ -1317,5 +1361,25 @@
       "favorites": "पसंदीदा",
       "visits": "विज़िट्स"
     }
+  },
+  "calendar": {
+    "tileTitle": "आगामी VRChat कार्यक्रम",
+    "loading": "लोड हो रहा है...",
+    "untitledEvent": "अनामांकित कार्यक्रम"
+  },
+  "worldHistory": {
+    "title": "विश्व इतिहास",
+    "subtitle": "अंतिम 100 विज़िट · VRChat आउटपुट-लॉग टेलर द्वारा लॉग किया गया",
+    "loading": "लोड हो रहा है...",
+    "errorPrefix": "त्रुटि: {{detail}}",
+    "empty": "अभी तक कोई विश्व भ्रमण दर्ज नहीं किया गया है। VRChat लॉन्च करें और एक दुनिया में शामिल हों — VRCSM गेम लॉग से विज़िट को कैप्चर करेगा।",
+    "unknownWorld": "(अज्ञात दुनिया)",
+    "stillInWorld": "अभी भी दुनिया में है",
+    "instanceLabel": "इंस्टेंस",
+    "openAction": "खोलें"
+  },
+  "strangerAlert": {
+    "title": "अजनबी आपके {{access}} इंस्टेंस में शामिल हुआ",
+    "unknownUser": "(अज्ञात उपयोगकर्ता)"
   }
 }

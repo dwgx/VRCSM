@@ -32,7 +32,8 @@
       "social": "โซเชียล",
       "workspace": "พื้นที่ทำงาน"
     },
-    "osc": "เครื่องมือ OSC"
+    "osc": "เครื่องมือ OSC",
+    "worldHistory": "ประวัติเวิลด์"
   },
   "profile": {
     "title": "โปรไฟล์ของฉัน",
@@ -365,7 +366,7 @@
     "goLogs": "ล็อก",
     "goBundles": "บันเดิล",
     "goLibrary": "คลัง",
-    "goAvatars": "อวตาร",
+    "goAvatars": "อวตาร์",
     "goWorlds": "เวิลด์",
     "goFriends": "เพื่อน",
     "goScreenshots": "สกรีนช็อต",
@@ -882,9 +883,28 @@
     "repairFailed": "ซ่อมล้มเหลว: {{error}}"
   },
   "updates": {
-    "availableTitle": "มีอัปเดตใหม่",
-    "availableBody": "ขณะนี้ VRCSM {{version}} พร้อมให้ใช้งานแล้ว",
-    "download": "ดาวน์โหลด"
+    "title": "มีอัปเดตใหม่",
+    "checking": "กำลังตรวจสอบอัปเดต…",
+    "availableDesc": "มี VRCSM เวอร์ชันใหม่ให้ใช้งาน ติดตั้งตอนนี้หรืออยู่กับเวอร์ชันปัจจุบันก็ได้",
+    "readyDesc": "ดาวน์โหลดและตรวจสอบตัวติดตั้งเรียบร้อยแล้ว กดติดตั้งเพื่อใช้งานต่อได้เลย โดย VRCSM จะรีสตาร์ต",
+    "downloadingDesc": "กำลังดาวน์โหลด อย่าปิด VRCSM จนกว่าจะเสร็จ",
+    "upToDateDesc": "คุณใช้เวอร์ชันล่าสุดอยู่แล้ว",
+    "errorDesc": "ไม่สามารถตรวจสอบอัปเดตได้ในตอนนี้",
+    "currentLabel": "เวอร์ชันปัจจุบัน",
+    "latestLabel": "เวอร์ชันที่มี",
+    "sizeLabel": "ขนาดดาวน์โหลด",
+    "verifying": "กำลังตรวจสอบ SHA-256…",
+    "downloading": "กำลังดาวน์โหลด {{done}} / {{total}}",
+    "viewNotes": "บันทึกประจำรุ่น",
+    "skip": "ข้ามเวอร์ชันนี้",
+    "skipped": "ข้ามเวอร์ชัน {{version}} แล้ว",
+    "skipFailed": "ข้ามไม่สำเร็จ: {{msg}}",
+    "downloadFailed": "ดาวน์โหลดไม่สำเร็จ: {{msg}}",
+    "installFailed": "ติดตั้งไม่สำเร็จ: {{msg}}",
+    "retry": "ตรวจสอบใหม่",
+    "later": "ไว้ทีหลัง",
+    "download": "ดาวน์โหลดและติดตั้ง",
+    "installNow": "ติดตั้งตอนนี้ (รีสตาร์ต)"
   },
   "friendLog": {
     "subtitle": "ประวัติการพบกันในเซสชันและการเปลี่ยนแปลงทางสังคมที่เก็บไว้ในฐานข้อมูลโลคัล",
@@ -1144,7 +1164,7 @@
         "label": "อัตรารีเฟรช (Hz)"
       },
       "reload": "โหลดซ้ำ",
-      "save": "บันึกการตั้งค่า",
+      "save": "บันทึกการตั้งค่า",
       "saving": "กำลังบันทึก...",
       "steamvrIdle": "SteamVR ไม่ได้ทำงาน",
       "steamvrRunning": "SteamVR กำลังทำงาน",
@@ -1217,11 +1237,54 @@
       "vrcIdle": "VRChat ไม่ได้ใช้งาน",
       "vrcRunning": "VRChat กำลังทำงาน"
     },
+    "experimental": {
+      "heading": "ฟีเจอร์ทดลอง",
+      "blurb": "ฟีเจอร์เหล่านี้อยู่ระหว่างการพัฒนา อาจมีความไม่สมบูรณ์ ใช้ทรัพยากรไม่คาดคิด และอาจขัดข้องได้ สามารถปิดได้ทุกเมื่อ — สถานะจะถูกบันทึกไว้ในเครื่อง",
+      "toggleOn": "เปิด",
+      "toggleOff": "ปิด",
+      "flags": {
+        "avatarVisualSearch": {
+          "name": "ค้นหาอวตารด้วยภาพ",
+          "description": "ค้นหาอวตารที่คล้ายกับรูปภาพโดยใช้โมเดล AI ในเครื่อง เพิ่มการกระทำ 'ค้นหาที่คล้ายกัน' เมื่อคลิกขวาบนการ์ดอวตาร",
+          "warning": "การใช้งานครั้งแรกจะดาวน์โหลดโมเดล CLIP ขนาด ~150 MB การประมวลผลทั้งหมดทำงานในเครื่อง จะไม่มีอะไรถูกอัปโหลด การจัดทำดัชนีแคชขนาดใหญ่อาจใช้เวลาหลายนาทีและใช้ CPU หนักหากไม่มี WebGPU"
+        }
+      },
+      "visualSearch": {
+        "title": "ค้นหาอวตารด้วยภาพ",
+        "openSearch": "เปิดการค้นหา",
+        "rebuildIndex": "สร้างดัชนีใหม่",
+        "indexing": "กำลังจัดทำดัชนี...",
+        "dialogTitle": "ค้นหาอวตารด้วยภาพ (ทดลอง)",
+        "noImage": "ไม่มีรูปภาพ",
+        "dropPrompt": "วางรูปภาพ, วาง (Ctrl+V), หรือ",
+        "chooseFile": "เลือกไฟล์",
+        "modelFooter": "โมเดล: {{version}} · 512-dim · การประมวลผลทั้งหมดทำงานในเครื่อง",
+        "search": "ค้นหา",
+        "searching": "กำลังค้นหา...",
+        "openInWeb": "เปิดในเว็บ VRChat",
+        "copyId": "คัดลอกไอดี",
+        "noResults": "ยังไม่มีผลลัพธ์ หากดัชนีว่างเปล่า ให้ไปที่ การตั้งค่า → ทดลอง → \"สร้างดัชนีใหม่\" ก่อน",
+        "stageLoadingModel": "กำลังโหลดโมเดล",
+        "stagePreparingModel": "กำลังเตรียมโมเดล",
+        "stageEnumerating": "กำลังแจกแจงอวตารที่ยังไม่ได้จัดทำดัชนี",
+        "stageResolvingThumbs": "กำลังประมวลผลภาพขนาดย่อสำหรับ {{count}} อวตาร",
+        "stageEmbedding": "กำลังฝังรูปภาพ",
+        "stageSearching": "กำลังค้นหา",
+        "stageDone": "เสร็จสิ้น",
+        "stageNothingToIndex": "ไม่มีอะไรให้จัดทำดัชนี",
+        "embedProgress": "ฝังแล้ว {{done}}/{{total}}",
+        "embedProgressSkipped": "ฝังแล้ว {{done}}/{{total}} (ข้าม {{skipped}})",
+        "noUnindexed": "ไม่มีอวตารที่ยังไม่ได้จัดทำดัชนี ({{time}})",
+        "indexedSummary": "จัดทำดัชนี {{count}} อวตารแล้วเมื่อ {{time}}",
+        "indexedSummarySkipped": "จัดทำดัชนี {{count}} อวตาร (ข้าม {{skipped}}) แล้วเมื่อ {{time}}"
+      }
+    },
     "tabs": {
       "config": "การตั้งค่าแอป (config.json)",
       "general": "ทั่วไป",
       "registry": "เรจิสทรี VRChat",
-      "steamvr": "SteamVR"
+      "steamvr": "SteamVR",
+      "experimental": "ทดลอง"
     }
   },
   "profileCard": {
@@ -1317,5 +1380,25 @@
       "favorites": "รายการโปรด",
       "visits": "การเข้าชม"
     }
+  },
+  "calendar": {
+    "tileTitle": "อีเวนต์ VRChat ที่กำลังจะมาถึง",
+    "loading": "กำลังโหลด...",
+    "untitledEvent": "อีเวนต์ไม่มีชื่อ"
+  },
+  "worldHistory": {
+    "title": "ประวัติเวิลด์",
+    "subtitle": "100 การเยี่ยมชมล่าสุด · บันทึกโดยตัวติดตามล็อกเอาต์พุตของ VRChat",
+    "loading": "กำลังโหลด...",
+    "errorPrefix": "ข้อผิดพลาด: {{detail}}",
+    "empty": "ยังไม่มีการบันทึกการเยี่ยมชมเวิลด์ เปิด VRChat แล้วเข้าร่วมเวิลด์ — VRCSM จะบันทึกการเยี่ยมชมจากล็อกของเกม",
+    "unknownWorld": "(ไม่รู้จักเวิลด์)",
+    "stillInWorld": "ยังอยู่ในเวิลด์",
+    "instanceLabel": "อินสแตนซ์",
+    "openAction": "เปิด"
+  },
+  "strangerAlert": {
+    "title": "คนแปลกหน้าเข้าร่วมอินสแตนซ์ {{access}} ของคุณ",
+    "unknownUser": "(ไม่รู้จักผู้ใช้)"
   }
 }

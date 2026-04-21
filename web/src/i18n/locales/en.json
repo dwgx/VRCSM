@@ -32,7 +32,8 @@
       "maintenance": "Maintenance",
       "project": "Project",
       "plugins": "Plugins"
-    }
+    },
+    "worldHistory": "World History"
   },
   "profile": {
     "title": "My Profile",
@@ -495,8 +496,6 @@
     "browse": "Browse…",
     "repair": "Repair",
     "copy": "Copy",
-    "enabled": "Enabled",
-    "disabled": "Disabled",
     "path": "Path",
     "created": "Created",
     "updated": "Updated",
@@ -1098,7 +1097,8 @@
       "general": "General",
       "config": "App Config (config.json)",
       "steamvr": "SteamVR",
-      "registry": "VRChat Registry"
+      "registry": "VRChat Registry",
+      "experimental": "Experimental"
     },
     "general": {
       "layoutTitle": "Workspace Layout",
@@ -1226,6 +1226,48 @@
         "label": "Supersample Filtering",
         "hint": "Reduces aliasing at the cost of slight blur"
       }
+    },
+    "experimental": {
+      "heading": "Experimental Features",
+      "blurb": "These features are in active development. Expect rough edges, unexpected resource usage, and occasional breakage. They can be turned off anytime — state persists locally.",
+      "toggleOn": "ON",
+      "toggleOff": "OFF",
+      "flags": {
+        "avatarVisualSearch": {
+          "name": "Visual Avatar Search",
+          "description": "Find avatars visually similar to an image using a local AI model. Adds a 'Find Similar' right-click action on avatar cards.",
+          "warning": "First use downloads a ~150 MB CLIP model. All processing runs locally; nothing is uploaded. Indexing a large cache can take several minutes and is CPU-intensive without WebGPU."
+        }
+      },
+      "visualSearch": {
+        "title": "Visual Avatar Search",
+        "openSearch": "Open search",
+        "rebuildIndex": "Rebuild index",
+        "indexing": "Indexing...",
+        "dialogTitle": "Visual Avatar Search (experimental)",
+        "noImage": "no image",
+        "dropPrompt": "Drop an image, paste (Ctrl+V), or",
+        "chooseFile": "choose a file",
+        "modelFooter": "Model: {{version}} · 512-dim · all processing runs locally",
+        "search": "Search",
+        "searching": "Searching...",
+        "openInWeb": "Open in VRChat web",
+        "copyId": "Copy id",
+        "noResults": "No results yet. If the index is empty, go to Settings → Experimental → \"Rebuild Index\" first.",
+        "stageLoadingModel": "Loading model",
+        "stagePreparingModel": "Preparing model",
+        "stageEnumerating": "Enumerating unindexed avatars",
+        "stageResolvingThumbs": "Resolving thumbnails for {{count}} avatars",
+        "stageEmbedding": "Embedding image",
+        "stageSearching": "Searching",
+        "stageDone": "Done",
+        "stageNothingToIndex": "Nothing to index",
+        "embedProgress": "Embedded {{done}}/{{total}}",
+        "embedProgressSkipped": "Embedded {{done}}/{{total}} ({{skipped}} skipped)",
+        "noUnindexed": "No unindexed avatars ({{time}})",
+        "indexedSummary": "Indexed {{count}} avatars at {{time}}",
+        "indexedSummarySkipped": "Indexed {{count}} avatars ({{skipped}} skipped) at {{time}}"
+      }
     }
   },
   "world": {
@@ -1242,6 +1284,26 @@
       "unspecified": "Unspecified",
       "unknown": "Unknown"
     }
+  },
+  "calendar": {
+    "tileTitle": "Upcoming VRChat events",
+    "loading": "Loading...",
+    "untitledEvent": "Untitled event"
+  },
+  "worldHistory": {
+    "title": "World History",
+    "subtitle": "Last 100 visits · logged by the VRChat output-log tailer",
+    "loading": "Loading...",
+    "errorPrefix": "Error: {{detail}}",
+    "empty": "No world visits recorded yet. Launch VRChat and join a world — VRCSM will capture the visit from the game log.",
+    "unknownWorld": "(unknown world)",
+    "stillInWorld": "still in world",
+    "instanceLabel": "instance",
+    "openAction": "open"
+  },
+  "strangerAlert": {
+    "title": "Stranger joined your {{access}} instance",
+    "unknownUser": "(unknown user)"
   },
   "profileCard": {
     "home": "Home",

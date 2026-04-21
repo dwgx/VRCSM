@@ -32,7 +32,8 @@
       "maintenance": "维护",
       "project": "项目",
       "plugins": "插件"
-    }
+    },
+    "worldHistory": "世界历史"
   },
   "profile": {
     "title": "我的资料",
@@ -210,7 +211,7 @@
     "socialPulse": "社交动态",
     "marketplaceQuick": "市场概览",
     "favoriteAvatars": "收藏模型",
-    "favoriteWorlds": "收藏地图",
+    "favoriteWorlds": "收藏世界",
     "downloadReady": "可下载",
     "block": "拉黑",
     "mute": "静音",
@@ -241,9 +242,6 @@
     "noDownloadCandidates": "暂时没有可下载的最近模型。",
     "marketplaceTitle": "商店",
     "marketplaceBody": "综合官方收藏、本地模型库存、最近下载目标，以及活跃 VRChat 会话暴露的交易相关字段，给出拥有与获取信号。",
-    "favoriteAvatars": "收藏模型",
-    "favoriteWorlds": "收藏世界",
-    "downloadReady": "可下载",
     "downloadFolder": "下载文件夹",
     "topCreators": "本地库中的热门作者",
     "inventoryCount": "{{count}} 个模型",
@@ -495,8 +493,8 @@
     "cancel": "取消",
     "confirm": "确认",
     "close": "关闭",
-    "enabled": "已启用",
-    "disabled": "已禁用",
+    "enabled": "启用",
+    "disabled": "禁用",
     "save": "保存",
     "idle": "空闲",
     "done": "完成",
@@ -509,8 +507,6 @@
     "browse": "浏览…",
     "repair": "修复",
     "copy": "复制",
-    "enabled": "启用",
-    "disabled": "禁用",
     "path": "路径",
     "created": "创建于",
     "updated": "更新于",
@@ -2905,7 +2901,8 @@
       "general": "通用",
       "config": "应用配置 (config.json)",
       "steamvr": "SteamVR",
-      "registry": "VRChat 注册表"
+      "registry": "VRChat 注册表",
+      "experimental": "实验性"
     },
     "general": {
       "layoutTitle": "工作区布局",
@@ -3033,6 +3030,48 @@
         "label": "超采样滤波",
         "hint": "以轻微模糊为代价减少锯齿"
       }
+    },
+    "experimental": {
+      "heading": "实验性功能",
+      "blurb": "这些功能正在积极开发中。可能会有未完善之处、意料之外的资源占用和偶尔的故障。可以随时关闭 — 状态会保存在本地。",
+      "toggleOn": "开",
+      "toggleOff": "关",
+      "flags": {
+        "avatarVisualSearch": {
+          "name": "虚拟形象视觉搜索",
+          "description": "使用本地 AI 模型查找与图像视觉上相似的虚拟形象。在虚拟形象卡片上增加“查找相似”的右键菜单。",
+          "warning": "首次使用会下载一个约 150MB 的 CLIP 模型。所有处理都在本地运行，不会上传任何内容。在没有 WebGPU 的情况下，为大量缓存建立索引可能会花费几分钟并且占用大量 CPU。"
+        }
+      },
+      "visualSearch": {
+        "title": "虚拟形象视觉搜索",
+        "openSearch": "打开搜索",
+        "rebuildIndex": "重建索引",
+        "indexing": "正在建立索引...",
+        "dialogTitle": "虚拟形象视觉搜索 (实验性)",
+        "noImage": "无图像",
+        "dropPrompt": "拖放图像、粘贴 (Ctrl+V) 或",
+        "chooseFile": "选择文件",
+        "modelFooter": "模型: {{version}} · 512-dim · 所有处理均在本地运行",
+        "search": "搜索",
+        "searching": "正在搜索...",
+        "openInWeb": "在 VRChat 网站中打开",
+        "copyId": "复制 ID",
+        "noResults": "暂无结果。如果索引为空，请先前往 设置 → 实验性 → “重建索引”。",
+        "stageLoadingModel": "加载模型",
+        "stagePreparingModel": "准备模型",
+        "stageEnumerating": "枚举未索引的虚拟形象",
+        "stageResolvingThumbs": "解析 {{count}} 个虚拟形象的缩略图",
+        "stageEmbedding": "嵌入图像",
+        "stageSearching": "正在搜索",
+        "stageDone": "完成",
+        "stageNothingToIndex": "无需索引",
+        "embedProgress": "已嵌入 {{done}}/{{total}}",
+        "embedProgressSkipped": "已嵌入 {{done}}/{{total}} (跳过 {{skipped}} 个)",
+        "noUnindexed": "没有未索引的虚拟形象 ({{time}})",
+        "indexedSummary": "在 {{time}} 索引了 {{count}} 个虚拟形象",
+        "indexedSummarySkipped": "在 {{time}} 索引了 {{count}} 个虚拟形象 (跳过 {{skipped}} 个)"
+      }
     }
   },
   "world": {
@@ -3117,5 +3156,25 @@
       "disabled": "插件 {{id}} 已被禁用。",
       "noPanel": "插件 {{id}} 未提供面板界面。"
     }
+  },
+  "calendar": {
+    "tileTitle": "即将举行的 VRChat 活动",
+    "loading": "加载中...",
+    "untitledEvent": "无标题活动"
+  },
+  "worldHistory": {
+    "title": "世界历史",
+    "subtitle": "最近 100 次访问 · 由 VRChat 输出日志监视器记录",
+    "loading": "加载中...",
+    "errorPrefix": "错误: {{detail}}",
+    "empty": "尚无世界访问记录。启动 VRChat 并加入一个世界 — VRCSM 将从游戏日志中捕获访问记录。",
+    "unknownWorld": "(未知世界)",
+    "stillInWorld": "仍在此世界",
+    "instanceLabel": "房间",
+    "openAction": "打开"
+  },
+  "strangerAlert": {
+    "title": "陌生人加入了您的 {{access}} 房间",
+    "unknownUser": "(未知用户)"
   }
 }
