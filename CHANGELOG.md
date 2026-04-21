@@ -6,9 +6,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
-## [Unreleased] — v0.10 dev
+## [0.10.0] — 2026-04-21
 
-Second batch of v0.10 work lands a long-missing gap against VRCX: real-time
+v0.10 locks the real-time event story. Two batches of work land together: the
+UI architecture rewrite (workspace tabs, FriendDetailDialog, SmartWearButton,
+social actions) and the long-missing gap against VRCX: real-time
 event push via the VRChat Pipeline WebSocket, a notifications inbox, Discord
 Rich Presence, OSC send/receive, and screenshot metadata injection. The
 `AuthContext` now drives the pipeline lifecycle automatically so every
