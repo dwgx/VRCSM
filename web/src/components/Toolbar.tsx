@@ -6,6 +6,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Activity, RefreshCcw, Search } from "lucide-react";
 import { AuthChip } from "@/components/AuthChip";
+import { NotificationsInbox } from "@/components/NotificationsInbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { APP_ICON_URL } from "@/lib/assets";
@@ -117,6 +118,7 @@ export function Toolbar({
       </button>
 
       <div className="ml-auto flex items-center gap-2">
+        <NotificationsInbox />
         <AuthChip />
         <Badge variant="outline" className="rounded-[var(--radius-sm)] px-2.5">
           LOCAL

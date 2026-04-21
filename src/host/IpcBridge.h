@@ -4,7 +4,11 @@
 
 #include "../core/Common.h"
 #include "../core/Database.h"
+#include "../core/DiscordRpc.h"
 #include "../core/LogTailer.h"
+#include "../core/OscBridge.h"
+#include "../core/Pipeline.h"
+#include "../core/ScreenshotWatcher.h"
 #include "../core/TaskQueue.h"
 #include "../core/VrcRadarEngine.h"
 
@@ -80,6 +84,7 @@ private:
     nlohmann::json HandleAvatarSelect(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarSearch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserInvite(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserInviteTo(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserMute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserUnmute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserBlock(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -99,6 +104,39 @@ private:
     nlohmann::json HandleScreenshotsDelete(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsStreamStart(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsStreamStop(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // Pipeline WebSocket — real-time event stream from VRChat. Events
+    // flow out as pipeline.event with {type, content}; state changes
+    // as pipeline.state with {state, detail}.
+    nlohmann::json HandlePipelineStart(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePipelineStop(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // Discord Rich Presence bridge — maps the current VRChat session
+    // (world/instance/player count/time elapsed) into a Discord activity.
+    nlohmann::json HandleDiscordSetActivity(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleDiscordClearActivity(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleDiscordStatus(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // OSC bridge — UDP send/receive to VRChat's OSC surface.
+    nlohmann::json HandleOscSend(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOscListenStart(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOscListenStop(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // Screenshot metadata — watch VRChat's capture folder and inject
+    // world/player/instance tags into new PNGs.
+    nlohmann::json HandleScreenshotsWatcherStart(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleScreenshotsWatcherStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleScreenshotsInjectMetadata(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleScreenshotsReadMetadata(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // Notifications inbox — VRChat invite / friend-request / message
+    // payloads surfaced to the UI bell icon.
+    nlohmann::json HandleNotificationsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleNotificationsAccept(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleNotificationsRespond(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleNotificationsHide(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleNotificationsClear(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleMessageSend(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleLogsFilesClear(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleConfigRead(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleConfigWrite(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -179,6 +217,10 @@ private:
     std::unordered_map<std::string, Handler> m_handlers;
     std::unordered_map<std::string, PluginHandler> m_pluginHandlers;
     std::unique_ptr<vrcsm::core::LogTailer> m_logTailer;
+    std::unique_ptr<vrcsm::core::Pipeline> m_pipeline;
+    std::unique_ptr<vrcsm::core::DiscordRpc> m_discordRpc;
+    std::unique_ptr<vrcsm::core::OscBridge> m_osc;
+    std::unique_ptr<vrcsm::core::ScreenshotWatcher> m_screenshotWatcher;
     vrcsm::core::TaskQueue m_previewQueue;
     vrcsm::core::VrcRadarEngine m_radarEngine;
 

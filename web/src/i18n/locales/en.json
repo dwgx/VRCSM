@@ -121,6 +121,21 @@
     "selectAvatarNeedsAuth": "Please sign in to VRChat first",
     "selectAvatarFailed": "Switch failed"
   },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "loading": "Loading…",
+    "unread": "unread",
+    "refresh": "Refresh",
+    "clearAll": "Clear all",
+    "accept": "Accept",
+    "reply": "Reply",
+    "hide": "Hide",
+    "accepted": "Accepted",
+    "replied": "Reply sent",
+    "cleared": "Inbox cleared",
+    "inviteAccept": "On my way!"
+  },
   "auth": {
     "signIn": "Sign in",
     "signInWithVrchat": "Sign in with VRChat",

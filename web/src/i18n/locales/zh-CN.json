@@ -121,6 +121,21 @@
     "selectAvatarNeedsAuth": "请先登录 VRChat",
     "selectAvatarFailed": "切换失败"
   },
+  "notifications": {
+    "title": "通知",
+    "empty": "暂无通知",
+    "loading": "加载中…",
+    "unread": "未读",
+    "refresh": "刷新",
+    "clearAll": "清空",
+    "accept": "接受",
+    "reply": "回复",
+    "hide": "隐藏",
+    "accepted": "已接受",
+    "replied": "已发送回复",
+    "cleared": "收件箱已清空",
+    "inviteAccept": "我马上到！"
+  },
   "auth": {
     "signIn": "登录",
     "signInWithVrchat": "用 VRChat 账号登录",
