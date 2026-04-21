@@ -47,6 +47,7 @@ const items: NavItem[] = [
   { to: "/library", labelKey: "nav.library", icon: Heart },
   { to: "/avatars", labelKey: "nav.avatars", icon: User },
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
+  { to: "/history/worlds", labelKey: "nav.worldHistory", icon: Globe2 },
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },

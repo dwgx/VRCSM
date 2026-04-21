@@ -127,6 +127,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pipelineState, setPipelineState] = useState<PipelineState>("stopped");
+  const pipelineRef = useRef(pipelineState);
+  pipelineRef.current = pipelineState;
   const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
@@ -252,7 +254,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // as `pipeline.state` events from the host thread.
   useEffect(() => {
     if (!status.authed) {
-      if (pipelineState !== "stopped") {
+      if (pipelineRef.current !== "stopped") {
         void ipc.pipelineStop().catch(() => {});
         setPipelineState("stopped");
       }

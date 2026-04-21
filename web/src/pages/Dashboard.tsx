@@ -43,6 +43,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CalendarTile } from "@/components/CalendarTile";
 
 // ── Palette ────────────────────────────────────────────────────────────
 // Unity editor-ish categorical palette — muted, no purple, no neon glow.
@@ -1076,6 +1077,8 @@ function Dashboard() {
           </CardContent>
         </Card>
       )}
+      {/* VRChat-curated upcoming events. Self-hiding when empty / unauth. */}
+      <CalendarTile />
     </div>
   );
 }

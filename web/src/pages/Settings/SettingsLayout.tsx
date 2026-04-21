@@ -9,13 +9,16 @@ import { TabGeneral } from "./TabGeneral";
 import { TabConfigJson } from "./TabConfigJson";
 import { TabSteamVR } from "./TabSteamVR";
 import { TabRegistry } from "./TabRegistry";
+import { TabExperimental } from "./TabExperimental";
+
+type SettingsTab = "general" | "config" | "steamvr" | "registry" | "experimental";
 
 export default function SettingsLayout() {
   const { t } = useTranslation();
   const { status } = useVrcProcess();
   const vrcRunning = status.running;
   const [version, setVersion] = useState<AppVersion | null>(null);
-  const [activeTab, setActiveTab] = useState<"general" | "config" | "steamvr" | "registry">("general");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   useEffect(() => {
     let alive = true;
@@ -74,6 +77,12 @@ export default function SettingsLayout() {
           >
             {t("settings.tabs.registry", { defaultValue: "VRChat Registry" })}
           </button>
+          <button
+            onClick={() => setActiveTab("experimental")}
+            className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "experimental" && "unity-tab-active")}
+          >
+            {t("settings.tabs.experimental", { defaultValue: "Experimental" })}
+          </button>
         </div>
       </header>
 
@@ -83,6 +92,7 @@ export default function SettingsLayout() {
         {activeTab === "config" && <TabConfigJson vrcRunning={vrcRunning} />}
         {activeTab === "steamvr" && <TabSteamVR vrcRunning={vrcRunning} />}
         {activeTab === "registry" && <TabRegistry vrcRunning={vrcRunning} />}
+        {activeTab === "experimental" && <TabExperimental />}
       </div>
     </div>
   );

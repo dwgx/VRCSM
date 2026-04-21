@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
@@ -32,6 +32,7 @@ import { VrcProcessProvider, useVrcProcess } from "@/lib/vrc-context";
 import { useDiscordPresence } from "@/lib/useDiscordPresence";
 import { useScreenshotAutoInject } from "@/lib/useScreenshotAutoInject";
 import { useFriendsPipelineSync } from "@/lib/useFriendsPipelineSync";
+import { useStrangerAlert } from "@/lib/useStrangerAlert";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { Download } from "lucide-react";
 
@@ -58,6 +59,7 @@ const PluginsMarket = lazy(() => import("@/pages/PluginsMarket"));
 const PluginDetail = lazy(() => import("@/pages/PluginDetail"));
 const PluginInstalled = lazy(() => import("@/pages/PluginInstalled"));
 const PluginHost = lazy(() => import("@/pages/PluginHost"));
+const WorldHistory = lazy(() => import("@/pages/WorldHistory"));
 
 interface RouteShellMeta {
   breadcrumb: string[];
@@ -76,7 +78,23 @@ function PageFallback() {
 function AppContent() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const { report: shellReport, loading: isRescanning, refresh } = useReport();
+
+  // If the process was launched via a vrcsm:// or vrcx:// URL, the host
+  // appended ?initialRoute=... to the entry URL. Navigate to the target
+  // once mounted, then clean the query string so an in-app refresh
+  // doesn't re-trigger the jump.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("initialRoute");
+    if (target && target.startsWith("/")) {
+      navigate(target, { replace: true });
+      window.history.replaceState({}, "", target);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [layoutResetToken, setLayoutResetToken] = useState(0);
   const { status: vrcProcessStatus } = useVrcProcess();
@@ -101,6 +119,11 @@ function AppContent() {
   // friend presence/location/profile updates propagate to TabFriends,
   // Dashboard, and any other consumer of useIpcQuery("friends.list").
   useFriendsPipelineSync();
+
+  // Stranger-in-Private warning — toast when a non-friend joins the
+  // user's non-public instance. Opt-out is per-user via dismissing the
+  // toast; a more granular "always allow this user" VIP list is Tier S.
+  useStrangerAlert();
 
   const routeMeta = useMemo<Record<string, RouteShellMeta>>(
     () => ({
@@ -147,6 +170,17 @@ function AppContent() {
       "/radar": {
         title: t("nav.radar"),
         breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.radar")],
+      },
+      "/friend-log": {
+        title: t("nav.radar"),
+        breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.radar")],
+      },
+      "/history/worlds": {
+        title: t("nav.worldHistory", { defaultValue: "World History" }),
+        breadcrumb: [
+          t("nav.category.social", { defaultValue: "Social" }),
+          t("nav.worldHistory", { defaultValue: "World History" }),
+        ],
       },
       "/migrate": {
         title: t("nav.migrate"),
@@ -378,6 +412,7 @@ function AppContent() {
                                 <Route path="/vrchat" element={<VrchatWorkspace />} />
                                 <Route path="/screenshots" element={<Screenshots />} />
                                 <Route path="/friend-log" element={<Navigate to="/radar" replace />} />
+                                <Route path="/history/worlds" element={<WorldHistory />} />
                                 <Route path="/logs" element={<Logs />} />
                                 <Route path="/radar" element={<Radar />} />
                                 <Route path="/migrate" element={<Migrate />} />
