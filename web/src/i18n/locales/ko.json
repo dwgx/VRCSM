@@ -129,6 +129,31 @@
     "cleared": "받은편지함을 비웠습니다",
     "inviteAccept": "지금 갑니다!"
   },
+  "friendDetail": {
+    "sendMessage": "메시지 보내기",
+    "messagePlaceholder": "안녕하세요! 같이 월드 가실래요?",
+    "messageSent": "메시지 전송됨",
+    "messageHint": "Ctrl+Enter로 전송합니다. VRChat은 친구가 아닌 사용자의 DM을 무시합니다.",
+    "send": "전송"
+  },
+  "osc": {
+    "title": "OSC 도구",
+    "subtitle": "VRChat과 Open Sound Control 메시지를 주고받습니다. 기본값은 발신 → :9000, 수신 ← :9001입니다.",
+    "send": "전송",
+    "sendDesc": "단일 OSC 메시지를 전송합니다. 아바타 파라미터의 경우 /avatar/parameters/Foo, ChatBox의 경우 /chatbox/input과 같은 주소를 사용하세요.",
+    "sendButton": "전송",
+    "listen": "수신",
+    "listenDesc": "UDP 소켓을 바인딩하고 VRChat(또는 모든 발신자)이 내보내는 모든 OSC 메시지를 기록합니다.",
+    "listening": "수신 중",
+    "start": "시작",
+    "stop": "중지",
+    "empty": "메시지 대기 중…",
+    "notListening": "수신기 중지됨",
+    "clear": "로그 지우기",
+    "sent": "전송됨",
+    "invalidValue": "값을 파싱할 수 없습니다",
+    "invalidAddress": "주소는 /로 시작해야 합니다"
+  },
   "auth": {
     "signIn": "로그인",
     "signInWithVrchat": "VRChat 으로 로그인",
@@ -409,6 +434,8 @@
     }
   },
   "common": {
+    "enabled": "활성화",
+    "disabled": "비활성화",
     "loading": "불러오는 중…",
     "retry": "다시 시도",
     "rescan": "다시 스캔",
@@ -883,6 +910,26 @@
   "settings": {
     "title": "설정",
     "subtitle": "VRCSM 과 기본 VRChat 옵션을 설정합니다.",
+    "discord": {
+      "title": "Discord Rich Presence",
+      "desc": "현재 VRChat 월드와 플레이어 수를 Discord 상태에 표시합니다. discord.com/developers/applications에 Discord 앱을 등록하고 아래에 애플리케이션 ID를 붙여넣으세요.",
+      "enabled": {
+        "label": "Rich Presence 활성화",
+        "desc": "VRChat 인스턴스가 변경될 때마다 Discord로 활동을 전송합니다."
+      },
+      "clientId": {
+        "label": "애플리케이션 ID",
+        "desc": "Discord 개발자 대시보드의 18-19자리 스노우플레이크입니다."
+      }
+    },
+    "screenshots": {
+      "title": "스크린샷 메타데이터",
+      "desc": "새로운 VRChat 캡처에 촬영 순간의 월드 ID, 인스턴스, 플레이어 목록을 자동으로 태그합니다. 태그는 PNG에 유지되며 exiftool / VRCX에서 읽을 수 있습니다.",
+      "autoInject": {
+        "label": "새 캡처에 메타데이터 삽입",
+        "desc": "%USERPROFILE%\\Pictures\\VRChat 폴더를 감시합니다. 삽입은 최선을 다해 시도되며 플레이어를 캡처하려면 레이더가 연결되어 있어야 합니다."
+      }
+    },
     "comingSoon": "곧 제공",
     "comingSoonDesc": "설정(config.json + Loader.cfg)은 곧 제공됩니다.",
     "appTheme": "앱 테마",
