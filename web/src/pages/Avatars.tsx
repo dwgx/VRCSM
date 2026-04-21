@@ -66,18 +66,20 @@ export function useAvatarDetails(
   avatarId: string | null,
 ) {
   const { status } = useAuth();
-  const { data, isLoading } = useIpcQuery<{ id: string }, AvatarDetailsResponse>(
+  const { data, isLoading, isError } = useIpcQuery<{ id: string }, AvatarDetailsResponse>(
     "avatar.details",
     { id: avatarId! },
     {
       staleTime: 5 * 60 * 1000,
       enabled: !!avatarId && status.authed,
+      retry: false,
     }
   );
 
-  return { 
-    details: data?.details ?? null, 
+  return {
+    details: data?.details ?? null,
     loading: isLoading,
+    unavailable: !isLoading && isError && status.authed,
   };
 }
 
@@ -226,7 +228,7 @@ function AvatarInspector({
 }) {
   const { t } = useTranslation();
   const { status: authStatus } = useAuth();
-  const { details, loading: detailsLoading } = useAvatarDetails(
+  const { details, loading: detailsLoading, unavailable } = useAvatarDetails(
     selected.avatar_id,
   );
 
@@ -401,13 +403,20 @@ function AvatarInspector({
             </div>
           ) : null}
 
-          {/* Switch avatar button — only when signed in */}
-          {authStatus.authed ? (
+          {/* Switch avatar button — hidden when avatar is unavailable */}
+          {authStatus.authed && !unavailable ? (
             <SmartWearButton
               avatarId={selected.avatar_id}
               avatarName={displayName}
               variant="button"
             />
+          ) : null}
+          {unavailable ? (
+            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--destructive)/0.3)] bg-[hsl(var(--destructive)/0.08)] px-3 py-2 text-[11px] text-[hsl(var(--destructive))]">
+              {t("avatars.unavailable", {
+                defaultValue: "This avatar may have been deleted or set to private. It cannot be worn.",
+              })}
+            </div>
           ) : null}
 
           {/* ID badges + cache path */}
@@ -507,13 +516,14 @@ function AvatarRow({
     <button
       type="button"
       onClick={onSelect}
-      className={
-        "relative flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left " +
-        "border border-transparent transition-colors " +
-        (isSelected
+      className={cn(
+        "relative flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left",
+        "border border-transparent transition-colors",
+        isSelected
           ? "bg-[hsl(var(--primary)/0.20)] border-[hsl(var(--primary)/0.55)]"
-          : "hover:bg-[hsl(var(--surface-raised))]")
-      }
+          : "hover:bg-[hsl(var(--surface-raised))]",
+        item.parameter_count === 0 && "opacity-45",
+      )}
     >
       {isSelected ? (
         <span
