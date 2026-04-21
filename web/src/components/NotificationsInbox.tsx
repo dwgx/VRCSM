@@ -77,6 +77,21 @@ export function NotificationsInbox() {
   const [items, setItems] = useState<NotificationEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const bellRef = useRef<HTMLButtonElement | null>(null);
+  const [panelPos, setPanelPos] = useState<{ top: number; right: number } | null>(null);
+
+  const updatePanelPos = useCallback(() => {
+    if (!bellRef.current) return;
+    const r = bellRef.current.getBoundingClientRect();
+    setPanelPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePanelPos();
+    window.addEventListener("resize", updatePanelPos);
+    return () => window.removeEventListener("resize", updatePanelPos);
+  }, [open, updatePanelPos]);
 
   const unread = useMemo(
     () => items.filter((n) => !n.seen).length,
@@ -251,22 +266,6 @@ export function NotificationsInbox() {
   }
 
   if (!status.authed) return null;
-
-  const bellRef = useRef<HTMLButtonElement | null>(null);
-  const [panelPos, setPanelPos] = useState<{ top: number; right: number } | null>(null);
-
-  const updatePanelPos = useCallback(() => {
-    if (!bellRef.current) return;
-    const r = bellRef.current.getBoundingClientRect();
-    setPanelPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    updatePanelPos();
-    window.addEventListener("resize", updatePanelPos);
-    return () => window.removeEventListener("resize", updatePanelPos);
-  }, [open, updatePanelPos]);
 
   return (
     <div ref={containerRef}>
