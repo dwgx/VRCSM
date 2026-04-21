@@ -31,6 +31,23 @@ import type {
 
 const FAVORITES_COMPAT_STORAGE_KEY = "vrcsm:favorites-compat";
 
+export interface CalendarEvent {
+  id?: string;
+  name?: string;
+  description?: string;
+  starts_at?: string;
+  ends_at?: string;
+  startsAt?: string;
+  endsAt?: string;
+  world_id?: string;
+  worldId?: string;
+  image_url?: string;
+  imageUrl?: string;
+  thumbnailImageUrl?: string;
+  region?: string;
+  [key: string]: unknown;
+}
+
 interface WebViewBridge {
   postMessage: (message: string) => void;
   addEventListener: (type: "message", listener: (event: { data: string }) => void) => void;
@@ -51,7 +68,29 @@ declare global {
 type Pending = {
   resolve: (value: unknown) => void;
   reject: (reason: unknown) => void;
+  timerId: number | null;
 };
+
+// Default 60-second ceiling for any IPC call. If the host handler hangs
+// (e.g. a worker thread deadlocks inside radar.poll), the Promise used to
+// leak forever and the pending Map grew without bound. With this ceiling
+// the call rejects with `IpcError("timeout", ...)` and the slot is freed.
+const DEFAULT_IPC_TIMEOUT_MS = 60_000;
+
+// Methods that legitimately take longer than the default ceiling. Cache
+// migration copies tens of GB; avatar extraction shells out to AssetRipper;
+// favorites.syncOfficial round-trips the full VRChat favorites graph.
+// For these we disable the timer — callers own their own cancellation.
+const LONG_RUNNING_METHODS = new Set<string>([
+  "migrate.execute",
+  "scan",
+  "avatar.bundle.download",
+  "avatar.preview",
+  "favorites.syncOfficial",
+  "favorites.export",
+  "favorites.import",
+  "thumbnails.fetch",
+]);
 
 /**
  * Structured IPC error — mirrors the C++ `Error` struct's JSON shape.
@@ -86,15 +125,18 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-import {
-  mockFavorites,
-  buildFavoriteLists,
-  buildMockFavoriteLists,
-  sortFavoriteItems,
-  buildMockReport,
-  buildMockSettingsReport,
-  buildMockFriends,
-} from "./__mocks__/ipc-mock-data";
+// Lazy-load mock data — only pulled in when running in browser dev mode
+// (bridge === null). In production WebView2 builds, mockCall is never
+// reached, so Vite code-splits this into a chunk that is never fetched,
+// saving ~14 KB from the main bundle.
+type MockModule = typeof import("./__mocks__/ipc-mock-data");
+let _mockModule: MockModule | null = null;
+async function getMockModule(): Promise<MockModule> {
+  if (!_mockModule) {
+    _mockModule = await import("./__mocks__/ipc-mock-data");
+  }
+  return _mockModule;
+}
 
 
 function readCompatFavorites(): FavoriteItem[] {
@@ -193,6 +235,9 @@ class IpcClient {
       const slot = this.pending.get(resp.id);
       if (!slot) return;
       this.pending.delete(resp.id);
+      if (slot.timerId !== null) {
+        window.clearTimeout(slot.timerId);
+      }
       if (resp.error) {
         const err = new IpcError(
           resp.error.code ?? "unknown",
@@ -233,10 +278,26 @@ class IpcClient {
     const id = uuid();
     const envelope: IpcEnvelopeRequest<TParams> = { id, method };
     if (params !== undefined) envelope.params = params;
+    const applyTimeout = !LONG_RUNNING_METHODS.has(method);
     const promise = new Promise<TResult>((resolve, reject) => {
+      let timerId: number | null = null;
+      if (applyTimeout) {
+        timerId = window.setTimeout(() => {
+          if (!this.pending.has(id)) return;
+          this.pending.delete(id);
+          reject(
+            new IpcError(
+              "timeout",
+              `IPC '${method}' did not respond within ${DEFAULT_IPC_TIMEOUT_MS}ms`,
+              0,
+            ),
+          );
+        }, DEFAULT_IPC_TIMEOUT_MS);
+      }
       this.pending.set(id, {
         resolve: (v) => resolve(v as TResult),
         reject,
+        timerId,
       });
     });
     this.bridge.postMessage(JSON.stringify(envelope));
@@ -244,6 +305,7 @@ class IpcClient {
   }
 
   private async mockCall<TResult>(method: string, params?: unknown): Promise<TResult> {
+    const { mockFavorites, buildMockReport, buildMockSettingsReport, buildMockFriends, buildMockFavoriteLists } = await getMockModule();
     await new Promise((r) => setTimeout(r, 180));
     switch (method) {
       case "app.version":
@@ -1173,6 +1235,7 @@ class IpcClient {
       if (!isMethodNotFoundError(error)) {
         throw error;
       }
+      const { buildFavoriteLists } = await getMockModule();
       return { lists: buildFavoriteLists(readCompatFavorites()) };
     }
   }
@@ -1187,6 +1250,7 @@ class IpcClient {
       if (!isMethodNotFoundError(error)) {
         throw error;
       }
+      const { sortFavoriteItems } = await getMockModule();
       return {
         items: sortFavoriteItems(
           readCompatFavorites().filter((item) => item.list_name === listName),
@@ -1414,6 +1478,54 @@ class IpcClient {
   async pluginDisable(id: string) {
     return this.call<{ id: string }, { ok: boolean; id: string; enabled: boolean }>(
       "plugin.disable", { id },
+    );
+  }
+
+  // ── Calendar (VRChat events) ────────────────────────────────────────
+  // Light-weight read-only list of upcoming VRChat-curated events.
+  // Empty array on 401 / unauth so the Dashboard tile can hide cleanly.
+
+  async calendarList() {
+    return this.call<undefined, { events: CalendarEvent[] }>("calendar.list");
+  }
+
+  // ── Friend log insert (called from the pipeline diff reducer) ──────
+
+  async friendLogInsert(params: {
+    user_id: string;
+    event_type: string;
+    old_value?: string;
+    new_value?: string;
+    occurred_at?: string;
+  }) {
+    return this.call<typeof params, { ok: boolean }>("friendLog.insert", params);
+  }
+
+  // ── Vector (experimental visual avatar search) ─────────────────────
+  // All four gated behind the frontend experimental flag in Settings.
+  // The host always exposes them; the UI decides when to call.
+
+  async vectorUpsertEmbedding(params: {
+    avatar_id: string;
+    embedding: number[];
+    model_version: string;
+  }) {
+    return this.call<typeof params, { ok: boolean }>("vector.upsertEmbedding", params);
+  }
+
+  async vectorSearch(embedding: number[], k = 25) {
+    return this.call<{ embedding: number[]; k: number }, {
+      matches: { avatar_id: string; distance: number }[];
+    }>("vector.search", { embedding, k });
+  }
+
+  async vectorGetUnindexed() {
+    return this.call<undefined, { avatar_ids: string[] }>("vector.getUnindexed");
+  }
+
+  async vectorRemoveEmbedding(avatar_id: string) {
+    return this.call<{ avatar_id: string }, { ok: boolean }>(
+      "vector.removeEmbedding", { avatar_id },
     );
   }
 
