@@ -104,6 +104,12 @@ public:
     static Result<std::vector<nlohmann::json>> fetchFavoritedAvatars();
     static Result<std::vector<nlohmann::json>> fetchFavoritedWorlds();
 
+    // GET /calendar — upcoming VRChat official events. Returns an array
+    // of event objects (id, name, starts_at, ends_at, world_id, image_url,
+    // region, etc). Public-ish endpoint but we still send the cookie so
+    // users see region-appropriate / personalised events when signed in.
+    static Result<std::vector<nlohmann::json>> fetchCalendar();
+
     // Downloads the resource at the specified VRChat Cloudflare URL directly to
     // the filesystem using the active WinHTTP authentication session.
     static bool downloadFile(const std::string& url, const std::filesystem::path& destPath);

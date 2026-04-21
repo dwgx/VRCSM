@@ -18,6 +18,8 @@
 #include <ShlObj.h>
 #include <winhttp.h>
 
+#include <wil/resource.h>
+
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
@@ -947,9 +949,19 @@ namespace
 // non-ASCII character ("!", ":", Chinese, etc.) silently fails.
 std::string buildBasicAuthHeader(const std::string& username, const std::string& password)
 {
-    const std::string userPart = percentEncode(username);
-    const std::string passPart = percentEncode(password);
-    const std::string combined = userPart + ":" + passPart;
+    // These three intermediates hold the user's plaintext credentials
+    // (percent-encoded but recoverable). Wipe them on function exit so
+    // the heap buffers don't linger with recognisable credential bytes
+    // after the header has been handed off to the caller.
+    std::string userPart = percentEncode(username);
+    std::string passPart = percentEncode(password);
+    std::string combined = userPart + ":" + passPart;
+    auto wipe = wil::scope_exit([&]()
+    {
+        secureClearString(userPart);
+        secureClearString(passPart);
+        secureClearString(combined);
+    });
     return "Basic " + base64Encode(combined);
 }
 
@@ -986,9 +998,22 @@ LoginResult VrcApi::loginWithPassword(const std::string& username, const std::st
     // /auth/user with HTTP Basic — WinHTTP does not auto-inject the
     // Authorization header because we're explicitly avoiding the
     // "negotiate" stack, so we build it by hand.
-    const std::string authHeaderUtf8 = buildBasicAuthHeader(username, password);
+    //
+    // Both the utf8 and wide copies of the Authorization header contain
+    // base64(user:password), which is trivially reversible. Own them so we
+    // can scrub the buffers on every return path once WinHTTP has copied
+    // the bytes onto the wire.
+    std::string authHeaderUtf8 = buildBasicAuthHeader(username, password);
     std::vector<std::pair<std::wstring, std::wstring>> headers;
     headers.emplace_back(L"Authorization", toWide(authHeaderUtf8));
+    auto wipeAuth = wil::scope_exit([&]()
+    {
+        secureClearString(authHeaderUtf8);
+        for (auto& h : headers)
+        {
+            secureClearString(h.second);
+        }
+    });
 
     HttpResponse response = httpRequest(
         L"GET",
@@ -1213,6 +1238,21 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchGroups()
         {
             return toWide(fmt::format(
                 "/api/1/auth/user/groups?n={}&offset={}",
+                limit,
+                offset));
+        });
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchCalendar()
+{
+    // /calendar is small and rarely updated (curated by VRChat staff),
+    // so we don't page — a single GET returns everything upcoming.
+    return fetchPagedAuthedArray(
+        "/calendar",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/calendar?n={}&offset={}",
                 limit,
                 offset));
         });

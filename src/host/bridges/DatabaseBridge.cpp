@@ -344,6 +344,38 @@ nlohmann::json IpcBridge::HandleFavoritesImport(const nlohmann::json& params, co
     return nlohmann::json{{"imported", vrcsm::core::value(res)}};
 }
 
+nlohmann::json IpcBridge::HandleFriendLogInsert(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    vrcsm::core::Database::FriendLogInsert e;
+    e.user_id = JsonStringField(params, "user_id").value_or("");
+    e.event_type = JsonStringField(params, "event_type").value_or("");
+    if (e.user_id.empty() || e.event_type.empty())
+    {
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "user_id and event_type are required", 0});
+    }
+    if (auto old_value = JsonStringField(params, "old_value"); old_value.has_value())
+    {
+        e.old_value = *old_value;
+    }
+    if (auto new_value = JsonStringField(params, "new_value"); new_value.has_value())
+    {
+        e.new_value = *new_value;
+    }
+    e.occurred_at = JsonStringField(params, "occurred_at").value_or("");
+    if (e.occurred_at.empty())
+    {
+        // Frontend forgot to stamp the time — use ours rather than failing.
+        e.occurred_at = vrcsm::core::nowIso();
+    }
+
+    auto res = vrcsm::core::Database::Instance().InsertFriendLog(e);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
 nlohmann::json IpcBridge::HandleFriendLogRecent(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const int limit = ParamInt(params, "limit", 100);

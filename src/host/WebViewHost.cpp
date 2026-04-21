@@ -4,6 +4,7 @@
 
 #include "IpcBridge.h"
 #include "StringUtil.h"
+#include "UrlProtocol.h"
 #include "VrchatPaths.h"
 
 #include "../core/AvatarPreview.h"
@@ -474,7 +475,17 @@ void WebViewHost::ConfigureWebView()
             .Get(),
         &navToken));
 
-    THROW_IF_FAILED(m_webview->Navigate(L"https://app.vrcsm/index.html"));
+    // If the process was launched via a vrcsm:// (or vrcx://) URL, the
+    // initial route was parsed out of argv in main.cpp. Append it as a
+    // query param so the React side can navigate once mounted.
+    std::wstring initialUrl = L"https://app.vrcsm/index.html";
+    const std::string initialRoute = vrcsm::host::GetInitialRouteFromArgs();
+    if (!initialRoute.empty())
+    {
+        initialUrl += L"?initialRoute=";
+        initialUrl += Utf8ToWide(initialRoute);
+    }
+    THROW_IF_FAILED(m_webview->Navigate(initialUrl.c_str()));
 }
 
 void WebViewHost::RefreshPluginMappings() const

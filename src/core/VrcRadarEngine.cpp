@@ -88,19 +88,13 @@ void VrcRadarEngine::Start(SnapshotCallback cb, std::chrono::milliseconds interv
     callback_ = std::move(cb);
     interval_ = interval;
 
-    HANDLE h = CreateThread(nullptr, 0, [](LPVOID param) -> DWORD {
-        static_cast<VrcRadarEngine*>(param)->PollLoop();
-        return 0;
-    }, this, 0, nullptr);
-    pollThread_ = h;
+    pollThread_ = std::thread([this]() { PollLoop(); });
 }
 
 void VrcRadarEngine::Stop() {
     running_ = false;
-    if (pollThread_) {
-        WaitForSingleObject(pollThread_, 3000);
-        CloseHandle(pollThread_);
-        pollThread_ = nullptr;
+    if (pollThread_.joinable()) {
+        pollThread_.join();
     }
     reader_->Detach();
     gaBase_ = 0;
@@ -161,15 +155,6 @@ bool VrcRadarEngine::TryReadString(uintptr_t strPtr, std::string& out) const {
 // ─────────────────────────────────────────────────────────────
 uintptr_t VrcRadarEngine::FindVRCPlayerTypeInfo() const {
     if (!reader_->IsAttached() || !gaBase_) return 0;
-
-    // Get GameAssembly.dll memory range
-    HANDLE hProc = OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, FALSE,
-                               GetCurrentProcessId());
-
-    // We need to enumerate the target process memory through our reader.
-    // Use VirtualQueryEx through the reader's process handle concept.
-    // Since ProcessMemoryReader doesn't expose hProcess_ directly, we'll use
-    // a Windows MODULEINFO approach: scan readable pages in VRChat process.
 
     // The type name "VRCPlayer" as bytes
     static const char kTarget[] = "VRCPlayer";

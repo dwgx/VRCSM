@@ -2,6 +2,7 @@
 
 #include "App.h"
 #include "StringUtil.h"
+#include "UrlProtocol.h"
 
 namespace
 {
@@ -31,6 +32,13 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nShowCmd)
         {
             THROW_IF_FAILED(comHr);
         }
+
+        // Register vrcsm:// and vrcx:// URL protocol handlers under
+        // HKCU\Software\Classes on every launch so the handler points at
+        // the current VRCSM.exe (important if the user moves or reinstalls
+        // the app). Registration is best-effort — failures only disable
+        // clickable links, not the app itself.
+        vrcsm::host::RegisterProtocolHandlers();
 
         App app;
         const int exitCode = app.Run(hInstance, nShowCmd);

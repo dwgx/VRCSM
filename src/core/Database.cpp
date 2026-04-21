@@ -1,6 +1,13 @@
 #include "Database.h"
 
 #include <sqlite3.h>
+// SQLITE_CORE must be defined BEFORE sqlite-vec.h so it uses the direct
+// sqlite3 API rather than the dynamic-extension shim (which would require
+// a global sqlite3_api pointer we don't provide when statically linked).
+#define SQLITE_CORE 1
+#include "sqlite-vec.h"
+
+#include <fmt/format.h>
 
 #include <Windows.h>
 #include <KnownFolders.h>
@@ -509,6 +516,27 @@ Database::~Database()
 Result<std::monostate> Database::Open(const std::filesystem::path& dbPath)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
+
+    // Register sqlite-vec as an auto-extension the first time we open the
+    // database. Once registered, every subsequent sqlite3_open_v2 on any
+    // connection in this process loads it automatically. Guarded by a
+    // static flag so the registration only happens once — registering
+    // twice is harmless but sqlite3_auto_extension isn't documented as
+    // idempotent for reference counting.
+    static bool s_vecExtensionRegistered = false;
+    if (!s_vecExtensionRegistered)
+    {
+        const int vecRc = sqlite3_auto_extension(
+            reinterpret_cast<void(*)(void)>(sqlite3_vec_init));
+        if (vecRc != SQLITE_OK)
+        {
+            return Error{
+                "db_open_failed",
+                fmt::format("sqlite3_auto_extension(sqlite3_vec_init) failed: {}", vecRc),
+                0};
+        }
+        s_vecExtensionRegistered = true;
+    }
 
     if (dbPath.empty())
     {
@@ -1895,10 +1923,22 @@ Result<nlohmann::json> Database::StatsOverview()
 
 Result<std::monostate> Database::InitSchema()
 {
-    static constexpr const char* kSchemaSql = R"SQL(
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
+    // journal_mode and foreign_keys PRAGMAs must run OUTSIDE the DDL
+    // transaction below — journal_mode switches to WAL out-of-band and
+    // SQLite rejects the change from inside BEGIN/COMMIT; foreign_keys is
+    // a per-connection runtime flag, not a schema change. Run them first
+    // so the transactional DDL block below can safely roll back if any
+    // CREATE/ALTER fails halfway.
+    if (const auto r = ExecSimple("PRAGMA journal_mode = WAL;"); std::holds_alternative<Error>(r))
+    {
+        return std::get<Error>(r);
+    }
+    if (const auto r = ExecSimple("PRAGMA foreign_keys = ON;"); std::holds_alternative<Error>(r))
+    {
+        return std::get<Error>(r);
+    }
 
+    static constexpr const char* kSchemaSql = R"SQL(
 CREATE TABLE IF NOT EXISTS world_visits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     world_id TEXT NOT NULL,
@@ -1997,16 +2037,30 @@ CREATE TABLE IF NOT EXISTS local_favorite_tags (
 CREATE INDEX IF NOT EXISTS idx_local_favorite_tags_lookup ON local_favorite_tags(list_name, tag);
 )SQL";
 
-    const auto schemaResult = ExecSimple(kSchemaSql);
-    if (std::holds_alternative<Error>(schemaResult))
+    // Wrap all DDL + migration steps in one transaction. The old flow ran
+    // each step as an auto-commit statement, so a failure at (say) the
+    // ALTER TABLE step would leave the database at a half-upgraded schema
+    // version that no subsequent InitSchema call could repair — new CREATE
+    // INDEX would run on an upgraded schema but user_version stayed at the
+    // old value, confusing later migrations. With a single tx everything
+    // either lands or the db stays at the prior known-good state.
+    const auto beginResult = ExecSimple("BEGIN;");
+    if (std::holds_alternative<Error>(beginResult))
     {
-        return std::get<Error>(schemaResult);
+        return std::get<Error>(beginResult);
+    }
+
+    if (const auto r = ExecSimple(kSchemaSql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
     }
 
     bool hasInstanceId = false;
     sqlite3_stmt* rawStmt = nullptr;
     if (sqlite3_prepare_v2(m_db, "PRAGMA table_info(player_events);", -1, &rawStmt, nullptr) != SQLITE_OK)
     {
+        RollbackIfNeeded(m_db);
         return MakeError("db_prepare_failed");
     }
     StatementGuard stmt(rawStmt);
@@ -2023,30 +2077,63 @@ CREATE INDEX IF NOT EXISTS idx_local_favorite_tags_lookup ON local_favorite_tags
     }
     if (rc != SQLITE_ROW && rc != SQLITE_DONE)
     {
+        RollbackIfNeeded(m_db);
         return MakeError("db_step_failed");
     }
 
     if (!hasInstanceId)
     {
-        const auto alterResult = ExecSimple("ALTER TABLE player_events ADD COLUMN instance_id TEXT;");
-        if (std::holds_alternative<Error>(alterResult))
+        if (const auto r = ExecSimple("ALTER TABLE player_events ADD COLUMN instance_id TEXT;");
+            std::holds_alternative<Error>(r))
         {
-            return std::get<Error>(alterResult);
+            RollbackIfNeeded(m_db);
+            return std::get<Error>(r);
         }
     }
 
-    const auto indexResult = ExecSimple(
-        "CREATE INDEX IF NOT EXISTS idx_player_events_instance_time "
-        "ON player_events(instance_id, occurred_at);");
-    if (std::holds_alternative<Error>(indexResult))
+    if (const auto r = ExecSimple(
+            "CREATE INDEX IF NOT EXISTS idx_player_events_instance_time "
+            "ON player_events(instance_id, occurred_at);");
+        std::holds_alternative<Error>(r))
     {
-        return std::get<Error>(indexResult);
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
     }
 
-    const auto versionResult = ExecSimple("PRAGMA user_version = 3;");
-    if (std::holds_alternative<Error>(versionResult))
+    // ── v3 → v4 migration: avatar embeddings (experimental visual search) ──
+    // Regular metadata table stores model + timestamp; vec0 virtual table
+    // does the actual nearest-neighbour search. Both are CREATE IF NOT
+    // EXISTS so this block is safe on every startup for DBs already at v4
+    // and for fresh DBs that never went through an older version.
+    static const char* kSchemaV4Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS avatar_embeddings_meta (
+    avatar_id TEXT PRIMARY KEY NOT NULL,
+    model_version TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS avatar_embeddings_vec USING vec0(
+    avatar_id TEXT PRIMARY KEY,
+    embedding float[512]
+);
+)SQL";
+
+    if (const auto r = ExecSimple(kSchemaV4Sql); std::holds_alternative<Error>(r))
     {
-        return std::get<Error>(versionResult);
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 4;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    const auto commitResult = ExecSimple("COMMIT;");
+    if (std::holds_alternative<Error>(commitResult))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(commitResult);
     }
 
     return std::monostate{};
@@ -2105,6 +2192,239 @@ Result<std::monostate> Database::RunOnce(const char* sql, BindFn bind)
         return MakeError("db_step_failed");
     }
 
+    return std::monostate{};
+}
+
+// ─── Avatar embeddings (v0.11 experimental visual search) ───────────
+
+Result<std::monostate> Database::UpsertAvatarEmbedding(const AvatarEmbeddingInsert& e)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr) return MakeError("db_not_open");
+    if (e.avatar_id.empty()) return MakeError("db_invalid_argument", "avatar_id is empty");
+    if (e.embedding.empty()) return MakeError("db_invalid_argument", "embedding is empty");
+
+    // vec0 accepts the vector as a BLOB of little-endian float32. On x64
+    // Windows that's the native layout, so we can pass the std::vector's
+    // buffer directly without conversion.
+    const auto embeddingBytes = static_cast<int>(e.embedding.size() * sizeof(float));
+    const void* embeddingData = e.embedding.data();
+
+    const auto beginResult = ExecSimple("BEGIN;");
+    if (std::holds_alternative<Error>(beginResult)) return std::get<Error>(beginResult);
+
+    // Metadata table (regular). INSERT OR REPLACE so a re-embed after
+    // model upgrade cleanly replaces the older row.
+    {
+        const char* sql =
+            "INSERT INTO avatar_embeddings_meta (avatar_id, model_version, created_at) "
+            "VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) "
+            "ON CONFLICT(avatar_id) DO UPDATE SET "
+            "  model_version = excluded.model_version, "
+            "  created_at = excluded.created_at;";
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (BindText(rawStmt, 1, e.avatar_id) != SQLITE_OK ||
+            BindText(rawStmt, 2, e.model_version) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_bind_failed");
+        }
+        if (sqlite3_step(rawStmt) != SQLITE_DONE)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_step_failed");
+        }
+    }
+
+    // Vec0 virtual table — delete any existing row first, then insert.
+    // vec0 doesn't support ON CONFLICT so we do the two steps explicitly.
+    {
+        const char* delSql = "DELETE FROM avatar_embeddings_vec WHERE avatar_id = ?;";
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, delSql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (BindText(rawStmt, 1, e.avatar_id) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_bind_failed");
+        }
+        if (sqlite3_step(rawStmt) != SQLITE_DONE)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_step_failed");
+        }
+    }
+    {
+        const char* insSql =
+            "INSERT INTO avatar_embeddings_vec (avatar_id, embedding) VALUES (?, ?);";
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, insSql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (BindText(rawStmt, 1, e.avatar_id) != SQLITE_OK ||
+            sqlite3_bind_blob(rawStmt, 2, embeddingData, embeddingBytes, SQLITE_TRANSIENT) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_bind_failed");
+        }
+        if (sqlite3_step(rawStmt) != SQLITE_DONE)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_step_failed");
+        }
+    }
+
+    const auto commitResult = ExecSimple("COMMIT;");
+    if (std::holds_alternative<Error>(commitResult))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(commitResult);
+    }
+    return std::monostate{};
+}
+
+Result<std::vector<Database::AvatarEmbeddingMatch>> Database::SearchAvatarEmbeddings(
+    const std::vector<float>& queryEmbedding, int k)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr) return MakeError("db_not_open");
+    if (queryEmbedding.empty()) return MakeError("db_invalid_argument", "query is empty");
+    if (k <= 0 || k > 1000) return MakeError("db_invalid_argument", "k out of range [1, 1000]");
+
+    const char* sql =
+        "SELECT avatar_id, distance FROM avatar_embeddings_vec "
+        "WHERE embedding MATCH ? AND k = ? "
+        "ORDER BY distance;";
+
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+
+    const auto qBytes = static_cast<int>(queryEmbedding.size() * sizeof(float));
+    if (sqlite3_bind_blob(rawStmt, 1, queryEmbedding.data(), qBytes, SQLITE_TRANSIENT) != SQLITE_OK ||
+        sqlite3_bind_int(rawStmt, 2, k) != SQLITE_OK)
+    {
+        return MakeError("db_bind_failed");
+    }
+
+    std::vector<AvatarEmbeddingMatch> out;
+    out.reserve(static_cast<std::size_t>(k));
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        AvatarEmbeddingMatch m;
+        const auto* idText = reinterpret_cast<const char*>(sqlite3_column_text(rawStmt, 0));
+        if (idText != nullptr) m.avatar_id = idText;
+        m.distance = static_cast<float>(sqlite3_column_double(rawStmt, 1));
+        out.push_back(std::move(m));
+    }
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+    return out;
+}
+
+Result<std::vector<std::string>> Database::GetUnindexedAvatarIds()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr) return MakeError("db_not_open");
+
+    // Sources of known avatars: avatar_history (every avatar we've seen)
+    // + avatar-typed favorites. Dedup via UNION. Exclude any already in
+    // avatar_embeddings_meta.
+    const char* sql =
+        "SELECT DISTINCT avatar_id FROM ("
+        "    SELECT avatar_id FROM avatar_history"
+        "    UNION"
+        "    SELECT target_id AS avatar_id FROM local_favorites WHERE type = 'avatar'"
+        ") AS known "
+        "WHERE avatar_id NOT IN (SELECT avatar_id FROM avatar_embeddings_meta) "
+        "ORDER BY avatar_id;";
+
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+
+    std::vector<std::string> out;
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        const auto* idText = reinterpret_cast<const char*>(sqlite3_column_text(rawStmt, 0));
+        if (idText != nullptr && *idText != '\0')
+        {
+            out.emplace_back(idText);
+        }
+    }
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+    return out;
+}
+
+Result<std::monostate> Database::DeleteAvatarEmbedding(const std::string& avatar_id)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr) return MakeError("db_not_open");
+    if (avatar_id.empty()) return MakeError("db_invalid_argument", "avatar_id is empty");
+
+    const auto beginResult = ExecSimple("BEGIN;");
+    if (std::holds_alternative<Error>(beginResult)) return std::get<Error>(beginResult);
+
+    for (const char* sql : {
+             "DELETE FROM avatar_embeddings_meta WHERE avatar_id = ?;",
+             "DELETE FROM avatar_embeddings_vec  WHERE avatar_id = ?;"
+         })
+    {
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (BindText(rawStmt, 1, avatar_id) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_bind_failed");
+        }
+        if (sqlite3_step(rawStmt) != SQLITE_DONE)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_step_failed");
+        }
+    }
+
+    const auto commitResult = ExecSimple("COMMIT;");
+    if (std::holds_alternative<Error>(commitResult))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(commitResult);
+    }
     return std::monostate{};
 }
 

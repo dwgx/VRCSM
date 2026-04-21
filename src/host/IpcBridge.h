@@ -78,6 +78,7 @@ private:
     nlohmann::json HandleHwDetect(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwRecommend(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleModerationsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleCalendarList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarBundleDownload(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleWorldDetails(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -167,10 +168,18 @@ private:
     nlohmann::json HandleFavoritesSyncOfficial(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesExport(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesImport(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFriendLogInsert(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendLogRecent(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendLogForUser(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendNoteGet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendNoteSet(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // vector.* — experimental visual avatar search (v0.11).
+    // Implementations in bridges/VectorBridge.cpp.
+    nlohmann::json HandleVectorUpsertEmbedding(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleVectorSearch(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleVectorGetUnindexed(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleVectorRemoveEmbedding(const nlohmann::json& params, const std::optional<std::string>& id);
 
     // Plugin system — implementations live in bridges/PluginBridge.cpp.
     // "callerPluginId" is non-empty only when the call originated

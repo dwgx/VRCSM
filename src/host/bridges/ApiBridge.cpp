@@ -291,6 +291,25 @@ nlohmann::json IpcBridge::HandleGroupsList(const nlohmann::json&, const std::opt
     return nlohmann::json{{"groups", std::move(out)}};
 }
 
+nlohmann::json IpcBridge::HandleCalendarList(const nlohmann::json&, const std::optional<std::string>&)
+{
+    // Fire-and-best-effort: calendar is public-ish but we send the
+    // cookie so the response is region-appropriate. If we're signed
+    // out, return empty rather than erroring — the Dashboard tile
+    // gracefully hides.
+    const auto result = vrcsm::core::VrcApi::fetchCalendar();
+    if (!vrcsm::core::isOk(result))
+    {
+        const auto& err = vrcsm::core::error(result);
+        if (err.code == "auth_expired")
+        {
+            vrcsm::core::AuthStore::Instance().Clear();
+        }
+        return nlohmann::json{{"events", nlohmann::json::array()}};
+    }
+    return nlohmann::json{{"events", vrcsm::core::value(result)}};
+}
+
 nlohmann::json IpcBridge::HandleModerationsList(const nlohmann::json&, const std::optional<std::string>&)
 {
     auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
