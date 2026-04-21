@@ -137,6 +137,31 @@
     "cleared": "收件箱已清空",
     "inviteAccept": "我马上到！"
   },
+  "friendDetail": {
+    "sendMessage": "发送消息",
+    "messagePlaceholder": "嗨！想一起进个世界吗？",
+    "messageSent": "消息已发送",
+    "messageHint": "Ctrl+Enter 发送。VRChat 会丢弃非好友的私信。",
+    "send": "发送"
+  },
+  "osc": {
+    "title": "OSC 工具",
+    "subtitle": "对 VRChat 收发 Open Sound Control 消息。默认 出 → :9000，入 ← :9001。",
+    "send": "发送",
+    "sendDesc": "发一条 OSC 消息。如 /avatar/parameters/Foo 控制头像参数，或 /chatbox/input 发送 ChatBox 文字。",
+    "sendButton": "发送",
+    "listen": "监听",
+    "listenDesc": "绑定 UDP 端口，记录 VRChat（或任何发送方）发出的所有 OSC 消息。",
+    "listening": "监听中",
+    "start": "开始",
+    "stop": "停止",
+    "empty": "等待消息…",
+    "notListening": "监听已停止",
+    "clear": "清空日志",
+    "sent": "已发送",
+    "invalidValue": "无法解析值",
+    "invalidAddress": "地址必须以 / 开头"
+  },
   "auth": {
     "signIn": "登录",
     "signInWithVrchat": "用 VRChat 账号登录",
@@ -470,6 +495,8 @@
     "cancel": "取消",
     "confirm": "确认",
     "close": "关闭",
+    "enabled": "已启用",
+    "disabled": "已禁用",
     "save": "保存",
     "idle": "空闲",
     "done": "完成",
@@ -941,6 +968,26 @@
   "settings": {
     "title": "设置",
     "subtitle": "配置 VRCSM 以及底层的 VRChat 选项。",
+    "discord": {
+      "title": "Discord Rich Presence",
+      "desc": "在 Discord 状态中显示当前 VRChat 世界和玩家数。在 discord.com/developers/applications 注册一个 Discord 应用，并将其应用 ID 粘贴在下方。",
+      "enabled": {
+        "label": "启用 Rich Presence",
+        "desc": "VRChat 实例改变时即时推送活动到 Discord。"
+      },
+      "clientId": {
+        "label": "应用 ID",
+        "desc": "Discord 开发者后台的 18-19 位 snowflake。"
+      }
+    },
+    "screenshots": {
+      "title": "截图元数据",
+      "desc": "自动给新的 VRChat 截图打上拍摄瞬间的世界 ID、实例和玩家清单标签。标签写入 PNG 内，可被 exiftool / VRCX 读取。",
+      "autoInject": {
+        "label": "新截图自动注入元数据",
+        "desc": "监听 %USERPROFILE%\\Pictures\\VRChat。注入是尽力而为 — 雷达必须连接才能采集玩家。"
+      }
+    },
     "comingSoon": "即将推出",
     "comingSoonDesc": "设置(config.json + Loader.cfg)即将推出。",
     "appTheme": "应用主题",

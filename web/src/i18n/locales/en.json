@@ -137,6 +137,31 @@
     "cleared": "Inbox cleared",
     "inviteAccept": "On my way!"
   },
+  "friendDetail": {
+    "sendMessage": "Send a message",
+    "messagePlaceholder": "Hi! Want to hop into a world?",
+    "messageSent": "Message sent",
+    "messageHint": "Ctrl+Enter to send. VRChat drops DMs from non-friends.",
+    "send": "Send"
+  },
+  "osc": {
+    "title": "OSC Tools",
+    "subtitle": "Send and receive Open Sound Control messages against VRChat. Out → :9000, In ← :9001 by default.",
+    "send": "Send",
+    "sendDesc": "Fire a single OSC message. Use addresses like /avatar/parameters/Foo for avatar parameters or /chatbox/input for ChatBox.",
+    "sendButton": "Send",
+    "listen": "Listen",
+    "listenDesc": "Bind a UDP socket and log every OSC message VRChat (or any sender) emits.",
+    "listening": "Listening",
+    "start": "Start",
+    "stop": "Stop",
+    "empty": "Waiting for messages…",
+    "notListening": "Listener stopped",
+    "clear": "Clear log",
+    "sent": "Sent",
+    "invalidValue": "Value can't be parsed",
+    "invalidAddress": "Address must start with /"
+  },
   "auth": {
     "signIn": "Sign in",
     "signInWithVrchat": "Sign in with VRChat",
@@ -456,6 +481,8 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "close": "Close",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
     "save": "Save",
     "idle": "Idle",
     "done": "Done",
@@ -927,6 +954,26 @@
   "settings": {
     "title": "Settings",
     "subtitle": "Configure VRCSM and the underlying VRChat options.",
+    "discord": {
+      "title": "Discord Rich Presence",
+      "desc": "Show your current VRChat world and player count in your Discord status. Register a Discord app at discord.com/developers/applications and paste its Application ID below.",
+      "enabled": {
+        "label": "Enable Rich Presence",
+        "desc": "Push activity to Discord whenever the VRChat instance changes."
+      },
+      "clientId": {
+        "label": "Application ID",
+        "desc": "The 18-19 digit snowflake from your Discord developer dashboard."
+      }
+    },
+    "screenshots": {
+      "title": "Screenshot metadata",
+      "desc": "Auto-tag new VRChat captures with the world ID, instance, and player list at the moment of capture. Tags survive in the PNG and are readable by exiftool / VRCX.",
+      "autoInject": {
+        "label": "Inject metadata on new captures",
+        "desc": "Watches %USERPROFILE%\\Pictures\\VRChat. Inject is best-effort — radar must be attached to capture players."
+      }
+    },
     "comingSoon": "Coming soon",
     "comingSoonDesc": "Settings (config.json + Loader.cfg) coming soon.",
     "appTheme": "App theme",

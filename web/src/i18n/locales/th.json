@@ -129,6 +129,31 @@
     "cleared": "ล้างกล่องจดหมายแล้ว",
     "inviteAccept": "กำลังไป!"
   },
+  "friendDetail": {
+    "sendMessage": "ส่งข้อความ",
+    "messagePlaceholder": "สวัสดี! ไปเที่ยวเวิลด์กันไหม?",
+    "messageSent": "ส่งข้อความแล้ว",
+    "messageHint": "กด Ctrl+Enter เพื่อส่ง VRChat จะไม่รับ DM จากคนที่ไม่ใช่เพื่อน",
+    "send": "ส่ง"
+  },
+  "osc": {
+    "title": "เครื่องมือ OSC",
+    "subtitle": "ส่งและรับข้อความ Open Sound Control กับ VRChat ค่าเริ่มต้น ออก → :9000, เข้า ← :9001",
+    "send": "ส่ง",
+    "sendDesc": "ส่งข้อความ OSC เดี่ยว ใช้ที่อยู่อย่าง /avatar/parameters/Foo สำหรับพารามิเตอร์อวาตาร์ หรือ /chatbox/input สำหรับ ChatBox",
+    "sendButton": "ส่ง",
+    "listen": "ฟัง",
+    "listenDesc": "ผูกซ็อกเก็ต UDP และบันทึกทุกข้อความ OSC ที่ VRChat (หรือผู้ส่งใดๆ) ปล่อยออกมา",
+    "listening": "กำลังฟัง",
+    "start": "เริ่ม",
+    "stop": "หยุด",
+    "empty": "กำลังรอข้อความ…",
+    "notListening": "หยุดฟังแล้ว",
+    "clear": "ล้างบันทึก",
+    "sent": "ส่งแล้ว",
+    "invalidValue": "ไม่สามารถแยกวิเคราะห์ค่าได้",
+    "invalidAddress": "ที่อยู่ต้องขึ้นต้นด้วย /"
+  },
   "auth": {
     "signIn": "เข้าสู่ระบบ",
     "signInWithVrchat": "เข้าสู่ระบบด้วย VRChat",
@@ -409,6 +434,8 @@
     }
   },
   "common": {
+    "enabled": "เปิดใช้งาน",
+    "disabled": "ปิดใช้งาน",
     "loading": "กำลังโหลด…",
     "retry": "ลองอีกครั้ง",
     "rescan": "สแกนใหม่",
@@ -883,6 +910,26 @@
   "settings": {
     "title": "การตั้งค่า",
     "subtitle": "กำหนดค่า VRCSM และตัวเลือกพื้นฐานของ VRChat",
+    "discord": {
+      "title": "Discord Rich Presence",
+      "desc": "แสดงเวิลด์ VRChat ปัจจุบันและจำนวนผู้เล่นในสถานะ Discord ของคุณ ลงทะเบียนแอป Discord ที่ discord.com/developers/applications และวาง ID แอปพลิเคชัน ด้านล่าง",
+      "enabled": {
+        "label": "เปิดใช้งาน Rich Presence",
+        "desc": "ส่งกิจกรรมไปยัง Discord ทุกครั้งที่อินสแตนซ์ VRChat เปลี่ยนแปลง"
+      },
+      "clientId": {
+        "label": "ID แอปพลิเคชัน",
+        "desc": "รหัส 18-19 หลักจากแดชบอร์ดนักพัฒนา Discord ของคุณ"
+      }
+    },
+    "screenshots": {
+      "title": "ข้อมูลเมตาภาพหน้าจอ",
+      "desc": "แท็กภาพหน้าจอ VRChat ใหม่โดยอัตโนมัติด้วย ID เวิลด์ อินสแตนซ์ และรายชื่อผู้เล่นในขณะที่ถ่าย แท็กจะอยู่ในไฟล์ PNG และสามารถอ่านได้ด้วย exiftool / VRCX",
+      "autoInject": {
+        "label": "แทรกข้อมูลเมตาในภาพใหม่",
+        "desc": "เฝ้าดู %USERPROFILE%\\Pictures\\VRChat การแทรกข้อมูลเป็นแบบพยายามอย่างเต็มที่ — ต้องเปิดเรดาร์เพื่อบันทึกผู้เล่น"
+      }
+    },
     "comingSoon": "เร็ว ๆ นี้",
     "comingSoonDesc": "การตั้งค่า (config.json + Loader.cfg) จะมาเร็ว ๆ นี้",
     "appTheme": "ธีมแอป",

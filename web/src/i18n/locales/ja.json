@@ -129,6 +129,31 @@
     "cleared": "受信箱をクリアしました",
     "inviteAccept": "今行きます！"
   },
+  "friendDetail": {
+    "sendMessage": "メッセージを送信",
+    "messagePlaceholder": "こんにちは！ワールドに行きませんか？",
+    "messageSent": "メッセージを送信しました",
+    "messageHint": "Ctrl+Enter で送信。フレンド以外からの DM は VRChat では破棄されます。",
+    "send": "送信"
+  },
+  "osc": {
+    "title": "OSC ツール",
+    "subtitle": "VRChat との間で Open Sound Control メッセージを送受信します。デフォルトでは送信は :9000、受信は :9001 です。",
+    "send": "送信",
+    "sendDesc": "単一の OSC メッセージを送信します。アバターのパラメーターには /avatar/parameters/Foo を、ChatBox には /chatbox/input などのアドレスを使用します。",
+    "sendButton": "送信",
+    "listen": "リッスン",
+    "listenDesc": "UDP ソケットをバインドし、VRChat (または任意の送信元) が発行するすべての OSC メッセージをログに記録します。",
+    "listening": "リッスン中",
+    "start": "開始",
+    "stop": "停止",
+    "empty": "メッセージを待機しています…",
+    "notListening": "リスナーが停止しました",
+    "clear": "ログをクリア",
+    "sent": "送信しました",
+    "invalidValue": "値を解析できません",
+    "invalidAddress": "アドレスは / で始まる必要があります"
+  },
   "auth": {
     "signIn": "サインイン",
     "signInWithVrchat": "VRChat でサインイン",
@@ -418,6 +443,8 @@
     "cancel": "キャンセル",
     "confirm": "確認",
     "close": "閉じる",
+    "enabled": "有効",
+    "disabled": "無効",
     "save": "保存",
     "idle": "待機中",
     "done": "完了",
@@ -883,6 +910,26 @@
   "settings": {
     "title": "設定",
     "subtitle": "VRCSM と基盤となる VRChat オプションを設定します。",
+    "discord": {
+      "title": "Discord Rich Presence",
+      "desc": "現在の VRChat のワールドとプレイヤー数を Discord のステータスに表示します。discord.com/developers/applications で Discord アプリを登録し、以下の アプリケーション ID を貼り付けてください。",
+      "enabled": {
+        "label": "Rich Presence を有効にする",
+        "desc": "VRChat のインスタンスが変更されるたびに Discord にアクティビティをプッシュします。"
+      },
+      "clientId": {
+        "label": "アプリケーション ID",
+        "desc": "Discord Developer Dashboard にある 18〜19 桁の スノーフレーク。"
+      }
+    },
+    "screenshots": {
+      "title": "スクリーンショットのメタデータ",
+      "desc": "撮影時のワールド ID、インスタンス、プレイヤーリストを新しい VRChat のキャプチャに自動でタグ付けします。タグは .png に保存され、exiftool や VRCX で読み取れます。",
+      "autoInject": {
+        "label": "新しいキャプチャにメタデータを埋め込む",
+        "desc": "%USERPROFILE%\\Pictures\\VRChat を監視します。埋め込みはベストエフォートです — プレイヤーを記録するにはレーダーをアタッチしている必要があります。"
+      }
+    },
     "comingSoon": "近日対応",
     "comingSoonDesc": "設定 (config.json + Loader.cfg) は近日対応です。",
     "appTheme": "アプリテーマ",
