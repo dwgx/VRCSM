@@ -162,6 +162,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "notifications.list",
         "notifications.accept",
         "notifications.respond",
+        "notifications.see",
         "notifications.hide",
         "notifications.clear",
         "message.send",
@@ -571,6 +572,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("notifications.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsList(p, id); });
     m_handlers.emplace("notifications.accept", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsAccept(p, id); });
     m_handlers.emplace("notifications.respond", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsRespond(p, id); });
+    m_handlers.emplace("notifications.see", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsSee(p, id); });
     m_handlers.emplace("notifications.hide", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsHide(p, id); });
     m_handlers.emplace("notifications.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsClear(p, id); });
     m_handlers.emplace("message.send", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleMessageSend(p, id); });

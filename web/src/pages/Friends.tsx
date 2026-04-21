@@ -21,6 +21,11 @@ import { IdBadge } from "@/components/IdBadge";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { subscribePipelineEvent } from "@/lib/pipeline-events";
+import {
+  applyFriendPipelineEvent,
+  FRIEND_PIPELINE_EVENT_TYPES,
+} from "@/lib/friends-pipeline";
 import type { Friend, FriendsListResult, WorldDetails } from "@/lib/types";
 import {
   instanceTypeLabel,
@@ -459,6 +464,23 @@ export default function Friends() {
     // `showOffline` change + auth flip are the two triggers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status.authed, showOffline]);
+
+  // Live Pipeline updates — friend presence/location/profile changes
+  // arrive in real time and are merged in-place. Persists the cache so
+  // a reload immediately reflects the latest state.
+  useEffect(() => {
+    if (!status.authed) return;
+    const unsubs = FRIEND_PIPELINE_EVENT_TYPES.map((type) =>
+      subscribePipelineEvent(type, (content) => {
+        setData((prev) => {
+          const next = applyFriendPipelineEvent(prev, type, content);
+          if (next) writeFriendsCache(next);
+          return next ?? prev;
+        });
+      }),
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [status.authed]);
 
   // Background Live Tracker Polling
   useEffect(() => {

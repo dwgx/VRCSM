@@ -147,11 +147,25 @@ export function NotificationsInbox() {
     const unsubClear = subscribePipelineEvent("clear-notification", () => {
       setItems([]);
     });
-    const unsubDelete = subscribePipelineEvent<{ id?: string }>(
+    const unsubDelete = subscribePipelineEvent<{ id?: string; ids?: string[] }>(
       "notification-v2-delete",
       (content) => {
-        if (!content?.id) return;
-        setItems((prev) => prev.filter((n) => n.id !== content.id));
+        if (!content) return;
+        const ids = new Set<string>();
+        if (content.id) ids.add(content.id);
+        if (Array.isArray(content.ids)) content.ids.forEach((i) => ids.add(i));
+        if (ids.size === 0) return;
+        setItems((prev) => prev.filter((n) => !ids.has(n.id)));
+      },
+    );
+    // response-notification fires when an invite/request was answered
+    // (by us or another client) — drop it from the inbox since the
+    // action is no longer pending.
+    const unsubResponse = subscribePipelineEvent<{ notificationId?: string }>(
+      "response-notification",
+      (content) => {
+        if (!content?.notificationId) return;
+        setItems((prev) => prev.filter((n) => n.id !== content.notificationId));
       },
     );
 
@@ -161,8 +175,22 @@ export function NotificationsInbox() {
       unsubSeen();
       unsubClear();
       unsubDelete();
+      unsubResponse();
     };
   }, [status.authed]);
+
+  // When the drawer opens, fan out PUT /notifications/{id}/see for
+  // every unseen entry so the bell badge resets on every device. The
+  // local `seen` flag is flipped optimistically — failures are
+  // swallowed because a missed `see` is purely cosmetic.
+  useEffect(() => {
+    if (!open) return;
+    const unseen = items.filter((n) => !n.seen);
+    if (unseen.length === 0) return;
+    setItems((prev) => prev.map((n) => (n.seen ? n : { ...n, seen: true })));
+    Promise.allSettled(unseen.map((n) => ipc.notificationSee(n.id)))
+      .catch(() => {});
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Click-outside close behaviour mirrors AuthChip so the two menus
   // behave identically in the toolbar.

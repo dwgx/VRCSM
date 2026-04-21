@@ -10,6 +10,7 @@ import {
 } from "react";
 import { ipc } from "./ipc";
 import { invalidateThumbnails } from "./thumbnails";
+import { subscribePipelineEvent } from "./pipeline-events";
 import type { AuthStatus } from "./types";
 
 /**
@@ -269,6 +270,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     );
     return unsub;
   }, []);
+
+  // VRChat pushes `user-update` whenever the *current* user's profile
+  // changes (status, bio, language tags, avatar, …) — refetch our auth
+  // status snapshot so the toolbar chip and Profile page reflect it
+  // without waiting for the next 30s poll.
+  useEffect(() => {
+    if (!status.authed) return;
+    const unsub = subscribePipelineEvent("user-update", () => {
+      void refresh();
+    });
+    return unsub;
+  }, [status.authed, refresh]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

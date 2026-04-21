@@ -980,6 +980,13 @@ class IpcClient {
     >("notifications.respond", { notificationId, message, slot });
   }
 
+  async notificationSee(notificationId: string) {
+    return this.call<{ notificationId: string }, { ok: boolean }>(
+      "notifications.see",
+      { notificationId },
+    );
+  }
+
   async notificationHide(notificationId: string) {
     return this.call<{ notificationId: string }, { ok: boolean }>(
       "notifications.hide",

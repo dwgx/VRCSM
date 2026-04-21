@@ -114,6 +114,21 @@
     "selectAvatarNeedsAuth": "先に VRChat にサインインしてください",
     "selectAvatarFailed": "切り替えに失敗しました"
   },
+  "notifications": {
+    "title": "通知",
+    "empty": "通知はありません",
+    "loading": "読み込み中…",
+    "unread": "未読",
+    "refresh": "更新",
+    "clearAll": "すべてクリア",
+    "accept": "承認",
+    "reply": "返信",
+    "hide": "非表示",
+    "accepted": "承認しました",
+    "replied": "返信を送信しました",
+    "cleared": "受信箱をクリアしました",
+    "inviteAccept": "今行きます！"
+  },
   "auth": {
     "signIn": "サインイン",
     "signInWithVrchat": "VRChat でサインイン",

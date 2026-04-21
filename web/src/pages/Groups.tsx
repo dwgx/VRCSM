@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -22,6 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { LoginForm } from "@/components/LoginForm";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { useQueryClient } from "@tanstack/react-query";
+import { subscribePipelineEvent } from "@/lib/pipeline-events";
 import { useAuth } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
 import type { WorkspaceGroup, WorkspaceGroupsResult } from "@/lib/types";
@@ -47,6 +49,25 @@ export default function Groups() {
       staleTime: 120_000,
     },
   );
+
+  // Pipeline events that change group membership/roles invalidate the
+  // cache so the page reflects server state without a manual refresh.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!status.authed) return;
+    const types = [
+      "group-joined",
+      "group-left",
+      "group-role-updated",
+      "group-member-updated",
+    ] as const;
+    const unsubs = types.map((t) =>
+      subscribePipelineEvent(t, () => {
+        void queryClient.invalidateQueries({ queryKey: ["groups.list"] });
+      }),
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [status.authed, queryClient]);
 
   const groups = useMemo(() => {
     const list = [...(query.data?.groups ?? [])].sort(compareGroups);

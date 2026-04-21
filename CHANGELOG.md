@@ -8,238 +8,93 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [0.10.0] — 2026-04-21
 
-v0.10 locks the real-time event story. Two batches of work land together: the
-UI architecture rewrite (workspace tabs, FriendDetailDialog, SmartWearButton,
-social actions) and the long-missing gap against VRCX: real-time
-event push via the VRChat Pipeline WebSocket, a notifications inbox, Discord
-Rich Presence, OSC send/receive, and screenshot metadata injection. The
-`AuthContext` now drives the pipeline lifecycle automatically so every
-signed-in user gets instant friend-presence + invite / friend-request
-delivery without any extra setup.
+v0.10 locks the real-time event story. Three batches of work land together:
+the UI architecture rewrite (workspace tabs, FriendDetailDialog,
+SmartWearButton, social actions), the real-time pipeline + Discord RPC + OSC
++ screenshot metadata + notifications inbox infrastructure, and the
+"actually wire it all up" follow-through that turns those pieces into
+features users see. Specifically the third batch:
 
-### Added — real-time event stream (Pipeline)
+### Wired (the previously-skimped pipeline consumers)
 
-- **`src/core/Pipeline.{h,cpp}`** — VRChat Pipeline WebSocket client over
-  WinHTTP's native WebSocket upgrade path (no third-party dep). On each
-  connect the worker calls `GET /api/1/auth` to harvest a short-lived
-  WebSocket token — VRChat rejects the raw session cookie here, which was
-  the footgun VRCX's own code path warns about. The inner `content` field
-  is double-stringified by the server and gets unwrapped before reaching
-  callbacks. Reconnect is a flat 5 s (matching VRCX), with a longer 60 s
-  backoff on 401/403 so a stale cookie doesn't thrash the server.
-- **`src/host/bridges/PipelineBridge.cpp`** — new bridge file hosting
-  Pipeline, Discord RPC, OSC, notifications, screenshot metadata, and
-  targeted-invite handlers. Events flow out as `pipeline.event` with
-  `{type, content}` and `pipeline.state` with `{state, detail}`.
-- **`web/src/lib/pipeline-events.ts`** — typed subscribe helper +
-  `usePipelineEvent` React hook. All documented VRChat event types
-  enumerated so the compiler catches typos.
-- **`web/src/lib/auth-context.tsx`** — pipeline lifecycle is now tied to
-  auth: start on sign-in, stop on sign-out. `pipelineState` is surfaced on
-  the context for UI indicators.
+- **Live friends list.** `useFriendsPipelineSync` (`web/src/lib/`) bridges
+  `friend-online` / `friend-offline` / `friend-active` / `friend-location` /
+  `friend-update` / `friend-add` / `friend-delete` events into the React
+  Query cache used by `useIpcQuery("friends.list")`. TabFriends, Dashboard,
+  and the standalone Friends.tsx page now reflect VRChat presence in real
+  time without polling. The reducer (`friends-pipeline.ts`) is shared so
+  any future call site picks up live updates by reading the same cache.
+- **Discord Rich Presence auto-push.** `useDiscordPresence` mounted at the
+  app shell subscribes to pipeline `user-location` events and re-publishes
+  the activity (state = world name, party size from world capacity,
+  timestamps reset on world change). Opt-in: requires a Discord
+  Application ID configured under Settings → Discord Rich Presence (no
+  built-in default — every install registers their own app).
+- **Screenshot metadata auto-injection.** The C++ `ScreenshotWatcher`
+  callback now polls `VrcRadarEngine` on every new PNG and writes the
+  current `worldId` / `instanceId` / player list as `tEXt` chunks
+  (`vrcsm:world`, `vrcsm:instance`, `vrcsm:players`, plus standard
+  `Description` / `Software`). `useScreenshotAutoInject` (mounted at the
+  shell) drives the watcher from a Settings toggle (default ON).
+- **Group state events.** `Groups.tsx` invalidates the `groups.list` query
+  on `group-joined` / `group-left` / `group-role-updated` /
+  `group-member-updated` so membership/role edits made anywhere
+  (mod actions, web dashboard, other clients) reflect within seconds.
+- **Self user-update.** `AuthContext` refetches its status snapshot on
+  `user-update` so the toolbar chip / Profile page pick up status, bio,
+  language, or avatar changes immediately instead of waiting for the
+  30 s poll.
+- **`response-notification` consumers.** NotificationsInbox drops invite /
+  request rows from the dropdown when an answer comes in from another
+  client, and now also responds to `notification-v2-delete` arrays
+  (`{ids: […]}`) in addition to single ids.
+- **Notifications mark-as-seen.** Opening the bell drawer fans out
+  `PUT /notifications/{id}/see` for every unseen entry — both new
+  `VrcApi::seeNotification()` + IPC `notifications.see`. The badge on
+  other clients (web, mobile) clears too.
 
-### Added — notifications inbox
+### New surface
 
-- **6 new `VrcApi` methods** — `fetchNotifications`, `acceptFriendRequest`,
-  `respondNotification` (for invite replies via
-  `POST /api/1/invite/{id}/response`), `hideNotification`,
-  `clearNotifications`, `sendUserMessage`. All wired through the auth
-  cookie + rate-limiter path.
-- **`web/src/components/NotificationsInbox.tsx`** — bell icon in the
-  Toolbar with unread count badge + dropdown panel. Bootstraps via
-  `notifications.list` on sign-in, then subscribes to Pipeline
-  `notification` / `notification-v2` / `see-notification` /
-  `notification-v2-delete` / `clear-notification` for live updates.
-  Per-row actions: Accept (friend request), Reply (invite), Hide.
-- **`user.inviteTo`** — targeted invite (as opposed to the existing
-  `user.invite` which is self-invite). Posts to `/api/1/invite/{userId}`.
-- **`message.send`** — POST to `/api/1/message/{userId}/message` for DM
-  send, body clipped at 2000 chars.
+- **Discord settings card** under Settings → General — toggle + 18-19 digit
+  Application ID input. Disabled clientId surfaces the explicit
+  `discord_not_configured` error rather than silently failing.
+- **Screenshot metadata card** under Settings → General — toggle for the
+  watcher, default ON.
+- **OSC Tools page (`/tools/osc`).** Send section with address +
+  type-tagged value picker (int / float / string / bool) and host/port
+  inputs. Listen section with port input, start/stop, and a 200-row
+  rolling log of incoming OSC messages. Subscribes to the host's
+  `osc.message` event channel.
+- **DM compose in `FriendDetailDialog`.** Textarea + Ctrl/⌘+Enter shortcut
+  + 2000-char counter, calls `ipc.sendMessage`. Inline hint warns that
+  VRChat drops DMs from non-friends.
+- **`vrcsm:` PNG metadata read API.** `screenshots.readMetadata` IPC and
+  `ipc.screenshotsReadMetadata()` for tooling that wants to reflect the
+  embedded world/players in a list view.
 
-### Added — Discord Rich Presence
+### i18n
 
-- **`src/core/DiscordRpc.{h,cpp}`** — Windows Named Pipe client for
-  Discord's local RPC gateway (`\\.\pipe\discord-ipc-0..9`, tried in
-  order). Handshake with `{v:1, client_id:"..."}`, then fires
-  `SET_ACTIVITY` frames carrying the caller-supplied activity JSON.
-  Reconnects on Discord restart automatically, back-off 30 s on
-  handshake rejection. IPC methods: `discord.setActivity`,
-  `discord.clearActivity`, `discord.status`.
+- Notifications inbox strings translated to ja / ko / ru / th / hi
+  (matching the existing 7-locale baseline). nav.osc added to
+  en + zh-CN.
 
-### Added — OSC bridge
+### Cumulative summary (the earlier 0.10 batches that this build also includes)
 
-- **`src/core/OscBridge.{h,cpp}`** — UDP OSC 1.0 client + server for
-  VRChat's parameter port (`127.0.0.1:9000` out, `:9001` in). Supports
-  `i` / `f` / `s` / `b` / `T` / `F` type tags (the set VRChat actually
-  uses). Send is fire-and-forget sync; listen spawns a dedicated
-  `recvfrom` thread and fans messages out through
-  `PostEventToUi("osc.message", ...)`. IPC: `osc.send`,
-  `osc.listen.start`, `osc.listen.stop`.
+UI / IPC overhaul: workspace tabs (`VrchatWorkspace.tsx` 2210 → ~140 lines,
+6 lazy-loaded tab modules), `FriendDetailDialog`, `SmartWearButton` with
+alternative-search + avatar history, AlertDialog primitive, CI workflow,
+Radar.tsx split into `radar/` modules, mock IPC data extracted to
+`__mocks__/`. Social IPC (`user.invite`, `user.mute/unmute`,
+`user.block/unblock`).
 
-### Added — screenshot metadata (VRCX-style)
-
-- **`src/core/PngMetadata.{h,cpp}`** — PNG `tEXt` chunk injector. Writes
-  metadata as standard PNG text chunks inserted right after IHDR, with
-  CRC32 computed inline (no zlib dep). Atomic rename-over on write so a
-  partial write never corrupts the user's capture. Companion
-  `ReadPngTextChunks` for reading back existing metadata.
-- **`src/core/ScreenshotWatcher.{h,cpp}`** — `ReadDirectoryChangesW`
-  recursive watcher over `%USERPROFILE%\Pictures\VRChat\`. Debounces
-  the multi-event bursts Windows emits per file save, waits 250 ms for
-  the file to fully flush, then fires a callback per new `.png`.
-- **IPC:** `screenshots.watcher.start`, `screenshots.watcher.stop`,
-  `screenshots.injectMetadata`, `screenshots.readMetadata`. Watcher
-  emits `screenshots.new` events so the UI can refresh without
-  polling.
-
-### Added — IPC frontend methods
-
-- **14 new `ipc.*` methods** in `web/src/lib/ipc.ts` — pipelineStart/Stop,
-  notificationsList/Accept/Respond/Hide/Clear, sendMessage, inviteUser,
-  discordSetActivity/ClearActivity/Status, oscSend/ListenStart/ListenStop,
-  screenshotsWatcherStart/Stop, screenshotsInjectMetadata/ReadMetadata.
-
-### Added — architecture overhaul (first batch, still unreleased)
-
-- **Workspace tab layout.** `VrchatWorkspace.tsx` reduced from 2210 →
-  ~140 lines (thin tab shell). Six lazy-loaded tabs — Overview, Friends,
-  Avatars, Worlds, Social, VRC+ — each in its own
-  `web/src/pages/workspace/Tab*.tsx` module. Active tab persisted to
-  `localStorage` so the page remembers where you left off.
-- **`FriendDetailDialog`** (`web/src/components/FriendDetailDialog.tsx`)
-  — full-screen Dialog replacing the old 300px right panel. Six sections:
-  Profile header with avatar + status dot + trust-rank color, Current
-  World with Launch + Invite Self buttons, Avatar section with
-  SmartWearButton, Actions row (Mute / Block with inline confirmation
-  bar), Recent Activity timeline, Avatar History from logs, and Friend
-  Note editor. Bio links auto-detect 12+ platforms (Twitter/X, Bilibili,
-  YouTube, Discord, GitHub, Twitch, etc.) and render real SVG icons.
-  Block confirmation uses an inline bar rather than a nested AlertDialog
-  (which breaks inside Dialog).
-- **`SmartWearButton`** (`web/src/components/SmartWearButton.tsx`) —
-  replaces ALL Wear buttons app-wide (Friends, Radar, Avatars, Dialog).
-  Multi-step flow: direct `selectAvatar` → on 403 → fetch
-  `avatar.details` → retry if public → search alternatives by
-  name + author → show alternatives dialog. Avatar History lists every
-  avatar a friend has worn (parsed from logs), each individually
-  wearable. Wear action includes a "Save to Library" toast shortcut.
-  Three visual variants: `pill`, `button`, `compact`.
-- **Social action IPC handlers** — five new C++ endpoints:
-  - `VrcApi::inviteSelf()` — `POST /api/1/invite/myself`
-  - `VrcApi::addPlayerModeration(type, userId)` —
-    `POST /api/1/auth/user/playermoderations`
-  - `VrcApi::removePlayerModeration(id)` —
-    `DELETE /api/1/auth/user/playermoderations/{id}`
-  - IPC: `user.invite`, `user.mute`, `user.unmute`, `user.block`,
-    `user.unblock` — all registered in `AsyncMethodSet`.
-- **`alert-dialog.tsx`** (`web/src/components/ui/alert-dialog.tsx`) —
-  shadcn-style AlertDialog component built on top of Dialog primitive.
-- **CI pipeline** (`.github/workflows/ci.yml`) — GitHub Actions workflow
-  for automated builds.
-- **i18n** — new keys in `en.json` and `zh-CN.json` for workspace tabs,
-  friend dialog sections, smart wear flow, and the new notifications
-  inbox.
-
-### Changed
-
-- **Radar module split.** `Radar.tsx` (1700+ lines) refactored into
-  `radar/RadarEngine.tsx`, `radar/RadarHistoryAnalysis.tsx`,
-  `radar/RadarPlayerWidgets.tsx` with shared types and utilities
-  extracted to `radar/radar-types.ts` and `radar/radar-utils.ts`.
-- **IPC mock data extraction.** All mock data previously inline in
-  `ipc.ts` moved to `web/src/lib/__mocks__/ipc-mock-data.ts` with
-  companion test file. `ipc.ts` shrunk from ~900 to ~440 lines.
-- **PCH optimization** — `src/pch.h` updated for faster incremental
-  builds.
-- **`ApiBridge::FilterFriend`** now includes `currentAvatarId` and
-  `currentAvatarName` in the friend envelope so the frontend can render
-  Wear buttons without an extra API round-trip.
-
-### Fixed
-
-- **Avatar not showing in dialog** — empty string `""` bypassed the
-  `??` (nullish coalescing) operator since `""` is not nullish. Changed
-  to `||` so falsy empty strings fall through to the placeholder.
-- **Status dot rendering** in `FriendDetailDialog` — dot color now
-  correctly maps to VRChat status values.
-- **Social media icon detection** — bio link parser handles edge cases
-  for platform URL patterns.
-- **Block confirmation** — replaced nested `AlertDialog` (which broke
-  inside `Dialog` due to portal stacking) with an inline confirmation
-  bar.
-(2200+ lines) was gutted into a thin tab shell with six lazy-loaded tabs,
-the Friends list got a proper full-screen dialog, and avatar cloning now
-goes beyond what VRCX offers — including automatic alternatives search,
-avatar history, and save-to-library. On the backend, five new social-action
-IPC handlers land (invite, mute/unmute, block/unblock).
-
-### Added
-
-- **Workspace tab layout.** `VrchatWorkspace.tsx` reduced from 2210 →
-  ~140 lines (thin tab shell). Six lazy-loaded tabs — Overview, Friends,
-  Avatars, Worlds, Social, VRC+ — each in its own
-  `web/src/pages/workspace/Tab*.tsx` module. Active tab persisted to
-  `localStorage` so the page remembers where you left off.
-- **`FriendDetailDialog`** (`web/src/components/FriendDetailDialog.tsx`)
-  — full-screen Dialog replacing the old 300px right panel. Six sections:
-  Profile header with avatar + status dot + trust-rank color, Current
-  World with Launch + Invite Self buttons, Avatar section with
-  SmartWearButton, Actions row (Mute / Block with inline confirmation
-  bar), Recent Activity timeline, Avatar History from logs, and Friend
-  Note editor. Bio links auto-detect 12+ platforms (Twitter/X, Bilibili,
-  YouTube, Discord, GitHub, Twitch, etc.) and render real SVG icons.
-  Block confirmation uses an inline bar rather than a nested AlertDialog
-  (which breaks inside Dialog).
-- **`SmartWearButton`** (`web/src/components/SmartWearButton.tsx`) —
-  replaces ALL Wear buttons app-wide (Friends, Radar, Avatars, Dialog).
-  Multi-step flow: direct `selectAvatar` → on 403 → fetch
-  `avatar.details` → retry if public → search alternatives by
-  name + author → show alternatives dialog. Avatar History lists every
-  avatar a friend has worn (parsed from logs), each individually
-  wearable. Wear action includes a "Save to Library" toast shortcut.
-  Three visual variants: `pill`, `button`, `compact`.
-- **Social action IPC handlers** — five new C++ endpoints:
-  - `VrcApi::inviteSelf()` — `POST /api/1/invite/myself`
-  - `VrcApi::addPlayerModeration(type, userId)` —
-    `POST /api/1/auth/user/playermoderations`
-  - `VrcApi::removePlayerModeration(id)` —
-    `DELETE /api/1/auth/user/playermoderations/{id}`
-  - IPC: `user.invite`, `user.mute`, `user.unmute`, `user.block`,
-    `user.unblock` — all registered in `AsyncMethodSet`.
-- **`alert-dialog.tsx`** (`web/src/components/ui/alert-dialog.tsx`) —
-  shadcn-style AlertDialog component built on top of Dialog primitive.
-- **CI pipeline** (`.github/workflows/ci.yml`) — GitHub Actions workflow
-  for automated builds.
-- **i18n** — new keys in `en.json` and `zh-CN.json` for all workspace
-  tabs, friend dialog sections, and smart wear flow strings.
-
-### Changed
-
-- **Radar module split.** `Radar.tsx` (1700+ lines) refactored into
-  `radar/RadarEngine.tsx`, `radar/RadarHistoryAnalysis.tsx`,
-  `radar/RadarPlayerWidgets.tsx` with shared types and utilities
-  extracted to `radar/radar-types.ts` and `radar/radar-utils.ts`.
-- **IPC mock data extraction.** All mock data previously inline in
-  `ipc.ts` moved to `web/src/lib/__mocks__/ipc-mock-data.ts` with
-  companion test file. `ipc.ts` shrunk from ~900 to ~440 lines.
-- **PCH optimization** — `src/pch.h` updated for faster incremental
-  builds.
-- **`ApiBridge::FilterFriend`** now includes `currentAvatarId` and
-  `currentAvatarName` in the friend envelope so the frontend can render
-  Wear buttons without an extra API round-trip.
-
-### Fixed
-
-- **Avatar not showing in dialog** — empty string `""` bypassed the
-  `??` (nullish coalescing) operator since `""` is not nullish. Changed
-  to `||` so falsy empty strings fall through to the placeholder.
-- **Status dot rendering** in `FriendDetailDialog` — dot color now
-  correctly maps to VRChat status values.
-- **Social media icon detection** — bio link parser handles edge cases
-  for platform URL patterns.
-- **Block confirmation** — replaced nested `AlertDialog` (which broke
-  inside `Dialog` due to portal stacking) with an inline confirmation
-  bar.
+Real-time + integrations infra: `Pipeline.cpp` (WinHTTP WebSocket against
+`wss://pipeline.vrchat.cloud/?auth=<token>` — token from
+`GET /api/1/auth`, **NOT** the raw session cookie),
+`DiscordRpc.cpp` (Discord IPC pipe), `OscBridge.cpp` (UDP send/listen
+with i/f/s/b/T/F type tags), `PngMetadata.cpp` + `ScreenshotWatcher.cpp`
+(tEXt chunk injector + `ReadDirectoryChangesW` over the captures
+folder), notifications inbox (`NotificationsInbox.tsx` + 7 new VrcApi
+methods + IPC). 14+ new `ipc.*` typed methods on the frontend.
 
 ## [0.9.2] — 2026-04-19
 

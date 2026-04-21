@@ -29,6 +29,9 @@ import { getTrueCacheCategoryCount, getTrueCacheLabel } from "@/lib/report-metri
 import { formatDate } from "@/lib/utils";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { VrcProcessProvider, useVrcProcess } from "@/lib/vrc-context";
+import { useDiscordPresence } from "@/lib/useDiscordPresence";
+import { useScreenshotAutoInject } from "@/lib/useScreenshotAutoInject";
+import { useFriendsPipelineSync } from "@/lib/useFriendsPipelineSync";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { Download } from "lucide-react";
 
@@ -50,6 +53,7 @@ const Radar = lazy(() => import("@/pages/Radar"));
 const Migrate = lazy(() => import("@/pages/Migrate"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const MemoryRadar = lazy(() => import("@/pages/MemoryRadar"));
+const OscTools = lazy(() => import("@/pages/OscTools"));
 const PluginsMarket = lazy(() => import("@/pages/PluginsMarket"));
 const PluginDetail = lazy(() => import("@/pages/PluginDetail"));
 const PluginInstalled = lazy(() => import("@/pages/PluginInstalled"));
@@ -84,6 +88,19 @@ function AppContent() {
   const { open: commandOpen, setOpen: setCommandOpen } = useCommandPalette();
   const [sidebarHidden] = useUiPrefBoolean("vrcsm.layout.sidebar.hidden", false);
   const [dockHidden] = useUiPrefBoolean("vrcsm.layout.dock.hidden", false);
+
+  // Discord Rich Presence — opt-in, configured under Settings → Discord.
+  // No-op when disabled or no client_id is set.
+  useDiscordPresence();
+
+  // Screenshot watcher — auto-inject world/instance/players into new
+  // captures. On by default, toggleable in Settings.
+  useScreenshotAutoInject();
+
+  // Pipeline → React Query bridge for the friends.list cache. Live
+  // friend presence/location/profile updates propagate to TabFriends,
+  // Dashboard, and any other consumer of useIpcQuery("friends.list").
+  useFriendsPipelineSync();
 
   const routeMeta = useMemo<Record<string, RouteShellMeta>>(
     () => ({
@@ -366,6 +383,7 @@ function AppContent() {
                                 <Route path="/migrate" element={<Migrate />} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route path="/tools/memory-radar" element={<MemoryRadar />} />
+                                <Route path="/tools/osc" element={<OscTools />} />
                                 <Route path="/plugins" element={<PluginsMarket />} />
                                 <Route path="/plugins/installed" element={<PluginInstalled />} />
                                 <Route path="/plugins/:id" element={<PluginDetail />} />
