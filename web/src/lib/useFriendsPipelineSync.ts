@@ -42,12 +42,18 @@ function diffAndLog(
     if (prevVal === nextVal) continue;
     const oldStr = prevVal === null || prevVal === undefined ? "" : String(prevVal);
     const newStr = nextVal === null ? "" : String(nextVal);
-    // Fire-and-forget — errors (offline DB, auth expired) shouldn't
-    // block the UI update path. Silent console warning on failure.
+    const eventType =
+      field === "status" || field === "statusDescription"
+        ? "status.changed"
+        : field === "currentAvatarImageUrl" || field === "currentAvatarThumbnailImageUrl"
+          ? "avatar.changed"
+          : field === "displayName"
+            ? "displayName.changed"
+            : `${field}.changed`;
     void ipc
       .friendLogInsert({
         user_id: userId,
-        event_type: String(field),
+        event_type: eventType,
         old_value: oldStr,
         new_value: newStr,
         occurred_at: occurredAt,
@@ -102,7 +108,7 @@ export function useFriendsPipelineSync() {
             void ipc
               .friendLogInsert({
                 user_id: patch.id,
-                event_type: "friend_added",
+                event_type: "friend.added",
                 new_value: patch.displayName ?? "",
                 occurred_at: new Date().toISOString(),
               })
@@ -116,7 +122,7 @@ export function useFriendsPipelineSync() {
             void ipc
               .friendLogInsert({
                 user_id: c.userId,
-                event_type: "friend_removed",
+                event_type: "friend.removed",
                 old_value: prev?.displayName ?? "",
                 occurred_at: new Date().toISOString(),
               })

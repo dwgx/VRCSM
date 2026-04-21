@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <fstream>
 #include <system_error>
+#include <unordered_set>
 
 #include <nlohmann/json.hpp>
 
@@ -115,6 +116,12 @@ LocalAvatarReport AvatarData::scan(const std::filesystem::path& baseDir)
     std::sort(items.begin(), items.end(), [](const LocalAvatarItem& a, const LocalAvatarItem& b) {
         return a.modified_at.value_or("") > b.modified_at.value_or("");
     });
+
+    std::unordered_set<std::string> seen;
+    std::erase_if(items, [&seen](const LocalAvatarItem& it) {
+        return !seen.insert(it.avatar_id).second;
+    });
+
     if (items.size() > 10000) items.resize(10000);
     report.recent_items = std::move(items);
 
