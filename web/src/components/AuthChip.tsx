@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { LogIn, LogOut, User } from "lucide-react";
@@ -7,25 +7,15 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { LoginForm } from "./LoginForm";
 
-/**
- * Toolbar chip for the VRChat session. When signed out it's a single
- * "Sign in" button that opens the native LoginForm dialog. When
- * signed in, shows the display name with a click-to-toggle sign-out
- * menu so the action stays reachable while moving the pointer.
- *
- * Pages read `useAuth()` to know whether to fetch friends / avatar
- * thumbnails; this chip is mostly a status indicator plus a shortcut
- * to the sign-in surface.
- */
 export function AuthChip() {
   const { t } = useTranslation();
   const { status, loading, logout } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   function clearCloseTimer() {
     if (closeTimerRef.current !== null) {
@@ -41,37 +31,40 @@ export function AuthChip() {
     }, 220);
   }
 
+  const updatePos = useCallback(() => {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setMenuPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+  }, []);
+
   useEffect(() => {
     if (!menuOpen) return;
+    updatePos();
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (
         !menuRef.current?.contains(target) &&
-        !containerRef.current?.contains(target)
+        !triggerRef.current?.contains(target)
       ) {
         setMenuOpen(false);
       }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-      }
+      if (event.key === "Escape") setMenuOpen(false);
     };
 
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updatePos);
     return () => {
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updatePos);
     };
-  }, [menuOpen]);
+  }, [menuOpen, updatePos]);
 
-  useEffect(() => {
-    return () => {
-      clearCloseTimer();
-    };
-  }, []);
+  useEffect(() => () => clearCloseTimer(), []);
 
   if (loading && !status.authed) {
     return (
@@ -100,8 +93,6 @@ export function AuthChip() {
 
   return (
     <div
-      ref={containerRef}
-      className="relative z-20"
       onMouseEnter={() => {
         clearCloseTimer();
         setMenuOpen(true);
@@ -111,7 +102,7 @@ export function AuthChip() {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setMenuOpen((open) => !open)}
+        onClick={() => setMenuOpen((o) => !o)}
         onFocus={() => {
           clearCloseTimer();
           setMenuOpen(true);
@@ -123,34 +114,29 @@ export function AuthChip() {
         <User className="size-3.5" />
         {status.displayName ?? t("auth.signedIn")}
       </button>
-      {menuOpen ? (
-        <>
-          <div
-            aria-hidden
-            className="absolute right-0 top-full h-2 min-w-[176px]"
-          />
-          <div
-            ref={menuRef}
-            className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-[max(176px,100%)] rounded-[var(--radius-md)] border border-[hsl(var(--border-strong))] bg-[hsl(var(--surface-raised))] p-1 shadow-[0_10px_30px_rgba(0,0,0,0.28)]"
-            onMouseEnter={clearCloseTimer}
-            onMouseLeave={queueClose}
+      {menuOpen && menuPos && (
+        <div
+          ref={menuRef}
+          className="fixed z-[9999] min-w-[176px] rounded-[var(--radius-md)] border border-[hsl(var(--border-strong))] bg-[hsl(var(--surface-raised))] p-1 shadow-[0_10px_30px_rgba(0,0,0,0.28)]"
+          style={{ top: menuPos.top, right: menuPos.right }}
+          onMouseEnter={clearCloseTimer}
+          onMouseLeave={queueClose}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start"
+            onClick={() => {
+              clearCloseTimer();
+              setMenuOpen(false);
+              void logout().then(() => toast.success(t("auth.signedOut")));
+            }}
           >
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => {
-                clearCloseTimer();
-                setMenuOpen(false);
-                void logout().then(() => toast.success(t("auth.signedOut")));
-              }}
-            >
-              <LogOut />
-              {t("auth.signOut")}
-            </Button>
-          </div>
-        </>
-      ) : null}
+            <LogOut />
+            {t("auth.signOut")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
