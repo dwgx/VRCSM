@@ -252,9 +252,26 @@ export function NotificationsInbox() {
 
   if (!status.authed) return null;
 
+  const bellRef = useRef<HTMLButtonElement | null>(null);
+  const [panelPos, setPanelPos] = useState<{ top: number; right: number } | null>(null);
+
+  const updatePanelPos = useCallback(() => {
+    if (!bellRef.current) return;
+    const r = bellRef.current.getBoundingClientRect();
+    setPanelPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePanelPos();
+    window.addEventListener("resize", updatePanelPos);
+    return () => window.removeEventListener("resize", updatePanelPos);
+  }, [open, updatePanelPos]);
+
   return (
-    <div ref={containerRef} className="relative z-20">
+    <div ref={containerRef}>
       <button
+        ref={bellRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={t("notifications.title")}
@@ -274,8 +291,11 @@ export function NotificationsInbox() {
         ) : null}
       </button>
 
-      {open ? (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[360px] rounded-[var(--radius-md)] border border-[hsl(var(--border-strong))] bg-[hsl(var(--surface-raised))] shadow-[0_10px_30px_rgba(0,0,0,0.28)]">
+      {open && panelPos ? (
+        <div
+          className="fixed z-[9999] w-[360px] rounded-[var(--radius-md)] border border-[hsl(var(--border-strong))] bg-[hsl(var(--surface-raised))] shadow-[0_10px_30px_rgba(0,0,0,0.28)]"
+          style={{ top: panelPos.top, right: panelPos.right }}
+        >
           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-3 py-2">
             <div className="text-[12px] font-semibold tracking-wide">
               {t("notifications.title")}
