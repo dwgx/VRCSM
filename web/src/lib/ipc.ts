@@ -930,6 +930,145 @@ class IpcClient {
     return this.call<{ location: string }, { ok: boolean }>("user.invite", { location });
   }
 
+  async inviteUser(userId: string, location: string, slot = 0) {
+    return this.call<
+      { userId: string; location: string; slot: number },
+      { ok: boolean }
+    >("user.inviteTo", { userId, location, slot });
+  }
+
+  // ── Pipeline WebSocket (real-time events) ───────────────────────────
+  // After login, call `pipelineStart()` once. Events arrive as
+  // `pipeline.event` with shape `{type, content}` — subscribe via `on()`.
+  // Connection state updates land on `pipeline.state`.
+
+  async pipelineStart() {
+    return this.call<{}, { ok: boolean; state: string; already?: boolean }>(
+      "pipeline.start",
+      {},
+    );
+  }
+
+  async pipelineStop() {
+    return this.call<{}, { ok: boolean }>("pipeline.stop", {});
+  }
+
+  // ── Notifications inbox ─────────────────────────────────────────────
+
+  async notificationsList(count = 100) {
+    return this.call<{ count: number }, { notifications: any[] }>(
+      "notifications.list",
+      { count },
+    );
+  }
+
+  async notificationAccept(notificationId: string) {
+    return this.call<{ notificationId: string }, { ok: boolean }>(
+      "notifications.accept",
+      { notificationId },
+    );
+  }
+
+  async notificationRespond(
+    notificationId: string,
+    message: string,
+    slot = 0,
+  ) {
+    return this.call<
+      { notificationId: string; message: string; slot: number },
+      { ok: boolean }
+    >("notifications.respond", { notificationId, message, slot });
+  }
+
+  async notificationHide(notificationId: string) {
+    return this.call<{ notificationId: string }, { ok: boolean }>(
+      "notifications.hide",
+      { notificationId },
+    );
+  }
+
+  async notificationsClear() {
+    return this.call<{}, { ok: boolean }>("notifications.clear", {});
+  }
+
+  async sendMessage(userId: string, message: string) {
+    return this.call<{ userId: string; message: string }, { ok: boolean }>(
+      "message.send",
+      { userId, message },
+    );
+  }
+
+  // ── Discord Rich Presence ───────────────────────────────────────────
+
+  async discordSetActivity(activity: Record<string, unknown>, clientId?: string) {
+    return this.call<Record<string, unknown>, { ok: boolean; connected: boolean }>(
+      "discord.setActivity",
+      clientId ? { ...activity, clientId } : activity,
+    );
+  }
+
+  async discordClearActivity() {
+    return this.call<{}, { ok: boolean }>("discord.clearActivity", {});
+  }
+
+  async discordStatus() {
+    return this.call<{}, { running: boolean; connected: boolean }>(
+      "discord.status",
+      {},
+    );
+  }
+
+  // ── OSC bridge ──────────────────────────────────────────────────────
+
+  async oscSend(
+    address: string,
+    args: (number | string | boolean)[] = [],
+    opts: { host?: string; port?: number } = {},
+  ) {
+    return this.call<
+      { address: string; args: (number | string | boolean)[]; host?: string; port?: number },
+      { ok: boolean }
+    >("osc.send", { address, args, ...opts });
+  }
+
+  async oscListenStart(port = 9001) {
+    return this.call<{ port: number }, { ok: boolean; port: number }>(
+      "osc.listen.start",
+      { port },
+    );
+  }
+
+  async oscListenStop() {
+    return this.call<{}, { ok: boolean }>("osc.listen.stop", {});
+  }
+
+  // ── Screenshot metadata ─────────────────────────────────────────────
+
+  async screenshotsWatcherStart(folder?: string) {
+    return this.call<{ folder?: string }, { ok: boolean; folder: string }>(
+      "screenshots.watcher.start",
+      folder ? { folder } : {},
+    );
+  }
+
+  async screenshotsWatcherStop() {
+    return this.call<{}, { ok: boolean }>("screenshots.watcher.stop", {});
+  }
+
+  async screenshotsInjectMetadata(path: string, metadata: Record<string, unknown>) {
+    return this.call<
+      { path: string; metadata: Record<string, unknown> },
+      { ok: boolean }
+    >("screenshots.injectMetadata", { path, metadata });
+  }
+
+  async screenshotsReadMetadata(path: string) {
+    return this.call<{ path: string }, { metadata: Record<string, string> }>(
+      "screenshots.readMetadata",
+      { path },
+    );
+  }
+
   async muteUser(userId: string) {
     return this.call<{ userId: string }, unknown>("user.mute", { userId });
   }

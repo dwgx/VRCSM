@@ -23,6 +23,11 @@ add_library(vrcsm_core STATIC
     TaskQueue.cpp
     RateLimiter.cpp
     VrcApi.cpp
+    Pipeline.cpp
+    DiscordRpc.cpp
+    OscBridge.cpp
+    PngMetadata.cpp
+    ScreenshotWatcher.cpp
     Report.cpp
     UnityBundle.cpp
     UnitySerialized.cpp

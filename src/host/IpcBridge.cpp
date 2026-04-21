@@ -124,6 +124,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "avatar.select",
         "avatar.search",
         "user.invite",
+        "user.inviteTo",
         "user.mute",
         "user.unmute",
         "user.block",
@@ -154,6 +155,26 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "friendLog.forUser",
         "friendNote.get",
         "friendNote.set",
+
+        // Pipeline + notifications + DM send
+        "pipeline.start",
+        "pipeline.stop",
+        "notifications.list",
+        "notifications.accept",
+        "notifications.respond",
+        "notifications.hide",
+        "notifications.clear",
+        "message.send",
+        "discord.setActivity",
+        "discord.clearActivity",
+        "discord.status",
+        "osc.send",
+        "osc.listen.start",
+        "osc.listen.stop",
+        "screenshots.watcher.start",
+        "screenshots.watcher.stop",
+        "screenshots.injectMetadata",
+        "screenshots.readMetadata",
         "hw.applyPreset",
         "hw.detect",
         "hw.recommend",
@@ -273,6 +294,22 @@ IpcBridge::IpcBridge(WebViewHost& host)
 IpcBridge::~IpcBridge()
 {
     *m_alive = false;
+    if (m_pipeline)
+    {
+        m_pipeline->Stop();
+    }
+    if (m_discordRpc)
+    {
+        m_discordRpc->Stop();
+    }
+    if (m_osc)
+    {
+        m_osc->StopListen();
+    }
+    if (m_screenshotWatcher)
+    {
+        m_screenshotWatcher->Stop();
+    }
     vrcsm::core::ProcessGuard::StopWatcher();
     vrcsm::core::Database::Instance().Close();
 }
@@ -508,6 +545,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("avatar.select", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSelect(p, id); });
     m_handlers.emplace("avatar.search", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSearch(p, id); });
     m_handlers.emplace("user.invite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInvite(p, id); });
+    m_handlers.emplace("user.inviteTo", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInviteTo(p, id); });
     m_handlers.emplace("user.mute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserMute(p, id); });
     m_handlers.emplace("user.unmute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserUnmute(p, id); });
     m_handlers.emplace("user.block", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserBlock(p, id); });
@@ -526,6 +564,26 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("logs.stream.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLogsStreamStart(p, id); });
     m_handlers.emplace("logs.stream.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLogsStreamStop(p, id); });
     m_handlers.emplace("logs.files.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLogsFilesClear(p, id); });
+
+    // Pipeline + notifications — real-time event stream and inbox.
+    m_handlers.emplace("pipeline.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePipelineStart(p, id); });
+    m_handlers.emplace("pipeline.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePipelineStop(p, id); });
+    m_handlers.emplace("notifications.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsList(p, id); });
+    m_handlers.emplace("notifications.accept", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsAccept(p, id); });
+    m_handlers.emplace("notifications.respond", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsRespond(p, id); });
+    m_handlers.emplace("notifications.hide", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsHide(p, id); });
+    m_handlers.emplace("notifications.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotificationsClear(p, id); });
+    m_handlers.emplace("message.send", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleMessageSend(p, id); });
+    m_handlers.emplace("discord.setActivity", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDiscordSetActivity(p, id); });
+    m_handlers.emplace("discord.clearActivity", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDiscordClearActivity(p, id); });
+    m_handlers.emplace("discord.status", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDiscordStatus(p, id); });
+    m_handlers.emplace("osc.send", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOscSend(p, id); });
+    m_handlers.emplace("osc.listen.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOscListenStart(p, id); });
+    m_handlers.emplace("osc.listen.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOscListenStop(p, id); });
+    m_handlers.emplace("screenshots.watcher.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleScreenshotsWatcherStart(p, id); });
+    m_handlers.emplace("screenshots.watcher.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleScreenshotsWatcherStop(p, id); });
+    m_handlers.emplace("screenshots.injectMetadata", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleScreenshotsInjectMetadata(p, id); });
+    m_handlers.emplace("screenshots.readMetadata", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleScreenshotsReadMetadata(p, id); });
 
     // Radar / Memory
     m_handlers.emplace("memory.status", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleMemoryStatus(p, id); });

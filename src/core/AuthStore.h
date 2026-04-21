@@ -22,6 +22,10 @@ public:
     bool HasSession() const;
     std::string BuildCookieHeader() const;
 
+    // Raw `auth` cookie value — Pipeline WebSocket passes it as the
+    // `?authToken=` query param (not the full Cookie header).
+    std::string AuthCookie() const;
+
 private:
     AuthStore() = default;
 

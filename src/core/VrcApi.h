@@ -167,6 +167,61 @@ public:
 
     /// Remove a player moderation via DELETE /api/1/auth/user/playermoderations/{id}.
     static Result<nlohmann::json> removePlayerModeration(const std::string& moderationId);
+
+    /// List notifications for the signed-in user via GET
+    /// `/api/1/auth/user/notifications?type=all&hidden=false&n=100`. VRChat
+    /// returns entries with `{id, senderUserId, senderUsername, type,
+    /// message, details, seen, created_at}`. `type` covers invite,
+    /// requestInvite, inviteResponse, friendRequest, message, votetokick,
+    /// etc. Returns raw array for the frontend to render.
+    static Result<std::vector<nlohmann::json>> fetchNotifications(int count = 100);
+
+    /// Accept a pending friend request (the notification `type` must be
+    /// `friendRequest`) via PUT
+    /// `/api/1/auth/user/notifications/{id}/accept`. Returns VRChat's
+    /// confirmation payload.
+    static Result<nlohmann::json> acceptFriendRequest(const std::string& notificationId);
+
+    /// Respond to an invite / requestInvite notification via POST
+    /// `/api/1/invite/{notificationId}/response` — VRChat's own endpoint
+    /// the official client uses to send yes/no. `responseSlot` is an
+    /// index into the user's saved response messages (0-n), `message` is
+    /// the free-text body.
+    static Result<nlohmann::json> respondNotification(
+        const std::string& notificationId,
+        int responseSlot,
+        const std::string& message);
+
+    /// Mark a notification hidden (delete from inbox) via PUT
+    /// `/api/1/auth/user/notifications/{id}/hide`.
+    static Result<nlohmann::json> hideNotification(const std::string& notificationId);
+
+    /// Clear *all* notifications of a given type (or every type when
+    /// `type` is empty) via PUT `/api/1/auth/user/notifications/clear`.
+    static Result<nlohmann::json> clearNotifications();
+
+    /// Send a direct message to another user's inbox via POST
+    /// `/api/1/message/{userId}/message`. `type` is "message" (plain text)
+    /// or "invite" (world deep-link) — we only expose plain text for now.
+    /// Note: VRChat silently drops messages between non-friends.
+    static Result<nlohmann::json> sendUserMessage(
+        const std::string& targetUserId,
+        const std::string& message);
+
+    /// Fetch a short-lived WebSocket auth token via GET `/api/1/auth`.
+    /// VRChat returns `{ok: true, token: "..."}` on success. The token
+    /// is what `wss://pipeline.vrchat.cloud/?auth=<token>` expects —
+    /// using the raw session cookie directly will get the connection
+    /// rejected even though it works for the REST API.
+    static Result<std::string> fetchPipelineToken();
+
+    /// Send an invite to a specific user via POST `/api/1/invite/{userId}`.
+    /// `instanceLocation` is the full `wrld_xxx:0000~region(us)` string.
+    /// `messageSlot` picks which saved invite message (0-n) to attach.
+    static Result<nlohmann::json> inviteUser(
+        const std::string& targetUserId,
+        const std::string& instanceLocation,
+        int messageSlot = 0);
 };
 
 } // namespace vrcsm::core

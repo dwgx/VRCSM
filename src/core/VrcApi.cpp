@@ -4,6 +4,7 @@
 #include "Common.h"
 #include "RateLimiter.h"
 
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -1610,6 +1611,315 @@ Result<nlohmann::json> VrcApi::removePlayerModeration(const std::string& moderat
     {
         const auto msg = extractApiErrorMessage(response.body);
         return Error{"api_error", msg.value_or(fmt::format("playermoderations DELETE returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Notifications inbox — the other half of the Pipeline WebSocket work.
+// Pipeline pushes new notifications in real time; these endpoints cover
+// the initial fetch (bootstrap on login), hide/clear (clear the unread
+// badge), and accept/respond (actually act on invites + friend requests).
+// ─────────────────────────────────────────────────────────────────────────
+
+Result<std::string> VrcApi::fetchPipelineToken()
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    const auto response = httpGet(kApiHostW,
+        toWide(fmt::format("/api/1/auth?apiKey={}", kApiKey)),
+        cookieHeader);
+    if (auto err = checkStandardHttpError(response, "/auth")) return *err;
+
+    try
+    {
+        auto json = parseJsonBody(response, "/auth");
+        if (!json.is_object() || !json.contains("token"))
+        {
+            return Error{"api_error", "auth response missing token", 0};
+        }
+        return json["token"].get<std::string>();
+    }
+    catch (const std::exception& ex)
+    {
+        return Error{"api_error", ex.what(), 0};
+    }
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchNotifications(int count)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    const int clamped = std::clamp(count, 1, 100);
+    const std::wstring path = toWide(fmt::format(
+        "/api/1/auth/user/notifications?type=all&hidden=false&n={}&apiKey={}",
+        clamped, kApiKey));
+
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    if (auto err = checkStandardHttpError(response, "/auth/user/notifications")) return *err;
+
+    try
+    {
+        auto json = parseJsonBody(response, "/auth/user/notifications");
+        if (!json.is_array())
+        {
+            return Error{"api_error", "notifications response is not an array", 0};
+        }
+        std::vector<nlohmann::json> out;
+        out.reserve(json.size());
+        for (auto& entry : json)
+        {
+            out.push_back(std::move(entry));
+        }
+        return out;
+    }
+    catch (const std::exception& ex)
+    {
+        return Error{"api_error", ex.what(), 0};
+    }
+}
+
+Result<nlohmann::json> VrcApi::acceptFriendRequest(const std::string& notificationId)
+{
+    if (notificationId.empty())
+    {
+        return Error{"invalid_params", "Empty notificationId", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto response = httpRequest(
+        L"PUT", kApiHostW,
+        toWide(fmt::format("/api/1/auth/user/notifications/{}/accept?apiKey={}",
+                           notificationId, kApiKey)),
+        headers, "", false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("notifications/accept returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::respondNotification(
+    const std::string& notificationId,
+    int responseSlot,
+    const std::string& message)
+{
+    if (notificationId.empty())
+    {
+        return Error{"invalid_params", "Empty notificationId", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    nlohmann::json body{
+        {"responseType", "message"},
+        {"responseData", message},
+    };
+    // VRChat's invite response endpoint also supports a "slot" field
+    // referencing saved message templates. Only send when non-zero so
+    // the server defaults to the free-text path.
+    if (responseSlot > 0)
+    {
+        body["slot"] = responseSlot;
+    }
+
+    const auto response = httpRequest(
+        L"POST", kApiHostW,
+        toWide(fmt::format("/api/1/invite/{}/response?apiKey={}",
+                           notificationId, kApiKey)),
+        headers, body.dump(), false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("invite/response returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::hideNotification(const std::string& notificationId)
+{
+    if (notificationId.empty())
+    {
+        return Error{"invalid_params", "Empty notificationId", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto response = httpRequest(
+        L"PUT", kApiHostW,
+        toWide(fmt::format("/api/1/auth/user/notifications/{}/hide?apiKey={}",
+                           notificationId, kApiKey)),
+        headers, "", false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("notifications/hide returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::clearNotifications()
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto response = httpRequest(
+        L"PUT", kApiHostW,
+        toWide(fmt::format("/api/1/auth/user/notifications/clear?apiKey={}", kApiKey)),
+        headers, "", false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("notifications/clear returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::sendUserMessage(
+    const std::string& targetUserId,
+    const std::string& message)
+{
+    if (targetUserId.empty() || message.empty())
+    {
+        return Error{"invalid_params", "targetUserId and message required", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    // VRChat hard-caps message bodies at 2048 chars — clip with a
+    // conservative-but-safe cutoff so the server doesn't reject the
+    // whole message for a stray trailing paragraph.
+    std::string clipped = message;
+    if (clipped.size() > 2000)
+    {
+        clipped.resize(2000);
+    }
+
+    const auto body = nlohmann::json{
+        {"slot", 0},
+        {"message", clipped},
+        {"messageType", "message"},
+    }.dump();
+
+    const auto response = httpRequest(
+        L"POST", kApiHostW,
+        toWide(fmt::format("/api/1/message/{}/message?apiKey={}",
+                           targetUserId, kApiKey)),
+        headers, body, false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("message send returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::inviteUser(
+    const std::string& targetUserId,
+    const std::string& instanceLocation,
+    int messageSlot)
+{
+    if (targetUserId.empty() || instanceLocation.empty())
+    {
+        return Error{"invalid_params", "targetUserId and instanceLocation required", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    nlohmann::json body{
+        {"instanceId", instanceLocation},
+    };
+    if (messageSlot > 0)
+    {
+        body["messageSlot"] = messageSlot;
+    }
+
+    const auto response = httpRequest(
+        L"POST", kApiHostW,
+        toWide(fmt::format("/api/1/invite/{}?apiKey={}", targetUserId, kApiKey)),
+        headers, body.dump(), false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("invite/{} returned HTTP {}", targetUserId, response.status)),
             static_cast<int>(response.status)};
     }
     return nlohmann::json{{"ok", true}};

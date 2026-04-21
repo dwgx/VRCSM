@@ -209,6 +209,12 @@ bool AuthStore::HasSession() const
     return !m_authCookie.empty();
 }
 
+std::string AuthStore::AuthCookie() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_authCookie;
+}
+
 std::string AuthStore::BuildCookieHeader() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);

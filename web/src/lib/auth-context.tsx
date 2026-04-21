@@ -81,10 +81,17 @@ interface AuthLoginCompletedEvent {
   user?: AuthStatus;
 }
 
+export type PipelineState =
+  | "stopped"
+  | "connecting"
+  | "connected"
+  | "reconnecting";
+
 interface AuthContextValue {
   status: AuthStatus;
   loading: boolean;
   error: string | null;
+  pipelineState: PipelineState;
   /**
    * Call VRChat `/api/1/auth/user` with HTTP Basic auth. Resolves with
    * `status: "success"` once logged in (the context's own status is
@@ -118,6 +125,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>(fallbackStatus);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pipelineState, setPipelineState] = useState<PipelineState>("stopped");
   const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
@@ -238,17 +246,42 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, [refresh]);
 
+  // Pipeline WebSocket lifecycle — follows auth. Starts when the
+  // session is live, stops on logout. Connection-state updates arrive
+  // as `pipeline.state` events from the host thread.
+  useEffect(() => {
+    if (!status.authed) {
+      if (pipelineState !== "stopped") {
+        void ipc.pipelineStop().catch(() => {});
+        setPipelineState("stopped");
+      }
+      return;
+    }
+    void ipc.pipelineStart().catch(() => {});
+  }, [status.authed]);
+
+  useEffect(() => {
+    const unsub = ipc.on<{ state: PipelineState; detail: string }>(
+      "pipeline.state",
+      (ev) => {
+        if (mountedRef.current) setPipelineState(ev.state);
+      },
+    );
+    return unsub;
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       loading,
       error,
+      pipelineState,
       login,
       verifyTwoFactor,
       logout,
       refresh,
     }),
-    [status, loading, error, login, verifyTwoFactor, logout, refresh],
+    [status, loading, error, pipelineState, login, verifyTwoFactor, logout, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
