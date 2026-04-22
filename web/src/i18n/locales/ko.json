@@ -33,7 +33,13 @@
       "workspace": "워크스페이스"
     },
     "osc": "OSC 도구",
-    "worldHistory": "월드 방문 기록"
+    "worldHistory": "월드 방문 기록",
+    "calendar": "달력 & 잼",
+    "events": "이벤트 레코더",
+    "social": "소셜 분석",
+    "benchmark": "아바타 벤치마크",
+    "fbt": "FBT 모니터",
+    "rules": "자동화 규칙"
   },
   "profile": {
     "title": "내 프로필",

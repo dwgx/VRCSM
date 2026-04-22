@@ -33,7 +33,13 @@
       "project": "项目",
       "plugins": "插件"
     },
-    "worldHistory": "世界历史"
+    "worldHistory": "世界历史",
+    "calendar": "日历和活动",
+    "events": "事件记录器",
+    "social": "社交分析",
+    "benchmark": "虚拟形象基准",
+    "fbt": "FBT 监视器",
+    "rules": "自动化规则"
   },
   "profile": {
     "title": "我的资料",

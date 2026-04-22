@@ -33,7 +33,13 @@
       "workspace": "ワークスペース"
     },
     "osc": "OSCツール",
-    "worldHistory": "ワールド履歴"
+    "worldHistory": "ワールド履歴",
+    "calendar": "カレンダー＆ジャム",
+    "events": "イベントレコーダー",
+    "social": "ソーシャル分析",
+    "benchmark": "アバターベンチマーク",
+    "fbt": "FBTモニター",
+    "rules": "自動化ルール"
   },
   "profile": {
     "title": "マイプロフィール",
