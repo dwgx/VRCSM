@@ -917,6 +917,14 @@ class IpcClient {
     return this.call<{ enabled: boolean }, { enabled: boolean }>("autoStart.set", { enabled });
   }
 
+  async vrDiagnose() {
+    return this.call<undefined, Record<string, unknown>>("vr.diagnose");
+  }
+
+  async vrAudioSwitch(deviceId: string, role: string) {
+    return this.call<{ deviceId: string; role: string }, { ok: boolean }>("vr.audio.switch", { deviceId, role });
+  }
+
   async calendarDiscover() {
     return this.call<undefined, { events: Array<Record<string, unknown>> }>("calendar.discover");
   }

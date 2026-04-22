@@ -27,6 +27,7 @@ add_executable(vrcsm WIN32
     bridges/UpdateBridge.cpp
     bridges/PipelineBridge.cpp
     bridges/VectorBridge.cpp
+    bridges/VrDiagBridge.cpp
 )
 
 set(VRCSM_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")

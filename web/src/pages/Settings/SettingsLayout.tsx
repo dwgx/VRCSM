@@ -10,8 +10,9 @@ import { TabConfigJson } from "./TabConfigJson";
 import { TabSteamVR } from "./TabSteamVR";
 import { TabRegistry } from "./TabRegistry";
 import { TabExperimental } from "./TabExperimental";
+import { TabVrDiag } from "./TabVrDiag";
 
-type SettingsTab = "general" | "config" | "steamvr" | "registry" | "experimental";
+type SettingsTab = "general" | "config" | "steamvr" | "registry" | "experimental" | "vrdiag";
 
 export default function SettingsLayout() {
   const { t } = useTranslation();
@@ -83,6 +84,12 @@ export default function SettingsLayout() {
           >
             {t("settings.tabs.experimental", { defaultValue: "Experimental" })}
           </button>
+          <button
+            onClick={() => setActiveTab("vrdiag")}
+            className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "vrdiag" && "unity-tab-active")}
+          >
+            {t("settings.tabs.vrDiag", { defaultValue: "VR Diagnostics" })}
+          </button>
         </div>
       </header>
 
@@ -93,6 +100,7 @@ export default function SettingsLayout() {
         {activeTab === "steamvr" && <TabSteamVR vrcRunning={vrcRunning} />}
         {activeTab === "registry" && <TabRegistry vrcRunning={vrcRunning} />}
         {activeTab === "experimental" && <TabExperimental />}
+        {activeTab === "vrdiag" && <TabVrDiag />}
       </div>
     </div>
   );
