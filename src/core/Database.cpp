@@ -2164,7 +2164,38 @@ CREATE INDEX IF NOT EXISTS idx_rule_firings_time ON rule_firings(fired_at);
         return std::get<Error>(r);
     }
 
-    if (const auto r = ExecSimple("PRAGMA user_version = 5;"); std::holds_alternative<Error>(r))
+    // ── Schema v6: event recordings ─────────────────────────────
+    static const char* kSchemaV6Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS event_recordings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    world_id TEXT,
+    instance_id TEXT,
+    started_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    ended_at TEXT,
+    attendee_count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS event_attendees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recording_id INTEGER NOT NULL,
+    user_id TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    FOREIGN KEY (recording_id) REFERENCES event_recordings(id) ON DELETE CASCADE,
+    UNIQUE(recording_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_attendees_rec ON event_attendees(recording_id);
+    )SQL";
+
+    if (const auto r = ExecSimple(kSchemaV6Sql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 6;"); std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
         return std::get<Error>(r);
@@ -2496,6 +2527,95 @@ Error Database::MakeError(std::string_view code, std::string_view detail) const
         return Error{std::string(code), std::string(detail), 0};
     }
     return MakeError(code);
+}
+
+// ── Event Recordings ────────────────────────────────────────────────
+
+Result<nlohmann::json> Database::StartRecording(const EventRecordingInsert& e)
+{
+    std::lock_guard lock(m_mutex);
+    const char* sql = "INSERT INTO event_recordings (name, world_id, instance_id) VALUES (?, ?, ?);";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+        return MakeError("db_prepare");
+    sqlite3_bind_text(stmt, 1, e.name.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, e.world_id.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, e.instance_id.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE) return MakeError("db_insert");
+    return nlohmann::json{{"id", sqlite3_last_insert_rowid(m_db)}};
+}
+
+Result<std::monostate> Database::StopRecording(int64_t id)
+{
+    std::lock_guard lock(m_mutex);
+    std::string sql = "UPDATE event_recordings SET ended_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = " + std::to_string(id) + ";";
+    return ExecSimple(sql.c_str());
+}
+
+Result<nlohmann::json> Database::ListRecordings(int limit)
+{
+    std::lock_guard lock(m_mutex);
+    std::string sql = "SELECT id, name, world_id, instance_id, started_at, ended_at, attendee_count FROM event_recordings ORDER BY started_at DESC LIMIT " + std::to_string(limit) + ";";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+        return MakeError("db_prepare");
+    nlohmann::json arr = nlohmann::json::array();
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        arr.push_back({
+            {"id", sqlite3_column_int64(stmt, 0)},
+            {"name", reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1))},
+            {"world_id", sqlite3_column_type(stmt, 2) == SQLITE_NULL ? "" : reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2))},
+            {"instance_id", sqlite3_column_type(stmt, 3) == SQLITE_NULL ? "" : reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3))},
+            {"started_at", reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4))},
+            {"ended_at", sqlite3_column_type(stmt, 5) == SQLITE_NULL ? nullptr : nlohmann::json(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5)))},
+            {"attendee_count", sqlite3_column_int(stmt, 6)},
+        });
+    }
+    sqlite3_finalize(stmt);
+    return nlohmann::json{{"recordings", arr}};
+}
+
+Result<nlohmann::json> Database::RecordingAttendees(int64_t recording_id)
+{
+    std::lock_guard lock(m_mutex);
+    std::string sql = "SELECT id, user_id, display_name, first_seen_at FROM event_attendees WHERE recording_id = " + std::to_string(recording_id) + " ORDER BY first_seen_at;";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+        return MakeError("db_prepare");
+    nlohmann::json arr = nlohmann::json::array();
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        arr.push_back({
+            {"id", sqlite3_column_int64(stmt, 0)},
+            {"user_id", reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1))},
+            {"display_name", reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2))},
+            {"first_seen_at", reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3))},
+        });
+    }
+    sqlite3_finalize(stmt);
+    return nlohmann::json{{"attendees", arr}};
+}
+
+Result<std::monostate> Database::AddAttendee(int64_t recording_id,
+    const std::string& user_id, const std::string& display_name)
+{
+    std::lock_guard lock(m_mutex);
+    const char* sql = "INSERT OR IGNORE INTO event_attendees (recording_id, user_id, display_name) VALUES (?, ?, ?);";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+        return MakeError("db_prepare");
+    sqlite3_bind_int64(stmt, 1, recording_id);
+    sqlite3_bind_text(stmt, 2, user_id.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, display_name.c_str(), -1, SQLITE_TRANSIENT);
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE) return MakeError("db_insert");
+
+    std::string updateSql = "UPDATE event_recordings SET attendee_count = (SELECT COUNT(*) FROM event_attendees WHERE recording_id = " + std::to_string(recording_id) + ") WHERE id = " + std::to_string(recording_id) + ";";
+    return ExecSimple(updateSql.c_str());
 }
 
 // ── Rules CRUD ──────────────────────────────────────────────────────

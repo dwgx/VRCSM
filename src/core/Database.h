@@ -247,6 +247,21 @@ public:
 
     Result<std::monostate> DeleteAvatarEmbedding(const std::string& avatar_id);
 
+    // ─── event_recordings (attendance tracker) ────────────────
+
+    struct EventRecordingInsert
+    {
+        std::string name;
+        std::optional<std::string> world_id;
+        std::optional<std::string> instance_id;
+    };
+    Result<nlohmann::json> StartRecording(const EventRecordingInsert& e);
+    Result<std::monostate> StopRecording(int64_t id);
+    Result<nlohmann::json> ListRecordings(int limit = 50);
+    Result<nlohmann::json> RecordingAttendees(int64_t recording_id);
+    Result<std::monostate> AddAttendee(int64_t recording_id,
+        const std::string& user_id, const std::string& display_name);
+
     // ─── rules (automation engine) ─────────────────────────────
 
     struct RuleInsert

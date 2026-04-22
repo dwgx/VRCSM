@@ -53,6 +53,11 @@ private:
     nlohmann::json HandleAutoStartSet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleVrDiagnose(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleVrAudioSwitch(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventStart(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventAttendees(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventAddAttendee(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleRulesList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleRulesGet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleRulesCreate(const nlohmann::json& params, const std::optional<std::string>& id);

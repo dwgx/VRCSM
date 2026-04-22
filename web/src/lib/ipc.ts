@@ -917,6 +917,22 @@ class IpcClient {
     return this.call<{ enabled: boolean }, { enabled: boolean }>("autoStart.set", { enabled });
   }
 
+  async eventStart(name: string, world_id?: string, instance_id?: string) {
+    return this.call<Record<string, unknown>, { id: number }>("event.start", { name, world_id, instance_id });
+  }
+  async eventStop(id: number) {
+    return this.call<{ id: number }, { ok: boolean }>("event.stop", { id });
+  }
+  async eventList() {
+    return this.call<undefined, { recordings: Array<Record<string, unknown>> }>("event.list");
+  }
+  async eventAttendees(recording_id: number) {
+    return this.call<{ recording_id: number }, { attendees: Array<Record<string, unknown>> }>("event.attendees", { recording_id });
+  }
+  async eventAddAttendee(recording_id: number, user_id: string, display_name: string) {
+    return this.call<Record<string, unknown>, { ok: boolean }>("event.addAttendee", { recording_id, user_id, display_name });
+  }
+
   async rulesList() {
     return this.call<undefined, { rules: Array<Record<string, unknown>> }>("rules.list");
   }

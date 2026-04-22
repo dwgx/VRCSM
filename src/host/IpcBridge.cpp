@@ -134,6 +134,11 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "friends.unfriend",
         "vr.diagnose",
         "vr.audio.switch",
+        "event.start",
+        "event.stop",
+        "event.list",
+        "event.attendees",
+        "event.addAttendee",
         "rules.list",
         "rules.get",
         "rules.create",
@@ -519,6 +524,11 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("autoStart.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAutoStartSet(p, id); });
     m_handlers.emplace("vr.diagnose", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVrDiagnose(p, id); });
     m_handlers.emplace("vr.audio.switch", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVrAudioSwitch(p, id); });
+    m_handlers.emplace("event.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventStart(p, id); });
+    m_handlers.emplace("event.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventStop(p, id); });
+    m_handlers.emplace("event.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventList(p, id); });
+    m_handlers.emplace("event.attendees", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventAttendees(p, id); });
+    m_handlers.emplace("event.addAttendee", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventAddAttendee(p, id); });
     m_handlers.emplace("rules.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesList(p, id); });
     m_handlers.emplace("rules.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesGet(p, id); });
     m_handlers.emplace("rules.create", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesCreate(p, id); });
