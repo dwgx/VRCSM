@@ -721,13 +721,17 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
 nlohmann::json IpcBridge::HandleCalendarDiscover(const nlohmann::json&, const std::optional<std::string>&)
 {
     auto res = vrcsm::core::VrcApi::fetchCalendarDiscover();
-    return nlohmann::json{{"events", unwrapResult(std::move(res))}};
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+        throw IpcException(std::get<vrcsm::core::Error>(res));
+    return nlohmann::json{{"events", std::get<std::vector<nlohmann::json>>(res)}};
 }
 
 nlohmann::json IpcBridge::HandleCalendarFeatured(const nlohmann::json&, const std::optional<std::string>&)
 {
     auto res = vrcsm::core::VrcApi::fetchCalendarFeatured();
-    return nlohmann::json{{"events", unwrapResult(std::move(res))}};
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+        throw IpcException(std::get<vrcsm::core::Error>(res));
+    return nlohmann::json{{"events", std::get<std::vector<nlohmann::json>>(res)}};
 }
 
 nlohmann::json IpcBridge::HandleJamsList(const nlohmann::json&, const std::optional<std::string>&)

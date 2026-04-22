@@ -5,7 +5,12 @@
 
 nlohmann::json IpcBridge::HandleVrDiagnose(const nlohmann::json&, const std::optional<std::string>&)
 {
-    return unwrapResult(vrcsm::core::VrDiagnostics::RunDiagnostics());
+    auto res = vrcsm::core::VrDiagnostics::RunDiagnostics();
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+        throw IpcException(std::get<vrcsm::core::Error>(res));
+    nlohmann::json j;
+    vrcsm::core::to_json(j, std::get<vrcsm::core::VrDiagResult>(res));
+    return j;
 }
 
 nlohmann::json IpcBridge::HandleVrAudioSwitch(const nlohmann::json& params, const std::optional<std::string>&)
@@ -17,5 +22,8 @@ nlohmann::json IpcBridge::HandleVrAudioSwitch(const nlohmann::json& params, cons
     if (!role.has_value() || role->empty())
         throw IpcException({"missing_field", "vr.audio.switch: missing 'role'", 400});
 
-    return unwrapResult(vrcsm::core::VrDiagnostics::SwitchAudioDevice(*deviceId, *role));
+    auto res = vrcsm::core::VrDiagnostics::SwitchAudioDevice(*deviceId, *role);
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+        throw IpcException(std::get<vrcsm::core::Error>(res));
+    return std::get<nlohmann::json>(res);
 }
