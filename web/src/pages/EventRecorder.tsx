@@ -102,8 +102,25 @@ export default function EventRecorder() {
         </CardContent>
       </Card>
 
+      <Card className="unity-panel">
+        <CardContent className="p-3 text-[11px] text-[hsl(var(--muted-foreground))] space-y-1">
+          <p>{t("eventRecorder.guide1", { defaultValue: "Records who you meet in VRChat instances in real-time." })}</p>
+          <p>{t("eventRecorder.guide2", { defaultValue: "1. Enter a name and click Start Recording. 2. While recording, players joining your instance are automatically logged. 3. Click Stop to end the session. Select a recording to see attendees." })}</p>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-3 md:grid-cols-2">
         <div className="flex flex-col gap-2">
+          {recordings.length === 0 && (
+            <Card className="unity-panel">
+              <CardContent className="p-6 text-center">
+                <CircleDot className="size-6 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.5)]" />
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                  {t("eventRecorder.noRecordings", { defaultValue: "No recordings yet. Start one above to track who joins your instance." })}
+                </p>
+              </CardContent>
+            </Card>
+          )}
           {recordings.map((rec) => (
             <button
               key={rec.id}
@@ -124,12 +141,19 @@ export default function EventRecorder() {
           ))}
         </div>
 
-        {selectedId && attendees.length > 0 && (
+        {selectedId && (
           <Card className="unity-panel">
             <CardHeader className="pb-2">
-              <CardTitle className="text-[12px]">Attendees ({attendees.length})</CardTitle>
+              <CardTitle className="text-[12px]">
+                {t("eventRecorder.attendees", { defaultValue: "Attendees" })} ({attendees.length})
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-0.5 max-h-[400px] overflow-y-auto">
+              {attendees.length === 0 && (
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))] py-4 text-center">
+                  {t("eventRecorder.noAttendees", { defaultValue: "No attendees recorded yet." })}
+                </p>
+              )}
               {attendees.map((a) => (
                 <div key={a.id} className="flex justify-between text-[11px] font-mono py-0.5 border-b border-[hsl(var(--border)/0.3)]">
                   <span>{a.display_name}</span>

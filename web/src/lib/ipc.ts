@@ -1582,6 +1582,7 @@ class IpcClient {
     old_value?: string;
     new_value?: string;
     occurred_at?: string;
+    display_name?: string;
   }) {
     return this.call<typeof params, { ok: boolean }>("friendLog.insert", params);
   }

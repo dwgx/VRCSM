@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { LoginForm } from "@/components/LoginForm";
 import { FriendDetailDialog } from "@/components/FriendDetailDialog";
 import { SmartWearButton } from "@/components/SmartWearButton";
+import { ImageZoom } from "@/components/ImageZoom";
 import { IdBadge } from "@/components/IdBadge";
 
 
@@ -91,16 +92,7 @@ function FriendAvatar({ friend }: { friend: Friend }) {
         style={{ boxShadow: `0 0 0 2px ${dotColor}` }}
       >
         {thumb ? (
-          <img
-            src={thumb}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-          />
+          <ImageZoom src={thumb} className="h-full w-full" imgClassName="h-full w-full object-cover rounded-full" />
         ) : (
           <Users className="size-5 text-[hsl(var(--muted-foreground))]" />
         )}

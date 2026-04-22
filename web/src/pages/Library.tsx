@@ -51,6 +51,7 @@ import { ipc } from "@/lib/ipc";
 import { useThumbnail } from "@/lib/thumbnails";
 import type { FavoriteItem } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
+import { ImageZoom } from "@/components/ImageZoom";
 
 type TypeFilter = "all" | FavoriteEntityType;
 
@@ -109,15 +110,10 @@ function LibraryThumb({ item }: { item: FavoriteItem }) {
         }}
       />
       {resolvedUrl ? (
-        <img
+        <ImageZoom
           src={resolvedUrl}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 h-full w-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
+          className="absolute inset-0 h-full w-full z-[1]"
+          imgClassName="h-full w-full object-cover"
         />
       ) : null}
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />

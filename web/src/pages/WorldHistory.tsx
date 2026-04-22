@@ -1,13 +1,10 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ipc } from "@/lib/ipc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-// World History page — chronological list of every world the user has
-// joined (as captured by the LogTailer into vrcsm.db's world_visits
-// table). MVP: read-only, no pagination UI (100 most-recent rows which
-// is plenty for almost every power user). Infinite scroll is a v0.12.
+import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 
 interface WorldVisit {
   id: number;
@@ -61,22 +58,56 @@ function accessBadgeVariant(
     case "friends":
     case "friends+":
       return "secondary";
-    case "invite":
-    case "invite+":
-      return "outline";
-    case "group":
-    case "group+":
-      return "outline";
     default:
       return "outline";
   }
 }
 
+function EditableLimit({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="number"
+        min={10}
+        max={1000}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          const n = Math.max(10, Math.min(1000, parseInt(draft) || value));
+          onChange(n);
+          setEditing(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") { setDraft(String(value)); setEditing(false); }
+        }}
+        className="w-12 h-5 text-center text-[10px] font-mono rounded border border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--canvas))] text-[hsl(var(--foreground))] outline-none"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => { setDraft(String(value)); setEditing(true); }}
+      className="font-mono text-[11px] text-[hsl(var(--primary))] hover:underline cursor-pointer"
+      title="Click to change limit"
+    >
+      {value}
+    </button>
+  );
+}
+
 export default function WorldHistory() {
   const { t } = useTranslation();
+  const [limit, setLimit] = useState(100);
   const { data, isLoading, error } = useQuery({
-    queryKey: ["db.worldVisits.list", { limit: 100, offset: 0 }],
-    queryFn: () => ipc.dbWorldVisits(100, 0),
+    queryKey: ["db.worldVisits.list", { limit, offset: 0 }],
+    queryFn: () => ipc.dbWorldVisits(limit, 0),
     staleTime: 30_000,
   });
 
@@ -92,6 +123,10 @@ export default function WorldHistory() {
         </div>
         <span className="h-[11px] w-px bg-[hsl(var(--border-strong))]" />
         <span className="font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
+          {t("worldHistory.recentN", { defaultValue: "Recent" })}{" "}
+          <EditableLimit value={limit} onChange={setLimit} />{" "}
+          {t("worldHistory.visits", { defaultValue: "visits" })}
+          {" · "}
           {t("worldHistory.subtitle")}
         </span>
       </header>
@@ -121,12 +156,16 @@ export default function WorldHistory() {
       <div className="flex flex-col gap-2">
         {items.map((v) => (
           <Card key={v.id} className="unity-panel">
-            <CardContent className="p-3 flex items-center gap-3 text-[11px] font-mono">
-              <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-medium truncate">
-                    {v.world_id ?? t("worldHistory.unknownWorld")}
-                  </span>
+            <CardContent className="p-3 flex items-center gap-3 text-[11px]">
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {v.world_id ? (
+                    <WorldPopupBadge worldId={v.world_id} />
+                  ) : (
+                    <span className="text-[12px] font-medium font-mono truncate">
+                      {t("worldHistory.unknownWorld")}
+                    </span>
+                  )}
                   <Badge variant={accessBadgeVariant(v.access_type)}>
                     {v.access_type ?? "—"}
                   </Badge>
@@ -134,22 +173,17 @@ export default function WorldHistory() {
                     <Badge variant="outline">{v.region.toUpperCase()}</Badge>
                   )}
                 </div>
-                <div className="text-[10.5px] text-[hsl(var(--muted-foreground))] truncate">
+                <div className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
                   {formatRelative(v.joined_at)}
                   {" → "}
                   {v.left_at ? formatRelative(v.left_at) : t("worldHistory.stillInWorld")}
                   {" · "}
                   {durationMinutes(v.joined_at, v.left_at)}
                 </div>
-                {v.instance_id && (
-                  <div className="text-[10.5px] text-[hsl(var(--muted-foreground))] truncate">
-                    {t("worldHistory.instanceLabel")}: {v.instance_id}
-                  </div>
-                )}
               </div>
               {v.world_id && (
                 <button
-                  className="shrink-0 underline text-[11px]"
+                  className="shrink-0 text-[10px] text-[hsl(var(--primary))] hover:underline"
                   onClick={() => {
                     void ipc.call<{ url: string }, { ok: boolean }>(
                       "shell.openUrl",

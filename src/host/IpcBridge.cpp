@@ -657,6 +657,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("db.playerEvents.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbPlayerEvents(p, id); });
     m_handlers.emplace("db.playerEncounters", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbPlayerEncounters(p, id); });
     m_handlers.emplace("db.avatarHistory.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistory(p, id); });
+    m_handlers.emplace("db.avatarHistory.record", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistoryRecord(p, id); });
     m_handlers.emplace("db.stats.heatmap", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsHeatmap(p, id); });
     m_handlers.emplace("db.stats.overview", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsOverview(p, id); });
     m_handlers.emplace("db.history.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbHistoryClear(p, id); });

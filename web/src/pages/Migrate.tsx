@@ -22,7 +22,6 @@ import {
   Link2,
   Loader2,
   Play,
-  RefreshCw,
   ShieldAlert,
   Wrench,
 } from "lucide-react";
@@ -46,15 +45,6 @@ const TARGET_FOLDER_NAMES: Record<string, string> = {
   http_cache: "HTTPCache-WindowsPlayer",
   texture_cache: "TextureCache-WindowsPlayer",
 };
-
-const PHASE_ORDER: MigratePhase[] = [
-  "preflight",
-  "copy",
-  "verify",
-  "remove",
-  "junction",
-  "done",
-];
 
 function suggestTargetPath(category?: Pick<CategorySummary, "key" | "resolved_path">) {
   if (!category) return "";
@@ -127,8 +117,6 @@ function Migrate() {
 
   const hasBlockers =
     plan !== null && (plan.blockers.length > 0 || plan.vrcRunning);
-
-  const canStart = plan !== null && !hasBlockers && !running;
 
   /* ─── Helpers ───────────────────────────────────────────────────── */
 
@@ -218,53 +206,37 @@ function Migrate() {
     }
   };
 
-  const runPreflight = async () => {
-    if (!selected) return;
+  const migrateOneClick = async () => {
+    if (!selected || !target.trim()) return;
     setPlanLoading(true);
     setProgress(null);
+    setPlan(null);
     try {
       const res = await ipc.call<
         { source: string; target: string },
         MigratePlan
       >("migrate.preflight", { source: selected.resolved_path, target });
       setPlan(res);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      toast.error(
-        t("migrate.preflightFailed", {
-          error: msg,
-          defaultValue: "Preflight failed: {{error}}",
-        }),
-      );
-    } finally {
+      if (res.sourceIsJunction) {
+        setPlanLoading(false);
+        return;
+      }
+      if (res.vrcRunning || res.blockers.length > 0) {
+        setPlanLoading(false);
+        return;
+      }
       setPlanLoading(false);
-    }
-  };
-
-  const execute = async () => {
-    if (!plan) return;
-    setRunning(true);
-    setProgress({
-      phase: "copy",
-      bytesDone: 0,
-      bytesTotal: plan.sourceBytes,
-      filesDone: 0,
-      filesTotal: 0,
-    });
-    try {
+      setRunning(true);
+      setProgress({ phase: "copy", bytesDone: 0, bytesTotal: res.sourceBytes, filesDone: 0, filesTotal: 0 });
       await ipc.call<{ source: string; target: string }, { ok: true }>(
         "migrate.execute",
-        { source: plan.source, target: plan.target },
+        { source: res.source, target: res.target },
       );
     } catch (e: unknown) {
       setRunning(false);
+      setPlanLoading(false);
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(
-        t("migrate.executeFailed", {
-          error: msg,
-          defaultValue: "Execute failed: {{error}}",
-        }),
-      );
+      toast.error(t("migrate.executeFailed", { error: msg, defaultValue: "Migration failed: {{error}}" }));
     }
   };
 
@@ -509,168 +481,48 @@ function Migrate() {
               </div>
             ) : null}
 
-            {/* Preflight button */}
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                onClick={() => void runPreflight()}
-                disabled={planLoading || !target.trim() || running}
-                className="gap-1.5"
-              >
-                {planLoading ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="size-3.5" />
-                )}
-                {planLoading
-                  ? t("migrate.checking", { defaultValue: "Checking..." })
-                  : t("migrate.runPreflight", {
-                      defaultValue: "Run preflight",
-                    })}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {/* ─── Junction state (when source is already a junction) ── */}
-      {plan?.sourceIsJunction ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link2 className="size-4 text-[hsl(var(--warning))]" />
-              {t("migrate.junctionState", {
-                defaultValue: "Existing junction detected",
-              })}
-            </CardTitle>
-            <CardDescription>
-              {t("migrate.junctionStateDesc", {
-                defaultValue:
-                  "The source path is already an NTFS junction. You can repair it if the target is missing or broken.",
-              })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 pt-0">
-            <div className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[hsl(var(--warning)/0.4)] bg-[hsl(var(--warning)/0.08)] p-3">
-              <Link2 className="size-4 shrink-0 text-[hsl(var(--warning))]" />
-              <div className="flex-1 text-[12px]">
-                <div className="font-medium text-[hsl(var(--foreground))]">
-                  {plan.source}
+            {/* Junction state (source is already a junction) */}
+            {plan?.sourceIsJunction ? (
+              <div className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[hsl(var(--warning)/0.4)] bg-[hsl(var(--warning)/0.08)] p-3">
+                <Link2 className="size-4 shrink-0 text-[hsl(var(--warning))]" />
+                <div className="flex-1 text-[12px]">
+                  <div className="font-medium text-[hsl(var(--foreground))]">
+                    {t("migrate.junctionState", { defaultValue: "Existing junction detected" })}
+                  </div>
+                  <div className="mt-0.5 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
+                    {t("migrate.pointsTo", { defaultValue: "points to" })}{" "}
+                    {plan.target}
+                  </div>
                 </div>
-                <div className="mt-0.5 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
-                  {t("migrate.pointsTo", { defaultValue: "points to" })}{" "}
-                  {plan.target}
-                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={repairing}
+                  onClick={() => void repairJunction()}
+                  className="shrink-0 gap-1.5"
+                >
+                  {repairing ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Wrench className="size-3" />
+                  )}
+                  {t("common.repair", { defaultValue: "Repair" })}
+                </Button>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={repairing}
-                onClick={() => void repairJunction()}
-                className="shrink-0 gap-1.5"
-              >
-                {repairing ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  <Wrench className="size-3" />
-                )}
-                {t("common.repair", { defaultValue: "Repair" })}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
+            ) : null}
 
-      {/* ─── Preflight results & execution ───────────────────── */}
-      {plan && !plan.sourceIsJunction ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle>
-                  {t("migrate.preflightResults", {
-                    defaultValue: "Preflight results",
-                  })}
-                </CardTitle>
-                <CardDescription>
-                  {t("migrate.preflightResultsDesc", {
-                    defaultValue:
-                      "Disk space, blocker checks, and migration readiness.",
-                  })}
-                </CardDescription>
-              </div>
-              {hasBlockers ? (
-                <Badge variant="destructive" className="gap-1">
-                  <ShieldAlert className="size-3" />
-                  {t("migrate.blocked", { defaultValue: "Blocked" })}
-                </Badge>
-              ) : (
-                <Badge variant="success" className="gap-1">
-                  <Check className="size-3" />
-                  {t("migrate.ready", { defaultValue: "Ready" })}
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 pt-0">
-            {/* Size comparison */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <StatBlock
-                label={t("migrate.sourceBytes", {
-                  defaultValue: "Source size",
-                })}
-                value={formatBytes(plan.sourceBytes)}
-              />
-              <StatBlock
-                label={t("migrate.targetFree", {
-                  defaultValue: "Target free space",
-                })}
-                value={formatBytes(plan.targetFreeBytes)}
-                warn={plan.targetFreeBytes < plan.sourceBytes * 1.1}
-              />
-            </div>
-
-            {/* Disk space ratio bar */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                <span>
-                  {t("migrate.spaceRequired", {
-                    defaultValue: "Space required",
-                  })}
-                </span>
-                <span className="font-mono">
-                  {plan.targetFreeBytes > 0
-                    ? `${Math.min(100, Math.round((plan.sourceBytes / plan.targetFreeBytes) * 100))}%`
-                    : "N/A"}
-                </span>
-              </div>
-              <Progress
-                value={
-                  plan.targetFreeBytes > 0
-                    ? Math.min(
-                        100,
-                        Math.round(
-                          (plan.sourceBytes / plan.targetFreeBytes) * 100,
-                        ),
-                      )
-                    : 100
-                }
-              />
-            </div>
-
-            {/* Blockers */}
-            {plan.vrcRunning ? (
+            {/* Inline blockers (auto-detected from preflight) */}
+            {plan && !plan.sourceIsJunction && plan.vrcRunning ? (
               <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--destructive)/0.45)] bg-[hsl(var(--destructive)/0.08)] p-3">
                 <AlertTriangle className="size-4 shrink-0 text-[hsl(var(--destructive))]" />
                 <span className="text-[12px] text-[hsl(var(--destructive))]">
                   {t("migrate.vrcRunningBlocker", {
-                    defaultValue:
-                      "VRChat is running. Close it before migrating to avoid data corruption.",
+                    defaultValue: "VRChat is running. Close it before migrating.",
                   })}
                 </span>
               </div>
             ) : null}
-
-            {plan.blockers.length > 0 ? (
+            {plan && !plan.sourceIsJunction && plan.blockers.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {plan.blockers.map((b, i) => (
                   <div
@@ -678,132 +530,85 @@ function Migrate() {
                     className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--destructive)/0.45)] bg-[hsl(var(--destructive)/0.08)] p-3"
                   >
                     <ShieldAlert className="size-4 shrink-0 text-[hsl(var(--destructive))]" />
-                    <span className="text-[12px] text-[hsl(var(--destructive))]">
-                      {b}
-                    </span>
+                    <span className="text-[12px] text-[hsl(var(--destructive))]">{b}</span>
                   </div>
                 ))}
               </div>
             ) : null}
 
-            {!hasBlockers && !plan.vrcRunning ? (
+            {/* Preflight summary (inline, compact) */}
+            {plan && !plan.sourceIsJunction && !hasBlockers ? (
               <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--success)/0.4)] bg-[hsl(var(--success)/0.08)] p-3">
                 <Check className="size-4 shrink-0 text-[hsl(var(--success))]" />
                 <span className="text-[12px] text-[hsl(var(--success))]">
-                  {t("migrate.noBlockers", {
-                    defaultValue: "No blockers detected. Ready to migrate.",
-                  })}
+                  {t("migrate.noBlockers", { defaultValue: "Ready to migrate." })}
+                  {" "}
+                  <span className="font-mono text-[10px]">
+                    {formatBytes(plan.sourceBytes)} → {formatBytes(plan.targetFreeBytes)} {t("migrate.free", { defaultValue: "free" })}
+                  </span>
                 </span>
               </div>
             ) : null}
 
-            {/* Phase progress pipeline */}
-            <div className="flex flex-col gap-3">
-              <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                {t("migrate.pipeline", {
-                  defaultValue: "Migration pipeline",
-                })}
-              </div>
-              <PhaseIndicator
-                phases={PHASE_ORDER}
-                current={progress?.phase ?? "idle"}
-                phaseLabel={phaseLabel}
-              />
-            </div>
-
-            {/* Active progress details */}
-            {progress &&
-            progress.phase !== "idle" &&
-            progress.phase !== "done" &&
-            progress.phase !== "error" ? (
+            {/* Progress (inline) */}
+            {progress && progress.phase !== "idle" && progress.phase !== "done" && progress.phase !== "error" ? (
               <div className="flex flex-col gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-3">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-medium text-[hsl(var(--foreground))]">
                     {phaseLabel(progress.phase)}
                   </span>
-                  <span className="font-mono text-[hsl(var(--muted-foreground))]">
-                    {pct}%
-                  </span>
+                  <span className="font-mono text-[hsl(var(--muted-foreground))]">{pct}%</span>
                 </div>
                 <Progress value={pct} />
-                <div className="flex items-center justify-between text-[11px] text-[hsl(var(--muted-foreground))]">
-                  <span className="font-mono">
-                    {formatBytes(progress.bytesDone)} /{" "}
-                    {formatBytes(progress.bytesTotal)}
-                  </span>
+                <div className="flex items-center justify-between text-[10px] text-[hsl(var(--muted-foreground))] font-mono">
+                  <span>{formatBytes(progress.bytesDone)} / {formatBytes(progress.bytesTotal)}</span>
                   <span>
-                    {t("migrate.filesProcessed", {
-                      count: progress.filesDone,
-                      defaultValue: "{{count}} files processed",
-                    })}
-                    {progress.filesTotal > 0
-                      ? ` / ${progress.filesTotal}`
-                      : ""}
+                    {progress.filesDone} {t("migrate.files", { defaultValue: "files" })}
+                    {progress.filesTotal > 0 ? ` / ${progress.filesTotal}` : ""}
                   </span>
                 </div>
                 {progress.message ? (
-                  <div className="mt-1 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                    {progress.message}
-                  </div>
+                  <div className="truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">{progress.message}</div>
                 ) : null}
               </div>
             ) : null}
 
-            {/* Done state */}
             {progress?.phase === "done" ? (
               <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--success)/0.4)] bg-[hsl(var(--success)/0.08)] p-3">
                 <Check className="size-4 shrink-0 text-[hsl(var(--success))]" />
                 <span className="text-[12px] font-medium text-[hsl(var(--success))]">
-                  {t("migrate.complete", {
-                    defaultValue: "Migration complete",
-                  })}
+                  {t("migrate.complete", { defaultValue: "Migration complete" })}
                 </span>
               </div>
             ) : null}
-
-            {/* Error state */}
             {progress?.phase === "error" ? (
               <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--destructive)/0.45)] bg-[hsl(var(--destructive)/0.08)] p-3">
                 <AlertTriangle className="size-4 shrink-0 text-[hsl(var(--destructive))]" />
                 <span className="text-[12px] text-[hsl(var(--destructive))]">
-                  {progress.message ??
-                    t("migrate.failed", {
-                      defaultValue: "Migration failed",
-                    })}
+                  {progress.message ?? t("migrate.failed", { defaultValue: "Migration failed" })}
                 </span>
               </div>
             ) : null}
 
-            {/* Execute button */}
+            {/* Single migrate button */}
             <div className="flex items-center justify-end gap-2">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setPlan(null);
-                  setProgress(null);
-                }}
-                disabled={running}
-              >
-                {t("migrate.resetPreflight", {
-                  defaultValue: "Reset",
-                })}
-              </Button>
-              <Button
-                onClick={() => void execute()}
-                disabled={!canStart}
+                onClick={() => void migrateOneClick()}
+                disabled={planLoading || !target.trim() || running}
                 className="gap-1.5"
               >
-                {running ? (
+                {planLoading ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : running ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <Play className="size-3.5" />
                 )}
-                {running
-                  ? t("migrate.running", { defaultValue: "Running..." })
-                  : t("migrate.execute", {
-                      defaultValue: "Start migration",
-                    })}
+                {planLoading
+                  ? t("migrate.checking", { defaultValue: "Checking..." })
+                  : running
+                    ? t("migrate.running", { defaultValue: "Migrating..." })
+                    : t("migrate.execute", { defaultValue: "Migrate" })}
               </Button>
             </div>
           </CardContent>
@@ -818,95 +623,3 @@ export default Migrate;
 /* ================================================================== */
 /*  Subcomponents                                                     */
 /* ================================================================== */
-
-function StatBlock({
-  label,
-  value,
-  warn = false,
-}: {
-  label: string;
-  value: string;
-  warn?: boolean;
-}) {
-  return (
-    <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-3">
-      <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-1 font-mono text-[15px]",
-          warn
-            ? "text-[hsl(var(--warning))]"
-            : "text-[hsl(var(--foreground))]",
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function PhaseIndicator({
-  phases,
-  current,
-  phaseLabel,
-}: {
-  phases: MigratePhase[];
-  current: MigratePhase;
-  phaseLabel: (phase: MigratePhase) => string;
-}) {
-  const currentIdx = phases.indexOf(current);
-  const isError = current === "error";
-
-  return (
-    <div className="flex items-center gap-0">
-      {phases.map((phase, i) => {
-        const isDone = !isError && currentIdx >= 0 && i < currentIdx;
-        const isActive = phase === current;
-        const isFuture = !isDone && !isActive;
-
-        return (
-          <div key={phase} className="flex items-center">
-            {i > 0 ? (
-              <div
-                className={cn(
-                  "h-px w-4 sm:w-6",
-                  isDone
-                    ? "bg-[hsl(var(--success))]"
-                    : isActive
-                      ? "bg-[hsl(var(--primary))]"
-                      : "bg-[hsl(var(--border))]",
-                )}
-              />
-            ) : null}
-            <div
-              className={cn(
-                "flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-2 py-1 text-[10px] font-medium transition-colors",
-                isDone
-                  ? "border-[hsl(var(--success)/0.4)] bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]"
-                  : isActive && !isError
-                    ? "border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]"
-                    : isActive && isError
-                      ? "border-[hsl(var(--destructive)/0.5)] bg-[hsl(var(--destructive)/0.12)] text-[hsl(var(--destructive))]"
-                      : isFuture
-                        ? "border-[hsl(var(--border))] bg-[hsl(var(--canvas))] text-[hsl(var(--muted-foreground))]"
-                        : "border-[hsl(var(--border))] bg-[hsl(var(--canvas))] text-[hsl(var(--muted-foreground))]",
-              )}
-            >
-              {isDone ? (
-                <Check className="size-3" />
-              ) : isActive && current !== "done" ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : null}
-              <span className="hidden sm:inline">{phaseLabel(phase)}</span>
-              <span className="sm:hidden">
-                {phaseLabel(phase).slice(0, 4)}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}

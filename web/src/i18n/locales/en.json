@@ -876,10 +876,11 @@
     "targetFree": "Target free space",
     "spaceRequired": "Space required",
     "vrcRunningBlocker": "VRChat is running. Close it before migrating to avoid data corruption.",
-    "noBlockers": "No blockers detected. Ready to migrate.",
+    "noBlockers": "Ready to migrate.",
     "pipeline": "Migration pipeline",
-    "execute": "Start migration",
-    "running": "Running…",
+    "execute": "Migrate",
+    "running": "Migrating…",
+    "free": "free",
     "resetPreflight": "Reset",
     "phase": {
       "preflight": "Preflight",
@@ -1422,14 +1423,20 @@
     "stopRecording": "Stop",
     "namePlaceholder": "Event name...",
     "recording": "Recording in progress...",
-    "attendees": "Attendees"
+    "attendees": "Attendees",
+    "guide1": "Records who you meet in VRChat instances in real-time.",
+    "guide2": "1. Enter a name and click Start Recording. 2. While recording, players joining your instance are automatically logged. 3. Click Stop to end the session. Select a recording to see attendees.",
+    "noRecordings": "No recordings yet. Start one above to track who joins your instance.",
+    "noAttendees": "No attendees recorded yet."
   },
   "socialGraph": {
     "title": "Social Analytics",
     "topWorlds": "Most Visited Worlds",
     "topEncounters": "Most Encountered Players",
     "noVisits": "No visit data yet.",
-    "noEncounters": "No encounter data yet."
+    "noEncounters": "No encounter data yet.",
+    "guide": "Aggregates world visits and player encounters from your VRChat log history. Data accumulates as VRCSM parses logs — keep the app running while you play to build up analytics.",
+    "noWorlds": "No visit data yet. World history is recorded when VRCSM parses your VRChat logs."
   },
   "benchmark": {
     "title": "Avatar Performance Benchmark",
@@ -1439,7 +1446,8 @@
     "good": "Good",
     "medium": "Medium",
     "poor": "Poor",
-    "veryPoor": "Very Poor"
+    "veryPoor": "Very Poor",
+    "empty": "No avatar parameter data found. Run a cache scan from Dashboard first, then revisit this page."
   },
   "fbt": {
     "title": "FBT Calibration Monitor",

@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { Users, Globe2, RefreshCcw, TrendingUp } from "lucide-react";
+import { UserPopupBadge } from "@/components/UserPopupBadge";
+import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 
 interface WorldVisitStat {
   world_id: string;
@@ -91,6 +93,12 @@ export default function SocialGraph() {
         </Button>
       </header>
 
+      <Card className="unity-panel">
+        <CardContent className="p-3 text-[11px] text-[hsl(var(--muted-foreground))] space-y-1">
+          <p>{t("socialGraph.guide", { defaultValue: "Aggregates world visits and player encounters from your VRChat log history. Data accumulates as VRCSM parses logs — keep the app running while you play to build up analytics." })}</p>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="unity-panel">
           <CardHeader className="pb-2">
@@ -102,14 +110,25 @@ export default function SocialGraph() {
           </CardHeader>
           <CardContent className="flex flex-col gap-1 max-h-[400px] overflow-y-auto">
             {topWorlds.length === 0 && !loading && (
-              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">No visit data yet.</p>
+              <div className="py-6 text-center">
+                <Globe2 className="size-6 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                  {t("socialGraph.noWorlds", { defaultValue: "No visit data yet. World history is recorded when VRCSM parses your VRChat logs." })}
+                </p>
+              </div>
             )}
             {topWorlds.map((w, i) => (
-              <div key={w.world_id} className="flex items-center gap-2 text-[11px] font-mono py-1 border-b border-[hsl(var(--border)/0.3)]">
-                <span className="w-5 text-[hsl(var(--muted-foreground))] text-right">{i + 1}</span>
-                <span className="flex-1 truncate">{w.world_id}</span>
-                <Badge variant="outline" className="text-[9px]">{w.visit_count}x</Badge>
-                <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{w.total_minutes}m</span>
+              <div key={w.world_id} className="flex items-center gap-2 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
+                <span className="w-5 text-[hsl(var(--muted-foreground))] text-right font-mono">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  {w.world_id.startsWith("wrld_") ? (
+                    <WorldPopupBadge worldId={w.world_id} />
+                  ) : (
+                    <span className="truncate font-mono">{w.world_id}</span>
+                  )}
+                </div>
+                <Badge variant="outline" className="text-[9px] font-mono">{w.visit_count}x</Badge>
+                <span className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono">{w.total_minutes}m</span>
               </div>
             ))}
           </CardContent>
@@ -125,13 +144,24 @@ export default function SocialGraph() {
           </CardHeader>
           <CardContent className="flex flex-col gap-1 max-h-[400px] overflow-y-auto">
             {topFriends.length === 0 && !loading && (
-              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">No encounter data yet.</p>
+              <div className="py-6 text-center">
+                <Users className="size-6 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                  {t("socialGraph.noEncounters", { defaultValue: "No encounter data yet. Player encounters are logged from VRChat output logs." })}
+                </p>
+              </div>
             )}
             {topFriends.map((f, i) => (
-              <div key={f.user_id} className="flex items-center gap-2 text-[11px] font-mono py-1 border-b border-[hsl(var(--border)/0.3)]">
-                <span className="w-5 text-[hsl(var(--muted-foreground))] text-right">{i + 1}</span>
-                <span className="flex-1 truncate font-medium">{f.display_name || f.user_id}</span>
-                <Badge variant="outline" className="text-[9px]">{f.encounter_count}x</Badge>
+              <div key={f.user_id} className="flex items-center gap-2 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
+                <span className="w-5 text-[hsl(var(--muted-foreground))] text-right font-mono">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  {f.user_id.startsWith("usr_") ? (
+                    <UserPopupBadge userId={f.user_id} displayName={f.display_name} />
+                  ) : (
+                    <span className="truncate font-medium">{f.display_name || f.user_id}</span>
+                  )}
+                </div>
+                <Badge variant="outline" className="text-[9px] font-mono">{f.encounter_count}x</Badge>
               </div>
             ))}
           </CardContent>
