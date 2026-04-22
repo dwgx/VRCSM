@@ -113,7 +113,8 @@ Result<MigratePlan> Migrator::preflight(
     const auto probe = PathProbe::Probe();
     if (probe.baseDir.empty() || !ensureWithinBase(probe.baseDir, source))
     {
-        plan.blockers.push_back("source path is outside the detected VRChat data directory");
+        if (!std::filesystem::exists(source, ec))
+            plan.blockers.push_back("source path does not exist and is outside the detected VRChat data directory");
     }
 
     auto normalizedSource = std::filesystem::absolute(source, ec);
