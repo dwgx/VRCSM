@@ -60,6 +60,7 @@ const PluginDetail = lazy(() => import("@/pages/PluginDetail"));
 const PluginInstalled = lazy(() => import("@/pages/PluginInstalled"));
 const PluginHost = lazy(() => import("@/pages/PluginHost"));
 const WorldHistory = lazy(() => import("@/pages/WorldHistory"));
+const CalendarPage = lazy(() => import("@/pages/Calendar"));
 
 interface RouteShellMeta {
   breadcrumb: string[];
@@ -174,6 +175,13 @@ function AppContent() {
       "/friend-log": {
         title: t("nav.radar"),
         breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.radar")],
+      },
+      "/calendar": {
+        title: t("nav.calendar", { defaultValue: "Calendar & Jams" }),
+        breadcrumb: [
+          t("nav.category.social", { defaultValue: "Social" }),
+          t("nav.calendar", { defaultValue: "Calendar & Jams" }),
+        ],
       },
       "/history/worlds": {
         title: t("nav.worldHistory", { defaultValue: "World History" }),
@@ -413,6 +421,7 @@ function AppContent() {
                                 <Route path="/screenshots" element={<Screenshots />} />
                                 <Route path="/friend-log" element={<Navigate to="/radar" replace />} />
                                 <Route path="/history/worlds" element={<WorldHistory />} />
+                                <Route path="/calendar" element={<CalendarPage />} />
                                 <Route path="/logs" element={<Logs />} />
                                 <Route path="/radar" element={<Radar />} />
                                 <Route path="/migrate" element={<Migrate />} />

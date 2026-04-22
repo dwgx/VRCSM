@@ -18,6 +18,7 @@ import {
   Radio,
   Orbit,
   Zap,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -48,6 +49,7 @@ const items: NavItem[] = [
   { to: "/avatars", labelKey: "nav.avatars", icon: User },
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
   { to: "/history/worlds", labelKey: "nav.worldHistory", icon: Globe2 },
+  { to: "/calendar", labelKey: "nav.calendar", icon: CalendarDays },
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
