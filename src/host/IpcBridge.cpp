@@ -119,6 +119,10 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "groups.list",
         "moderations.list",
         "calendar.list",
+        "calendar.discover",
+        "calendar.featured",
+        "jams.list",
+        "jams.detail",
         "avatar.bundle.download",
         "avatar.details",
         "world.details",
@@ -562,6 +566,10 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("hw.recommend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwRecommend(p, id); });
     m_handlers.emplace("moderations.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleModerationsList(p, id); });
     m_handlers.emplace("calendar.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarList(p, id); });
+    m_handlers.emplace("calendar.discover", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarDiscover(p, id); });
+    m_handlers.emplace("calendar.featured", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarFeatured(p, id); });
+    m_handlers.emplace("jams.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleJamsList(p, id); });
+    m_handlers.emplace("jams.detail", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleJamDetail(p, id); });
     m_handlers.emplace("avatar.bundle.download", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarBundleDownload(p, id); });
     m_handlers.emplace("avatar.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarDetails(p, id); });
     m_handlers.emplace("world.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldDetails(p, id); });

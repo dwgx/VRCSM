@@ -917,6 +917,22 @@ class IpcClient {
     return this.call<{ enabled: boolean }, { enabled: boolean }>("autoStart.set", { enabled });
   }
 
+  async calendarDiscover() {
+    return this.call<undefined, { events: Array<Record<string, unknown>> }>("calendar.discover");
+  }
+
+  async calendarFeatured() {
+    return this.call<undefined, { events: Array<Record<string, unknown>> }>("calendar.featured");
+  }
+
+  async jamsList() {
+    return this.call<undefined, Array<Record<string, unknown>>>("jams.list");
+  }
+
+  async jamsDetail(jamId: string) {
+    return this.call<{ jamId: string }, Record<string, unknown>>("jams.detail", { jamId });
+  }
+
   async worldsSearch(query: string, sort = "relevance", n = 20, offset = 0) {
     return this.call<
       { query: string; sort: string; n: number; offset: number },

@@ -81,6 +81,10 @@ private:
     nlohmann::json HandleHwRecommend(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleModerationsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleCalendarDiscover(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleCalendarFeatured(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleJamsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleJamDetail(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarBundleDownload(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleWorldDetails(const nlohmann::json& params, const std::optional<std::string>& id);
