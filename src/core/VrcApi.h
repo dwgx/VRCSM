@@ -219,6 +219,18 @@ public:
         const std::string& targetUserId,
         const std::string& message);
 
+    /// Fetch calendar discovery feed via GET /api/1/calendar/discover.
+    static Result<std::vector<nlohmann::json>> fetchCalendarDiscover();
+
+    /// Fetch featured calendar events via GET /api/1/calendar/featured.
+    static Result<std::vector<nlohmann::json>> fetchCalendarFeatured();
+
+    /// Fetch jams listing via GET /api/1/jams.
+    static Result<nlohmann::json> fetchJams();
+
+    /// Fetch single jam detail via GET /api/1/jams/{jamId}.
+    static Result<nlohmann::json> fetchJamDetail(const std::string& jamId);
+
     /// Search public worlds via GET /api/1/worlds?search=...
     static Result<nlohmann::json> searchWorlds(
         const std::string& query, const std::string& sort = "relevance",

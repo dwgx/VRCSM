@@ -718,6 +718,31 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
     }
 }
 
+nlohmann::json IpcBridge::HandleCalendarDiscover(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto res = vrcsm::core::VrcApi::fetchCalendarDiscover();
+    return nlohmann::json{{"events", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleCalendarFeatured(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto res = vrcsm::core::VrcApi::fetchCalendarFeatured();
+    return nlohmann::json{{"events", unwrapResult(std::move(res))}};
+}
+
+nlohmann::json IpcBridge::HandleJamsList(const nlohmann::json&, const std::optional<std::string>&)
+{
+    return unwrapResult(vrcsm::core::VrcApi::fetchJams());
+}
+
+nlohmann::json IpcBridge::HandleJamDetail(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto jamId = JsonStringField(params, "jamId");
+    if (!jamId.has_value() || jamId->empty())
+        throw IpcException({"missing_field", "jams.detail: missing 'jamId'", 400});
+    return unwrapResult(vrcsm::core::VrcApi::fetchJamDetail(*jamId));
+}
+
 nlohmann::json IpcBridge::HandleWorldsSearch(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto query = JsonStringField(params, "query");

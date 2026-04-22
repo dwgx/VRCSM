@@ -1245,8 +1245,6 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchGroups()
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchCalendar()
 {
-    // /calendar is small and rarely updated (curated by VRChat staff),
-    // so we don't page — a single GET returns everything upcoming.
     return fetchPagedAuthedArray(
         "/calendar",
         [](int limit, int offset)
@@ -1256,6 +1254,66 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchCalendar()
                 limit,
                 offset));
         });
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchCalendarDiscover()
+{
+    return fetchPagedAuthedArray(
+        "/calendar/discover",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/calendar/discover?n={}&offset={}",
+                limit,
+                offset));
+        });
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchCalendarFeatured()
+{
+    return fetchPagedAuthedArray(
+        "/calendar/featured",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/calendar/featured?n={}&offset={}",
+                limit,
+                offset));
+        });
+}
+
+Result<nlohmann::json> VrcApi::fetchJams()
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    const auto path = toWide(fmt::format("/api/1/jams?apiKey={}", kApiKey));
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status != 200)
+        return Error{"api_error",
+            fmt::format("/jams returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+
+    return parseJsonBody(response, "/jams");
+}
+
+Result<nlohmann::json> VrcApi::fetchJamDetail(const std::string& jamId)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    const auto path = toWide(fmt::format("/api/1/jams/{}?apiKey={}", jamId, kApiKey));
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status != 200)
+        return Error{"api_error",
+            fmt::format("/jams/{} returned HTTP {}", jamId, response.status),
+            static_cast<int>(response.status)};
+
+    return parseJsonBody(response, "/jams/" + jamId);
 }
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchPlayerModerations()
