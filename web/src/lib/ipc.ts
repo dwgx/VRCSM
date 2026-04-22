@@ -917,6 +917,21 @@ class IpcClient {
     return this.call<{ enabled: boolean }, { enabled: boolean }>("autoStart.set", { enabled });
   }
 
+  async worldsSearch(query: string, sort = "relevance", n = 20, offset = 0) {
+    return this.call<
+      { query: string; sort: string; n: number; offset: number },
+      { worlds: Array<{ id: string; name: string; description: string; authorName: string; thumbnailImageUrl: string; capacity: number; occupants: number; favorites: number; tags: string[] }> }
+    >("worlds.search", { query, sort, n, offset });
+  }
+
+  async friendsUnfriend(userId: string) {
+    return this.call<{ userId: string }, { ok: boolean }>("friends.unfriend", { userId });
+  }
+
+  async friendsRequest(userId: string) {
+    return this.call<{ userId: string }, { ok: boolean }>("friends.request", { userId });
+  }
+
   async scan(): Promise<Report> {
     return this.call<undefined, Report>("scan");
   }

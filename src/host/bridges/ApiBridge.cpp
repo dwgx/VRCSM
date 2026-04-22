@@ -717,3 +717,35 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
         };
     }
 }
+
+nlohmann::json IpcBridge::HandleWorldsSearch(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto query = JsonStringField(params, "query");
+    if (!query.has_value() || query->empty())
+        throw IpcException({"missing_field", "worlds.search: missing 'query'", 400});
+
+    const std::string sort = params.contains("sort") && params["sort"].is_string()
+        ? params["sort"].get<std::string>() : "relevance";
+    const int n = ParamInt(params, "n", 20);
+    const int offset = ParamInt(params, "offset", 0);
+
+    return unwrapResult(vrcsm::core::VrcApi::searchWorlds(*query, sort, n, offset));
+}
+
+nlohmann::json IpcBridge::HandleFriendsUnfriend(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId");
+    if (!userId.has_value() || userId->empty())
+        throw IpcException({"missing_field", "friends.unfriend: missing 'userId'", 400});
+
+    return unwrapResult(vrcsm::core::VrcApi::unfriend(*userId));
+}
+
+nlohmann::json IpcBridge::HandleFriendsRequest(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId");
+    if (!userId.has_value() || userId->empty())
+        throw IpcException({"missing_field", "friends.request: missing 'userId'", 400});
+
+    return unwrapResult(vrcsm::core::VrcApi::sendFriendRequest(*userId));
+}

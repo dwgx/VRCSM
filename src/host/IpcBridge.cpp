@@ -126,6 +126,9 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "avatar.preview.abort",
         "avatar.select",
         "avatar.search",
+        "worlds.search",
+        "friends.unfriend",
+        "friends.request",
         "user.invite",
         "user.inviteTo",
         "user.mute",
@@ -564,6 +567,9 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("world.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldDetails(p, id); });
     m_handlers.emplace("avatar.select", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSelect(p, id); });
     m_handlers.emplace("avatar.search", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSearch(p, id); });
+    m_handlers.emplace("worlds.search", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldsSearch(p, id); });
+    m_handlers.emplace("friends.unfriend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsUnfriend(p, id); });
+    m_handlers.emplace("friends.request", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsRequest(p, id); });
     m_handlers.emplace("user.invite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInvite(p, id); });
     m_handlers.emplace("user.inviteTo", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInviteTo(p, id); });
     m_handlers.emplace("user.mute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserMute(p, id); });
