@@ -13,6 +13,7 @@ import {
   Radio,
   BarChart3,
   FileClock,
+  Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import { FriendLogPanel } from "@/pages/FriendLog";
 import type { RadarTab } from "./radar/radar-types";
 import { RadarEngine } from "./radar/RadarEngine";
 import { RadarHistoryAnalysis } from "./radar/RadarHistoryAnalysis";
+import { InstanceRoster } from "./radar/InstanceRoster";
 
 // Re-export for any external consumers
 export type { RadarPlayer } from "./radar/radar-types";
@@ -89,10 +91,25 @@ export default function Radar() {
             <FileClock className="size-3.5" />
             {t("nav.friendLog")}
           </button>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+              tab === "roster"
+                ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
+            )}
+            onClick={() => setTab("roster")}
+          >
+            <Users className="size-3.5" />
+            {t("radar.rosterTab", { defaultValue: "Instance Roster" })}
+          </button>
         </div>
       </header>
 
-      {tab === "history" ? (
+      {tab === "roster" ? (
+        <InstanceRoster />
+      ) : tab === "history" ? (
         <FriendLogPanel embedded />
       ) : tab === "analysis" ? (
         <RadarHistoryAnalysis />
