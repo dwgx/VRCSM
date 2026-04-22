@@ -149,7 +149,9 @@
     "messagePlaceholder": "嗨！想一起进个世界吗？",
     "messageSent": "消息已发送",
     "messageHint": "Ctrl+Enter 发送。VRChat 会丢弃非好友的私信。",
-    "send": "发送"
+    "send": "发送",
+    "unfriend": "解除好友关系",
+    "unfriended": "已解除与 {{name}} 的好友关系"
   },
   "osc": {
     "title": "OSC 工具",
@@ -167,7 +169,15 @@
     "clear": "清空日志",
     "sent": "已发送",
     "invalidValue": "无法解析值",
-    "invalidAddress": "地址必须以 / 开头"
+    "invalidAddress": "地址必须以 / 开头",
+    "chatbox": {
+      "title": "聊天框快速发送",
+      "desc": "通过 OSC 向 VRChat 聊天框发送文本。最多 144 个字符，有 2 秒冷却时间。",
+      "placeholder": "输入消息...",
+      "send": "发送",
+      "sent": "聊天框消息已发送",
+      "rateLimit": "请在两条消息之间等待 2 秒 (VRChat 速率限制)"
+    }
   },
   "auth": {
     "signIn": "登录",
@@ -475,7 +485,11 @@
         "noPlayers": "未记录玩家事件。",
         "timeline": "时间线"
       }
-    }
+    },
+    "liveRoster": "实时房间名单",
+    "recentPlayerEvents": "最近玩家事件",
+    "noPlayerEvents": "尚无玩家事件记录。请启动 VRChat 并加入一个世界。",
+    "rosterTab": "房间名单"
   },
   "folderPicker": {
     "title": "选择文件夹",
@@ -805,7 +819,9 @@
     "accessPrivate": "仅密保邀请",
     "accessGroup": "群组",
     "ownerLabel": "房主:",
-    "playersSeen": "房间内玩家"
+    "playersSeen": "房间内玩家",
+    "searchVrc": "搜索 VRChat",
+    "searchResults": "VRChat 搜索结果"
   },
   "logs": {
     "title": "日志",
@@ -2908,7 +2924,8 @@
       "config": "应用配置 (config.json)",
       "steamvr": "SteamVR",
       "registry": "VRChat 注册表",
-      "experimental": "实验性"
+      "experimental": "实验性",
+      "vrDiag": "VR 诊断"
     },
     "general": {
       "layoutTitle": "工作区布局",
@@ -3078,6 +3095,20 @@
         "indexedSummary": "在 {{time}} 索引了 {{count}} 个虚拟形象",
         "indexedSummarySkipped": "在 {{time}} 索引了 {{count}} 个虚拟形象 (跳过 {{skipped}} 个)"
       }
+    },
+    "vrDiag": {
+      "heading": "VR 诊断",
+      "runDiag": "运行诊断",
+      "blurb": "扫描网络适配器、SteamVR 设置、音频路由和 vrlink 连接状态。",
+      "clickToStart": "点击“运行诊断”开始。",
+      "network": "网络",
+      "audio": "音频",
+      "audioSwitched": "音频设备已切换",
+      "switchToSteamSpeakers": "将播放切换到 Steam Streaming Speakers"
+    },
+    "autoStart": {
+      "label": "随 Windows 启动",
+      "hint": "登录 Windows 时自动启动 VRCSM。"
     }
   },
   "world": {
@@ -3166,7 +3197,14 @@
   "calendar": {
     "tileTitle": "即将举行的 VRChat 活动",
     "loading": "加载中...",
-    "untitledEvent": "无标题活动"
+    "untitledEvent": "无标题活动",
+    "pageTitle": "日历与 Jams",
+    "empty": "未找到任何事件。",
+    "noJams": "当前没有正在进行的 Jams。",
+    "openInBrowser": "在 VRChat 中打开",
+    "tabDiscover": "发现",
+    "tabFeatured": "精选",
+    "tabJams": "Jams"
   },
   "worldHistory": {
     "title": "世界历史",
@@ -3182,5 +3220,50 @@
   "strangerAlert": {
     "title": "陌生人加入了您的 {{access}} 房间",
     "unknownUser": "(未知用户)"
+  },
+  "eventRecorder": {
+    "title": "事件记录器",
+    "startRecording": "开始录制",
+    "stopRecording": "停止",
+    "namePlaceholder": "事件名称...",
+    "recording": "正在录制中...",
+    "attendees": "参与者"
+  },
+  "socialGraph": {
+    "title": "社交分析",
+    "topWorlds": "访问最多的世界",
+    "topEncounters": "遇到最多的玩家",
+    "noVisits": "尚无访问数据。",
+    "noEncounters": "尚无相遇数据。"
+  },
+  "benchmark": {
+    "title": "虚拟形象性能基准测试",
+    "desc": "根据同步参数数量估算 VRChat 性能排名。参数数量越低 = 网络性能越好。",
+    "breakdown": "虚拟形象详情",
+    "excellent": "优秀",
+    "good": "良好",
+    "medium": "中等",
+    "poor": "差",
+    "veryPoor": "非常差"
+  },
+  "fbt": {
+    "title": "FBT 校准监视器",
+    "desc": "监视 VRChat 追踪器 OSC 数据的位置漂移。当漂移超过阈值时，会发送聊天框提醒以重新校准。",
+    "start": "开始监视",
+    "stop": "停止",
+    "nudge": "发送微调提醒",
+    "nudgeSent": "已发送校准微调提醒至聊天框",
+    "started": "FBT 漂移监视已启动",
+    "thresholds": "漂移阈值",
+    "trackerStatus": "追踪器状态",
+    "notMonitoring": "开始监视以查看追踪器数据。请确保在 VRChat 中已启用 OSC。"
+  },
+  "rules": {
+    "title": "自动化规则",
+    "create": "新建规则",
+    "save": "保存规则",
+    "empty": "尚无规则。创建一个规则以自动化 VRChat 操作。",
+    "namePlaceholder": "规则名称...",
+    "history": "触发历史"
   }
 }

@@ -149,7 +149,9 @@
     "messagePlaceholder": "Hi! Want to hop into a world?",
     "messageSent": "Message sent",
     "messageHint": "Ctrl+Enter to send. VRChat drops DMs from non-friends.",
-    "send": "Send"
+    "send": "Send",
+    "unfriend": "Unfriend",
+    "unfriended": "Unfriended {{name}}"
   },
   "osc": {
     "title": "OSC Tools",
@@ -167,7 +169,15 @@
     "clear": "Clear log",
     "sent": "Sent",
     "invalidValue": "Value can't be parsed",
-    "invalidAddress": "Address must start with /"
+    "invalidAddress": "Address must start with /",
+    "chatbox": {
+      "title": "Chatbox Quick Send",
+      "desc": "Send text to VRChat chatbox via OSC. Max 144 chars, 2-second cooldown.",
+      "placeholder": "Type a message...",
+      "send": "Send",
+      "sent": "Chatbox sent",
+      "rateLimit": "Wait 2 seconds between messages (VRChat rate limit)"
+    }
   },
   "auth": {
     "signIn": "Sign in",
@@ -464,7 +474,11 @@
         "noPlayers": "No player events recorded.",
         "timeline": "Timeline"
       }
-    }
+    },
+    "liveRoster": "Live Instance Roster",
+    "recentPlayerEvents": "Recent Player Events",
+    "noPlayerEvents": "No player events recorded yet. Launch VRChat and join a world.",
+    "rosterTab": "Instance Roster"
   },
   "folderPicker": {
     "title": "Choose a folder",
@@ -794,7 +808,9 @@
     "accessPrivate": "Invite Only",
     "accessGroup": "Group",
     "ownerLabel": "Owner:",
-    "playersSeen": "Players in Room"
+    "playersSeen": "Players in Room",
+    "searchVrc": "Search VRChat",
+    "searchResults": "VRChat Search Results"
   },
   "logs": {
     "title": "Logs",
@@ -1104,7 +1120,8 @@
       "config": "App Config (config.json)",
       "steamvr": "SteamVR",
       "registry": "VRChat Registry",
-      "experimental": "Experimental"
+      "experimental": "Experimental",
+      "vrDiag": "VR Diagnostics"
     },
     "general": {
       "layoutTitle": "Workspace Layout",
@@ -1274,6 +1291,20 @@
         "indexedSummary": "Indexed {{count}} avatars at {{time}}",
         "indexedSummarySkipped": "Indexed {{count}} avatars ({{skipped}} skipped) at {{time}}"
       }
+    },
+    "vrDiag": {
+      "heading": "VR Diagnostics",
+      "runDiag": "Run Diagnostics",
+      "blurb": "Scans network adapters, SteamVR settings, audio routing, and vrlink connection status.",
+      "clickToStart": "Click 'Run Diagnostics' to start.",
+      "network": "Network",
+      "audio": "Audio",
+      "audioSwitched": "Audio device switched",
+      "switchToSteamSpeakers": "Switch playback to Steam Streaming Speakers"
+    },
+    "autoStart": {
+      "label": "Launch with Windows",
+      "hint": "Start VRCSM automatically when you log in to Windows."
     }
   },
   "world": {
@@ -1294,7 +1325,14 @@
   "calendar": {
     "tileTitle": "Upcoming VRChat events",
     "loading": "Loading...",
-    "untitledEvent": "Untitled event"
+    "untitledEvent": "Untitled event",
+    "pageTitle": "Calendar & Jams",
+    "empty": "No events found.",
+    "noJams": "No active jams right now.",
+    "openInBrowser": "Open in VRChat",
+    "tabDiscover": "Discover",
+    "tabFeatured": "Featured",
+    "tabJams": "Jams"
   },
   "worldHistory": {
     "title": "World History",
@@ -1377,5 +1415,50 @@
       "disabled": "Plugin {{id}} is disabled.",
       "noPanel": "Plugin {{id}} does not expose a panel UI."
     }
+  },
+  "eventRecorder": {
+    "title": "Event Recorder",
+    "startRecording": "Start Recording",
+    "stopRecording": "Stop",
+    "namePlaceholder": "Event name...",
+    "recording": "Recording in progress...",
+    "attendees": "Attendees"
+  },
+  "socialGraph": {
+    "title": "Social Analytics",
+    "topWorlds": "Most Visited Worlds",
+    "topEncounters": "Most Encountered Players",
+    "noVisits": "No visit data yet.",
+    "noEncounters": "No encounter data yet."
+  },
+  "benchmark": {
+    "title": "Avatar Performance Benchmark",
+    "desc": "Estimates VRChat performance rank based on synced parameter count. Lower parameter count = better network performance.",
+    "breakdown": "Avatar Breakdown",
+    "excellent": "Excellent",
+    "good": "Good",
+    "medium": "Medium",
+    "poor": "Poor",
+    "veryPoor": "Very Poor"
+  },
+  "fbt": {
+    "title": "FBT Calibration Monitor",
+    "desc": "Monitors VRChat tracker OSC data for position drift. When drift exceeds thresholds, sends a chatbox reminder to recalibrate.",
+    "start": "Start Monitoring",
+    "stop": "Stop",
+    "nudge": "Send Nudge",
+    "nudgeSent": "Calibration nudge sent to chatbox",
+    "started": "FBT drift monitoring started",
+    "thresholds": "Drift Thresholds",
+    "trackerStatus": "Tracker Status",
+    "notMonitoring": "Start monitoring to see tracker data. Make sure OSC is enabled in VRChat."
+  },
+  "rules": {
+    "title": "Automation Rules",
+    "create": "New Rule",
+    "save": "Save Rule",
+    "empty": "No rules yet. Create one to automate VRChat actions.",
+    "namePlaceholder": "Rule name...",
+    "history": "Firing History"
   }
 }

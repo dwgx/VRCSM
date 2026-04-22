@@ -23,6 +23,7 @@ import {
   TrendingUp,
   Gauge,
   Activity,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -41,12 +42,12 @@ interface NavItem {
   experimental?: boolean;
 }
 
-const items: NavItem[] = [
+const coreItems: NavItem[] = [
   { to: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { to: "/profile", labelKey: "nav.profile", icon: UserCircle2 },
   { to: "/vrchat", labelKey: "nav.vrchat", icon: Orbit },
   { to: "/friends", labelKey: "nav.friends", icon: Users },
-  { to: "/groups", labelKey: "nav.groups", icon: Users2, experimental: true },
+  { to: "/groups", labelKey: "nav.groups", icon: Users2 },
   { to: "/radar", labelKey: "nav.radar", icon: Radio },
   { to: "/bundles", labelKey: "nav.bundles", icon: Package },
   { to: "/library", labelKey: "nav.library", icon: Heart },
@@ -57,6 +58,10 @@ const items: NavItem[] = [
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
+  { to: "/settings", labelKey: "nav.settings", icon: SettingsIcon },
+];
+
+const labItems: NavItem[] = [
   { to: "/plugins", labelKey: "nav.plugins", icon: Plug, experimental: true },
   { to: "/events", labelKey: "nav.events", icon: CircleDot, experimental: true },
   { to: "/social", labelKey: "nav.social", icon: TrendingUp, experimental: true },
@@ -64,7 +69,6 @@ const items: NavItem[] = [
   { to: "/fbt", labelKey: "nav.fbt", icon: Activity, experimental: true },
   { to: "/rules", labelKey: "nav.rules", icon: Zap, experimental: true },
   { to: "/tools/osc", labelKey: "nav.osc", icon: Zap, experimental: true },
-  { to: "/settings", labelKey: "nav.settings", icon: SettingsIcon },
 ];
 
 function LanguageMenu() {
@@ -151,6 +155,50 @@ function VersionFooter() {
   );
 }
 
+function LabSection({ items }: { items: NavItem[] }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(() => localStorage.getItem("vrcsm.sidebar.labOpen") === "true");
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          localStorage.setItem("vrcsm.sidebar.labOpen", String(next));
+        }}
+        className="mt-1 flex items-center gap-1.5 px-2.5 pt-1 text-[9.5px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+      >
+        <ChevronRight className={cn("size-3 transition-transform", open && "rotate-90")} />
+        {t("nav.labSection", { defaultValue: "Lab" })}
+        <span className="ml-auto rounded-[3px] bg-[hsl(45_93%_47%/0.15)] px-1 py-px text-[8px] font-semibold text-[hsl(45_93%_47%)]">
+          {items.length}
+        </span>
+      </button>
+      {open && items.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          className={({ isActive }) =>
+            cn(
+              "relative flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5",
+              "text-[12.5px] font-medium text-[hsl(var(--muted-foreground))]",
+              "border border-transparent hover:bg-[hsl(var(--surface-raised))] hover:text-[hsl(var(--foreground))] transition-colors",
+              isActive && "bg-[hsl(var(--primary)/0.22)] text-[hsl(var(--foreground))] border-[hsl(var(--primary)/0.55)]",
+            )
+          }
+        >
+          <item.icon className="size-[14px] shrink-0" aria-hidden />
+          <span className="flex-1 truncate">{t(item.labelKey)}</span>
+          <span className="shrink-0 rounded-[3px] bg-[hsl(45_93%_47%/0.15)] px-1 py-px text-[8px] font-semibold uppercase tracking-[0.06em] text-[hsl(45_93%_47%)]">
+            {t("common.experimental", { defaultValue: "Beta" })}
+          </span>
+        </NavLink>
+      ))}
+    </>
+  );
+}
+
 export function Sidebar() {
   const { t } = useTranslation();
   const panelPlugins = useInstalledPanelPlugins();
@@ -193,9 +241,9 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation — Unity ReorderableList style */}
-      <nav className="flex flex-1 flex-col gap-px px-1.5 py-1.5">
-        {items.map((item) => (
+      {/* Navigation — scrollable, core + collapsible lab section */}
+      <nav className="flex flex-1 flex-col gap-px px-1.5 py-1.5 overflow-y-auto scrollbar-thin">
+        {coreItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -235,6 +283,9 @@ export function Sidebar() {
             )}
           </NavLink>
         ))}
+
+        {/* Lab / Experimental section — collapsible */}
+        <LabSection items={labItems} />
 
         {pluginItems.length > 0 ? (
           <>
