@@ -917,6 +917,28 @@ class IpcClient {
     return this.call<{ enabled: boolean }, { enabled: boolean }>("autoStart.set", { enabled });
   }
 
+  async rulesList() {
+    return this.call<undefined, { rules: Array<Record<string, unknown>> }>("rules.list");
+  }
+  async rulesGet(id: number) {
+    return this.call<{ id: number }, Record<string, unknown>>("rules.get", { id });
+  }
+  async rulesCreate(name: string, dsl_yaml: string, description?: string, cooldown_seconds?: number) {
+    return this.call<Record<string, unknown>, { id: number }>("rules.create", { name, dsl_yaml, description, cooldown_seconds });
+  }
+  async rulesUpdate(id: number, patch: Record<string, unknown>) {
+    return this.call<Record<string, unknown>, Record<string, unknown>>("rules.update", { id, ...patch });
+  }
+  async rulesDelete(id: number) {
+    return this.call<{ id: number }, { ok: boolean }>("rules.delete", { id });
+  }
+  async rulesSetEnabled(id: number, enabled: boolean) {
+    return this.call<{ id: number; enabled: boolean }, { ok: boolean }>("rules.setEnabled", { id, enabled });
+  }
+  async rulesHistory(rule_id: number) {
+    return this.call<{ rule_id: number }, { firings: Array<Record<string, unknown>> }>("rules.history", { rule_id });
+  }
+
   async vrDiagnose() {
     return this.call<undefined, Record<string, unknown>>("vr.diagnose");
   }

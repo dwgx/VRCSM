@@ -247,6 +247,26 @@ public:
 
     Result<std::monostate> DeleteAvatarEmbedding(const std::string& avatar_id);
 
+    // ─── rules (automation engine) ─────────────────────────────
+
+    struct RuleInsert
+    {
+        std::string name;
+        std::string dsl_yaml;
+        std::optional<std::string> description;
+        int cooldown_seconds{5};
+    };
+    Result<nlohmann::json> InsertRule(const RuleInsert& r);
+    Result<nlohmann::json> UpdateRule(int64_t id, const nlohmann::json& patch);
+    Result<std::monostate> DeleteRule(int64_t id);
+    Result<nlohmann::json> GetRule(int64_t id);
+    Result<nlohmann::json> ListRules();
+    Result<std::monostate> SetRuleEnabled(int64_t id, bool enabled);
+    Result<std::monostate> RecordRuleFiring(int64_t rule_id,
+        const std::string& trigger_payload, int result_code,
+        const std::string& result_body);
+    Result<nlohmann::json> RuleFiringHistory(int64_t rule_id, int limit = 50);
+
     ~Database();
     Database(const Database&) = delete;
     Database& operator=(const Database&) = delete;

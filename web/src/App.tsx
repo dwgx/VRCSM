@@ -61,6 +61,7 @@ const PluginInstalled = lazy(() => import("@/pages/PluginInstalled"));
 const PluginHost = lazy(() => import("@/pages/PluginHost"));
 const WorldHistory = lazy(() => import("@/pages/WorldHistory"));
 const CalendarPage = lazy(() => import("@/pages/Calendar"));
+const RulesPage = lazy(() => import("@/pages/Rules"));
 
 interface RouteShellMeta {
   breadcrumb: string[];
@@ -175,6 +176,13 @@ function AppContent() {
       "/friend-log": {
         title: t("nav.radar"),
         breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.radar")],
+      },
+      "/rules": {
+        title: t("nav.rules", { defaultValue: "Automation Rules" }),
+        breadcrumb: [
+          t("nav.category.workspace", { defaultValue: "Workspace" }),
+          t("nav.rules", { defaultValue: "Automation Rules" }),
+        ],
       },
       "/calendar": {
         title: t("nav.calendar", { defaultValue: "Calendar & Jams" }),
@@ -422,6 +430,7 @@ function AppContent() {
                                 <Route path="/friend-log" element={<Navigate to="/radar" replace />} />
                                 <Route path="/history/worlds" element={<WorldHistory />} />
                                 <Route path="/calendar" element={<CalendarPage />} />
+                                <Route path="/rules" element={<RulesPage />} />
                                 <Route path="/logs" element={<Logs />} />
                                 <Route path="/radar" element={<Radar />} />
                                 <Route path="/migrate" element={<Migrate />} />
