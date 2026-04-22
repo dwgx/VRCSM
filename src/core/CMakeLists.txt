@@ -17,6 +17,7 @@ add_library(vrcsm_core STATIC
     Migrator.cpp
     VrcConfig.cpp
     SteamVrConfig.cpp
+    VrDiagnostics.cpp
     ProcessMemoryReader.cpp
     VrcRadarEngine.cpp
     VrcSettings.cpp

@@ -132,6 +132,8 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "avatar.search",
         "worlds.search",
         "friends.unfriend",
+        "vr.diagnose",
+        "vr.audio.switch",
         "friends.request",
         "user.invite",
         "user.inviteTo",
@@ -508,6 +510,8 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("process.vrcRunning", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleProcessVrcRunning(p, id); });
     m_handlers.emplace("autoStart.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAutoStartGet(p, id); });
     m_handlers.emplace("autoStart.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAutoStartSet(p, id); });
+    m_handlers.emplace("vr.diagnose", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVrDiagnose(p, id); });
+    m_handlers.emplace("vr.audio.switch", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVrAudioSwitch(p, id); });
     m_handlers.emplace("shell.pickFolder", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellPickFolder(p, id); });
     m_handlers.emplace("shell.openUrl", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellOpenUrl(p, id); });
     m_handlers.emplace("fs.listDir", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsListDir(p, id); });
