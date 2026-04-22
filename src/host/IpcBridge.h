@@ -53,6 +53,13 @@ private:
     nlohmann::json HandleAutoStartSet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleVrDiagnose(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleVrAudioSwitch(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleRulesList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleRulesGet(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleRulesCreate(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleRulesUpdate(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleRulesDelete(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleRulesSetEnabled(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleRulesHistory(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandlePathProbe(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleScan(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleBundlePreview(const nlohmann::json& params, const std::optional<std::string>& id);

@@ -134,6 +134,13 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "friends.unfriend",
         "vr.diagnose",
         "vr.audio.switch",
+        "rules.list",
+        "rules.get",
+        "rules.create",
+        "rules.update",
+        "rules.delete",
+        "rules.setEnabled",
+        "rules.history",
         "friends.request",
         "user.invite",
         "user.inviteTo",
@@ -512,6 +519,13 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("autoStart.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAutoStartSet(p, id); });
     m_handlers.emplace("vr.diagnose", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVrDiagnose(p, id); });
     m_handlers.emplace("vr.audio.switch", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVrAudioSwitch(p, id); });
+    m_handlers.emplace("rules.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesList(p, id); });
+    m_handlers.emplace("rules.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesGet(p, id); });
+    m_handlers.emplace("rules.create", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesCreate(p, id); });
+    m_handlers.emplace("rules.update", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesUpdate(p, id); });
+    m_handlers.emplace("rules.delete", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesDelete(p, id); });
+    m_handlers.emplace("rules.setEnabled", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesSetEnabled(p, id); });
+    m_handlers.emplace("rules.history", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesHistory(p, id); });
     m_handlers.emplace("shell.pickFolder", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellPickFolder(p, id); });
     m_handlers.emplace("shell.openUrl", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellOpenUrl(p, id); });
     m_handlers.emplace("fs.listDir", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsListDir(p, id); });
