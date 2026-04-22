@@ -102,15 +102,35 @@ export function useFriendsPipelineSync() {
             const prev = prevCache.friends.find((f) => f.id === userId);
             diffAndLog(prev, patch, userId);
           }
-          // Record avatar to avatar_history when a friend changes avatar
+          // Record avatar to avatar_history when a friend changes avatar.
+          // Also fetch release_status so we know if it's publicly cloneable.
           if (patch?.currentAvatarImageUrl && userId) {
             const avatarId = (patch as Record<string, unknown>).currentAvatarId as string | undefined;
+            const avatarName = (patch as Record<string, unknown>).currentAvatarName as string | undefined;
             if (avatarId?.startsWith("avtr_")) {
-              void ipc.call("db.avatarHistory.record", {
-                avatar_id: avatarId,
-                avatar_name: (patch as Record<string, unknown>).currentAvatarName ?? undefined,
-                first_seen_on: patch.displayName ?? userId,
-              }).catch(() => {});
+              void (async () => {
+                try {
+                  // Look up avatar details to get release_status (cached 2min)
+                  const details = await ipc.call<{ id: string }, { details: { releaseStatus?: string; name?: string; authorName?: string } | null }>(
+                    "avatar.details",
+                    { id: avatarId },
+                  );
+                  await ipc.call("db.avatarHistory.record", {
+                    avatar_id: avatarId,
+                    avatar_name: details.details?.name ?? avatarName,
+                    author_name: details.details?.authorName,
+                    release_status: details.details?.releaseStatus,
+                    first_seen_on: patch.displayName ?? userId,
+                  });
+                } catch {
+                  // Even without release_status, record the sighting
+                  await ipc.call("db.avatarHistory.record", {
+                    avatar_id: avatarId,
+                    avatar_name: avatarName,
+                    first_seen_on: patch.displayName ?? userId,
+                  }).catch(() => {});
+                }
+              })();
             }
           }
         }

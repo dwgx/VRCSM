@@ -7,7 +7,8 @@ import { ipc } from "@/lib/ipc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye } from "lucide-react";
+import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock } from "lucide-react";
+import { SmartWearButton } from "@/components/SmartWearButton";
 
 interface AvatarItem {
   avatar_id: string;
@@ -22,6 +23,7 @@ interface SeenAvatar {
   author_name?: string;
   first_seen_on?: string;
   first_seen_at?: string;
+  release_status?: string | null;
 }
 
 function perfRank(params: number): { label: string; color: string; bg: string; tier: string } {
@@ -202,49 +204,60 @@ export default function AvatarBenchmark() {
                 </p>
               </div>
             )}
-            {seenAvatars.map((a) => (
-              <div key={a.avatar_id} className="flex items-center gap-2 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
-                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                  <span className="font-medium truncate">{a.avatar_name || a.avatar_id}</span>
-                  <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--muted-foreground))]">
-                    {a.first_seen_on && <span>worn by {a.first_seen_on}</span>}
-                    {a.first_seen_at && (
-                      <span className="flex items-center gap-0.5">
-                        <Clock className="size-2.5" />
-                        {new Date(a.first_seen_at).toLocaleDateString()}
-                      </span>
-                    )}
+            {seenAvatars.map((a) => {
+              const isPublic = a.release_status === "public";
+              const hasRealId = a.avatar_id.startsWith("avtr_");
+              const isUnknown = !hasRealId;
+              const isPrivate = hasRealId && a.release_status && a.release_status !== "public";
+              return (
+                <div key={a.avatar_id} className="flex items-center gap-2 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
+                  <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium truncate">{a.avatar_name || a.avatar_id}</span>
+                      {isPublic && <Badge variant="default" className="h-4 text-[9px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">PUBLIC</Badge>}
+                      {isPrivate && <Badge variant="outline" className="h-4 text-[9px] gap-0.5"><Lock className="size-2" />PRIVATE</Badge>}
+                      {isUnknown && <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">LOG-ONLY</Badge>}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {a.first_seen_on && <span>worn by {a.first_seen_on}</span>}
+                      {a.first_seen_at && (
+                        <span className="flex items-center gap-0.5">
+                          <Clock className="size-2.5" />
+                          {new Date(a.first_seen_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  {hasRealId && isPublic && (
+                    <>
+                      <SmartWearButton avatarId={a.avatar_id} avatarName={a.avatar_name} variant="compact" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[10px] gap-1"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(a.avatar_id);
+                          toast.success("Avatar ID copied");
+                        }}
+                      >
+                        <Copy className="size-2.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[10px]"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(`https://vrchat.com/home/avatar/${a.avatar_id}`);
+                          toast.success("Avatar link copied");
+                        }}
+                      >
+                        Link
+                      </Button>
+                    </>
+                  )}
                 </div>
-                {a.avatar_id.startsWith("avtr_") && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] gap-1"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(a.avatar_id);
-                        toast.success("Avatar ID copied");
-                      }}
-                    >
-                      <Copy className="size-2.5" />
-                      Copy ID
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] gap-1"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(`https://vrchat.com/home/avatar/${a.avatar_id}`);
-                        toast.success("Avatar link copied");
-                      }}
-                    >
-                      Copy Link
-                    </Button>
-                  </>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}

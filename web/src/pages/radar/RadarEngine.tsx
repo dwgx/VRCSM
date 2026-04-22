@@ -313,6 +313,9 @@ function RadarEngine({
       else if (kind === "player") {
         const ev = data as PlayerEvent;
         const liveWorld = currentWorldRef.current;
+        // Only filter when BOTH sides agree on instance/world AND they differ.
+        // If either side lacks context (pre-worldSwitch events), accept the
+        // event so radar stays populated across log-tailer startup races.
         if (liveWorld?.instance_id && ev.instance_id && ev.instance_id !== liveWorld.instance_id) {
           return;
         }

@@ -93,6 +93,7 @@ nlohmann::json IpcBridge::HandleDbAvatarHistoryRecord(const nlohmann::json& para
     if (auto n = JsonStringField(params, "avatar_name"); n.has_value()) a.avatar_name = *n;
     if (auto n = JsonStringField(params, "author_name"); n.has_value()) a.author_name = *n;
     if (auto n = JsonStringField(params, "first_seen_on"); n.has_value()) a.first_seen_on = *n;
+    if (auto n = JsonStringField(params, "release_status"); n.has_value()) a.release_status = *n;
     a.first_seen_at = JsonStringField(params, "first_seen_at").value_or(vrcsm::core::nowIso());
     auto res = vrcsm::core::Database::Instance().RecordAvatarSeen(a);
     if (!vrcsm::core::isOk(res))
