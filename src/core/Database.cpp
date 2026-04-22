@@ -1039,8 +1039,8 @@ Result<std::monostate> Database::InsertFriendLog(const FriendLogInsert& e)
     std::lock_guard<std::mutex> lock(m_mutex);
 
     const char* sql =
-        "INSERT INTO friend_log (user_id, event_type, old_value, new_value, occurred_at) "
-        "VALUES (?, ?, ?, ?, ?);";
+        "INSERT INTO friend_log (user_id, event_type, old_value, new_value, occurred_at, display_name) "
+        "VALUES (?, ?, ?, ?, ?, ?);";
 
     return RunOnce(sql, [this, &e](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
@@ -1048,7 +1048,8 @@ Result<std::monostate> Database::InsertFriendLog(const FriendLogInsert& e)
             BindText(stmt, 2, e.event_type) != SQLITE_OK ||
             BindOptionalText(stmt, 3, e.old_value) != SQLITE_OK ||
             BindOptionalText(stmt, 4, e.new_value) != SQLITE_OK ||
-            BindText(stmt, 5, e.occurred_at) != SQLITE_OK)
+            BindText(stmt, 5, e.occurred_at) != SQLITE_OK ||
+            BindOptionalText(stmt, 6, e.display_name) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }
@@ -1070,7 +1071,7 @@ Result<nlohmann::json> Database::RecentFriendLog(int limit, int offset)
     }
 
     const char* sql =
-        "SELECT id, user_id, event_type, old_value, new_value, occurred_at "
+        "SELECT id, user_id, event_type, old_value, new_value, occurred_at, display_name "
         "FROM friend_log "
         "ORDER BY occurred_at DESC "
         "LIMIT ? OFFSET ?;";
@@ -1098,6 +1099,7 @@ Result<nlohmann::json> Database::RecentFriendLog(int limit, int offset)
         row["old_value"] = ColumnTextOrNull(rawStmt, 3);
         row["new_value"] = ColumnTextOrNull(rawStmt, 4);
         row["occurred_at"] = ColumnTextOrNull(rawStmt, 5);
+        row["display_name"] = ColumnTextOrNull(rawStmt, 6);
         rows.push_back(std::move(row));
     }
 
@@ -1125,7 +1127,7 @@ Result<nlohmann::json> Database::FriendLogForUser(const std::string& user_id,
     }
 
     const char* sql =
-        "SELECT id, user_id, event_type, old_value, new_value, occurred_at "
+        "SELECT id, user_id, event_type, old_value, new_value, occurred_at, display_name "
         "FROM friend_log "
         "WHERE user_id = ? "
         "ORDER BY occurred_at DESC "
@@ -1156,6 +1158,7 @@ Result<nlohmann::json> Database::FriendLogForUser(const std::string& user_id,
         row["old_value"] = ColumnTextOrNull(rawStmt, 3);
         row["new_value"] = ColumnTextOrNull(rawStmt, 4);
         row["occurred_at"] = ColumnTextOrNull(rawStmt, 5);
+        row["display_name"] = ColumnTextOrNull(rawStmt, 6);
         rows.push_back(std::move(row));
     }
 
@@ -2196,6 +2199,22 @@ CREATE INDEX IF NOT EXISTS idx_event_attendees_rec ON event_attendees(recording_
     }
 
     if (const auto r = ExecSimple("PRAGMA user_version = 6;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v7: add display_name to friend_log ───────────────
+    static const char* kSchemaV7Sql = R"SQL(
+ALTER TABLE friend_log ADD COLUMN display_name TEXT;
+    )SQL";
+
+    {
+        // ALTER TABLE is a no-op if column already exists; ignore error
+        sqlite3_exec(m_db, kSchemaV7Sql, nullptr, nullptr, nullptr);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 7;"); std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
         return std::get<Error>(r);

@@ -29,6 +29,7 @@ import {
 import type { AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
 import { Eye, Sliders, Search, User, Info, Lock, Box, Heart, Globe2, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
+import { ImageZoom } from "@/components/ImageZoom";
 
 type AugmentedAvatar = LocalAvatarItem & {
   display_name?: string;
@@ -626,15 +627,12 @@ function PublicAvatarSearch() {
               className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-2 py-2 hover:bg-[hsl(var(--surface-raised))] transition-colors"
             >
               {av.thumbnailImageUrl ? (
-                <div className="size-10 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
-                  <img
-                    src={av.thumbnailImageUrl}
-                    alt=""
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                  />
-                </div>
+                <ImageZoom
+                  src={av.thumbnailImageUrl}
+                  alt={av.name}
+                  className="size-10 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
+                  imgClassName="h-full w-full object-cover"
+                />
               ) : (
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
                   <User className="size-4 text-[hsl(var(--muted-foreground))]" />

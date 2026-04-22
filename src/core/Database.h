@@ -139,6 +139,7 @@ public:
         std::optional<std::string> old_value;
         std::optional<std::string> new_value;
         std::string occurred_at;
+        std::optional<std::string> display_name;
     };
     Result<std::monostate> InsertFriendLog(const FriendLogInsert& e);
 

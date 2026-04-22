@@ -25,6 +25,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { IdBadge } from "@/components/IdBadge";
+import { ImageZoom } from "@/components/ImageZoom";
+import { SmartWearButton } from "@/components/SmartWearButton";
 import { ipc } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
 import { trustRank, trustColorClass, trustLabelKey } from "@/lib/vrcFriends";
@@ -246,8 +248,6 @@ export function ProfileCard({
   const { t, i18n } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [wearingAvatar, setWearingAvatar] = useState(false);
-
   const { status: authStatus } = useAuth();
   const isSelf = authStatus.userId === user.id;
 
@@ -368,7 +368,7 @@ export function ProfileCard({
           {/* Avatar Float */}
           <div className="relative size-[72px] shrink-0 rounded-full border-[3px] border-[hsl(var(--surface))] bg-[hsl(var(--surface))] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.15)] z-10 transition-transform duration-300 hover:scale-[1.03]">
             {avatarUrl ? (
-               <img src={avatarUrl} className="h-full w-full object-cover cursor-pointer" alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+               <ImageZoom src={avatarUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
             ) : (
                <div className="flex h-full w-full items-center justify-center bg-[hsl(var(--muted))]"><User className="size-8 text-[hsl(var(--muted-foreground))]" /></div>
             )}
@@ -744,36 +744,12 @@ export function ProfileCard({
             {user.currentAvatarName || user.currentAvatarId}
           </span>
           <div className="ml-auto flex items-center gap-1">
-            <button
-              type="button"
-              disabled={wearingAvatar}
-              onClick={async () => {
-                if (!user.currentAvatarId) return;
-                setWearingAvatar(true);
-                try {
-                  await ipc.call("avatar.select", { avatarId: user.currentAvatarId });
-                  toast.success(t("profileCard.woreAvatar", {
-                    defaultValue: "Now wearing: {{name}}",
-                    name: user.currentAvatarName || user.currentAvatarId,
-                  }));
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : t("profileCard.wearFailed", {
-                    defaultValue: "Failed to wear avatar. This avatar may not be public or available.",
-                  }));
-                } finally {
-                  setWearingAvatar(false);
-                }
-              }}
-              title={t("profileCard.wearAvatarTitle", {
-                defaultValue: "Wear {{name}}",
-                name: user.currentAvatarName || user.currentAvatarId,
-              })}
-              className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.6)] bg-[hsl(var(--primary)/0.1)] px-2 py-0.5 text-[10px] font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.2)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {wearingAvatar
-                ? t("profileCard.wearing", { defaultValue: "Wearing…" })
-                : t("profileCard.wearAvatar", { defaultValue: "Wear" })}
-            </button>
+            <SmartWearButton
+              avatarId={user.currentAvatarId}
+              avatarName={user.currentAvatarName}
+              userId={user.id}
+              variant="pill"
+            />
             <button
               type="button"
               onClick={() => {

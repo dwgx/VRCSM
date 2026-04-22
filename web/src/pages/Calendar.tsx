@@ -12,6 +12,7 @@ type CalendarTab = "discover" | "featured" | "jams";
 interface CalendarEvent {
   id?: string;
   name?: string;
+  title?: string;
   description?: string;
   startsAt?: string;
   starts_at?: string;
@@ -83,7 +84,10 @@ export default function CalendarPage() {
         ? ((featured.data?.events ?? []) as CalendarEvent[])
         : [];
 
-  const jamItems = (tab === "jams" ? (jams.data as CalendarEvent[] | undefined) ?? [] : []) as CalendarEvent[];
+  const rawJams = jams.data;
+  const jamItems: CalendarEvent[] = tab === "jams"
+    ? (Array.isArray(rawJams) ? rawJams : ((rawJams as unknown as Record<string, unknown>)?.submissions as CalendarEvent[] ?? []))
+    : [];
   const isLoading =
     tab === "discover" ? discover.isLoading
       : tab === "featured" ? featured.isLoading
@@ -195,7 +199,7 @@ export default function CalendarPage() {
           {jamItems.map((j, i) => (
             <Card key={j.id ?? i} className="unity-panel">
               <CardHeader className="pb-2">
-                <CardTitle className="text-[13px]">{j.name ?? "Untitled Jam"}</CardTitle>
+                <CardTitle className="text-[13px]">{j.title ?? j.name ?? "Untitled Jam"}</CardTitle>
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {j.description && (

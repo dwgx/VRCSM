@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { UserPopupBadge } from "@/components/UserPopupBadge";
+import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
@@ -35,6 +37,7 @@ interface SessionEvent {
 interface SocialEvent {
   id: number;
   user_id: string | null;
+  display_name: string | null;
   event_type: string | null;
   old_value: string | null;
   new_value: string | null;
@@ -239,9 +242,13 @@ function SessionEventRow({ event }: { event: SessionEvent }) {
         <div className="mt-0.5">{sessionKindIcon(event.kind)}</div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-[13px] font-medium text-[hsl(var(--foreground))]">
-              {event.display_name}
-            </span>
+            {event.user_id?.startsWith("usr_") ? (
+              <UserPopupBadge userId={event.user_id} displayName={event.display_name} />
+            ) : (
+              <span className="truncate text-[13px] font-medium text-[hsl(var(--foreground))]">
+                {event.display_name}
+              </span>
+            )}
             <Badge variant="outline" className={cn("h-5 border text-[10px] font-mono", sessionKindTone(event.kind))}>
               {sessionKindLabel(event.kind, t)}
             </Badge>
@@ -250,10 +257,13 @@ function SessionEventRow({ event }: { event: SessionEvent }) {
             </span>
           </div>
 
-          <div className="mt-1 grid gap-1 text-[10.5px] text-[hsl(var(--muted-foreground))]">
-            {event.user_id ? <div className="font-mono">{event.user_id}</div> : null}
-            {event.world_id ? <div className="font-mono">{event.world_id}</div> : null}
-            <div>{parseTime(event.occurred_at)?.toLocaleString() ?? event.occurred_at}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
+            {event.world_id?.startsWith("wrld_") ? (
+              <WorldPopupBadge worldId={event.world_id} />
+            ) : event.world_id ? (
+              <span className="font-mono">{event.world_id}</span>
+            ) : null}
+            <span>{parseTime(event.occurred_at)?.toLocaleString() ?? event.occurred_at}</span>
           </div>
         </div>
 
@@ -289,9 +299,13 @@ function SocialEventRow({ event }: { event: SocialEvent }) {
         <ShieldEllipsis className="mt-0.5 size-3.5 text-sky-400" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-[13px] font-medium text-[hsl(var(--foreground))]">
-              {event.user_id ?? t("friendLog.social.unknownUser")}
-            </span>
+            {event.user_id?.startsWith("usr_") ? (
+              <UserPopupBadge userId={event.user_id} displayName={event.display_name ?? undefined} />
+            ) : (
+              <span className="truncate text-[13px] font-medium text-[hsl(var(--foreground))]">
+                {event.display_name ?? event.user_id ?? t("friendLog.social.unknownUser")}
+              </span>
+            )}
             <Badge variant="outline" className={cn("h-5 border text-[10px] font-mono", socialKindTone(event.event_type))}>
               {socialKindLabel(event.event_type, t)}
             </Badge>

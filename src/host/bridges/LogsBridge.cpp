@@ -78,25 +78,78 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
         throw std::runtime_error("logs.stream.start: VRChat log directory not found");
     }
 
-    if (vrcsm::core::ProcessGuard::IsVRChatRunning().running)
+    // Backfill historical log data into DB if tables are empty,
+    // then seed current-world state from the latest switch.
+    try
     {
-        try
+        const auto parsed = vrcsm::core::LogParser::parse(probe.baseDir);
+
+        // Seed current world from latest switch (helps mid-session restarts).
+        if (!parsed.world_switches.empty())
         {
-            const auto parsed = vrcsm::core::LogParser::parse(probe.baseDir);
-            if (!parsed.world_switches.empty())
+            const auto& latestSwitch = parsed.world_switches.back();
+            std::lock_guard<std::mutex> lk(m_currentWorldMutex);
+            m_currentWorldId = latestSwitch.world_id;
+            m_currentInstanceId = latestSwitch.instance_id;
+        }
+
+        // Backfill world_visits if empty.
+        auto existingVisits = vrcsm::core::Database::Instance().RecentWorldVisits(1, 0);
+        bool visitsEmpty = vrcsm::core::isOk(existingVisits) &&
+                           std::get<nlohmann::json>(existingVisits).empty();
+        if (visitsEmpty && !parsed.world_switches.empty())
+        {
+            std::string prevWorldId, prevInstanceId;
+            for (size_t i = 0; i < parsed.world_switches.size(); ++i)
             {
-                const auto& latestSwitch = parsed.world_switches.back();
-                std::lock_guard<std::mutex> lk(m_currentWorldMutex);
-                m_currentWorldId = latestSwitch.world_id;
-                m_currentInstanceId = latestSwitch.instance_id;
+                const auto& ws = parsed.world_switches[i];
+                const auto iso = ws.iso_time.value_or(vrcsm::core::nowIso());
+
+                if (!prevWorldId.empty())
+                {
+                    (void)vrcsm::core::Database::Instance().MarkVisitLeft(
+                        prevWorldId, prevInstanceId, iso);
+                }
+
+                vrcsm::core::Database::WorldVisitInsert v;
+                v.world_id = ws.world_id;
+                v.instance_id = ws.instance_id;
+                if (!ws.access_type.empty()) v.access_type = ws.access_type;
+                v.owner_id = ws.owner_id;
+                v.region = ws.region;
+                v.joined_at = iso;
+                (void)vrcsm::core::Database::Instance().InsertWorldVisit(v);
+
+                prevWorldId = ws.world_id;
+                prevInstanceId = ws.instance_id;
             }
         }
-        catch (...)
+
+        // Backfill player_events if empty.
+        auto existingEvents = vrcsm::core::Database::Instance().RecentPlayerEvents(1, 0);
+        bool eventsEmpty = vrcsm::core::isOk(existingEvents) &&
+                           std::get<nlohmann::json>(existingEvents).empty();
+        if (eventsEmpty && !parsed.player_events.empty())
         {
-            // Non-fatal: live tailing can still proceed without a seeded
-            // current world, but seeding helps mid-session host restarts
-            // keep player join/leave events attached to the right instance.
+            for (const auto& pe : parsed.player_events)
+            {
+                vrcsm::core::Database::PlayerEventInsert e;
+                e.kind = pe.kind;
+                e.display_name = pe.display_name;
+                e.user_id = pe.user_id;
+                e.world_id = pe.world_id;
+                e.instance_id = pe.instance_id;
+                e.occurred_at = pe.iso_time.value_or(vrcsm::core::nowIso());
+                if (!e.display_name.empty())
+                {
+                    (void)vrcsm::core::Database::Instance().RecordPlayerEvent(e);
+                }
+            }
         }
+    }
+    catch (...)
+    {
+        // Non-fatal: live tailing can still proceed.
     }
 
     m_logTailer = std::make_unique<vrcsm::core::LogTailer>(
@@ -202,6 +255,20 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                         std::lock_guard<std::mutex> lk(m_currentWorldMutex);
                         m_currentWorldId = v.world_id;
                         m_currentInstanceId = v.instance_id;
+                    }
+                }
+                else if (kind == "avatarSwitch")
+                {
+                    const auto actorName = data.value("actor", std::string{});
+                    const auto avatarName = data.value("avatar_name", std::string{});
+                    if (!avatarName.empty())
+                    {
+                        vrcsm::core::Database::AvatarSeenInsert a;
+                        a.avatar_id = "name:" + avatarName;
+                        a.avatar_name = avatarName;
+                        a.first_seen_on = actorName;
+                        a.first_seen_at = iso;
+                        (void)vrcsm::core::Database::Instance().RecordAvatarSeen(a);
                     }
                 }
                 else if (kind == "player")

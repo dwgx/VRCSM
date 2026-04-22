@@ -84,6 +84,22 @@ nlohmann::json IpcBridge::HandleDbAvatarHistory(const nlohmann::json& params, co
     return nlohmann::json{{"items", unwrapResult(std::move(res))}};
 }
 
+nlohmann::json IpcBridge::HandleDbAvatarHistoryRecord(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    vrcsm::core::Database::AvatarSeenInsert a;
+    a.avatar_id = JsonStringField(params, "avatar_id").value_or("");
+    if (a.avatar_id.empty())
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'avatar_id'", 0});
+    if (auto n = JsonStringField(params, "avatar_name"); n.has_value()) a.avatar_name = *n;
+    if (auto n = JsonStringField(params, "author_name"); n.has_value()) a.author_name = *n;
+    if (auto n = JsonStringField(params, "first_seen_on"); n.has_value()) a.first_seen_on = *n;
+    a.first_seen_at = JsonStringField(params, "first_seen_at").value_or(vrcsm::core::nowIso());
+    auto res = vrcsm::core::Database::Instance().RecordAvatarSeen(a);
+    if (!vrcsm::core::isOk(res))
+        throw IpcException(vrcsm::core::error(res));
+    return nlohmann::json{{"ok", true}};
+}
+
 nlohmann::json IpcBridge::HandleDbStatsHeatmap(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const int days = ParamInt(params, "days", 30);
@@ -361,10 +377,13 @@ nlohmann::json IpcBridge::HandleFriendLogInsert(const nlohmann::json& params, co
     {
         e.new_value = *new_value;
     }
+    if (auto dn = JsonStringField(params, "display_name"); dn.has_value())
+    {
+        e.display_name = *dn;
+    }
     e.occurred_at = JsonStringField(params, "occurred_at").value_or("");
     if (e.occurred_at.empty())
     {
-        // Frontend forgot to stamp the time — use ours rather than failing.
         e.occurred_at = vrcsm::core::nowIso();
     }
 

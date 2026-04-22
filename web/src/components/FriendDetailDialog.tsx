@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 
 
+import { ImageZoom } from "@/components/ImageZoom";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { ipc } from "@/lib/ipc";
@@ -471,14 +472,12 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
               </div>
               <div className="flex items-center gap-3">
                 {friend?.currentAvatarThumbnailImageUrl && (
-                  <div className="size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
-                    <img
-                      src={friend.currentAvatarThumbnailImageUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    />
-                  </div>
+                  <ImageZoom
+                    src={friend.currentAvatarThumbnailImageUrl}
+                    alt={avatarName ?? ""}
+                    className="size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
+                    imgClassName="h-full w-full object-cover"
+                  />
                 )}
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate text-[13px] font-medium text-[hsl(var(--foreground))]">

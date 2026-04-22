@@ -887,10 +887,11 @@
     "targetFree": "目标可用空间",
     "spaceRequired": "所需空间",
     "vrcRunningBlocker": "VRChat 正在运行。请先关闭游戏再迁移，以免数据损坏。",
-    "noBlockers": "未检测到阻塞项，可以开始迁移。",
+    "noBlockers": "已就绪，可以迁移。",
     "pipeline": "迁移流程",
-    "execute": "开始迁移",
-    "running": "执行中…",
+    "execute": "迁移",
+    "running": "迁移中…",
+    "free": "可用",
     "resetPreflight": "重置",
     "phase": {
       "preflight": "预检查",
@@ -3227,14 +3228,20 @@
     "stopRecording": "停止",
     "namePlaceholder": "事件名称...",
     "recording": "正在录制中...",
-    "attendees": "参与者"
+    "attendees": "参与者",
+    "guide1": "实时记录你在 VRChat 实例中遇到的人。",
+    "guide2": "1. 输入名称并点击「开始录制」。2. 录制期间，加入你所在实例的玩家会自动被记录。3. 点击「停止」结束录制。选择一条录制记录可查看参与者。",
+    "noRecordings": "暂无录制记录。在上方开始录制以追踪谁加入了你的实例。",
+    "noAttendees": "暂无参与者记录。"
   },
   "socialGraph": {
     "title": "社交分析",
     "topWorlds": "访问最多的世界",
     "topEncounters": "遇到最多的玩家",
     "noVisits": "尚无访问数据。",
-    "noEncounters": "尚无相遇数据。"
+    "noEncounters": "尚无相遇数据。",
+    "guide": "汇总你 VRChat 日志中的世界访问记录和玩家相遇数据。VRCSM 解析日志时数据会持续积累——在游戏时保持应用运行以获得完整分析。",
+    "noWorlds": "尚无访问数据。当 VRCSM 解析你的 VRChat 日志时，世界历史会自动记录。"
   },
   "benchmark": {
     "title": "虚拟形象性能基准测试",
@@ -3244,7 +3251,8 @@
     "good": "良好",
     "medium": "中等",
     "poor": "差",
-    "veryPoor": "非常差"
+    "veryPoor": "非常差",
+    "empty": "未找到虚拟形象参数数据。请先在面板中运行缓存扫描，然后再来查看此页面。"
   },
   "fbt": {
     "title": "FBT 校准监视器",

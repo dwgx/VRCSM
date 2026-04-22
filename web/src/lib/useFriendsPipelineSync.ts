@@ -57,6 +57,7 @@ function diffAndLog(
         old_value: oldStr,
         new_value: newStr,
         occurred_at: occurredAt,
+        display_name: prev.displayName ?? undefined,
       })
       .catch((e) => console.warn("[friend-log] insert failed", e));
   }
@@ -101,6 +102,17 @@ export function useFriendsPipelineSync() {
             const prev = prevCache.friends.find((f) => f.id === userId);
             diffAndLog(prev, patch, userId);
           }
+          // Record avatar to avatar_history when a friend changes avatar
+          if (patch?.currentAvatarImageUrl && userId) {
+            const avatarId = (patch as Record<string, unknown>).currentAvatarId as string | undefined;
+            if (avatarId?.startsWith("avtr_")) {
+              void ipc.call("db.avatarHistory.record", {
+                avatar_id: avatarId,
+                avatar_name: (patch as Record<string, unknown>).currentAvatarName ?? undefined,
+                first_seen_on: patch.displayName ?? userId,
+              }).catch(() => {});
+            }
+          }
         }
         if (type === "friend-add") {
           const patch = extractPatchedUser(content);
@@ -111,6 +123,7 @@ export function useFriendsPipelineSync() {
                 event_type: "friend.added",
                 new_value: patch.displayName ?? "",
                 occurred_at: new Date().toISOString(),
+                display_name: patch.displayName ?? undefined,
               })
               .catch(() => {});
           }
@@ -125,6 +138,7 @@ export function useFriendsPipelineSync() {
                 event_type: "friend.removed",
                 old_value: prev?.displayName ?? "",
                 occurred_at: new Date().toISOString(),
+                display_name: prev?.displayName ?? undefined,
               })
               .catch(() => {});
           }
