@@ -1998,4 +1998,100 @@ Result<nlohmann::json> VrcApi::inviteUser(
     return nlohmann::json{{"ok", true}};
 }
 
+Result<nlohmann::json> VrcApi::searchWorlds(
+    const std::string& query, const std::string& sort, int count, int offset)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::string encoded;
+    for (unsigned char ch : query)
+    {
+        if (std::isalnum(ch) || ch == '-' || ch == '_' || ch == '.' || ch == '~')
+            encoded += static_cast<char>(ch);
+        else
+        {
+            char buf[4];
+            std::snprintf(buf, sizeof(buf), "%%%02X", ch);
+            encoded.append(buf);
+        }
+    }
+
+    const auto path = toWide(fmt::format(
+        "/api/1/worlds?apiKey={}&sort={}&order=descending&n={}&offset={}&search={}",
+        kApiKey, sort, std::clamp(count, 1, 100), std::max(offset, 0), encoded));
+
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status != 200)
+        return Error{"api_error",
+            fmt::format("/worlds search returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+
+    auto arr = parseJsonBody(response, "/worlds?search=");
+    nlohmann::json results = nlohmann::json::array();
+    for (auto& item : arr)
+    {
+        results.push_back({
+            {"id",              item.value("id", "")},
+            {"name",            item.value("name", "")},
+            {"description",     item.value("description", "")},
+            {"authorId",        item.value("authorId", "")},
+            {"authorName",      item.value("authorName", "")},
+            {"imageUrl",        item.value("imageUrl", "")},
+            {"thumbnailImageUrl", item.value("thumbnailImageUrl", "")},
+            {"releaseStatus",   item.value("releaseStatus", "")},
+            {"capacity",        item.value("capacity", 0)},
+            {"occupants",       item.value("occupants", 0)},
+            {"favorites",       item.value("favorites", 0)},
+            {"tags",            item.value("tags", nlohmann::json::array())},
+            {"created_at",      item.value("created_at", "")},
+            {"updated_at",      item.value("updated_at", "")},
+        });
+    }
+    return nlohmann::json{{"worlds", results}};
+}
+
+Result<nlohmann::json> VrcApi::unfriend(const std::string& userId)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto path = toWide(fmt::format("/api/1/auth/user/friends/{}", userId));
+    const auto response = httpRequest(L"DELETE", kApiHostW, path, headers, "");
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status != 200 && response.status != 204)
+        return Error{"api_error",
+            fmt::format("unfriend returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::sendFriendRequest(const std::string& userId)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const auto path = toWide(fmt::format("/api/1/user/{}/friendRequest", userId));
+    const auto response = httpRequest(L"POST", kApiHostW, path, headers, "{}");
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status != 200)
+        return Error{"api_error",
+            fmt::format("friendRequest returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+
+    return nlohmann::json{{"ok", true}};
+}
+
 } // namespace vrcsm::core

@@ -219,6 +219,17 @@ public:
         const std::string& targetUserId,
         const std::string& message);
 
+    /// Search public worlds via GET /api/1/worlds?search=...
+    static Result<nlohmann::json> searchWorlds(
+        const std::string& query, const std::string& sort = "relevance",
+        int count = 20, int offset = 0);
+
+    /// Remove a friend via DELETE /api/1/auth/user/friends/{userId}.
+    static Result<nlohmann::json> unfriend(const std::string& userId);
+
+    /// Send a friend request via POST /api/1/user/{userId}/friendRequest.
+    static Result<nlohmann::json> sendFriendRequest(const std::string& userId);
+
     /// Fetch a short-lived WebSocket auth token via GET `/api/1/auth`.
     /// VRChat returns `{ok: true, token: "..."}` on success. The token
     /// is what `wss://pipeline.vrchat.cloud/?auth=<token>` expects —
