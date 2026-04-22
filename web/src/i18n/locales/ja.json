@@ -149,7 +149,9 @@
     "messagePlaceholder": "こんにちは！ワールドに行きませんか？",
     "messageSent": "メッセージを送信しました",
     "messageHint": "Ctrl+Enter で送信。フレンド以外からの DM は VRChat では破棄されます。",
-    "send": "送信"
+    "send": "送信",
+    "unfriend": "フレンド解除",
+    "unfriended": "{{name}}さんをフレンド解除しました"
   },
   "osc": {
     "title": "OSC ツール",
@@ -167,7 +169,15 @@
     "clear": "ログをクリア",
     "sent": "送信しました",
     "invalidValue": "値を解析できません",
-    "invalidAddress": "アドレスは / で始まる必要があります"
+    "invalidAddress": "アドレスは / で始まる必要があります",
+    "chatbox": {
+      "title": "チャットボックス クイック送信",
+      "desc": "OSC経由でVRChatのチャットボックスにテキストを送信します。最大144文字、2秒のクールダウンがあります。",
+      "placeholder": "メッセージを入力...",
+      "send": "送信",
+      "sent": "チャットボックスに送信しました",
+      "rateLimit": "メッセージ間は2秒待ってください (VRChatのレート制限)"
+    }
   },
   "auth": {
     "signIn": "サインイン",
@@ -474,7 +484,11 @@
       "topWorlds": "最も訪れたワールド"
     },
     "vrcNotRunning": "VRChatは起動していません",
-    "vrcNotRunningHint": "リアルタイムでルームやプレイヤーを監視するには、VRChatを起動してください"
+    "vrcNotRunningHint": "リアルタイムでルームやプレイヤーを監視するには、VRChatを起動してください",
+    "liveRoster": "現在のインスタンスのメンバー",
+    "recentPlayerEvents": "最近のプレイヤーイベント",
+    "noPlayerEvents": "まだプレイヤーイベントが記録されていません。VRChatを起動してワールドに参加してください。",
+    "rosterTab": "インスタンスのメンバー"
   },
   "common": {
     "loading": "読み込み中…",
@@ -792,7 +806,9 @@
     "accessPrivate": "招待のみ",
     "accessGroup": "グループ",
     "ownerLabel": "所有者:",
-    "playersSeen": "ルーム内プレイヤー"
+    "playersSeen": "ルーム内プレイヤー",
+    "searchVrc": "VRChatを検索",
+    "searchResults": "VRChat 検索結果"
   },
   "logs": {
     "title": "ログ",
@@ -1271,7 +1287,22 @@
       "general": "一般",
       "registry": "VRChatレジストリ",
       "experimental": "実験的機能",
-      "steamvr": "SteamVR"
+      "steamvr": "SteamVR",
+      "vrDiag": "VR診断"
+    },
+    "vrDiag": {
+      "heading": "VR診断",
+      "runDiag": "診断を実行",
+      "blurb": "ネットワークアダプター、SteamVR設定、オーディオルーティング、vrlink接続ステータスをスキャンします。",
+      "clickToStart": "「診断を実行」をクリックして開始します。",
+      "network": "ネットワーク",
+      "audio": "オーディオ",
+      "audioSwitched": "オーディオデバイスが切り替わりました",
+      "switchToSteamSpeakers": "再生デバイスをSteam Streaming Speakersに切り替える"
+    },
+    "autoStart": {
+      "label": "Windowsと同時に起動",
+      "hint": "WindowsにログインしたときにVRCSMを自動的に起動します。"
     }
   },
   "profileCard": {
@@ -1371,7 +1402,14 @@
   "calendar": {
     "tileTitle": "今後のVRChatイベント",
     "loading": "読み込み中...",
-    "untitledEvent": "無題のイベント"
+    "untitledEvent": "無題のイベント",
+    "pageTitle": "カレンダー & Jam",
+    "empty": "イベントが見つかりません。",
+    "noJams": "現在アクティブなJamはありません。",
+    "openInBrowser": "VRChatで開く",
+    "tabDiscover": "発見",
+    "tabFeatured": "注目",
+    "tabJams": "Jam"
   },
   "worldHistory": {
     "title": "ワールド履歴",
@@ -1387,5 +1425,50 @@
   "strangerAlert": {
     "title": "知らないユーザーがあなたの{{access}}インスタンスに参加しました",
     "unknownUser": "(不明なユーザー)"
+  },
+  "eventRecorder": {
+    "title": "イベントレコーダー",
+    "startRecording": "録画開始",
+    "stopRecording": "停止",
+    "namePlaceholder": "イベント名...",
+    "recording": "録画中...",
+    "attendees": "参加者"
+  },
+  "socialGraph": {
+    "title": "ソーシャル分析",
+    "topWorlds": "最も訪問したワールド",
+    "topEncounters": "最も遭遇したプレイヤー",
+    "noVisits": "まだ訪問データがありません。",
+    "noEncounters": "まだ遭遇データがありません。"
+  },
+  "benchmark": {
+    "title": "アバターパフォーマンスベンチマーク",
+    "desc": "同期されるパラメータ数に基づいてVRChatのパフォーマンスランクを推定します。パラメータ数が少ないほど、ネットワークパフォーマンスが向上します。",
+    "breakdown": "アバターの内訳",
+    "excellent": "非常に良い",
+    "good": "良い",
+    "medium": "普通",
+    "poor": "悪い",
+    "veryPoor": "非常に悪い"
+  },
+  "fbt": {
+    "title": "FBTキャリブレーションモニター",
+    "desc": "VRChatトラッカーのOSCデータを監視して位置のドリフトを検出します。ドリフトがしきい値を超えると、再キャリブレーションを促すチャットボックスリマインダーを送信します。",
+    "start": "監視を開始",
+    "stop": "停止",
+    "nudge": "通知を送信",
+    "nudgeSent": "キャリブレーション通知をチャットボックスに送信しました",
+    "started": "FBTドリフト監視を開始しました",
+    "thresholds": "ドリフトしきい値",
+    "trackerStatus": "トラッカーの状態",
+    "notMonitoring": "トラッカーデータを見るには監視を開始してください。VRChatでOSCが有効になっていることを確認してください。"
+  },
+  "rules": {
+    "title": "自動化ルール",
+    "create": "新規ルール",
+    "save": "ルールを保存",
+    "empty": "まだルールはありません。ルールを作成してVRChatの操作を自動化しましょう。",
+    "namePlaceholder": "ルール名...",
+    "history": "実行履歴"
   }
 }
