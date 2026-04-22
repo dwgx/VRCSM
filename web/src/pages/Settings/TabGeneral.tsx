@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ipc } from "@/lib/ipc";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -42,6 +42,11 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
   const [showRadarTimeline, setShowRadarTimeline] = useUiPrefBoolean("vrcsm.layout.radar.timeline.visible", true);
   const [showVrchatSidebar, setShowVrchatSidebar] = useUiPrefBoolean("vrcsm.layout.vrchat.sidebar.visible", true);
   const [showFriendsDetail, setShowFriendsDetail] = useUiPrefBoolean("vrcsm.layout.friends.detail.visible", true);
+
+  const [autoStart, setAutoStart] = useState(false);
+  useEffect(() => {
+    ipc.autoStartGet().then((r) => setAutoStart(r.enabled)).catch(() => {});
+  }, []);
 
   // Discord Rich Presence — opt-in, requires the user to register
   // their own application at https://discord.com/developers/applications
@@ -235,6 +240,29 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
           </SettingRow>
           <SettingRow label={t("settings.appTheme")} hint={t("settings.appThemeHint")}>
             <Badge variant="muted">{t("settings.dark")}</Badge>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.autoStart.label", { defaultValue: "Launch with Windows" })}
+            hint={t("settings.autoStart.hint", { defaultValue: "Start VRCSM automatically when you log in to Windows." })}
+          >
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="font-mono text-[11px] uppercase tracking-wider">
+                {autoStart ? "ON" : "OFF"}
+              </span>
+              <input
+                type="checkbox"
+                checked={autoStart}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setAutoStart(v);
+                  ipc.autoStartSet(v).catch(() => {
+                    setAutoStart(!v);
+                    toast.error("Failed to update autostart");
+                  });
+                }}
+                className="w-4 h-4 cursor-pointer border border-[hsl(var(--border-strong))]"
+              />
+            </label>
           </SettingRow>
           <SettingRow
             label={t("settings.app.factoryResetLabel", {

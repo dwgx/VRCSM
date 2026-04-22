@@ -909,6 +909,14 @@ class IpcClient {
     return this.call<undefined, AppVersion>("app.version");
   }
 
+  async autoStartGet(): Promise<{ enabled: boolean }> {
+    return this.call<undefined, { enabled: boolean }>("autoStart.get");
+  }
+
+  async autoStartSet(enabled: boolean): Promise<{ enabled: boolean }> {
+    return this.call<{ enabled: boolean }, { enabled: boolean }>("autoStart.set", { enabled });
+  }
+
   async scan(): Promise<Report> {
     return this.call<undefined, Report>("scan");
   }

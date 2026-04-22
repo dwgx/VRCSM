@@ -49,6 +49,8 @@ public:
 private:
     void RegisterHandlers();
     nlohmann::json HandleAppVersion(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAutoStartGet(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAutoStartSet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandlePathProbe(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleScan(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleBundlePreview(const nlohmann::json& params, const std::optional<std::string>& id);

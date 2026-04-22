@@ -373,3 +373,52 @@ nlohmann::json IpcBridge::HandleAppFactoryReset(const nlohmann::json&, const std
         {"skipped", std::move(skipped)},
     };
 }
+
+// ── Autostart (HKCU Run key) ──────────────────────────────────────
+
+static const wchar_t* kRunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+static const wchar_t* kRunValue = L"VRCSM";
+
+nlohmann::json IpcBridge::HandleAutoStartGet(const nlohmann::json&, const std::optional<std::string>&)
+{
+    HKEY hk = nullptr;
+    bool enabled = false;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, kRunKey, 0, KEY_READ, &hk) == ERROR_SUCCESS)
+    {
+        DWORD type = 0;
+        enabled = (RegQueryValueExW(hk, kRunValue, nullptr, &type, nullptr, nullptr) == ERROR_SUCCESS);
+        RegCloseKey(hk);
+    }
+    return nlohmann::json{{"enabled", enabled}};
+}
+
+nlohmann::json IpcBridge::HandleAutoStartSet(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const bool enable = params.contains("enabled") && params["enabled"].is_boolean()
+        ? params["enabled"].get<bool>() : false;
+
+    HKEY hk = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, kRunKey, 0, KEY_SET_VALUE, &hk) != ERROR_SUCCESS)
+        throw IpcException({"registry_error", "Cannot open Run key", 500});
+
+    LONG result;
+    if (enable)
+    {
+        wchar_t exePath[MAX_PATH]{};
+        GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+        const DWORD cbData = static_cast<DWORD>((wcslen(exePath) + 1) * sizeof(wchar_t));
+        result = RegSetValueExW(hk, kRunValue, 0, REG_SZ,
+            reinterpret_cast<const BYTE*>(exePath), cbData);
+    }
+    else
+    {
+        result = RegDeleteValueW(hk, kRunValue);
+        if (result == ERROR_FILE_NOT_FOUND) result = ERROR_SUCCESS;
+    }
+    RegCloseKey(hk);
+
+    if (result != ERROR_SUCCESS)
+        throw IpcException({"registry_error", "Failed to update Run key", 500});
+
+    return nlohmann::json{{"enabled", enable}};
+}

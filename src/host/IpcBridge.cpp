@@ -499,6 +499,8 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("app.version", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAppVersion(p, id); });
     m_handlers.emplace("path.probe", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePathProbe(p, id); });
     m_handlers.emplace("process.vrcRunning", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleProcessVrcRunning(p, id); });
+    m_handlers.emplace("autoStart.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAutoStartGet(p, id); });
+    m_handlers.emplace("autoStart.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAutoStartSet(p, id); });
     m_handlers.emplace("shell.pickFolder", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellPickFolder(p, id); });
     m_handlers.emplace("shell.openUrl", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellOpenUrl(p, id); });
     m_handlers.emplace("fs.listDir", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsListDir(p, id); });
