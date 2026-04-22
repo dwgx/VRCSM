@@ -290,6 +290,66 @@ export default function OscTools() {
           </ScrollArea>
         </CardContent>
       </Card>
+      {/* Chatbox Quick Send */}
+      <ChatboxPanel />
     </div>
+  );
+}
+
+function ChatboxPanel() {
+  const { t } = useTranslation();
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const lastSent = useRef(0);
+
+  async function sendChatbox() {
+    if (!message.trim()) return;
+    const now = Date.now();
+    if (now - lastSent.current < 2000) {
+      toast.error(t("osc.chatbox.rateLimit", { defaultValue: "Wait 2 seconds between messages (VRChat rate limit)" }));
+      return;
+    }
+    setSending(true);
+    try {
+      await ipc.oscSend("/chatbox/input", [message.trim(), true, true]);
+      lastSent.current = Date.now();
+      toast.success(t("osc.chatbox.sent", { defaultValue: "Chatbox sent" }));
+      setMessage("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Card className="unity-panel">
+      <CardHeader>
+        <CardTitle className="text-[12px] font-mono uppercase tracking-wider">
+          {t("osc.chatbox.title", { defaultValue: "Chatbox Quick Send" })}
+        </CardTitle>
+        <CardDescription className="text-[11px]">
+          {t("osc.chatbox.desc", { defaultValue: "Send text to VRChat chatbox via OSC. Max 144 chars, 2-second cooldown." })}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Input
+            value={message}
+            onChange={(e) => setMessage(e.target.value.slice(0, 144))}
+            onKeyDown={(e) => { if (e.key === "Enter") void sendChatbox(); }}
+            placeholder={t("osc.chatbox.placeholder", { defaultValue: "Type a message..." })}
+            className="h-7 text-[12px] flex-1"
+          />
+          <Button size="sm" onClick={() => void sendChatbox()} disabled={sending || !message.trim()}>
+            <Send className="size-3" />
+            {t("osc.chatbox.send", { defaultValue: "Send" })}
+          </Button>
+        </div>
+        <div className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono">
+          {message.length}/144
+        </div>
+      </CardContent>
+    </Card>
   );
 }

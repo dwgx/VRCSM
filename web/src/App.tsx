@@ -62,6 +62,10 @@ const PluginHost = lazy(() => import("@/pages/PluginHost"));
 const WorldHistory = lazy(() => import("@/pages/WorldHistory"));
 const CalendarPage = lazy(() => import("@/pages/Calendar"));
 const RulesPage = lazy(() => import("@/pages/Rules"));
+const EventRecorder = lazy(() => import("@/pages/EventRecorder"));
+const SocialGraph = lazy(() => import("@/pages/SocialGraph"));
+const AvatarBenchmark = lazy(() => import("@/pages/AvatarBenchmark"));
+const FbtMonitor = lazy(() => import("@/pages/FbtMonitor"));
 
 interface RouteShellMeta {
   breadcrumb: string[];
@@ -431,6 +435,10 @@ function AppContent() {
                                 <Route path="/history/worlds" element={<WorldHistory />} />
                                 <Route path="/calendar" element={<CalendarPage />} />
                                 <Route path="/rules" element={<RulesPage />} />
+                                <Route path="/events" element={<EventRecorder />} />
+                                <Route path="/social" element={<SocialGraph />} />
+                                <Route path="/benchmark" element={<AvatarBenchmark />} />
+                                <Route path="/fbt" element={<FbtMonitor />} />
                                 <Route path="/logs" element={<Logs />} />
                                 <Route path="/radar" element={<Radar />} />
                                 <Route path="/migrate" element={<Migrate />} />
