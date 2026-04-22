@@ -175,9 +175,10 @@ nlohmann::json JunctionUtil::Repair(const nlohmann::json& params)
     const auto sourceStr = params.at(sourceKey).get<std::string>();
     const auto source = utf8Path(sourceStr);
     const auto probe = PathProbe::Probe();
-    if (probe.baseDir.empty() || !ensureWithinBase(probe.baseDir, source))
+    if ((probe.baseDir.empty() || !ensureWithinBase(probe.baseDir, source))
+        && !std::filesystem::exists(source))
     {
-        throw std::runtime_error("junction.repair source must stay inside the detected VRChat data directory");
+        throw std::runtime_error("junction.repair source does not exist and is outside the detected VRChat data directory");
     }
 
     std::optional<std::filesystem::path> target;

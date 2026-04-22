@@ -33,7 +33,13 @@
       "project": "Project",
       "plugins": "Plugins"
     },
-    "worldHistory": "World History"
+    "worldHistory": "World History",
+    "calendar": "Calendar & Jams",
+    "events": "Event Recorder",
+    "social": "Social Analytics",
+    "benchmark": "Avatar Benchmark",
+    "fbt": "FBT Monitor",
+    "rules": "Automation Rules"
   },
   "profile": {
     "title": "My Profile",
