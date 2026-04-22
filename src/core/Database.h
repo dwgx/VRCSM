@@ -119,6 +119,7 @@ public:
     struct AvatarSeenInsert
     {
         std::string avatar_id;
+        std::optional<std::string> release_status;
         std::optional<std::string> avatar_name;
         std::optional<std::string> author_name;
         std::optional<std::string> first_seen_on;  // wearer display name

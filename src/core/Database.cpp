@@ -963,10 +963,15 @@ Result<std::monostate> Database::RecordAvatarSeen(const AvatarSeenInsert& a)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    // Use UPSERT so repeated sightings refresh release_status when we later
+    // learn it's public (logs give us name-only sightings; pipeline/API give IDs)
     const char* sql =
-        "INSERT OR IGNORE INTO avatar_history ("
-        "avatar_id, avatar_name, author_name, first_seen_on, first_seen_at"
-        ") VALUES (?, ?, ?, ?, ?);";
+        "INSERT INTO avatar_history ("
+        "avatar_id, avatar_name, author_name, first_seen_on, first_seen_at, release_status"
+        ") VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(avatar_id) DO UPDATE SET "
+        "release_status = COALESCE(excluded.release_status, release_status), "
+        "avatar_name = COALESCE(excluded.avatar_name, avatar_name);";
 
     return RunOnce(sql, [this, &a](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
@@ -974,7 +979,8 @@ Result<std::monostate> Database::RecordAvatarSeen(const AvatarSeenInsert& a)
             BindOptionalText(stmt, 2, a.avatar_name) != SQLITE_OK ||
             BindOptionalText(stmt, 3, a.author_name) != SQLITE_OK ||
             BindOptionalText(stmt, 4, a.first_seen_on) != SQLITE_OK ||
-            BindText(stmt, 5, a.first_seen_at) != SQLITE_OK)
+            BindText(stmt, 5, a.first_seen_at) != SQLITE_OK ||
+            BindOptionalText(stmt, 6, a.release_status) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }
@@ -996,7 +1002,7 @@ Result<nlohmann::json> Database::RecentAvatarHistory(int limit, int offset)
     }
 
     const char* sql =
-        "SELECT avatar_id, avatar_name, author_name, first_seen_on, first_seen_at "
+        "SELECT avatar_id, avatar_name, author_name, first_seen_on, first_seen_at, release_status "
         "FROM avatar_history "
         "ORDER BY first_seen_at DESC "
         "LIMIT ? OFFSET ?;";
@@ -1023,6 +1029,7 @@ Result<nlohmann::json> Database::RecentAvatarHistory(int limit, int offset)
         row["author_name"] = ColumnTextOrNull(rawStmt, 2);
         row["first_seen_on"] = ColumnTextOrNull(rawStmt, 3);
         row["first_seen_at"] = ColumnTextOrNull(rawStmt, 4);
+        row["release_status"] = ColumnTextOrNull(rawStmt, 5);
         rows.push_back(std::move(row));
     }
 
@@ -2215,6 +2222,19 @@ ALTER TABLE friend_log ADD COLUMN display_name TEXT;
     }
 
     if (const auto r = ExecSimple("PRAGMA user_version = 7;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v8: add release_status to avatar_history ─────────
+    {
+        // ALTER TABLE is a no-op if column already exists; ignore error
+        sqlite3_exec(m_db, "ALTER TABLE avatar_history ADD COLUMN release_status TEXT;",
+                     nullptr, nullptr, nullptr);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 8;"); std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
         return std::get<Error>(r);
