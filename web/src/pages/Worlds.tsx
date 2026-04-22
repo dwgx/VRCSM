@@ -529,6 +529,9 @@ function Worlds() {
   const logs = report?.logs ?? null;
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [remoteQuery, setRemoteQuery] = useState("");
+  const [remoteResults, setRemoteResults] = useState<Array<{ id: string; name: string; authorName: string; thumbnailImageUrl: string; occupants: number; capacity: number; favorites: number }>>([]);
+  const [remoteSearching, setRemoteSearching] = useState(false);
   const [showInspector, setShowInspector] = useUiPrefBoolean("vrcsm.layout.worlds.inspector.visible", true);
   const [dbVisits, setDbVisits] = useState<DbWorldVisit[]>([]);
   const [dbPlayerEvents, setDbPlayerEvents] = useState<DbPlayerEvent[]>([]);
@@ -685,11 +688,36 @@ function Worlds() {
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
           <Input
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => { setFilter(e.target.value); setRemoteQuery(e.target.value); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && remoteQuery.trim()) {
+                setRemoteSearching(true);
+                ipc.worldsSearch(remoteQuery.trim())
+                  .then((r) => setRemoteResults(r.worlds))
+                  .catch(() => toast.error("Search failed"))
+                  .finally(() => setRemoteSearching(false));
+              }
+            }}
             placeholder={t("worlds.filterPlaceholder")}
             className="h-7 pl-7 text-[12px]"
           />
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={remoteSearching || !filter.trim()}
+          onClick={() => {
+            if (!filter.trim()) return;
+            setRemoteSearching(true);
+            ipc.worldsSearch(filter.trim())
+              .then((r) => setRemoteResults(r.worlds))
+              .catch(() => toast.error("Search failed"))
+              .finally(() => setRemoteSearching(false));
+          }}
+        >
+          <Globe2 className="size-3" />
+          {t("worlds.searchVrc", { defaultValue: "Search VRChat" })}
+        </Button>
       </div>
       <div className="scrollbar-thin flex-1 overflow-y-auto p-3">
         {filtered.length === 0 ? (
@@ -711,6 +739,40 @@ function Worlds() {
                 }
               />
             ))}
+          </div>
+        )}
+        {remoteResults.length > 0 && (
+          <div className="border-t border-[hsl(var(--border))] p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-2">
+              {t("worlds.searchResults", { defaultValue: "VRChat Search Results" })}
+              <Badge variant="secondary" className="ml-2">{remoteResults.length}</Badge>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {remoteResults.map((w) => (
+                <button
+                  key={w.id}
+                  onClick={() => setSelectedId(w.id)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-[var(--radius-sm)] p-2 text-left border border-transparent transition-colors",
+                    selected === w.id
+                      ? "bg-[hsl(var(--primary)/0.20)] border-[hsl(var(--primary)/0.55)]"
+                      : "hover:bg-[hsl(var(--surface-raised))]",
+                  )}
+                >
+                  {w.thumbnailImageUrl ? (
+                    <img src={w.thumbnailImageUrl} alt="" className="w-10 h-10 rounded object-cover shrink-0" loading="lazy" />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-[hsl(var(--muted))] shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] font-medium truncate">{w.name}</div>
+                    <div className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {w.authorName} · <Users className="inline size-2.5" /> {w.occupants}/{w.capacity}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

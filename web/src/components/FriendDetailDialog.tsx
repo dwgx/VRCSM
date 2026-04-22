@@ -17,6 +17,7 @@ import {
   Send,
   Users,
   MapPin,
+  UserMinus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -566,6 +567,23 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                   </Button>
                 </div>
               )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] gap-1.5 text-orange-400 border-orange-400/40 hover:bg-orange-400/10"
+                onClick={async () => {
+                  try {
+                    await ipc.friendsUnfriend(friend!.id);
+                    toast.success(t("friendDetail.unfriended", { defaultValue: "Unfriended {{name}}", name: friend?.displayName }));
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : String(e));
+                  }
+                }}
+              >
+                <UserMinus className="size-3.5" />
+                {t("friendDetail.unfriend", { defaultValue: "Unfriend" })}
+              </Button>
 
               <Button
                 variant="outline"
