@@ -117,6 +117,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "auth.verify2FA",
         "friends.list",
         "groups.list",
+        "groups.setRepresented",
         "moderations.list",
         "calendar.list",
         "calendar.discover",
@@ -589,6 +590,7 @@ void IpcBridge::RegisterHandlers()
     });
     m_handlers.emplace("friends.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsList(p, id); });
     m_handlers.emplace("groups.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGroupsList(p, id); });
+    m_handlers.emplace("groups.setRepresented", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGroupsSetRepresented(p, id); });
     m_handlers.emplace("hw.applyPreset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwApplyPreset(p, id); });
     m_handlers.emplace("hw.detect", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwDetect(p, id); });
     m_handlers.emplace("hw.recommend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwRecommend(p, id); });

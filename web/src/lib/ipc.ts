@@ -1007,6 +1007,16 @@ class IpcClient {
     return this.call<{ userId: string }, { ok: boolean }>("friends.request", { userId });
   }
 
+  // Toggle which VRChat group the signed-in user currently represents.
+  // Passing isRepresenting=true on any group auto-unsets the previous
+  // one server-side; passing false on the current group clears it.
+  async groupsSetRepresented(groupId: string, isRepresenting: boolean) {
+    return this.call<{ groupId: string; isRepresenting: boolean }, { ok: boolean }>(
+      "groups.setRepresented",
+      { groupId, isRepresenting },
+    );
+  }
+
   async scan(): Promise<Report> {
     return this.call<undefined, Report>("scan");
   }

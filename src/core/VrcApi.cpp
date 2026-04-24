@@ -2170,4 +2170,33 @@ Result<nlohmann::json> VrcApi::sendFriendRequest(const std::string& userId)
     return nlohmann::json{{"ok", true}};
 }
 
+Result<nlohmann::json> VrcApi::setGroupRepresentation(
+    const std::string& groupId, bool isRepresenting)
+{
+    if (groupId.empty())
+        return Error{"invalid_argument", "Empty group id", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const auto path = toWide(fmt::format("/api/1/groups/{}/representation", groupId));
+    const nlohmann::json body = {{"isRepresenting", isRepresenting}};
+    const auto response = httpRequest(L"PUT", kApiHostW, path, headers, body.dump());
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("/groups/{}/representation returned HTTP {}", groupId, response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
 } // namespace vrcsm::core

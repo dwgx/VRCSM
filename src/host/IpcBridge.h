@@ -90,6 +90,7 @@ private:
     nlohmann::json HandleAvatarPreviewRequest(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleGroupsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleGroupsSetRepresented(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwApplyPreset(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwDetect(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwRecommend(const nlohmann::json& params, const std::optional<std::string>& id);

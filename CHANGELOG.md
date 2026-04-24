@@ -6,6 +6,115 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [0.13.0] — 2026-04-24
+
+v0.13 is a perf + UX pass focused on one complaint: "every page looks
+empty for too long before images show up." Three batches land together.
+
+### Image pipeline
+
+- **Host-side screenshot thumbnails (WIC).** A new
+  `src/host/ScreenshotThumbs.{h,cpp}` decodes each VRChat screenshot
+  (typically 2560×1440 PNG, 2–8 MB) through Windows Imaging Component,
+  scales it to 360-px-long-edge at ImageQualityFant, and re-encodes JPEG
+  at 85 % quality — yielding ~25–50 KB thumbnails that cache to
+  `%LocalAppData%\VRCSM\screenshot-thumbs\{hash}_{size}.jpg`. Hash keys
+  include path + mtime + size, so editing or replacing a photo
+  transparently invalidates. A tiny 2-worker pool runs generation off
+  the UI thread; the pool dedupes concurrent requests for the same key.
+- **`screenshot-thumbs.local` virtual host.** `WebViewHost` now maps a
+  fourth virtual host at the thumb cache directory so tiles can
+  `<img src="https://screenshot-thumbs.local/{hash}_360.jpg">` with no
+  IPC. Cache misses 404 naturally and the frontend falls back to the
+  original-resolution URL.
+- **`screenshots.list` returns `thumb_url`.** Every entry in the
+  response now carries both the full URL and the thumb URL; the grid
+  uses thumb first, full as fallback. Batch generation is kicked off as
+  a non-blocking side effect of the list query. First paint of the
+  Screenshots page goes from "wait for N × 3 MB PNGs" to "see N × 30 KB
+  JPEGs", about 10–20× faster after the cache warms.
+- **Screenshot grid uses `fetchPriority`.** Above-fold tiles (first 16)
+  render eagerly with `fetchPriority="high"`; everything else waits on
+  IntersectionObserver with a 200 px rootMargin so pages of 2000
+  screenshots don't preload all at once.
+
+### Placeholder + lazy-loading polish
+
+- **`ThumbImage` unified renderer.** New component at
+  `web/src/components/ThumbImage.tsx`. Every image slot — avatar cards,
+  event banners, group icons, Seen Avatars — now paints a deterministic
+  HSL gradient + 2-letter initials placeholder on the first frame, then
+  fades in the real image. The gradient is seeded by a stable identifier
+  (avatar id, world id, group id), so the same avatar always gets the
+  same colour across reloads — free visual recognition.
+- **`lib/placeholder.ts`.** FNV-1a-64 → hue pair + saturation + two
+  lightness stops. Also exports an `initials(…)` helper that strips
+  `avtr_` / `wrld_` / `usr_` prefixes so the displayed letters come
+  from something the user can actually remember.
+- **My Avatars now shows placeholder tiles.** Previously the list was
+  just text rows — the "benchmark looks empty" complaint. Each row now
+  carries a `ThumbImage` with the avatar's identifier as seed, keeping
+  visual weight consistent with the Seen tab.
+- **Seen Avatars enrichment goes through a throttle.** `lib/api-throttle.ts`
+  adds a 40-line home-rolled concurrency + rate limiter (3 parallel,
+  5 req/s) so a 50-row list doesn't fan out to 50 simultaneous
+  `avatar.details` calls and trip VRChat's 429.
+
+### Navigation + data freshness
+
+- **Calendar / Jams / Groups prefetch on auth.** `AppContent` fires
+  `queryClient.prefetchQuery` for `calendar.discover`, `calendar.featured`,
+  `jams.list`, and `groups.list` as soon as the auth context flips
+  `authed = true`. First click on any of those nav entries now renders
+  instantly from cache instead of waiting 1–3 s for the VRChat API.
+- **`FriendLog` rewritten on `useInfiniteQuery`.** Previously every
+  mount re-fired both `db.playerEvents.list` and `friendLog.recent`
+  even though the same DB state was 10 s stale. Now first page is
+  cached for 5 min, pagination appends to the cached result, and
+  "Clear History" invalidates both keys cleanly.
+- **Groups representation toggle.** New `groups.setRepresented` IPC
+  (`PUT /api/1/groups/{id}/representation` with `{isRepresenting}` body
+  — verified against the VRChat API reference). Each group card now
+  shows `Represent` / `Stop representing` with optimistic UI and a
+  background refetch to reconcile.
+
+### Screenshot grid, Calendar, Groups UX
+
+- **Screenshots**: React Query owns the list so tab-switching back is
+  instant. Delete is optimistic (client patch + background refetch).
+  Above-fold tiles paint immediately; below-fold ones wait on
+  IntersectionObserver. Skeleton grid replaces the "Loading…" text.
+- **Calendar**: each event card shows host/group/attending metadata
+  and falls back to a gradient banner when VRChat has no `imageUrl`.
+  "Open in VRChat" jumps to the specific event URL when an id is present.
+  Tab counters + skeleton placeholders added. Jams cards render state
+  badge + thumbnail.
+- **Groups**: represent toggle as described above; banner + icon both
+  use `ThumbImage` so non-banner-havers get a gradient instead of a
+  flat grey rectangle.
+
+### Startup
+
+- **Inline splash animation.** `index.html` now carries a 4 KB inline
+  SVG-based loader with two counter-rotating dashed rings, a pulsing
+  "V" glyph, and caption text. It paints before the JS bundle
+  evaluates; `main.tsx` fades it out after the first React render
+  (minimum 650 ms on screen to avoid strobing on fast hardware). Uses
+  `data-splash-done` attribute on `<html>` to trigger the CSS
+  transition, then removes itself on `transitionend`.
+
+### Self-test
+
+- **`web/src/__tests__/pages-smoke.test.tsx`.** Vitest + jsdom smoke
+  suite that renders all main routes through the real App router under
+  the browser-only mock IPC path. Stubs IntersectionObserver,
+  ResizeObserver, matchMedia. 22 cases, runs in ~2 s. Scripts:
+  `pnpm --prefix web test:smoke` for the smoke subset,
+  `pnpm --prefix web test` for the full 78-case suite (existing unit
+  tests + new smoke suite). Goal: next time frontend routes regress,
+  the first 2 s of `pnpm test` catches it — no need to hand a build
+  over for clicking through.
+
 ## [0.10.0] — 2026-04-21
 
 v0.10 locks the real-time event story. Three batches of work land together:

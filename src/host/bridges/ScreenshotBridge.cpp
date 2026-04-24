@@ -2,6 +2,7 @@
 #include "BridgeCommon.h"
 
 #include "../../core/Common.h"
+#include "../ScreenshotThumbs.h"
 #include "../VrchatPaths.h"
 
 #include <KnownFolders.h>
@@ -116,6 +117,14 @@ nlohmann::json IpcBridge::HandleScreenshotsList(const nlohmann::json&, const std
         entries.resize(2000);
     }
 
+    // Target size for grid-tile thumbnails. 360 px long-edge comfortably
+    // covers the ~200 px CSS tile at up to ~1.8× device-pixel ratio;
+    // resulting JPEGs are typically 25-50 KB, vs 3-8 MB PNG originals.
+    constexpr int kThumbMaxEdge = 360;
+
+    std::vector<std::filesystem::path> thumbSources;
+    thumbSources.reserve(entries.size());
+
     for (const auto& entry : entries)
     {
         const auto sysTime = std::chrono::clock_cast<std::chrono::system_clock>(entry.mtime);
@@ -141,14 +150,29 @@ nlohmann::json IpcBridge::HandleScreenshotsList(const nlohmann::json&, const std
             urlPath = UrlEncodeSegment(WideToUtf8(entry.path.filename().wstring()));
         }
 
+        // Thumbnail URL resolves to the same cache file we will populate
+        // in the background below. If the cache hasn't caught up when
+        // the frontend asks for it, WebView2 returns 404 and the tile's
+        // onError fallback swaps to the full-size URL.
+        const auto thumbName = vrcsm::host::ScreenshotThumbs::CacheFileName(
+            entry.path, kThumbMaxEdge);
+
         screenshots.push_back({
             {"path", WideToUtf8(entry.path.wstring())},
             {"filename", WideToUtf8(entry.path.filename().wstring())},
             {"created_at", isoBuf},
             {"size_bytes", static_cast<std::uint64_t>(entry.size)},
             {"url", fmt::format("https://screenshots.local/{}", urlPath)},
+            {"thumb_url", fmt::format("https://screenshot-thumbs.local/{}", thumbName)},
         });
+
+        thumbSources.push_back(entry.path);
     }
+
+    // Kick off background thumbnail generation. Non-blocking — the
+    // response returns immediately and the cache fills in over the
+    // next ~seconds-to-minutes depending on library size.
+    vrcsm::host::ScreenshotThumbs::EnqueueBatch(thumbSources, kThumbMaxEdge);
 
     return nlohmann::json{
         {"screenshots", std::move(screenshots)},

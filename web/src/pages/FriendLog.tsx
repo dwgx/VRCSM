@@ -2,6 +2,7 @@ import { ipc } from "@/lib/ipc";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Clock,
   Edit3,
@@ -42,6 +43,10 @@ interface SocialEvent {
   old_value: string | null;
   new_value: string | null;
   occurred_at: string | null;
+}
+
+interface Page<T> {
+  items: T[];
 }
 
 type FeedTab = "session" | "social";
@@ -338,82 +343,69 @@ function SocialEventRow({ event }: { event: SocialEvent }) {
 
 export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
-  const [socialEvents, setSocialEvents] = useState<SocialEvent[]>([]);
   const [tab, setTab] = useState<FeedTab>("session");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 180);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [sessionOffset, setSessionOffset] = useState(0);
-  const [socialOffset, setSocialOffset] = useState(0);
-  const [sessionHasMore, setSessionHasMore] = useState(true);
-  const [socialHasMore, setSocialHasMore] = useState(true);
   const [clearingHistory, setClearingHistory] = useState(false);
   const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
 
-  const load = useCallback(async (reset = false, targetTab?: FeedTab) => {
-    const nextTab = targetTab ?? tab;
-    if (reset) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+  // React Query with infinite pagination — TanStack owns offsets, dedup, and
+  // (critically) keeps the first-page data hot across page navigations so
+  // re-entering /radar doesn't re-fetch. Matches the rest of the app's
+  // staleTime convention.
+  const sessionQuery = useInfiniteQuery<Page<SessionEvent>>({
+    queryKey: ["db.playerEvents.list", pageSize],
+    queryFn: ({ pageParam }) => ipc.dbPlayerEvents(pageSize, (pageParam as number) ?? 0),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => {
+      if (lastPage.items.length < pageSize) return undefined;
+      return pages.reduce((acc, p) => acc + p.items.length, 0);
+    },
+    staleTime: 5 * 60_000,
+  });
 
-    try {
-      if (nextTab === "session") {
-        const offset = reset ? 0 : sessionOffset;
-        const result = await ipc.dbPlayerEvents(pageSize, offset);
-        const items = result.items as SessionEvent[];
-        setSessionEvents((prev) => reset ? items : [...prev, ...items]);
-        setSessionOffset((prev) => reset ? items.length : prev + items.length);
-        setSessionHasMore(items.length >= pageSize);
-      } else {
-        const offset = reset ? 0 : socialOffset;
-        const result = await ipc.friendLogRecent(pageSize, offset);
-        const items = result.items as SocialEvent[];
-        setSocialEvents((prev) => reset ? items : [...prev, ...items]);
-        setSocialOffset((prev) => reset ? items.length : prev + items.length);
-        setSocialHasMore(items.length >= pageSize);
-      }
-    } catch (e) {
-      toast.error(
-        t("friendLog.loadFailed", {
-          error: e instanceof Error ? e.message : String(e),
-        }),
-      );
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [sessionOffset, socialOffset, t, tab]);
+  const socialQuery = useInfiniteQuery<Page<SocialEvent>>({
+    queryKey: ["friendLog.recent", pageSize],
+    queryFn: ({ pageParam }) => ipc.friendLogRecent(pageSize, (pageParam as number) ?? 0),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => {
+      if (lastPage.items.length < pageSize) return undefined;
+      return pages.reduce((acc, p) => acc + p.items.length, 0);
+    },
+    staleTime: 5 * 60_000,
+  });
 
-  useEffect(() => {
-    void load(true, "session");
-    void load(true, "social");
-  }, [load]);
+  const sessionEvents = useMemo(
+    () => sessionQuery.data?.pages.flatMap((p) => p.items) ?? [],
+    [sessionQuery.data],
+  );
+  const socialEvents = useMemo(
+    () => socialQuery.data?.pages.flatMap((p) => p.items) ?? [],
+    [socialQuery.data],
+  );
 
-  useEffect(() => {
-    setSessionEvents([]);
-    setSocialEvents([]);
-    setSessionOffset(0);
-    setSocialOffset(0);
-    void load(true, tab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSize]);
+  const loading = (tab === "session" ? sessionQuery.isPending : socialQuery.isPending)
+    && (tab === "session" ? sessionEvents : socialEvents).length === 0;
+  const loadingMore = tab === "session"
+    ? sessionQuery.isFetchingNextPage
+    : socialQuery.isFetchingNextPage;
+  const canLoadMore = tab === "session"
+    ? Boolean(sessionQuery.hasNextPage)
+    : Boolean(socialQuery.hasNextPage);
+
+  function refresh() {
+    void sessionQuery.refetch();
+    void socialQuery.refetch();
+  }
 
   async function handleClearHistory() {
     setClearingHistory(true);
     try {
       await ipc.dbHistoryClear(false);
-      setSessionEvents([]);
-      setSocialEvents([]);
-      setSessionOffset(0);
-      setSocialOffset(0);
-      setSessionHasMore(false);
-      setSocialHasMore(false);
-      await Promise.all([load(true, "session"), load(true, "social")]);
+      await queryClient.invalidateQueries({ queryKey: ["db.playerEvents.list"] });
+      await queryClient.invalidateQueries({ queryKey: ["friendLog.recent"] });
       toast.success(t("friendLog.clearHistorySuccess", {
         defaultValue: "History cleared. Friend notes were kept.",
       }));
@@ -460,9 +452,6 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
     return set.size;
   }, [sessionEvents]);
 
-  const activeItems = tab === "session" ? filteredSession : filteredSocial;
-  const canLoadMore = tab === "session" ? sessionHasMore : socialHasMore;
-
   return (
     <div className={cn("space-y-4", !embedded && "animate-fade-in")}>
       {embedded ? null : (
@@ -480,10 +469,7 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
             size="sm"
             className="h-8 gap-1.5 text-[12px]"
             disabled={loading}
-            onClick={() => {
-              void load(true, "session");
-              void load(true, "social");
-            }}
+            onClick={refresh}
           >
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
             {t("common.refresh")}
@@ -517,10 +503,7 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
               size="sm"
               className="h-8 gap-1.5 text-[12px]"
               disabled={loading}
-              onClick={() => {
-                void load(true, "session");
-                void load(true, "social");
-              }}
+              onClick={refresh}
             >
               <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
               {t("common.refresh")}
@@ -638,12 +621,12 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="mt-3 space-y-3">
-          {loading && activeItems.length === 0 ? (
+          {loading ? (
             <div className="flex items-center justify-center py-12 text-[hsl(var(--muted-foreground))]">
               <Loader2 className="mr-2 size-5 animate-spin" />
               <span className="text-sm">{t("common.loading")}</span>
             </div>
-          ) : activeItems.length === 0 ? (
+          ) : (tab === "session" ? filteredSession : filteredSocial).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-[hsl(var(--muted-foreground))]">
               <Clock className="mb-2 size-8 opacity-40" />
               <span className="text-sm">
@@ -671,7 +654,10 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
                     size="sm"
                     className="h-7 text-[11px]"
                     disabled={loadingMore}
-                    onClick={() => void load(false, tab)}
+                    onClick={() => {
+                      if (tab === "session") void sessionQuery.fetchNextPage();
+                      else void socialQuery.fetchNextPage();
+                    }}
                   >
                     {loadingMore ? (
                       <Loader2 className="mr-1 size-3 animate-spin" />
