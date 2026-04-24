@@ -7,8 +7,9 @@ import { ipc } from "@/lib/ipc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock } from "lucide-react";
+import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock, User } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
+import { useThumbnail, prefetchThumbnails } from "@/lib/thumbnails";
 
 interface AvatarItem {
   avatar_id: string;
@@ -61,12 +62,20 @@ export default function AvatarBenchmark() {
   }, [avatars]);
 
   const seenQuery = useQuery({
-    queryKey: ["db.avatarHistory.list", 200],
-    queryFn: () => ipc.dbAvatarHistory(200, 0),
-    staleTime: 60_000,
+    queryKey: ["db.avatarHistory.list", 500],
+    queryFn: () => ipc.dbAvatarHistory(500, 0),
+    staleTime: 5 * 60_000,
     enabled: tab === "seen",
   });
   const seenAvatars = (seenQuery.data?.items ?? []) as SeenAvatar[];
+
+  // Prefetch thumbnails for seen avatars
+  useMemo(() => {
+    if (seenAvatars.length > 0) {
+      const ids = seenAvatars.filter(a => a.avatar_id.startsWith("avtr_")).map(a => a.avatar_id);
+      if (ids.length > 0) prefetchThumbnails(ids);
+    }
+  }, [seenAvatars]);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
@@ -211,6 +220,7 @@ export default function AvatarBenchmark() {
               const isPrivate = hasRealId && a.release_status && a.release_status !== "public";
               return (
                 <div key={a.avatar_id} className="flex items-center gap-2 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
+                  <SeenAvatarThumb avatarId={a.avatar_id} />
                   <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium truncate">{a.avatar_name || a.avatar_id}</span>
@@ -260,6 +270,21 @@ export default function AvatarBenchmark() {
             })}
           </CardContent>
         </Card>
+      )}
+    </div>
+  );
+}
+
+function SeenAvatarThumb({ avatarId }: { avatarId: string }) {
+  const { url } = useThumbnail(avatarId);
+  return (
+    <div className="size-8 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
+      {url ? (
+        <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <User className="size-3.5 text-[hsl(var(--muted-foreground)/0.4)]" />
+        </div>
       )}
     </div>
   );
