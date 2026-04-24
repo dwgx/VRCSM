@@ -274,7 +274,7 @@ function AvatarInspector({
           {(() => {
             if (prefer3D && can3D) {
               return (
-                <div className="relative">
+                <div className="relative" style={{ width: 220 }}>
                   <AvatarPreview3D
                     avatarId={selected.avatar_id}
                     assetUrl={windowsAssetUrl}
