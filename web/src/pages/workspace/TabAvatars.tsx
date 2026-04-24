@@ -329,7 +329,7 @@ function AvatarDownloadSection() {
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 pb-0">
-        <ScrollArea className="max-h-[340px]">
+        <div className="max-h-[340px] overflow-y-auto">
           <div className="flex flex-col gap-px px-2 pb-2">
             {downloadables.map((item) => {
               const isDownloading = downloadingId === item.avatar_id;
@@ -369,7 +369,7 @@ function AvatarDownloadSection() {
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );

@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { ipc } from "@/lib/ipc";
 import { useReport } from "@/lib/report-context";
 import type {
@@ -70,7 +71,7 @@ function formatIsoTime(iso: string | null): string {
   if (!iso) return "\u2014";
   const m = iso.match(/^(\d{4})\.(\d{2})\.(\d{2}) (\d{2}:\d{2}:\d{2})$/);
   if (!m) return iso;
-  return `${m[2]}-${m[3]} ${m[4]}`;
+  return `${m[1]}-${m[2]}-${m[3]} ${m[4]}`;
 }
 
 function formatTimeOnly(iso: string | null): string {
@@ -778,16 +779,20 @@ function Logs() {
                       title={ev.meta ?? undefined}
                     >
                       <div className="flex items-center gap-2">
-                        <span
-                          className={[
-                            "truncate text-[12px] font-medium",
-                            isLeft
-                              ? "text-[hsl(var(--muted-foreground))]"
-                              : "text-[hsl(var(--foreground))]",
-                          ].join(" ")}
-                        >
-                          {ev.title}
-                        </span>
+                        {ev.meta?.startsWith("usr_") ? (
+                          <UserPopupBadge userId={ev.meta} displayName={ev.title} />
+                        ) : (
+                          <span
+                            className={[
+                              "truncate text-[12px] font-medium",
+                              isLeft
+                                ? "text-[hsl(var(--muted-foreground))]"
+                                : "text-[hsl(var(--foreground))]",
+                            ].join(" ")}
+                          >
+                            {ev.title}
+                          </span>
+                        )}
 
                         {/* Action verb badge */}
                         {isJoin ? (

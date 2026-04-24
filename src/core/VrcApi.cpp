@@ -1232,12 +1232,30 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchFriends(bool offline)
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchGroups()
 {
+    // Resolve the authenticated user's id so we can call the correct
+    // VRChat API endpoint.  The old `/api/1/auth/user/groups` path
+    // does not return group memberships; the right one is
+    // `/api/1/users/{userId}/groups`.
+    const auto currentUser = fetchCurrentUser();
+    if (!isOk(currentUser))
+    {
+        return std::get<Error>(currentUser);
+    }
+    const auto& userDoc = value(currentUser);
+    const auto idIt = userDoc.find("id");
+    if (idIt == userDoc.end() || !idIt->is_string())
+    {
+        return Error{"api_error", "Current user has no id field", 0};
+    }
+    const std::string userId = idIt->get<std::string>();
+
     return fetchPagedAuthedArray(
-        "/auth/user/groups",
-        [](int limit, int offset)
+        "/users/{id}/groups",
+        [&userId](int limit, int offset)
         {
             return toWide(fmt::format(
-                "/api/1/auth/user/groups?n={}&offset={}",
+                "/api/1/users/{}/groups?n={}&offset={}",
+                userId,
                 limit,
                 offset));
         });
@@ -1515,8 +1533,8 @@ Result<nlohmann::json> VrcApi::searchAvatars(
     }
 
     const auto path = toWide(fmt::format(
-        "/api/1/avatars?apiKey={}&releaseStatus=public&sort=popularity"
-        "&order=descending&n={}&offset={}&search={}",
+        "/api/1/avatars?apiKey={}&releaseStatus=public&sort=relevance"
+        "&order=descending&marketplace=all&n={}&offset={}&search={}",
         kApiKey, std::clamp(count, 1, 100), std::max(offset, 0), encoded));
 
     const auto response = httpGet(kApiHostW, path, cookieHeader);
@@ -1997,7 +2015,7 @@ Result<nlohmann::json> VrcApi::sendUserMessage(
 
     const auto response = httpRequest(
         L"POST", kApiHostW,
-        toWide(fmt::format("/api/1/message/{}/message?apiKey={}",
+        toWide(fmt::format("/api/1/user/{}/message?apiKey={}",
                            targetUserId, kApiKey)),
         headers, body, false);
 

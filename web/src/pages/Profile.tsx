@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { BadgeCheck, Calendar, Globe2, Languages, LogIn, RefreshCcw, ShieldCheck, Shirt, Sword, Users, LibraryBig, Orbit } from "lucide-react";
+import { BadgeCheck, Calendar, ExternalLink, Gamepad2, Globe2, Glasses, KeyRound, Languages, Link2, LogIn, Mail, Monitor, RefreshCcw, Shield, ShieldCheck, Shirt, Sword, Users, LibraryBig, Orbit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileCard, type VrcUserProfile, type VrcStatus } from "@/components/ProfileCard";
@@ -96,6 +96,197 @@ function ProfileStatsStrip({ profile }: { profile: VrcUserProfile }) {
             (item.highlight
               ? "border-[hsl(var(--primary)/0.4)] bg-[hsl(var(--primary)/0.05)]"
               : "border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))]")
+          }
+        >
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+            <item.icon className="size-3.5" />
+            {item.label}
+          </div>
+          <div className="mt-0.5 truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
+            {item.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LinkedAccountsCard({ profile }: { profile: VrcUserProfile }) {
+  const { t } = useTranslation();
+
+  const accounts: Array<{
+    name: string;
+    Icon: typeof Globe2;
+    linked: boolean;
+    id?: string;
+  }> = [
+    { name: "Steam", Icon: Gamepad2, linked: Boolean(profile.steamId), id: profile.steamId },
+    { name: "Oculus", Icon: Glasses, linked: Boolean(profile.oculusId), id: profile.oculusId },
+    { name: "Viveport", Icon: Monitor, linked: Boolean(profile.viveId), id: profile.viveId },
+    { name: "Pico", Icon: Glasses, linked: Boolean(profile.picoId), id: profile.picoId },
+    { name: "Google", Icon: Mail, linked: Boolean(profile.googleId), id: profile.googleId },
+  ];
+
+  const hasAnyField = profile.steamId !== undefined
+    || profile.oculusId !== undefined
+    || profile.googleId !== undefined
+    || profile.picoId !== undefined
+    || profile.viveId !== undefined
+    || profile.hasEmail !== undefined;
+
+  if (!hasAnyField) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Link2 className="size-4" />
+          {t("profile.linkedAccounts", { defaultValue: "Linked Accounts" })}
+        </CardTitle>
+        <CardDescription>
+          {t("profile.linkedAccountsDesc", {
+            defaultValue: "Bound platforms and identity fields from the VRChat login session, displayed natively.",
+          })}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {accounts.map((acc) => (
+          <div
+            key={acc.name}
+            className={
+              "flex items-center gap-3 rounded-[var(--radius-md)] border px-3 py-2.5 " +
+              (acc.linked
+                ? "border-[hsl(var(--success)/0.4)] bg-[hsl(var(--success)/0.05)]"
+                : "border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))]")
+            }
+          >
+            <acc.Icon className="size-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-medium text-[hsl(var(--foreground))]">
+                {acc.name}
+              </div>
+              {acc.linked ? (
+                <div className="truncate text-[10px] font-mono text-[hsl(var(--muted-foreground))]">
+                  {acc.id}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="text-[10px] text-[hsl(var(--primary))] hover:underline"
+                  onClick={() => void ipc.call("shell.openUrl", { url: "https://vrchat.com/home/profile" })}
+                >
+                  {t("profile.notLinked", { defaultValue: "Not linked" })} →
+                </button>
+              )}
+            </div>
+            <div
+              className={
+                "size-2 shrink-0 rounded-full " +
+                (acc.linked ? "bg-[hsl(var(--success))]" : "bg-[hsl(var(--muted-foreground)/0.3)]")
+              }
+            />
+          </div>
+        ))}
+
+        {/* Email row */}
+        {profile.hasEmail !== undefined && (
+          <div
+            className={
+              "flex items-center gap-3 rounded-[var(--radius-md)] border px-3 py-2.5 " +
+              (profile.hasEmail
+                ? "border-[hsl(var(--success)/0.4)] bg-[hsl(var(--success)/0.05)]"
+                : "border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))]")
+            }
+          >
+            <Mail className="size-4 text-[hsl(var(--muted-foreground))]" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-medium text-[hsl(var(--foreground))]">Email</div>
+              <div className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                {profile.hasEmail
+                  ? profile.emailVerified
+                    ? t("profile.emailVerified", { defaultValue: "Verified" })
+                    : t("profile.emailUnverified", { defaultValue: "Set but unverified" })
+                  : t("profile.notLinked", { defaultValue: "Not linked" })}
+              </div>
+            </div>
+            <div
+              className={
+                "size-2 shrink-0 rounded-full " +
+                (profile.hasEmail ? "bg-[hsl(var(--success))]" : "bg-[hsl(var(--muted-foreground)/0.3)]")
+              }
+            />
+          </div>
+        )}
+      </CardContent>
+      <div className="border-t border-[hsl(var(--border)/0.4)] px-4 py-2.5">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void ipc.call("shell.openUrl", { url: "https://vrchat.com/home/profile" })}
+          className="gap-1.5 text-[11px]"
+        >
+          <ExternalLink className="size-3" />
+          {t("profile.manageOnVrchat", { defaultValue: "Manage on vrchat.com" })}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function AccountSecurityCard({ profile }: { profile: VrcUserProfile }) {
+  const { t } = useTranslation();
+
+  if (profile.twoFactorAuthEnabled === undefined && profile.allowAvatarCopying === undefined) {
+    return null;
+  }
+
+  const items: Array<{ icon: typeof Shield; label: string; value: string; good: boolean }> = [];
+
+  if (profile.twoFactorAuthEnabled !== undefined) {
+    items.push({
+      icon: KeyRound,
+      label: t("profile.security.twoFactor", { defaultValue: "Two-Factor Auth" }),
+      value: profile.twoFactorAuthEnabled
+        ? t("common.enabled", { defaultValue: "Enabled" })
+        : t("common.disabled", { defaultValue: "Disabled" }),
+      good: profile.twoFactorAuthEnabled,
+    });
+  }
+
+  if (profile.allowAvatarCopying !== undefined) {
+    items.push({
+      icon: Shield,
+      label: t("profile.security.avatarCopying", { defaultValue: "Avatar Cloning" }),
+      value: profile.allowAvatarCopying
+        ? t("common.allowed", { defaultValue: "Allowed" })
+        : t("common.blocked", { defaultValue: "Blocked" }),
+      good: !profile.allowAvatarCopying,
+    });
+  }
+
+  if (profile.hasLoggedInFromClient !== undefined) {
+    items.push({
+      icon: Globe2,
+      label: t("profile.security.clientLogin", { defaultValue: "Game Client Login" }),
+      value: profile.hasLoggedInFromClient
+        ? t("common.yes", { defaultValue: "Yes" })
+        : t("common.no", { defaultValue: "No" }),
+      good: profile.hasLoggedInFromClient,
+    });
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((item, i) => (
+        <div
+          key={i}
+          className={
+            "rounded-[var(--radius-md)] border px-3 py-2 " +
+            (item.good
+              ? "border-[hsl(var(--success)/0.3)] bg-[hsl(var(--success)/0.04)]"
+              : "border-[hsl(var(--warning)/0.3)] bg-[hsl(var(--warning)/0.04)]")
           }
         >
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
@@ -307,6 +498,8 @@ export default function Profile() {
           />
 
           <ProfileStatsStrip profile={profile} />
+          <AccountSecurityCard profile={profile} />
+          <LinkedAccountsCard profile={profile} />
 
           <div className={showLiveContext && hasLiveContext ? "grid gap-4 lg:grid-cols-[1.2fr_0.8fr]" : "grid gap-4"}>
             <Card>

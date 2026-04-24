@@ -27,7 +27,7 @@ export default function EventRecorder() {
 
   const refresh = useCallback(async () => {
     const r = await ipc.eventList();
-    setRecordings((r.recordings ?? []) as unknown as Recording[]);
+    setRecordings((r?.recordings ?? []) as unknown as Recording[]);
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -35,7 +35,7 @@ export default function EventRecorder() {
   useEffect(() => {
     if (!selectedId) return;
     ipc.eventAttendees(selectedId).then((r) =>
-      setAttendees((r.attendees ?? []) as unknown as Attendee[])
+      setAttendees((r?.attendees ?? []) as unknown as Attendee[])
     ).catch(() => {});
   }, [selectedId]);
 

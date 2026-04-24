@@ -54,6 +54,7 @@ import {
   Smartphone,
   UserRound,
   Play,
+  UserSearch,
 } from "lucide-react";
 
 function statusColor(
@@ -154,9 +155,47 @@ const FriendRow = memo(function FriendRow({
   })();
 
   const lastSeen = relativeTime(friend.last_login || friend.last_activity);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
 
   return (
-    <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] hover:border-[hsl(var(--border-strong))]">
+    <div
+      className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] hover:border-[hsl(var(--border-strong))]"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setCtxMenu({ x: e.clientX, y: e.clientY });
+      }}
+    >
+      {ctxMenu ? (
+        <>
+          <div className="fixed inset-0 z-50" onClick={() => setCtxMenu(null)} />
+          <div
+            className="fixed z-50 min-w-[160px] rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-1 shadow-lg backdrop-blur-md"
+            style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          >
+            {loc.kind === "world" && loc.worldId && (
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-1.5 text-[11px] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]"
+                onClick={() => {
+                  void ipc.call("shell.openUrl", { url: `vrchat://launch?ref=vrchat.com&id=${friend.location}` });
+                  setCtxMenu(null);
+                }}
+              >
+                <Play className="size-3" />
+                {t("friendDetail.joinInstance", { defaultValue: "Join Instance" })}
+              </button>
+            )}
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-1.5 text-[11px] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]"
+              onClick={() => { onOpenDetail(friend); setCtxMenu(null); }}
+            >
+              <UserSearch className="size-3" />
+              {t("friendDetail.title", { defaultValue: "Friend Details" })}
+            </button>
+          </div>
+        </>
+      ) : null}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}

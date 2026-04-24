@@ -241,14 +241,13 @@ function LoadingState({
 function FallbackError({
   size,
   fallbackImageUrl,
-  message,
 }: {
   size: number;
   fallbackImageUrl: string;
   message?: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5" style={{ width: size }}>
+    <div className="flex flex-col items-center" style={{ width: size }}>
       <div
         className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]"
         style={{ width: size, height: size }}
@@ -258,14 +257,6 @@ function FallbackError({
           className="h-full w-full object-cover"
           alt=""
         />
-      </div>
-      <div className="flex w-full items-center justify-center rounded-[calc(var(--radius-sm)-2px)] border border-[hsl(var(--warn-foreground,var(--destructive))/0.5)] bg-[hsl(var(--destructive)/0.08)] py-1.5">
-        <AlertTriangle className="mr-1.5 size-3 text-[hsl(var(--warn-foreground,var(--destructive)))]" />
-        <span className="text-center text-[9px] font-bold uppercase tracking-wider text-[hsl(var(--warn-foreground,var(--destructive)))]">
-          {message?.includes("assetUrl")
-            ? "No Asset URL"
-            : "Preview Unavailable"}
-        </span>
       </div>
     </div>
   );

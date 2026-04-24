@@ -44,7 +44,7 @@ export default function Rules() {
     setLoading(true);
     try {
       const res = await ipc.rulesList();
-      setRules((res.rules ?? []) as unknown as Rule[]);
+      setRules((res?.rules ?? []) as unknown as Rule[]);
     } catch {
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ export default function Rules() {
 
   useEffect(() => {
     if (!selectedId) return;
-    ipc.rulesHistory(selectedId).then((r) => setFirings((r.firings ?? []) as unknown as RuleFiring[])).catch(() => {});
+    ipc.rulesHistory(selectedId).then((r) => setFirings((r?.firings ?? []) as unknown as RuleFiring[])).catch(() => {});
   }, [selectedId]);
 
   const selected = rules.find((r) => r.id === selectedId) ?? null;
