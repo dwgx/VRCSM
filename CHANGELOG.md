@@ -6,6 +6,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [0.13.1] — 2026-04-24
+
+Hotfix for a startup crash introduced by v0.13.0 — `RPC_E_CHANGED_MODE`
+(`0x80010106`) before the main window ever appeared. Cause: a
+`thread_local ComApartment` sentinel in `ScreenshotThumbs.cpp` was
+eagerly constructed by MSVC on every thread that linked the TU —
+including the UI thread — and that constructor called
+`CoInitializeEx(MTA)`. When `main.cpp` then hit
+`OleInitialize(nullptr)` (which implies STA), COM refused the apartment
+swap and aborted the process. Fix: replace the TLS sentinel with a
+stack-local RAII helper invoked only inside `ThumbPool::Worker()`, so
+COM init only ever happens on worker threads that actually decode
+thumbnails. UI thread's STA is left alone.
+
 ## [0.13.0] — 2026-04-24
 
 v0.13 is a perf + UX pass focused on one complaint: "every page looks

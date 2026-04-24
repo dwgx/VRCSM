@@ -64,24 +64,28 @@ std::filesystem::path LocalAppDataRoot()
 
 // ─── COM init per worker thread ────────────────────────────────────
 // WIC requires COM initialised on the calling thread. We use MTA (free-
-// threaded) on worker threads so the factory can be shared. Using a
-// thread_local sentinel ensures each thread only inits once per life.
-
-struct ComApartment
+// threaded) on worker threads so the WIC factory can be shared.
+//
+// IMPORTANT: this MUST NOT be a thread_local sentinel. MSVC eagerly
+// initialises thread_local variables with non-trivial constructors on
+// thread start, which would mean ANY thread that even links this TU
+// gets MTA-initialised before it runs a single line of its own code —
+// including the UI thread, which needs STA for OleInitialize /
+// WebView2. That produced RPC_E_CHANGED_MODE (0x80010106) on startup.
+// The RAII helper is only invoked explicitly from worker-thread entry.
+struct ComApartmentMta
 {
     bool initialised{false};
-    ComApartment() noexcept
+    ComApartmentMta() noexcept
     {
         const HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
         initialised = SUCCEEDED(hr);
     }
-    ~ComApartment() noexcept
+    ~ComApartmentMta() noexcept
     {
         if (initialised) CoUninitialize();
     }
 };
-
-thread_local ComApartment tlsCom;
 
 // ─── WIC encode ────────────────────────────────────────────────────
 
@@ -260,6 +264,10 @@ private:
 
     void Worker()
     {
+        // COM init for this worker thread only. Stack-local RAII so
+        // CoUninitialize runs on the same thread at exit.
+        ComApartmentMta com;
+
         for (;;)
         {
             Job job;
