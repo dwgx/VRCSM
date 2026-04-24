@@ -46,7 +46,7 @@ interface SocialEvent {
 
 type FeedTab = "session" | "social";
 
-const PAGE_SIZE = 50;
+const DEFAULT_PAGE_SIZE = 50;
 
 interface FriendLogPanelProps {
   embedded?: boolean;
@@ -170,7 +170,7 @@ function NoteEditor({
     let alive = true;
     ipc.friendNoteGet(userId).then((r) => {
       if (!alive) return;
-      setNote(r.note ?? "");
+      setNote(r?.note ?? "");
       setLoading(false);
     }).catch(() => {
       if (alive) setLoading(false);
@@ -338,6 +338,7 @@ function SocialEventRow({ event }: { event: SocialEvent }) {
 
 export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
   const { t } = useTranslation();
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
   const [socialEvents, setSocialEvents] = useState<SocialEvent[]>([]);
   const [tab, setTab] = useState<FeedTab>("session");
@@ -363,18 +364,18 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
     try {
       if (nextTab === "session") {
         const offset = reset ? 0 : sessionOffset;
-        const result = await ipc.dbPlayerEvents(PAGE_SIZE, offset);
+        const result = await ipc.dbPlayerEvents(pageSize, offset);
         const items = result.items as SessionEvent[];
         setSessionEvents((prev) => reset ? items : [...prev, ...items]);
         setSessionOffset((prev) => reset ? items.length : prev + items.length);
-        setSessionHasMore(items.length >= PAGE_SIZE);
+        setSessionHasMore(items.length >= pageSize);
       } else {
         const offset = reset ? 0 : socialOffset;
-        const result = await ipc.friendLogRecent(PAGE_SIZE, offset);
+        const result = await ipc.friendLogRecent(pageSize, offset);
         const items = result.items as SocialEvent[];
         setSocialEvents((prev) => reset ? items : [...prev, ...items]);
         setSocialOffset((prev) => reset ? items.length : prev + items.length);
-        setSocialHasMore(items.length >= PAGE_SIZE);
+        setSocialHasMore(items.length >= pageSize);
       }
     } catch (e) {
       toast.error(
@@ -392,6 +393,15 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
     void load(true, "session");
     void load(true, "social");
   }, [load]);
+
+  useEffect(() => {
+    setSessionEvents([]);
+    setSocialEvents([]);
+    setSessionOffset(0);
+    setSocialOffset(0);
+    void load(true, tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSize]);
 
   async function handleClearHistory() {
     setClearingHistory(true);
@@ -611,8 +621,17 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
 
       <Card className="overflow-hidden">
         <CardHeader className="pb-0">
-          <CardTitle className="text-[13px]">
+          <CardTitle className="flex items-center gap-2 text-[13px]">
             {tab === "session" ? t("friendLog.session.title") : t("friendLog.social.title")}
+            <input
+              type="number"
+              min={10}
+              max={9999}
+              value={pageSize}
+              onChange={(e) => setPageSize(Math.max(10, Number(e.target.value) || DEFAULT_PAGE_SIZE))}
+              className="w-12 rounded border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1 py-0.5 text-center text-[10px] font-mono text-[hsl(var(--foreground))]"
+              title={t("friendLog.perPage", { defaultValue: "Items per page" })}
+            />
           </CardTitle>
           <CardDescription className="text-[11px]">
             {tab === "session" ? t("friendLog.session.desc") : t("friendLog.social.desc")}

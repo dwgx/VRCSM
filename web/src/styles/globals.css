@@ -322,6 +322,20 @@
   animation: m3-scale-in 140ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
+/* Shimmer overlay — sweeping highlight for thumbnail placeholders */
+@keyframes thumb-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-thumb-shimmer {
+  animation: thumb-shimmer 1.8s ease-in-out infinite;
+}
+
 .unity-menubar {
   background: hsl(var(--surface-raised));
   border-bottom: 1px solid hsl(var(--border));

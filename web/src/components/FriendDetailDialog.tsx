@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 
 
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageZoom } from "@/components/ImageZoom";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -201,6 +202,8 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
 
   // --- Action states -----------------------------------------------------------
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [muteConfirmOpen, setMuteConfirmOpen] = useState(false);
+  const [unfriendStep, setUnfriendStep] = useState(0); // 0=idle, 1=first, 2=final
 
   // --- DM compose --------------------------------------------------------------
   const [messageText, setMessageText] = useState("");
@@ -506,80 +509,77 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
           )}
 
           {/* ========== 4. Actions Row ========== */}
+          <ConfirmDialog
+            open={muteConfirmOpen}
+            onOpenChange={setMuteConfirmOpen}
+            title={t("friendDetail.mute", { defaultValue: "Mute" })}
+            description={t("friendDetail.muteConfirm", { defaultValue: "Mute {{name}}?", name: friend?.displayName })}
+            confirmLabel={t("friendDetail.mute", { defaultValue: "Mute" })}
+            cancelLabel={t("common.cancel", { defaultValue: "Cancel" })}
+            tone="destructive"
+            onConfirm={async () => {
+              try {
+                await ipc.call("user.mute", { userId: friend?.id });
+                toast.success(t("friendDetail.muted", { defaultValue: "User muted" }));
+                setMuteConfirmOpen(false);
+              } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+            }}
+          />
+          <ConfirmDialog
+            open={blockConfirmOpen}
+            onOpenChange={setBlockConfirmOpen}
+            title={t("friendDetail.block", { defaultValue: "Block" })}
+            description={t("friendDetail.blockConfirmShort", { defaultValue: "Block {{name}}? They will not be able to interact with you.", name: friend?.displayName })}
+            confirmLabel={t("friendDetail.block", { defaultValue: "Block" })}
+            cancelLabel={t("common.cancel", { defaultValue: "Cancel" })}
+            tone="destructive"
+            onConfirm={async () => {
+              try {
+                await ipc.call("user.block", { userId: friend?.id });
+                toast.success(t("friendDetail.blocked", { defaultValue: "User blocked" }));
+                setBlockConfirmOpen(false);
+                onClose();
+              } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+            }}
+          />
+          <ConfirmDialog
+            open={unfriendStep === 1}
+            onOpenChange={(v) => { if (!v) setUnfriendStep(0); }}
+            title={t("friendDetail.unfriend", { defaultValue: "Unfriend" })}
+            description={t("friendDetail.unfriendConfirm1", { defaultValue: "Unfriend {{name}}?", name: friend?.displayName })}
+            confirmLabel={t("common.confirm", { defaultValue: "Confirm" })}
+            cancelLabel={t("common.cancel", { defaultValue: "Cancel" })}
+            tone="destructive"
+            onConfirm={() => setUnfriendStep(2)}
+          />
+          <ConfirmDialog
+            open={unfriendStep === 2}
+            onOpenChange={(v) => { if (!v) { setUnfriendStep(0); toast.info(t("friendDetail.unfriendCancelled", { defaultValue: "Never mind..." })); } }}
+            title={t("friendDetail.unfriendConfirm2Title", { defaultValue: "Are you sure?" })}
+            description={t("friendDetail.unfriendConfirm2", { defaultValue: "Are you really going to remove {{name}}?", name: friend?.displayName })}
+            confirmLabel={t("friendDetail.unfriendFinal", { defaultValue: "Really remove" })}
+            cancelLabel={t("friendDetail.unfriendNevermind", { defaultValue: "Never mind..." })}
+            tone="destructive"
+            onConfirm={async () => {
+              try {
+                await ipc.friendsUnfriend(friend!.id);
+                toast.success(t("friendDetail.unfriended", { defaultValue: "Unfriended {{name}}", name: friend?.displayName }));
+                setUnfriendStep(0);
+                onClose();
+              } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+            }}
+          />
           <div className="border-b border-[hsl(var(--border)/0.4)] px-5 py-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-[11px] gap-1.5"
-                onClick={async () => {
-                  try {
-                    await ipc.call("user.mute", { userId: friend?.id });
-                    toast.success(t("friendDetail.muted", { defaultValue: "User muted" }));
-                  } catch (e) {
-                    toast.error(e instanceof Error ? e.message : String(e));
-                  }
-                }}
-              >
+              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => setMuteConfirmOpen(true)}>
                 <VolumeX className="size-3.5" />
                 {t("friendDetail.mute", { defaultValue: "Mute" })}
               </Button>
-
-              {!blockConfirmOpen ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-[11px] gap-1.5 text-red-400 border-red-400/40 hover:bg-red-400/10"
-                  onClick={() => setBlockConfirmOpen(true)}
-                >
-                  <Ban className="size-3.5" />
-                  {t("friendDetail.block", { defaultValue: "Block" })}
-                </Button>
-              ) : (
-                <div className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-red-400/40 bg-red-400/5 px-2 py-1">
-                  <span className="text-[10px] text-red-400">
-                    {t("friendDetail.blockConfirmShort", { defaultValue: "Block {{name}}?", name: friend?.displayName })}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 px-2 text-[9px]"
-                    onClick={() => setBlockConfirmOpen(false)}
-                  >
-                    {t("common.cancel", { defaultValue: "Cancel" })}
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-5 px-2 text-[9px] bg-red-600 hover:bg-red-700 text-white"
-                    onClick={async () => {
-                      try {
-                        await ipc.call("user.block", { userId: friend?.id });
-                        toast.success(t("friendDetail.blocked", { defaultValue: "User blocked" }));
-                        setBlockConfirmOpen(false);
-                        onClose();
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : String(e));
-                      }
-                    }}
-                  >
-                    {t("friendDetail.block", { defaultValue: "Block" })}
-                  </Button>
-                </div>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-[11px] gap-1.5 text-orange-400 border-orange-400/40 hover:bg-orange-400/10"
-                onClick={async () => {
-                  try {
-                    await ipc.friendsUnfriend(friend!.id);
-                    toast.success(t("friendDetail.unfriended", { defaultValue: "Unfriended {{name}}", name: friend?.displayName }));
-                  } catch (e) {
-                    toast.error(e instanceof Error ? e.message : String(e));
-                  }
-                }}
-              >
+              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 text-red-400 border-red-400/40 hover:bg-red-400/10" onClick={() => setBlockConfirmOpen(true)}>
+                <Ban className="size-3.5" />
+                {t("friendDetail.block", { defaultValue: "Block" })}
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 text-orange-400 border-orange-400/40 hover:bg-orange-400/10" onClick={() => setUnfriendStep(1)}>
                 <UserMinus className="size-3.5" />
                 {t("friendDetail.unfriend", { defaultValue: "Unfriend" })}
               </Button>

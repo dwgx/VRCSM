@@ -114,6 +114,28 @@ nlohmann::json FilterUserProfile(const nlohmann::json& user)
         {"currentAvatarName", JsonStringField(user, "currentAvatarName").value_or("")},
     };
 
+    // Linked accounts — only present on the auth'd user object (user.me).
+    // For other users these fields are absent from the API response, so
+    // we guard with contains() and leave them out rather than defaulting to "".
+    auto passStringIfPresent = [&](const char* key) {
+        if (user.contains(key) && user[key].is_string())
+            out[key] = user[key].get<std::string>();
+    };
+    auto passBoolIfPresent = [&](const char* key) {
+        if (user.contains(key) && user[key].is_boolean())
+            out[key] = user[key].get<bool>();
+    };
+    passStringIfPresent("googleId");
+    passStringIfPresent("steamId");
+    passStringIfPresent("oculusId");
+    passStringIfPresent("picoId");
+    passStringIfPresent("viveId");
+    passBoolIfPresent("hasEmail");
+    passBoolIfPresent("emailVerified");
+    passBoolIfPresent("twoFactorAuthEnabled");
+    passBoolIfPresent("allowAvatarCopying");
+    passBoolIfPresent("hasLoggedInFromClient");
+
     nlohmann::json bioLinks = nlohmann::json::array();
     if (user.contains("bioLinks") && user["bioLinks"].is_array())
     {
@@ -266,21 +288,16 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
 
 nlohmann::json IpcBridge::HandleGroupsList(const nlohmann::json&, const std::optional<std::string>&)
 {
-    auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
-    if (!vrcsm::core::isOk(currentUser))
-    {
-        const auto& err = vrcsm::core::error(currentUser);
-        if (err.code == "auth_expired")
-        {
-            vrcsm::core::AuthStore::Instance().Clear();
-        }
-        return nlohmann::json{{"groups", nlohmann::json::array()}};
-    }
-
     const auto result = vrcsm::core::VrcApi::fetchGroups();
     if (!vrcsm::core::isOk(result))
     {
-        throw IpcException{vrcsm::core::error(result)};
+        const auto& err = vrcsm::core::error(result);
+        if (err.code == "auth_expired")
+        {
+            vrcsm::core::AuthStore::Instance().Clear();
+            return nlohmann::json{{"groups", nlohmann::json::array()}};
+        }
+        throw IpcException{err};
     }
 
     nlohmann::json out = nlohmann::json::array();

@@ -46,15 +46,53 @@ const TARGET_FOLDER_NAMES: Record<string, string> = {
   texture_cache: "TextureCache-WindowsPlayer",
 };
 
-function suggestTargetPath(category?: Pick<CategorySummary, "key" | "resolved_path">) {
+function suggestTargetPath(
+  category?: Pick<CategorySummary, "key" | "resolved_path" | "logical_path">,
+  baseDir?: string,
+  siblings?: Pick<CategorySummary, "key" | "resolved_path">[],
+) {
   if (!category) return "";
 
   const folderName = TARGET_FOLDER_NAMES[category.key];
   if (!folderName) return "";
 
-  const driveMatch = category.resolved_path.match(/^[A-Za-z]:/);
-  if (driveMatch) {
-    return `${driveMatch[0]}\\VRChatCache\\${folderName}`;
+  // If the source is already a junction (resolved_path diverges from the
+  // logical location under baseDir), show the real target instead of
+  // generating a naive path that mirrors the source drive letter.
+  if (baseDir) {
+    const logicalNorm = baseDir.replace(/[/\\]+$/, "").replace(/\\/g, "/").toLowerCase();
+    const resolvedNorm = category.resolved_path.replace(/\\/g, "/").toLowerCase();
+    if (!resolvedNorm.startsWith(logicalNorm)) {
+      return category.resolved_path;
+    }
+  }
+
+  // If a sibling category was already migrated (its resolved_path diverges
+  // from baseDir), reuse that parent directory so all caches land together.
+  // e.g. sibling at D:\Software\VRChatCache\Cache-WindowsPlayer →
+  //      suggest D:\Software\VRChatCache\HTTPCache-WindowsPlayer
+  if (siblings && baseDir) {
+    const logicalNorm = baseDir.replace(/[/\\]+$/, "").replace(/\\/g, "/").toLowerCase();
+    for (const sib of siblings) {
+      if (sib.key === category.key) continue;
+      const sibNorm = sib.resolved_path.replace(/\\/g, "/").toLowerCase();
+      if (!sibNorm.startsWith(logicalNorm)) {
+        const sibFolderName = TARGET_FOLDER_NAMES[sib.key];
+        if (sibFolderName) {
+          const sibParent = sib.resolved_path.replace(/[/\\][^/\\]+$/, "");
+          return `${sibParent}\\${folderName}`;
+        }
+      }
+    }
+  }
+
+  // Pick a drive letter that is DIFFERENT from the source so the
+  // migration actually moves data off the source volume.
+  const srcDriveMatch = category.resolved_path.match(/^([A-Za-z]):/);
+  if (srcDriveMatch) {
+    const srcDrive = srcDriveMatch[1].toUpperCase();
+    const suggestedDrive = srcDrive === "D" ? "C" : "D";
+    return `${suggestedDrive}:\\VRChatCache\\${folderName}`;
   }
 
   return `VRChatCache\\${folderName}`;
@@ -118,6 +156,20 @@ function Migrate() {
   const hasBlockers =
     plan !== null && (plan.blockers.length > 0 || plan.vrcRunning);
 
+  // Detect if the selected category is ALREADY a working junction
+  // (resolved_path diverges from baseDir → data is on another drive).
+  const selectedIsJunction = useMemo(() => {
+    if (!selected || !report?.base_dir) return false;
+    const logicalNorm = report.base_dir
+      .replace(/[/\\]+$/, "")
+      .replace(/\\/g, "/")
+      .toLowerCase();
+    const resolvedNorm = selected.resolved_path
+      .replace(/\\/g, "/")
+      .toLowerCase();
+    return selected.exists && !resolvedNorm.startsWith(logicalNorm);
+  }, [selected, report?.base_dir]);
+
   /* ─── Helpers ───────────────────────────────────────────────────── */
 
   const phaseLabel = useCallback(
@@ -132,11 +184,11 @@ function Migrate() {
     (key: string) => {
       setCategoryKey(key);
       const next = migratable.find((item) => item.key === key);
-      setTarget(suggestTargetPath(next));
+      setTarget(suggestTargetPath(next, report?.base_dir, migratable));
       setPlan(null);
       setProgress(null);
     },
-    [migratable],
+    [migratable, report?.base_dir],
   );
 
   /* ─── Hydrate from ?category=... ────────────────────────────────── */
@@ -156,8 +208,8 @@ function Migrate() {
 
   useEffect(() => {
     if (target.trim()) return;
-    setTarget(suggestTargetPath(selected));
-  }, [selected, target]);
+    setTarget(suggestTargetPath(selected, report?.base_dir, migratable));
+  }, [selected, target, report?.base_dir, migratable]);
 
   /* ─── Progress event subscription ───────────────────────────────── */
 
@@ -208,6 +260,12 @@ function Migrate() {
 
   const migrateOneClick = async () => {
     if (!selected || !target.trim()) return;
+    // Use logical_path (the junction location) when it exists on disk,
+    // so the backend can detect `sourceIsJunction` correctly.
+    const sourcePath =
+      selected.lexists && report?.base_dir
+        ? `${report.base_dir.replace(/[/\\]+$/, "")}/${selected.logical_path}`
+        : selected.resolved_path;
     setPlanLoading(true);
     setProgress(null);
     setPlan(null);
@@ -215,7 +273,7 @@ function Migrate() {
       const res = await ipc.call<
         { source: string; target: string },
         MigratePlan
-      >("migrate.preflight", { source: selected.resolved_path, target });
+      >("migrate.preflight", { source: sourcePath, target });
       setPlan(res);
       if (res.sourceIsJunction) {
         setPlanLoading(false);
@@ -241,18 +299,24 @@ function Migrate() {
   };
 
   const repairJunction = async () => {
-    if (!selected) return;
+    if (!selected || !report?.base_dir) return;
     setRepairing(true);
     try {
+      // source = the junction location (logical path under baseDir)
+      // target = where the data actually lives (resolved_path)
+      const junctionPath = `${report.base_dir.replace(/[/\\]+$/, "")}/${selected.logical_path}`;
+      const dataPath = selectedIsJunction ? selected.resolved_path : target;
       await ipc.call<{ source: string; target: string }, { ok: true }>(
         "junction.repair",
-        { source: selected.resolved_path, target },
+        { source: junctionPath, target: dataPath },
       );
       toast.success(
         t("migrate.repairSuccess", {
           defaultValue: "Junction repaired successfully",
         }),
       );
+      // Trigger rescan to refresh state
+      try { await ipc.scan(); } catch {}
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(
@@ -305,14 +369,32 @@ function Migrate() {
         </CardHeader>
         <CardContent className="grid gap-3 pt-0 md:grid-cols-3">
           {migratable.map((c) => {
-            const isJunction = c.lexists && !c.exists;
-            const state = c.exists
-              ? t("migrate.present", { defaultValue: "present" })
-              : isJunction
-                ? t("migrate.brokenJunction", {
-                    defaultValue: "junction (broken)",
-                  })
-                : t("migrate.missing", { defaultValue: "missing" });
+            const isBrokenJunction = c.lexists && !c.exists;
+            // Working junction: exists AND resolved_path is on a different
+            // volume than the logical baseDir path (i.e. data was already
+            // migrated and a junction points to the new location).
+            const isWorkingJunction =
+              c.exists &&
+              report?.base_dir &&
+              (() => {
+                const logicalNorm = report.base_dir
+                  .replace(/[/\\]+$/, "")
+                  .replace(/\\/g, "/")
+                  .toLowerCase();
+                const resolvedNorm = c.resolved_path
+                  .replace(/\\/g, "/")
+                  .toLowerCase();
+                return !resolvedNorm.startsWith(logicalNorm);
+              })();
+            const state = isWorkingJunction
+              ? t("migrate.junction", { defaultValue: "junction" })
+              : c.exists
+                ? t("migrate.present", { defaultValue: "present" })
+                : isBrokenJunction
+                  ? t("migrate.brokenJunction", {
+                      defaultValue: "junction (broken)",
+                    })
+                  : t("migrate.missing", { defaultValue: "missing" });
             const active = categoryKey === c.key;
             return (
               <button
@@ -355,12 +437,30 @@ function Migrate() {
                 </span>
                 <Badge
                   variant={
-                    c.exists ? "success" : isJunction ? "warning" : "muted"
+                    isWorkingJunction
+                      ? "default"
+                      : c.exists
+                        ? "success"
+                        : isBrokenJunction
+                          ? "warning"
+                          : "muted"
                   }
                   className="mt-0.5 w-fit text-[10px]"
                 >
-                  {state}
+                  {isWorkingJunction ? (
+                    <span className="flex items-center gap-1">
+                      <Link2 className="size-3" />
+                      {state}
+                    </span>
+                  ) : (
+                    state
+                  )}
                 </Badge>
+                {isWorkingJunction ? (
+                  <span className="truncate text-[10px] font-mono text-[hsl(var(--muted-foreground))]">
+                    → {c.resolved_path}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -590,27 +690,58 @@ function Migrate() {
               </div>
             ) : null}
 
-            {/* Single migrate button */}
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                onClick={() => void migrateOneClick()}
-                disabled={planLoading || !target.trim() || running}
-                className="gap-1.5"
-              >
-                {planLoading ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : running ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Play className="size-3.5" />
-                )}
-                {planLoading
-                  ? t("migrate.checking", { defaultValue: "Checking..." })
-                  : running
-                    ? t("migrate.running", { defaultValue: "Migrating..." })
-                    : t("migrate.execute", { defaultValue: "Migrate" })}
-              </Button>
-            </div>
+            {/* Already-migrated status */}
+            {selectedIsJunction && !plan && !running ? (
+              <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--success)/0.4)] bg-[hsl(var(--success)/0.08)] p-3">
+                <Check className="size-4 shrink-0 text-[hsl(var(--success))]" />
+                <div className="flex-1 text-[12px]">
+                  <span className="font-medium text-[hsl(var(--success))]">
+                    {t("migrate.alreadyMigrated", { defaultValue: "Already migrated" })}
+                  </span>
+                  <span className="ml-2 font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                    → {selected?.resolved_path}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={repairing}
+                  onClick={() => void repairJunction()}
+                  className="shrink-0 gap-1.5"
+                >
+                  {repairing ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Wrench className="size-3" />
+                  )}
+                  {t("common.repair", { defaultValue: "Repair" })}
+                </Button>
+              </div>
+            ) : null}
+
+            {/* Migrate button — hidden when already a working junction */}
+            {!selectedIsJunction ? (
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  onClick={() => void migrateOneClick()}
+                  disabled={planLoading || !target.trim() || running}
+                  className="gap-1.5"
+                >
+                  {planLoading ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : running ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Play className="size-3.5" />
+                  )}
+                  {planLoading
+                    ? t("migrate.checking", { defaultValue: "Checking..." })
+                    : running
+                      ? t("migrate.running", { defaultValue: "Migrating..." })
+                      : t("migrate.execute", { defaultValue: "Migrate" })}
+                </Button>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

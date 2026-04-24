@@ -173,10 +173,20 @@ export function prefetchThumbnails(ids: string[]): void {
       for (const row of resp.results) {
         memo.set(row.id, { state: "resolved", url: row.url ?? null });
       }
+      // Notify mounted useThumbnail hooks so they immediately render the
+      // newly-cached URLs instead of waiting for individual promise chains.
+      memoGeneration += 1;
+      for (const listener of invalidationListeners) {
+        listener();
+      }
     })
     .catch(() => {
       for (const id of need) {
         memo.set(id, { state: "resolved", url: null });
+      }
+      memoGeneration += 1;
+      for (const listener of invalidationListeners) {
+        listener();
       }
     });
 

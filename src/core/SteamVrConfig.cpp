@@ -167,11 +167,29 @@ nlohmann::json SteamVrConfig::Read(const std::filesystem::path& path)
             {"error", {{"code", "not_found"}, {"message", "steamvr.vrsettings not found"}}}};
     }
 
-    std::string content = slurpFile(path);
-    if (content.empty())
+    std::string raw = slurpFile(path);
+    if (raw.empty())
     {
         return nlohmann::json{
             {"error", {{"code", "empty"}, {"message", "steamvr.vrsettings is empty"}}}};
+    }
+
+    // SteamVR config files contain locale-encoded device names that break
+    // nlohmann's strict UTF-8 validation. Sanitize: keep valid ASCII and
+    // valid multi-byte UTF-8 sequences, replace everything else with '?'.
+    std::string content;
+    content.reserve(raw.size());
+    for (std::size_t i = 0; i < raw.size(); )
+    {
+        auto c = static_cast<unsigned char>(raw[i]);
+        if (c < 0x80) { content += raw[i++]; continue; }
+        int expect = (c >= 0xF0) ? 4 : (c >= 0xE0) ? 3 : (c >= 0xC0) ? 2 : 0;
+        if (expect == 0) { content += '?'; ++i; continue; }
+        bool ok = (i + expect <= raw.size());
+        for (int j = 1; ok && j < expect; ++j)
+            ok = (static_cast<unsigned char>(raw[i + j]) & 0xC0) == 0x80;
+        if (ok) { content.append(raw, i, expect); i += expect; }
+        else    { content += '?'; ++i; }
     }
 
     try

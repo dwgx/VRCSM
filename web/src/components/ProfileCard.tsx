@@ -61,6 +61,17 @@ export interface VrcUserProfile {
   last_activity?: string;
   developerType?: string;
   isFriend?: boolean;
+  // Linked accounts (only present on own profile via user.me)
+  googleId?: string;
+  steamId?: string;
+  oculusId?: string;
+  picoId?: string;
+  viveId?: string;
+  hasEmail?: boolean;
+  emailVerified?: boolean;
+  twoFactorAuthEnabled?: boolean;
+  allowAvatarCopying?: boolean;
+  hasLoggedInFromClient?: boolean;
 }
 
 // ─── Status helpers ──────────────────────────────────────────────────────────

@@ -199,6 +199,17 @@ function WorldThumb({
             "repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0 2px, transparent 2px 8px)",
         }}
       />
+      {!url ? (
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-0 animate-thumb-shimmer"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+            }}
+          />
+        </div>
+      ) : null}
       {url ? (
         <img
           src={url}
@@ -343,6 +354,7 @@ function WorldHistoryPanel({
 
           const timeStr = ev.iso_time
             ? new Intl.DateTimeFormat("default", {
+                year: "numeric",
                 month: "short",
                 day: "numeric",
                 hour: "numeric",
@@ -454,69 +466,92 @@ function WorldHistoryPanel({
           }
 
           return (
-            <div key={i} className="group relative flex flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 transition-colors hover:bg-[hsl(var(--accent))]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[11px] font-medium text-[hsl(var(--foreground))]">
-                  <Clock className="size-3.5 text-[hsl(var(--muted-foreground))]" />
-                  {timeStr}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
-                    <AccessIcon className="size-3.5" />
-                    <span className="font-medium text-[hsl(var(--foreground))]">{accessLabel}</span>
-                  </div>
-                  <Badge variant="secondary" className="h-[20px] px-2 text-[10px] font-semibold tracking-wide ml-1">
-                    {ev.region?.toUpperCase() ?? "US"}
-                  </Badge>
-                </div>
-              </div>
-
-              {ev.owner_id && (
-                <div className="mt-1 flex items-center justify-between rounded bg-[hsl(var(--muted))] px-2 py-1.5">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <UserPopupBadge userId={ev.owner_id} />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-6 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--foreground))]"
-                      title="Open Profile on vrchat.com"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const urlPath = ev.owner_id!.startsWith("grp_") ? `group/${ev.owner_id}` : `user/${ev.owner_id}`;
-                        ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                          url: `https://vrchat.com/home/${urlPath}`,
-                        }).catch(console.error);
-                      }}
-                    >
-                      <ExternalLink className="size-3" />
-                    </Button>
-                    {(ev.instance_id && ev.instance_id.includes(":")) && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-6 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--foreground))]"
-                        title="Launch this specific instance in VRChat"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                            url: `vrchat://launch?id=${ev.instance_id}`,
-                          }).catch(console.error);
-                        }}
-                      >
-                        <Play className="size-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {sessionPlayers.length > 0 ? <SessionPlayerList players={sessionPlayers} /> : null}
-            </div>
+            <WorldVisitCard key={i} timeStr={timeStr} accessLabel={accessLabel} AccessIcon={AccessIcon} region={ev.region ?? undefined} ownerId={ev.owner_id ?? undefined} instanceId={ev.instance_id ?? undefined} sessionPlayers={sessionPlayers} />
           );
         })}
       </div>
+      ) : null}
+    </div>
+  );
+}
+
+function WorldVisitCard({ timeStr, accessLabel, AccessIcon, region, ownerId, instanceId, sessionPlayers }: {
+  timeStr: string; accessLabel: string; AccessIcon: typeof Globe2; region?: string;
+  ownerId?: string; instanceId?: string;
+  sessionPlayers: { displayName: string; userId: string | null }[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="group relative flex flex-col rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-colors hover:bg-[hsl(var(--accent))]">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center justify-between px-3 py-2 text-left"
+      >
+        <div className="flex items-center gap-2 text-[11px] font-medium text-[hsl(var(--foreground))]">
+          {expanded ? <ChevronDown className="size-3 shrink-0 text-[hsl(var(--muted-foreground))]" /> : <ChevronRight className="size-3 shrink-0 text-[hsl(var(--muted-foreground))]" />}
+          <Clock className="size-3.5 text-[hsl(var(--muted-foreground))]" />
+          {timeStr}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
+            <AccessIcon className="size-3.5" />
+            <span className="font-medium text-[hsl(var(--foreground))]">{accessLabel}</span>
+          </div>
+          <Badge variant="secondary" className="h-[20px] px-2 text-[10px] font-semibold tracking-wide ml-1">
+            {region?.toUpperCase() ?? "US"}
+          </Badge>
+          {sessionPlayers.length > 0 && !expanded ? (
+            <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              <Users className="inline size-3 mr-0.5" />{sessionPlayers.length}
+            </span>
+          ) : null}
+        </div>
+      </button>
+      {expanded ? (
+        <div className="flex flex-col gap-2 border-t border-[hsl(var(--border)/0.4)] px-3 pb-3 pt-2">
+          {ownerId && (
+            <div className="flex items-center justify-between rounded bg-[hsl(var(--muted))] px-2 py-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <UserPopupBadge userId={ownerId} />
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--foreground))]"
+                  title="Open Profile on vrchat.com"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const urlPath = ownerId.startsWith("grp_") ? `group/${ownerId}` : `user/${ownerId}`;
+                    ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                      url: `https://vrchat.com/home/${urlPath}`,
+                    }).catch(console.error);
+                  }}
+                >
+                  <ExternalLink className="size-3" />
+                </Button>
+                {instanceId?.includes(":") && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--foreground))]"
+                    title="Launch this specific instance in VRChat"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+                        url: `vrchat://launch?id=${instanceId}`,
+                      }).catch(console.error);
+                    }}
+                  >
+                    <Play className="size-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          {sessionPlayers.length > 0 ? <SessionPlayerList players={sessionPlayers} /> : null}
+        </div>
       ) : null}
     </div>
   );

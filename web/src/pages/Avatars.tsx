@@ -18,6 +18,7 @@ import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { cn, formatDate } from "@/lib/utils";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -229,6 +230,7 @@ function AvatarInspector({
 }) {
   const { t } = useTranslation();
   const { status: authStatus } = useAuth();
+  const [prefer3D, setPrefer3D] = useUiPrefBoolean("vrcsm.avatar.preview3d", false);
   const { details, loading: detailsLoading, unavailable } = useAvatarDetails(
     selected.avatar_id,
   );
@@ -256,6 +258,12 @@ function AvatarInspector({
     .map((tag) => tag.replace(/^(author_tag_|content_|system_)/, ""))
     .filter((tag) => tag.length > 0);
 
+  const windowsAssetUrl = details?.unityPackages?.find(
+    (p) => p.platform === "standalonewindows"
+  )?.assetUrl;
+  const fallbackUrl = details?.imageUrl || details?.thumbnailImageUrl;
+  const can3D = Boolean(windowsAssetUrl);
+
   return (
     <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
       <div className="unity-panel-header">
@@ -264,32 +272,50 @@ function AvatarInspector({
       <div className="grid gap-5 p-5 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-3">
           {(() => {
-            const windowsAssetUrl = details?.unityPackages?.find(
-              (p) => p.platform === "standalonewindows"
-            )?.assetUrl;
-            const fallbackUrl = details?.imageUrl || details?.thumbnailImageUrl;
+            if (prefer3D && can3D) {
+              return (
+                <div className="relative">
+                  <AvatarPreview3D
+                    avatarId={selected.avatar_id}
+                    assetUrl={windowsAssetUrl}
+                    bundlePath={selected.path || undefined}
+                    fallbackImageUrl={fallbackUrl}
+                    size={220}
+                    expandedSize={720}
+                  />
+                  <button
+                    type="button"
+                    className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-0.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm hover:bg-black/80 transition-colors"
+                    onClick={() => setPrefer3D(false)}
+                  >
+                    <Eye className="size-2.5" />
+                    2D
+                  </button>
+                </div>
+              );
+            }
             return (
-              <AvatarPreview3D
-                avatarId={selected.avatar_id}
-                assetUrl={windowsAssetUrl}
-                bundlePath={selected.path || undefined}
-                fallbackImageUrl={fallbackUrl}
-                size={220}
-                expandedSize={720}
-              />
+              <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]" style={{ width: 220, height: 220 }}>
+                {fallbackUrl ? (
+                  <ImageZoom src={fallbackUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-[hsl(var(--muted))]">
+                    <User className="size-12 text-[hsl(var(--muted-foreground))]" />
+                  </div>
+                )}
+                {can3D && (
+                  <button
+                    type="button"
+                    className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm hover:bg-black/80 transition-colors"
+                    onClick={() => setPrefer3D((v) => !v)}
+                  >
+                    <Box className="size-2.5" />
+                    {prefer3D ? "2D" : "3D"}
+                  </button>
+                )}
+              </div>
             );
           })()}
-          <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
-            <div className="font-medium uppercase tracking-[0.08em] text-[hsl(var(--foreground))]">
-              {t("avatars.previewLabel")}
-            </div>
-            <div className="mt-1 leading-relaxed">
-              {t("avatars.previewWorkbench", {
-                defaultValue:
-                  "Scroll to zoom, hold Shift and drag to pan, and use the debug modes to inspect silhouette and large accessories.",
-              })}
-            </div>
-          </div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-3">
@@ -584,7 +610,11 @@ function PublicAvatarSearch() {
     setSearching(true);
     try {
       const res = await ipc.searchAvatars(q, 24);
-      setResults(res.avatars ?? []);
+      const avatars = res?.avatars ?? [];
+      setResults(avatars);
+      if (avatars.length === 0) {
+        toast.info(t("avatars.search.noResults", { defaultValue: "No results found" }));
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -652,6 +682,10 @@ function PublicAvatarSearch() {
         <div className="flex items-center justify-center gap-2 py-8 text-[12px] text-[hsl(var(--muted-foreground))]">
           <Loader2 className="size-4 animate-spin" />
           {t("avatars.search.searching", { defaultValue: "Searching…" })}
+        </div>
+      ) : query.trim() && !searching ? (
+        <div className="py-6 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
+          {t("avatars.search.noResults", { defaultValue: "No results — try a different avatar name" })}
         </div>
       ) : null}
     </Card>
