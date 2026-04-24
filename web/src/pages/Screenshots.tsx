@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FolderOpen,
   RefreshCcw,
@@ -12,6 +13,7 @@ import {
   Trash2,
   Eye,
   FolderSearch,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,8 +33,14 @@ interface Screenshot {
   /** ISO date string */
   created_at: string;
   size_bytes: number;
-  /** virtual URL served over preview.local */
+  /** Original full-res URL served over `screenshots.local`. */
   url: string;
+  /**
+   * Pre-generated JPEG thumbnail URL served over `screenshot-thumbs.local`.
+   * May 404 for a brief window after first scan while the host's thumb
+   * pool catches up — the tile falls back to `url` in that case.
+   */
+  thumb_url?: string;
 }
 
 interface ScreenshotsResult {
@@ -94,6 +102,7 @@ function ScreenshotTile({
   onOpen,
   onClick,
   onContextMenu,
+  eager,
 }: {
   shot: Screenshot;
   selected: boolean;
@@ -101,13 +110,51 @@ function ScreenshotTile({
   onOpen: (s: Screenshot) => void;
   onClick: (s: Screenshot, e: React.MouseEvent) => void;
   onContextMenu: (s: Screenshot, e: React.MouseEvent) => void;
+  /** True for above-fold tiles — lets us skip IntersectionObserver and
+   * prioritise their fetch. */
+  eager: boolean;
 }) {
   const { t } = useTranslation();
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
+  // `source` moves through: thumb_url (fast) → url (fallback if thumb
+  // 404s) → error (both failed). Avoids a flash of placeholder when
+  // the host thumb pool hasn't caught up yet.
+  const [source, setSource] = useState<"thumb" | "full" | "error">(
+    shot.thumb_url ? "thumb" : "full",
+  );
+  const [visible, setVisible] = useState(eager);
+  const ref = useRef<HTMLButtonElement>(null);
+
+  // Below-fold tiles wait on IntersectionObserver so we don't pay the
+  // ~30 KB thumbnail fetch for everything in a 2000-item library. Above-
+  // fold tiles paint immediately.
+  useEffect(() => {
+    if (eager || !ref.current) return;
+    const el = ref.current;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setVisible(true);
+            io.disconnect();
+            return;
+          }
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [eager]);
+
+  const activeSrc =
+    source === "thumb" ? shot.thumb_url
+      : source === "full" ? shot.url
+        : undefined;
 
   return (
     <button
+      ref={ref}
       type="button"
       onClick={(e) => onClick(shot, e)}
       onDoubleClick={() => onOpen(shot)}
@@ -131,22 +178,32 @@ function ScreenshotTile({
       )}
 
       {/* Thumbnail */}
-      <div className="relative aspect-video w-full overflow-hidden bg-[hsl(var(--canvas))]">
-        {!error ? (
+      <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-[hsl(var(--muted)/0.25)] to-[hsl(var(--muted)/0.05)]">
+        {visible && activeSrc ? (
           <img
-            src={shot.url}
+            src={activeSrc}
             alt={shot.filename}
-            loading="lazy"
+            loading={eager ? "eager" : "lazy"}
             decoding="async"
+            fetchPriority={eager ? "high" : "auto"}
             className={cn(
               "h-full w-full object-cover transition-opacity duration-300",
               loaded ? "opacity-100" : "opacity-0",
             )}
             onLoad={() => setLoaded(true)}
-            onError={() => setError(true)}
+            onError={() => {
+              // Thumb 404 → try the full-res URL once. If that also
+              // fails, give up and show the placeholder.
+              if (source === "thumb" && shot.url) {
+                setSource("full");
+                setLoaded(false);
+              } else {
+                setSource("error");
+              }
+            }}
           />
         ) : null}
-        {(!loaded || error) && (
+        {(!loaded || source === "error") && (
           <div className="absolute inset-0 flex items-center justify-center">
             <ImageIcon className="size-8 text-[hsl(var(--muted-foreground)/0.4)]" />
           </div>
@@ -389,10 +446,24 @@ function BulkActionsBar({
 export default function Screenshots() {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
+  const queryClient = useQueryClient();
 
-  const [data, setData] = useState<ScreenshotsResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // React Query owns the list now: first mount hits the host, every
+  // subsequent mount (tab navigate-back) renders instantly from cache
+  // while a background refetch picks up any new captures. The 2000-cap
+  // + recursive-dir-walk that the host does is why the cold IPC feels
+  // slow on large libraries; once cached, it's free.
+  const listQuery = useQuery<ScreenshotsResult>({
+    queryKey: ["screenshots.list"],
+    queryFn: () => ipc.call<undefined, ScreenshotsResult>("screenshots.list", undefined),
+    staleTime: 5 * 60_000,
+  });
+
+  const data = listQuery.data ?? null;
+  const loading = listQuery.isPending;
+  const refetching = listQuery.isFetching && !listQuery.isPending;
+  const error = listQuery.error instanceof Error ? listQuery.error.message : null;
+
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, 150);
 
@@ -405,27 +476,14 @@ export default function Screenshots() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-  /* ---- Data loading ---- */
-
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    ipc
-      .call<undefined, ScreenshotsResult>("screenshots.list", undefined)
-      .then((result) => {
-        setData(result);
-        // Clear selection when data reloads
-        setSelectedSet(new Set());
-      })
-      .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
+  // Clear selection when the underlying list changes (delete or refresh).
   useEffect(() => {
-    load();
-  }, [load]);
+    setSelectedSet(new Set());
+  }, [data]);
+
+  function refresh() {
+    void listQuery.refetch();
+  }
 
   const filtered =
     data?.screenshots.filter((s) =>
@@ -500,7 +558,18 @@ export default function Screenshots() {
           }
           return next;
         });
-        load();
+        // Optimistically drop deleted rows from the cached list so the
+        // grid updates without a full rescan round-trip. Background
+        // refetch will reconcile.
+        queryClient.setQueryData<ScreenshotsResult>(["screenshots.list"], (prev) => {
+          if (!prev) return prev;
+          const deletedSet = new Set(deleteConfirm.paths);
+          return {
+            ...prev,
+            screenshots: prev.screenshots.filter((s) => !deletedSet.has(s.path)),
+          };
+        });
+        void queryClient.invalidateQueries({ queryKey: ["screenshots.list"] });
       }
 
       if (res.failed && res.failed.length > 0) {
@@ -517,14 +586,12 @@ export default function Screenshots() {
   /* ---- Selection logic ---- */
 
   function handleTileClick(shot: Screenshot, e: React.MouseEvent) {
-    // Prevent selection when double-click will open
     if (e.detail >= 2) return;
 
     setSelectedSet((prev) => {
       const next = new Set(prev);
 
       if (e.shiftKey && lastClickedRef.current) {
-        // Range select
         const lastIdx = filtered.findIndex(
           (s) => s.path === lastClickedRef.current,
         );
@@ -536,14 +603,12 @@ export default function Screenshots() {
           }
         }
       } else if (e.ctrlKey || e.metaKey) {
-        // Toggle individual
         if (next.has(shot.path)) {
           next.delete(shot.path);
         } else {
           next.add(shot.path);
         }
       } else {
-        // Simple click: toggle single (clear others)
         if (next.has(shot.path) && next.size === 1) {
           next.clear();
         } else {
@@ -571,7 +636,6 @@ export default function Screenshots() {
   function handleContextMenu(shot: Screenshot, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    // Auto-select the right-clicked item if it isn't already selected
     if (!selectedSet.has(shot.path)) {
       setSelectedSet(new Set([shot.path]));
       lastClickedRef.current = shot.path;
@@ -620,7 +684,6 @@ export default function Screenshots() {
     <div
       className="flex flex-col gap-4 animate-fade-in"
       onClick={() => {
-        // Click on empty space clears context menu
         if (contextMenu) closeContextMenu();
       }}
     >
@@ -650,10 +713,10 @@ export default function Screenshots() {
           <Button
             variant="outline"
             size="sm"
-            onClick={load}
-            disabled={loading}
+            onClick={refresh}
+            disabled={loading || refetching}
           >
-            <RefreshCcw className={loading ? "animate-spin" : undefined} />
+            <RefreshCcw className={cn((loading || refetching) && "animate-spin")} />
             {t("common.refresh")}
           </Button>
         </div>
@@ -676,6 +739,12 @@ export default function Screenshots() {
           <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
             {filtered.length}{" "}
             {t("screenshots.countSuffix", { defaultValue: "shots" })}
+            {refetching && (
+              <span className="ml-2 inline-flex items-center gap-1 opacity-60">
+                <Loader2 className="size-3 animate-spin" />
+                {t("common.refreshing", { defaultValue: "refreshing" })}
+              </span>
+            )}
           </span>
         )}
 
@@ -718,8 +787,19 @@ export default function Screenshots() {
           {error}
         </div>
       ) : loading && !data ? (
-        <div className="py-12 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
-          {t("common.loading")}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div
+              key={i}
+              className="overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
+            >
+              <div className="aspect-video w-full bg-gradient-to-br from-[hsl(var(--muted)/0.25)] to-[hsl(var(--muted)/0.05)] animate-pulse" />
+              <div className="flex items-center gap-1.5 px-2 py-1.5">
+                <div className="h-2.5 w-24 bg-[hsl(var(--muted)/0.25)] rounded animate-pulse" />
+                <div className="ml-auto h-2.5 w-12 bg-[hsl(var(--muted)/0.2)] rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-[hsl(var(--muted-foreground))]">
@@ -730,7 +810,7 @@ export default function Screenshots() {
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
-          {filtered.map((shot) => (
+          {filtered.map((shot, idx) => (
             <ScreenshotTile
               key={shot.path}
               shot={shot}
@@ -739,6 +819,7 @@ export default function Screenshots() {
               onOpen={openShot}
               onClick={handleTileClick}
               onContextMenu={handleContextMenu}
+              eager={idx < 16}
             />
           ))}
         </div>

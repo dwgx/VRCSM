@@ -242,6 +242,15 @@ public:
     /// Send a friend request via POST /api/1/user/{userId}/friendRequest.
     static Result<nlohmann::json> sendFriendRequest(const std::string& userId);
 
+    /// Toggle whether the signed-in user represents the given group via
+    /// `PUT /api/1/groups/{groupId}/representation` with body
+    /// `{"isRepresenting": bool}`. Setting true auto-unsets any other
+    /// represented group server-side; setting false on the currently
+    /// represented group clears representation. Returns `{ok:true}` on
+    /// HTTP 2xx, structured Error otherwise.
+    static Result<nlohmann::json> setGroupRepresentation(
+        const std::string& groupId, bool isRepresenting);
+
     /// Fetch a short-lived WebSocket auth token via GET `/api/1/auth`.
     /// VRChat returns `{ok: true, token: "..."}` on success. The token
     /// is what `wss://pipeline.vrchat.cloud/?auth=<token>` expects —

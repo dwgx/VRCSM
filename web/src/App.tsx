@@ -25,6 +25,7 @@ import { ReportProvider, useReport } from "@/lib/report-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { PluginRegistryProvider } from "@/lib/plugin-context";
 import { ipc } from "@/lib/ipc";
+import { useAuth } from "@/lib/auth-context";
 import { getTrueCacheCategoryCount, getTrueCacheLabel } from "@/lib/report-metrics";
 import { formatDate } from "@/lib/utils";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
@@ -247,6 +248,35 @@ function AppContent() {
       alive = false;
     };
   }, []);
+
+  // Warm the Calendar/Jams/Groups caches in the background so the first
+  // click on each nav entry renders instantly from React Query cache.
+  // These endpoints are auth-gated but skip cleanly if the session
+  // isn't ready yet — the next hook fire picks them up.
+  const { status: authStatus } = useAuth();
+  useEffect(() => {
+    if (!authStatus.authed) return;
+    void queryClient.prefetchQuery({
+      queryKey: ["calendar.discover"],
+      queryFn: () => ipc.calendarDiscover(),
+      staleTime: 5 * 60_000,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ["calendar.featured"],
+      queryFn: () => ipc.calendarFeatured(),
+      staleTime: 5 * 60_000,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ["jams.list"],
+      queryFn: () => ipc.jamsList(),
+      staleTime: 5 * 60_000,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ["groups.list", undefined],
+      queryFn: () => ipc.call<undefined, unknown>("groups.list"),
+      staleTime: 2 * 60_000,
+    });
+  }, [authStatus.authed]);
 
 
   const rightDockFallback = useMemo<RightDockDescriptor | null>(() => {

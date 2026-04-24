@@ -3,6 +3,7 @@
 #include "WebViewHost.h"
 
 #include "IpcBridge.h"
+#include "ScreenshotThumbs.h"
 #include "StringUtil.h"
 #include "UrlProtocol.h"
 #include "VrchatPaths.h"
@@ -278,6 +279,21 @@ void WebViewHost::ConfigureWebView()
         THROW_IF_FAILED(webview3->SetVirtualHostNameToFolderMapping(
             L"screenshots.local",
             screenshotsDir.c_str(),
+            COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW));
+    }
+
+    // Fourth virtual host: `screenshot-thumbs.local` → generated JPEG
+    // thumbnails on disk. Populated by ScreenshotThumbs::EnqueueBatch(),
+    // which the Screenshots page triggers via the `screenshots.list` IPC
+    // whenever it re-fetches the photo list. The frontend pulls tiny
+    // (~30 KB) JPEGs for grid tiles instead of the 3-8 MB originals —
+    // 10-20× faster first-paint on large libraries.
+    const auto thumbsDir = vrcsm::host::ScreenshotThumbs::CacheDir();
+    if (!thumbsDir.empty())
+    {
+        THROW_IF_FAILED(webview3->SetVirtualHostNameToFolderMapping(
+            L"screenshot-thumbs.local",
+            thumbsDir.c_str(),
             COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW));
     }
 

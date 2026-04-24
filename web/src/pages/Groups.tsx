@@ -5,11 +5,14 @@ import {
   BadgeCheck,
   Crown,
   ExternalLink,
+  Loader2,
   LogIn,
   RefreshCw,
   Search,
   Users,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +30,7 @@ import { subscribePipelineEvent } from "@/lib/pipeline-events";
 import { useAuth } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
 import type { WorkspaceGroup, WorkspaceGroupsResult } from "@/lib/types";
+import { ThumbImage } from "@/components/ThumbImage";
 
 function compareGroups(a: WorkspaceGroup, b: WorkspaceGroup): number {
   if (a.isRepresenting !== b.isRepresenting) return a.isRepresenting ? -1 : 1;
@@ -40,6 +44,10 @@ export default function Groups() {
   const { status } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  // Optimistic pending flag for representation toggles so the button
+  // shows a spinner while the PUT round-trips to VRChat and the
+  // groups.list refetch reconciles the new state.
+  const [pendingRepresentId, setPendingRepresentId] = useState<string | null>(null);
 
   const query = useIpcQuery<undefined, WorkspaceGroupsResult>(
     "groups.list",
@@ -84,6 +92,56 @@ export default function Groups() {
     () => groups.reduce((sum, g) => sum + (g.onlineMemberCount ?? 0), 0),
     [groups],
   );
+
+  async function toggleRepresent(group: WorkspaceGroup) {
+    if (pendingRepresentId) return;
+    const target = !group.isRepresenting;
+    setPendingRepresentId(group.id);
+    try {
+      await ipc.groupsSetRepresented(group.id, target);
+      // Optimistic client patch: VRChat says setting true on a new group
+      // auto-unsets any prior representation, so mirror that here and
+      // let the bg refetch reconcile if the server disagrees.
+      queryClient.setQueryData<WorkspaceGroupsResult>(
+        ["groups.list", undefined],
+        (prev) =>
+          prev
+            ? {
+                ...prev,
+                groups: prev.groups.map((g) =>
+                  g.id === group.id
+                    ? { ...g, isRepresenting: target }
+                    : target && g.isRepresenting
+                      ? { ...g, isRepresenting: false }
+                      : g,
+                ),
+              }
+            : prev,
+      );
+      void queryClient.invalidateQueries({ queryKey: ["groups.list"] });
+      toast.success(
+        target
+          ? t("groups.nowRepresenting", {
+              defaultValue: "Representing {{name}}",
+              name: group.name,
+            })
+          : t("groups.stoppedRepresenting", {
+              defaultValue: "Stopped representing {{name}}",
+              name: group.name,
+            }),
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(
+        t("groups.representFailed", {
+          defaultValue: "Failed to update representation: {{error}}",
+          error: msg,
+        }),
+      );
+    } finally {
+      setPendingRepresentId(null);
+    }
+  }
 
   if (!status.authed) {
     return (
@@ -177,23 +235,17 @@ export default function Groups() {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {groups.map((group) => (
             <Card key={group.id} elevation="flat" className="overflow-hidden">
-              <div className="relative h-[64px] w-full shrink-0 bg-[hsl(var(--muted))]">
-                {group.bannerUrl ? (
-                  <img
-                    src={group.bannerUrl}
-                    alt=""
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover opacity-80"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--primary)/0.2)] to-[hsl(var(--accent)/0.2)]" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--surface))] to-transparent" />
+              <div className="relative h-[64px] w-full shrink-0">
+                <ThumbImage
+                  src={group.bannerUrl}
+                  seedKey={group.id}
+                  label={group.name}
+                  className="h-full w-full rounded-none border-0 opacity-80"
+                  aspect=""
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--surface))] to-transparent pointer-events-none" />
                 {group.isRepresenting && (
-                  <Badge variant="warning" className="absolute top-2 right-2 gap-1">
+                  <Badge variant="warning" className="absolute top-2 right-2 gap-1 z-10">
                     <Crown className="size-3" />
                     {t("groups.representing", { defaultValue: "Representing" })}
                   </Badge>
@@ -201,15 +253,13 @@ export default function Groups() {
               </div>
               <CardContent className="relative -mt-6 flex flex-col gap-2 px-3 pt-0 pb-3">
                 <div className="flex items-start gap-2">
-                  <div className="size-10 shrink-0 rounded border-2 border-[hsl(var(--surface))] bg-[hsl(var(--surface))] overflow-hidden shadow">
-                    {group.iconUrl ? (
-                      <img src={group.iconUrl} alt="" className="size-full object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center bg-[hsl(var(--muted))]">
-                        <Users className="size-5 text-[hsl(var(--muted-foreground))]" />
-                      </div>
-                    )}
-                  </div>
+                  <ThumbImage
+                    src={group.iconUrl}
+                    seedKey={group.id}
+                    label={group.name}
+                    className="size-10 shrink-0 border-2 border-[hsl(var(--surface))] shadow"
+                    aspect=""
+                  />
                   <div className="flex min-w-0 flex-1 flex-col pt-5">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-[13px] font-semibold text-[hsl(var(--foreground))]">
@@ -248,6 +298,23 @@ export default function Groups() {
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 pt-1">
+                  <Button
+                    size="sm"
+                    variant={group.isRepresenting ? "outline" : "tonal"}
+                    disabled={pendingRepresentId !== null}
+                    onClick={() => void toggleRepresent(group)}
+                  >
+                    {pendingRepresentId === group.id ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : group.isRepresenting ? (
+                      <X className="size-3" />
+                    ) : (
+                      <Crown className="size-3" />
+                    )}
+                    {group.isRepresenting
+                      ? t("groups.stopRepresenting", { defaultValue: "Stop representing" })
+                      : t("groups.represent", { defaultValue: "Represent" })}
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"

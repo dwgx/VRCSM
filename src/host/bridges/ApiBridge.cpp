@@ -308,6 +308,26 @@ nlohmann::json IpcBridge::HandleGroupsList(const nlohmann::json&, const std::opt
     return nlohmann::json{{"groups", std::move(out)}};
 }
 
+nlohmann::json IpcBridge::HandleGroupsSetRepresented(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto groupId = JsonStringField(params, "groupId").value_or("");
+    if (groupId.empty())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument", "groups.setRepresented: missing 'groupId'", 400});
+    }
+    const bool isRepresenting = params.contains("isRepresenting") && params["isRepresenting"].is_boolean()
+        ? params["isRepresenting"].get<bool>()
+        : true;
+
+    auto result = vrcsm::core::VrcApi::setGroupRepresentation(groupId, isRepresenting);
+    if (!vrcsm::core::isOk(result))
+    {
+        throw IpcException{vrcsm::core::error(result)};
+    }
+    return vrcsm::core::value(result);
+}
+
 nlohmann::json IpcBridge::HandleCalendarList(const nlohmann::json&, const std::optional<std::string>&)
 {
     // Fire-and-best-effort: calendar is public-ish but we send the

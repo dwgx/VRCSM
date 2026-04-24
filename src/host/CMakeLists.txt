@@ -10,6 +10,7 @@ add_executable(vrcsm WIN32
     StringUtil.cpp
     VrchatPaths.cpp
     UrlProtocol.cpp
+    ScreenshotThumbs.cpp
 
     # Domain-specific IPC handler implementations (split from IpcBridge.cpp)
     bridges/AuthBridge.cpp
@@ -66,6 +67,7 @@ target_link_libraries(vrcsm PRIVATE
     user32
     advapi32
     version
+    windowscodecs
 )
 
 target_sources(vrcsm PRIVATE

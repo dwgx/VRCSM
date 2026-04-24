@@ -4,12 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useReport } from "@/lib/report-context";
 import { ipc } from "@/lib/ipc";
+import { vrcApiThrottle } from "@/lib/api-throttle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock, User } from "lucide-react";
+import { ThumbImage } from "@/components/ThumbImage";
+import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
-import { useThumbnail, prefetchThumbnails } from "@/lib/thumbnails";
 
 interface AvatarItem {
   avatar_id: string;
@@ -20,11 +21,24 @@ interface AvatarItem {
 
 interface SeenAvatar {
   avatar_id: string;
-  avatar_name?: string;
-  author_name?: string;
-  first_seen_on?: string;
-  first_seen_at?: string;
+  avatar_name?: string | null;
+  author_name?: string | null;
+  first_seen_on?: string | null;
+  first_seen_at?: string | null;
   release_status?: string | null;
+}
+
+interface AvatarDetails {
+  name?: string;
+  description?: string;
+  authorName?: string;
+  authorId?: string;
+  releaseStatus?: string;
+  thumbnailImageUrl?: string;
+  imageUrl?: string;
+  tags?: string[];
+  version?: number;
+  [key: string]: unknown;
 }
 
 function perfRank(params: number): { label: string; color: string; bg: string; tier: string } {
@@ -37,10 +51,13 @@ function perfRank(params: number): { label: string; color: string; bg: string; t
 
 type TabKey = "benchmark" | "seen";
 
+const SEEN_PAGE_SIZE = 30;
+
 export default function AvatarBenchmark() {
   const { t } = useTranslation();
   const { report } = useReport();
   const [tab, setTab] = useState<TabKey>("benchmark");
+  const [seenLimit, setSeenLimit] = useState(SEEN_PAGE_SIZE);
 
   const avatars = useMemo(() => {
     if (!report) return [];
@@ -68,14 +85,7 @@ export default function AvatarBenchmark() {
     enabled: tab === "seen",
   });
   const seenAvatars = (seenQuery.data?.items ?? []) as SeenAvatar[];
-
-  // Prefetch thumbnails for seen avatars
-  useMemo(() => {
-    if (seenAvatars.length > 0) {
-      const ids = seenAvatars.filter(a => a.avatar_id.startsWith("avtr_")).map(a => a.avatar_id);
-      if (ids.length > 0) prefetchThumbnails(ids);
-    }
-  }, [seenAvatars]);
+  const visibleSeen = seenAvatars.slice(0, seenLimit);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
@@ -105,6 +115,7 @@ export default function AvatarBenchmark() {
         >
           <Eye className="size-3" />
           {t("benchmark.seenAvatars", { defaultValue: "Seen Avatars" })}
+          {seenAvatars.length > 0 && <Badge variant="secondary" className="ml-1">{seenAvatars.length}</Badge>}
         </Button>
       </div>
 
@@ -160,6 +171,12 @@ export default function AvatarBenchmark() {
                     <Badge variant="outline" className={`w-8 justify-center text-[9px] ${r.color} shrink-0`}>
                       {r.tier}
                     </Badge>
+                    <ThumbImage
+                      seedKey={a.avatar_id}
+                      label={a.display_name ?? a.avatar_id}
+                      className="size-8 shrink-0"
+                      aspect=""
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate font-medium">{a.display_name || a.avatar_id}</span>
@@ -204,8 +221,13 @@ export default function AvatarBenchmark() {
               <Badge variant="secondary">{seenAvatars.length}</Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-0.5 max-h-[600px] overflow-y-auto">
-            {seenAvatars.length === 0 && (
+          <CardContent className="flex flex-col gap-1 max-h-[640px] overflow-y-auto">
+            {seenQuery.isPending && (
+              <div className="py-8 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
+                {t("common.loading")}
+              </div>
+            )}
+            {!seenQuery.isPending && seenAvatars.length === 0 && (
               <div className="py-8 text-center">
                 <Eye className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
                 <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -213,61 +235,21 @@ export default function AvatarBenchmark() {
                 </p>
               </div>
             )}
-            {seenAvatars.map((a) => {
-              const isPublic = a.release_status === "public";
-              const hasRealId = a.avatar_id.startsWith("avtr_");
-              const isUnknown = !hasRealId;
-              const isPrivate = hasRealId && a.release_status && a.release_status !== "public";
-              return (
-                <div key={a.avatar_id} className="flex items-center gap-2 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
-                  <SeenAvatarThumb avatarId={a.avatar_id} />
-                  <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium truncate">{a.avatar_name || a.avatar_id}</span>
-                      {isPublic && <Badge variant="default" className="h-4 text-[9px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">PUBLIC</Badge>}
-                      {isPrivate && <Badge variant="outline" className="h-4 text-[9px] gap-0.5"><Lock className="size-2" />PRIVATE</Badge>}
-                      {isUnknown && <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">LOG-ONLY</Badge>}
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--muted-foreground))]">
-                      {a.first_seen_on && <span>worn by {a.first_seen_on}</span>}
-                      {a.first_seen_at && (
-                        <span className="flex items-center gap-0.5">
-                          <Clock className="size-2.5" />
-                          {new Date(a.first_seen_at).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {hasRealId && isPublic && (
-                    <>
-                      <SmartWearButton avatarId={a.avatar_id} avatarName={a.avatar_name} variant="compact" />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-6 text-[10px] gap-1"
-                        onClick={() => {
-                          void navigator.clipboard.writeText(a.avatar_id);
-                          toast.success("Avatar ID copied");
-                        }}
-                      >
-                        <Copy className="size-2.5" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-6 text-[10px]"
-                        onClick={() => {
-                          void navigator.clipboard.writeText(`https://vrchat.com/home/avatar/${a.avatar_id}`);
-                          toast.success("Avatar link copied");
-                        }}
-                      >
-                        Link
-                      </Button>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+            {visibleSeen.map((a) => (
+              <SeenAvatarRow key={a.avatar_id} a={a} />
+            ))}
+            {seenLimit < seenAvatars.length && (
+              <div className="flex justify-center pt-2 pb-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={() => setSeenLimit((n) => n + SEEN_PAGE_SIZE)}
+                >
+                  {t("common.loadMore", { defaultValue: "Load more" })} ({seenAvatars.length - seenLimit})
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -275,16 +257,86 @@ export default function AvatarBenchmark() {
   );
 }
 
-function SeenAvatarThumb({ avatarId }: { avatarId: string }) {
-  const { url } = useThumbnail(avatarId);
+// Per-row enrichment — for public avatars missing name/thumbnail/author,
+// hit `/avatars/{id}` once and cache for an hour. React Query dedupes,
+// so re-renders are free. Private avatars short-circuit (VRChat 401s them
+// for anyone other than the owner), so we only fire for release=public.
+function SeenAvatarRow({ a }: { a: SeenAvatar }) {
+  const isPublic = a.release_status === "public";
+  const hasRealId = a.avatar_id.startsWith("avtr_");
+  const isUnknown = !hasRealId;
+  const isPrivate = hasRealId && a.release_status && a.release_status !== "public";
+
+  const needsEnrich = hasRealId && isPublic && (!a.avatar_name || !a.author_name);
+  const detailsQuery = useQuery({
+    queryKey: ["avatar.details", a.avatar_id],
+    queryFn: () =>
+      vrcApiThrottle(() =>
+        ipc.call<{ id: string }, { details: AvatarDetails | null }>("avatar.details", { id: a.avatar_id }),
+      ),
+    enabled: needsEnrich,
+    staleTime: 60 * 60_000,
+    retry: 0,
+  });
+  const details = detailsQuery.data?.details ?? null;
+
+  const displayName = a.avatar_name || details?.name || a.avatar_id;
+  const authorName = a.author_name || details?.authorName;
+  const thumbUrl = details?.thumbnailImageUrl || details?.imageUrl;
+
   return (
-    <div className="size-8 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
-      {url ? (
-        <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center">
-          <User className="size-3.5 text-[hsl(var(--muted-foreground)/0.4)]" />
+    <div className="flex items-center gap-2.5 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
+      <ThumbImage
+        src={thumbUrl}
+        seedKey={a.avatar_id}
+        label={a.avatar_name ?? a.avatar_id}
+        className="size-10 shrink-0"
+        aspect=""
+      />
+      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium truncate">{displayName}</span>
+          {isPublic && <Badge variant="default" className="h-4 text-[9px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">PUBLIC</Badge>}
+          {isPrivate && <Badge variant="outline" className="h-4 text-[9px] gap-0.5"><Lock className="size-2" />PRIVATE</Badge>}
+          {isUnknown && <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">LOG-ONLY</Badge>}
         </div>
+        <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--muted-foreground))]">
+          {authorName && <span className="truncate">by {authorName}</span>}
+          {a.first_seen_on && <span>· worn by {a.first_seen_on}</span>}
+          {a.first_seen_at && (
+            <span className="flex items-center gap-0.5">
+              <Clock className="size-2.5" />
+              {new Date(a.first_seen_at).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+      </div>
+      {hasRealId && isPublic && (
+        <>
+          <SmartWearButton avatarId={a.avatar_id} avatarName={displayName} variant="compact" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 text-[10px] gap-1"
+            onClick={() => {
+              void navigator.clipboard.writeText(a.avatar_id);
+              toast.success("Avatar ID copied");
+            }}
+          >
+            <Copy className="size-2.5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 text-[10px]"
+            onClick={() => {
+              void navigator.clipboard.writeText(`https://vrchat.com/home/avatar/${a.avatar_id}`);
+              toast.success("Avatar link copied");
+            }}
+          >
+            Link
+          </Button>
+        </>
       )}
     </div>
   );
