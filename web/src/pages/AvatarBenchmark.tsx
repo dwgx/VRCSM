@@ -14,6 +14,7 @@ import { ThumbImage } from "@/components/ThumbImage";
 import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
+import type { AvatarSwitchEvent } from "@/lib/types";
 
 interface AvatarItem {
   avatar_id: string;
@@ -30,6 +31,26 @@ interface SeenAvatar {
   first_seen_at?: string | null;
   release_status?: string | null;
   first_seen_user_id?: string | null;
+}
+
+interface SeenAvatarWearer {
+  displayName: string;
+  userId?: string | null;
+  firstSeenAt?: string | null;
+  lastSeenAt?: string | null;
+  seenCount: number;
+  worldId?: string | null;
+  instanceId?: string | null;
+}
+
+interface SeenLogAvatar {
+  local_id: string;
+  avatar_name: string;
+  first_seen_at?: string | null;
+  last_seen_at?: string | null;
+  seen_count: number;
+  wearer_count: number;
+  wearers: SeenAvatarWearer[];
 }
 
 interface AvatarDetails {
@@ -64,6 +85,80 @@ function perfRank(params: number): PerfRank {
 type TabKey = "benchmark" | "seen";
 
 const SEEN_PAGE_SIZE = 50;
+
+function stableSeenKey(name: string): string {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < name.length; i++) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return `seen:${h.toString(16).padStart(8, "0")}`;
+}
+
+function compareIsoish(a?: string | null, b?: string | null): number {
+  if (!a && !b) return 0;
+  if (!a) return -1;
+  if (!b) return 1;
+  return a.localeCompare(b);
+}
+
+function buildSeenLogAvatars(events: AvatarSwitchEvent[]): SeenLogAvatar[] {
+  const byName = new Map<string, SeenLogAvatar>();
+
+  for (const ev of events) {
+    const name = ev.avatar_name?.trim();
+    const actor = ev.actor?.trim();
+    if (!name || !actor) continue;
+
+    let item = byName.get(name);
+    if (!item) {
+      item = {
+        local_id: stableSeenKey(name),
+        avatar_name: name,
+        first_seen_at: ev.iso_time,
+        last_seen_at: ev.iso_time,
+        seen_count: 0,
+        wearer_count: 0,
+        wearers: [],
+      };
+      byName.set(name, item);
+    }
+
+    item.seen_count += 1;
+    if (compareIsoish(ev.iso_time, item.first_seen_at) < 0) item.first_seen_at = ev.iso_time;
+    if (compareIsoish(ev.iso_time, item.last_seen_at) > 0) item.last_seen_at = ev.iso_time;
+
+    let wearer = item.wearers.find((w) => w.displayName === actor);
+    if (!wearer) {
+      wearer = {
+        displayName: actor,
+        userId: ev.actor_user_id,
+        firstSeenAt: ev.iso_time,
+        lastSeenAt: ev.iso_time,
+        seenCount: 0,
+        worldId: ev.world_id,
+        instanceId: ev.instance_id,
+      };
+      item.wearers.push(wearer);
+    }
+    wearer.seenCount += 1;
+    if (ev.actor_user_id && !wearer.userId) wearer.userId = ev.actor_user_id;
+    if (compareIsoish(ev.iso_time, wearer.firstSeenAt) < 0) wearer.firstSeenAt = ev.iso_time;
+    if (compareIsoish(ev.iso_time, wearer.lastSeenAt) > 0) {
+      wearer.lastSeenAt = ev.iso_time;
+      wearer.worldId = ev.world_id;
+      wearer.instanceId = ev.instance_id;
+    }
+  }
+
+  return [...byName.values()]
+    .map((item) => ({
+      ...item,
+      wearer_count: item.wearers.length,
+      wearers: item.wearers.sort((a, b) => compareIsoish(b.lastSeenAt, a.lastSeenAt)),
+    }))
+    .sort((a, b) => compareIsoish(b.last_seen_at, a.last_seen_at));
+}
 
 export default function AvatarBenchmark() {
   const { t } = useTranslation();
@@ -109,6 +204,11 @@ export default function AvatarBenchmark() {
     placeholderData: (prev) => prev,
   });
   const seenAvatars = (seenQuery.data?.items ?? []) as SeenAvatar[];
+  const seenLogAvatars = useMemo(
+    () => buildSeenLogAvatars(report?.logs?.avatar_switches ?? []),
+    [report],
+  );
+  const effectiveSeenTotal = seenLogAvatars.length || totalSeen;
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
@@ -138,7 +238,7 @@ export default function AvatarBenchmark() {
         >
           <Eye className="size-3" />
           {t("benchmark.seenAvatars", { defaultValue: "Seen Avatars" })}
-          {totalSeen > 0 && <Badge variant="secondary" className="ml-1">{totalSeen}</Badge>}
+          {effectiveSeenTotal > 0 && <Badge variant="secondary" className="ml-1">{effectiveSeenTotal}</Badge>}
         </Button>
       </div>
 
@@ -204,17 +304,24 @@ export default function AvatarBenchmark() {
             <CardTitle className="text-[12px] font-mono uppercase tracking-wider flex items-center gap-2">
               <Eye className="size-3" />
               {t("benchmark.seenTitle", { defaultValue: "Avatars Seen on Others" })}
-              <Badge variant="secondary">{totalSeen}</Badge>
+              <Badge variant="secondary">{effectiveSeenTotal}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-1 max-h-[640px] overflow-y-auto">
-            {seenQuery.isPending && seenAvatars.length === 0 && (
+            {seenLogAvatars.length > 0 && (
+              <div className="mb-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+                {t("benchmark.localEncounterIndexHint", {
+                  defaultValue: "Built from local VRChat logs. Log-only rows may not include an avatar ID or official thumbnail, but they preserve who wore the avatar and when you saw it.",
+                })}
+              </div>
+            )}
+            {seenLogAvatars.length === 0 && seenQuery.isPending && seenAvatars.length === 0 && (
               <div className="flex items-center justify-center gap-2 py-8 text-[11px] text-[hsl(var(--muted-foreground))]">
                 <Loader2 className="size-3.5 animate-spin" />
                 <span>{t("common.loading")}</span>
               </div>
             )}
-            {!seenQuery.isPending && totalSeen === 0 && (
+            {seenLogAvatars.length === 0 && !seenQuery.isPending && totalSeen === 0 && (
               <div className="py-8 text-center">
                 <Eye className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
                 <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -222,11 +329,15 @@ export default function AvatarBenchmark() {
                 </p>
               </div>
             )}
-            {seenAvatars.map((a) => (
-              <SeenAvatarRow key={a.avatar_id} a={a} />
-            ))}
+            {seenLogAvatars.length > 0
+              ? seenLogAvatars.map((a) => (
+                  <SeenLogAvatarRow key={a.local_id} a={a} />
+                ))
+              : seenAvatars.map((a) => (
+                  <SeenAvatarRow key={a.avatar_id} a={a} />
+                ))}
           </CardContent>
-          {totalPages > 1 && (
+          {seenLogAvatars.length === 0 && totalPages > 1 && (
             <div className="border-t border-[hsl(var(--border))] px-3 py-2">
               <Pagination
                 page={currentPage}
@@ -426,6 +537,117 @@ function SeenAvatarRow({ a }: { a: SeenAvatar }) {
             {t("common.copy", { defaultValue: "Copy" })}
           </Button>
         </>
+      )}
+    </div>
+  );
+}
+
+function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const primaryWearer = a.wearers[0];
+
+  return (
+    <div className="flex flex-col gap-2 border-b border-[hsl(var(--border)/0.35)] py-2">
+      <div className="flex items-center gap-2.5 text-[11px]">
+        <ThumbImage
+          src={undefined}
+          seedKey={a.local_id}
+          label={a.avatar_name}
+          className="size-10 shrink-0"
+          aspect=""
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium truncate">{a.avatar_name}</span>
+            <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">
+              {t("benchmark.logOnly", { defaultValue: "Log only" })}
+            </Badge>
+            <Badge variant="secondary" className="h-4 text-[9px]">
+              {t("benchmark.wearerCount", {
+                count: a.wearer_count,
+                defaultValue: "{{count}} wearer",
+              })}
+            </Badge>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-[hsl(var(--muted-foreground))]">
+            {primaryWearer && (
+              <span className="flex items-center gap-1">
+                <span>{t("benchmark.wornBy", { defaultValue: "worn by" })}</span>
+                {primaryWearer.userId?.startsWith("usr_") ? (
+                  <UserPopupBadge
+                    userId={primaryWearer.userId}
+                    displayName={primaryWearer.displayName}
+                  />
+                ) : (
+                  <span className="font-medium text-[hsl(var(--foreground))]">
+                    {primaryWearer.displayName}
+                  </span>
+                )}
+              </span>
+            )}
+            {a.last_seen_at && (
+              <span className="flex items-center gap-0.5">
+                <Clock className="size-2.5" />
+                {new Date(a.last_seen_at).toLocaleDateString()}
+              </span>
+            )}
+            <span>
+              {t("benchmark.seenTimes", {
+                count: a.seen_count,
+                defaultValue: "seen {{count}} times",
+              })}
+            </span>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 text-[10px]"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded
+            ? t("common.collapse", { defaultValue: "Collapse" })
+            : t("benchmark.showWearers", { defaultValue: "Wearers" })}
+        </Button>
+      </div>
+
+      {expanded && (
+        <div className="ml-[50px] flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-2">
+          {a.wearers.slice(0, 12).map((w) => (
+            <div
+              key={`${w.displayName}-${w.lastSeenAt ?? ""}`}
+              className="flex min-w-0 flex-wrap items-center gap-2 text-[10.5px]"
+            >
+              {w.userId?.startsWith("usr_") ? (
+                <UserPopupBadge userId={w.userId} displayName={w.displayName} />
+              ) : (
+                <span className="font-medium text-[hsl(var(--foreground))]">{w.displayName}</span>
+              )}
+              <span className="text-[hsl(var(--muted-foreground))]">
+                {t("benchmark.seenTimes", {
+                  count: w.seenCount,
+                  defaultValue: "seen {{count}} times",
+                })}
+              </span>
+              {w.lastSeenAt && (
+                <span className="font-mono text-[hsl(var(--muted-foreground))]">
+                  {new Date(w.lastSeenAt).toLocaleString()}
+                </span>
+              )}
+              {w.worldId && (
+                <span className="truncate font-mono text-[hsl(var(--muted-foreground))]">
+                  {w.worldId}
+                </span>
+              )}
+            </div>
+          ))}
+          {a.wearers.length > 12 && (
+            <div className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              +{a.wearers.length - 12}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

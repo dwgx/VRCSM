@@ -1561,7 +1561,11 @@
     "public": "Public",
     "private": "Private",
     "logOnly": "Log only",
-    "byAuthor": "by {{author}}"
+    "byAuthor": "by {{author}}",
+    "localEncounterIndexHint": "Built from local VRChat logs. Log-only rows may not include an avatar ID or official thumbnail, but they preserve who wore the avatar and when you saw it.",
+    "wearerCount": "{{count}} wearer",
+    "seenTimes": "seen {{count}} times",
+    "showWearers": "Wearers"
   },
   "fbt": {
     "title": "FBT Calibration Monitor",
