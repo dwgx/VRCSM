@@ -46,25 +46,30 @@ type AugmentedAvatar = LocalAvatarItem & {
   resolution_source?: string | null;
   thumbnail_status?: "idle" | "loading" | "resolved" | "miss";
   reference_thumbnail_url?: string;
-  reference_source?: "wearer_current_profile";
+  reference_source?: "wearer_current_profile_verified";
   reference_status?: "loading" | "resolved" | "miss";
+  wearer_reference_url?: string;
+  wearer_reference_avatar_name?: string;
+  wearer_reference_status?: "loading" | "resolved" | "miss";
 };
 
 type AvatarListFilter = "local" | "encounters" | "all";
 
 const SEEN_PAGE_SIZE = 40;
-const WEARER_REFERENCE_CONCURRENCY = 4;
 const WEARER_REFERENCE_TIMEOUT_MS = 5000;
 const AVATAR_LIST_FILTER_KEY = "vrcsm.avatars.listFilter.v2";
+const WEARER_REFERENCE_CACHE_KEY = "vrcsm.avatars.wearerReferences.v1";
 
 type WearerReference = {
   status: "loading" | "resolved" | "miss";
   url?: string;
-  source?: "wearer_current_profile";
+  avatarName?: string;
+  verifiedForAvatarName?: string;
 };
 
 type WearerProfileResponse = {
   profile: {
+    currentAvatarName?: string | null;
     currentAvatarThumbnailImageUrl?: string | null;
     currentAvatarImageUrl?: string | null;
     profilePicOverride?: string | null;
@@ -153,6 +158,55 @@ function compareIsoish(a?: string | null, b?: string | null): number {
   if (!a) return -1;
   if (!b) return 1;
   return a.localeCompare(b);
+}
+
+function normalizeAvatarName(name?: string | null): string {
+  return (name ?? "")
+    .normalize("NFKC")
+    .replace(/[._\-‐‑‒–—―\s]+/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function isSameAvatarName(a?: string | null, b?: string | null): boolean {
+  const left = normalizeAvatarName(a);
+  const right = normalizeAvatarName(b);
+  return Boolean(left && right && left === right);
+}
+
+function readWearerReferenceCache(): Record<string, WearerReference> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(WEARER_REFERENCE_CACHE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: Record<string, WearerReference> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!key || !value || typeof value !== "object") continue;
+      const item = value as Partial<WearerReference>;
+      if (item.status !== "resolved" && item.status !== "miss") continue;
+      out[key] = {
+        status: item.status,
+        url: typeof item.url === "string" ? item.url : undefined,
+        avatarName: typeof item.avatarName === "string" ? item.avatarName : undefined,
+        verifiedForAvatarName: typeof item.verifiedForAvatarName === "string" ? item.verifiedForAvatarName : undefined,
+      };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeWearerReferenceCache(cache: Record<string, WearerReference>): void {
+  if (typeof window === "undefined") return;
+  try {
+    const entries = Object.entries(cache).filter(([, item]) => item.status === "resolved" && item.url);
+    window.localStorage.setItem(WEARER_REFERENCE_CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
+  } catch {
+    // Ignore quota errors; the UI can still use the in-memory cache.
+  }
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -360,6 +414,7 @@ function AvatarInspector({
   const isEncounterLog = selected.source === "encounter-log";
   const referenceUrl = !fallbackUrl && isEncounterLog ? selected.reference_thumbnail_url : undefined;
   const previewUrl = fallbackUrl || referenceUrl;
+  const wearerReferenceUrl = isEncounterLog && !referenceUrl ? selected.wearer_reference_url : undefined;
   const can3D = !isEncounterLog && Boolean(windowsAssetUrl);
   const show3D = can3D && preview3DFor === selected.avatar_id;
 
@@ -435,6 +490,24 @@ function AvatarInspector({
               </div>
             );
           })()}
+          {wearerReferenceUrl ? (
+            <div className="rounded-[var(--radius-sm)] border border-amber-500/35 bg-amber-500/10 p-2">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                {t("avatars.wearerCurrentReference", { defaultValue: "Wearer current reference" })}
+              </div>
+              <ImageZoom
+                src={wearerReferenceUrl}
+                className="h-24 w-24 overflow-hidden rounded-[var(--radius-sm)] border border-black/10"
+                imgClassName="h-full w-full object-cover"
+              />
+              <div className="mt-1 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
+                {t("avatars.wearerReferenceNote", {
+                  name: selected.wearer_reference_avatar_name ?? t("common.unknown", { defaultValue: "Unknown" }),
+                  defaultValue: "Current public avatar/profile image: {{name}}. It is not used as this row's thumbnail unless the avatar name matches the log.",
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex min-w-0 flex-col gap-3">
@@ -914,7 +987,9 @@ function Avatars() {
     url?: string;
     status: "loading" | "resolved" | "miss";
   }>>({});
-  const [wearerReferences, setWearerReferences] = useState<Record<string, WearerReference>>({});
+  const [wearerReferences, setWearerReferences] = useState<Record<string, WearerReference>>(
+    () => readWearerReferenceCache(),
+  );
   const wearerReferencesRef = useRef<Record<string, WearerReference>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
@@ -1097,6 +1172,7 @@ function Avatars() {
 
   useEffect(() => {
     wearerReferencesRef.current = wearerReferences;
+    writeWearerReferenceCache(wearerReferences);
   }, [wearerReferences]);
 
   const pagedFiltered = useMemo(() => {
@@ -1171,88 +1247,28 @@ function Avatars() {
     });
   }, [listFilter, resolvedThumbs, pagedFiltered]);
 
-  useEffect(() => {
-    if (listFilter !== "encounters") return;
-    let cancelled = false;
-    const candidates = pagedFiltered.filter((item) => {
-      if (item.source !== "encounter-log") return false;
-      if (item.resolved_thumbnail_url) return false;
-      if (!item.wearer_user_id?.startsWith("usr_")) return false;
-      const ref = wearerReferencesRef.current[item.avatar_id];
-      return !ref;
-    });
-    if (candidates.length === 0) return;
-
-    const queue = candidates.slice(0, SEEN_PAGE_SIZE);
-    setWearerReferences((prev) => {
-      const next = { ...prev };
-      for (const item of queue) {
-        next[item.avatar_id] = { status: "loading" };
-      }
-      wearerReferencesRef.current = next;
-      return next;
-    });
-
-    async function resolveOne(item: AugmentedAvatar) {
-      const userId = item.wearer_user_id;
-      if (!userId) return;
-      try {
-        const res = await withTimeout(
-          ipc.call<{ userId: string }, WearerProfileResponse>("user.getProfile", { userId }),
-          WEARER_REFERENCE_TIMEOUT_MS,
-        );
-        if (cancelled) return;
-        const profile = res.profile;
-        const url =
-          profile?.currentAvatarThumbnailImageUrl ||
-          profile?.currentAvatarImageUrl ||
-          profile?.profilePicOverride ||
-          undefined;
-        setWearerReferences((prev) => ({
-          ...prev,
-          [item.avatar_id]: url
-            ? { status: "resolved", url, source: "wearer_current_profile" }
-            : { status: "miss" },
-        }));
-      } catch {
-        if (cancelled) return;
-        setWearerReferences((prev) => ({
-          ...prev,
-          [item.avatar_id]: { status: "miss" },
-        }));
-      }
-    }
-
-    const workers = Array.from(
-      { length: Math.min(WEARER_REFERENCE_CONCURRENCY, queue.length) },
-      async (_, workerIndex) => {
-        for (let i = workerIndex; i < queue.length && !cancelled; i += WEARER_REFERENCE_CONCURRENCY) {
-          await resolveOne(queue[i]);
-        }
-      },
-    );
-    void Promise.all(workers);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [listFilter, pagedFiltered]);
-
-  const displayRows = useMemo(
+  const displayRows = useMemo<AugmentedAvatar[]>(
     () =>
       pagedFiltered.map((item) => {
         if (item.source !== "encounter-log" || !item.display_name) return item;
         const hit = resolvedThumbs[item.avatar_id];
         const ref = wearerReferences[item.avatar_id];
         if (!hit && !ref) return item;
+        const verifiedReferenceUrl =
+          ref?.url && ref.verifiedForAvatarName && isSameAvatarName(ref.verifiedForAvatarName, item.display_name)
+            ? ref.url
+            : undefined;
         return {
           ...item,
           resolved_avatar_id: hit?.avatarId ?? item.resolved_avatar_id,
           resolved_thumbnail_url: hit?.url ?? item.resolved_thumbnail_url,
           thumbnail_status: hit?.status ?? item.thumbnail_status,
-          reference_thumbnail_url: !(hit?.url ?? item.resolved_thumbnail_url) ? ref?.url : undefined,
-          reference_source: !(hit?.url ?? item.resolved_thumbnail_url) ? ref?.source : undefined,
+          reference_thumbnail_url: !(hit?.url ?? item.resolved_thumbnail_url) ? verifiedReferenceUrl : undefined,
+          reference_source: verifiedReferenceUrl ? "wearer_current_profile_verified" as const : undefined,
           reference_status: !(hit?.url ?? item.resolved_thumbnail_url) ? ref?.status : undefined,
+          wearer_reference_url: !(hit?.url ?? item.resolved_thumbnail_url) && !verifiedReferenceUrl ? ref?.url : undefined,
+          wearer_reference_avatar_name: ref?.avatarName,
+          wearer_reference_status: ref?.status,
         };
       }),
     [resolvedThumbs, wearerReferences, pagedFiltered],
@@ -1293,6 +1309,74 @@ function Avatars() {
     if (!selectedId) return displayRows[0] ?? null;
     return displayRows.find((it) => it.avatar_id === selectedId) ?? displayRows[0];
   }, [displayRows, selectedId]);
+  const selectedEncounterLookup = useMemo(
+    () =>
+      selected?.source === "encounter-log"
+        ? {
+            avatarId: selected.avatar_id,
+            displayName: selected.display_name,
+            wearerUserId: selected.wearer_user_id,
+          }
+        : null,
+    [selected?.source, selected?.avatar_id, selected?.display_name, selected?.wearer_user_id],
+  );
+
+  useEffect(() => {
+    if (listFilter !== "encounters" || !selectedEncounterLookup) return;
+    const lookup = selectedEncounterLookup;
+    if (!lookup.wearerUserId?.startsWith("usr_")) return;
+    const existing = wearerReferencesRef.current[lookup.avatarId];
+    if (existing) return;
+
+    let cancelled = false;
+    setWearerReferences((prev) => {
+      if (prev[lookup.avatarId]) return prev;
+      const next = { ...prev, [lookup.avatarId]: { status: "loading" as const } };
+      wearerReferencesRef.current = next;
+      return next;
+    });
+
+    async function resolveSelectedWearerReference() {
+      const userId = lookup.wearerUserId;
+      if (!userId) return;
+      try {
+        const res = await withTimeout(
+          ipc.call<{ userId: string }, WearerProfileResponse>("user.getProfile", { userId }),
+          WEARER_REFERENCE_TIMEOUT_MS,
+        );
+        if (cancelled) return;
+        const profile = res.profile;
+        const url =
+          profile?.currentAvatarThumbnailImageUrl ||
+          profile?.currentAvatarImageUrl ||
+          profile?.profilePicOverride ||
+          undefined;
+        const avatarName = profile?.currentAvatarName || undefined;
+        const verifiedForAvatarName =
+          url && isSameAvatarName(avatarName, lookup.displayName)
+            ? lookup.displayName
+            : undefined;
+        setWearerReferences((prev) => ({
+          ...prev,
+          [lookup.avatarId]: url
+            ? { status: "resolved", url, avatarName, verifiedForAvatarName }
+            : { status: "miss" },
+        }));
+      } catch {
+        if (cancelled) return;
+        setWearerReferences((prev) => ({
+          ...prev,
+          [lookup.avatarId]: { status: "miss" },
+        }));
+      }
+    }
+
+    void resolveSelectedWearerReference();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listFilter, selectedEncounterLookup]);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
