@@ -11,6 +11,20 @@
 
 #include <spdlog/spdlog.h>
 
+namespace
+{
+
+std::string LogOnlyAvatarKey(const std::string& name, const std::optional<std::string>& author)
+{
+    if (author.has_value() && !author->empty())
+    {
+        return "name:" + name + "|author:" + *author;
+    }
+    return "name:" + name;
+}
+
+}
+
 nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<std::string>&)
 {
     const auto probe = vrcsm::core::PathProbe::Probe();
@@ -32,7 +46,7 @@ nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<
             {
                 if (ev.avatar_name.empty()) continue;
                 vrcsm::core::Database::AvatarSeenInsert a;
-                a.avatar_id = "name:" + ev.avatar_name;
+                a.avatar_id = LogOnlyAvatarKey(ev.avatar_name, ev.author_name);
                 a.avatar_name = ev.avatar_name;
                 if (ev.author_name.has_value()) a.author_name = *ev.author_name;
                 if (!ev.actor.empty()) a.first_seen_on = ev.actor;
