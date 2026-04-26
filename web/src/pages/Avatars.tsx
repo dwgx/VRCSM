@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -45,12 +45,31 @@ type AugmentedAvatar = LocalAvatarItem & {
   resolved_thumbnail_url?: string;
   resolution_source?: string | null;
   thumbnail_status?: "idle" | "loading" | "resolved" | "miss";
+  reference_thumbnail_url?: string;
+  reference_source?: "wearer_current_profile";
+  reference_status?: "loading" | "resolved" | "miss";
 };
 
 type AvatarListFilter = "local" | "encounters" | "all";
 
 const SEEN_PAGE_SIZE = 40;
+const WEARER_REFERENCE_CONCURRENCY = 4;
+const WEARER_REFERENCE_TIMEOUT_MS = 5000;
 const AVATAR_LIST_FILTER_KEY = "vrcsm.avatars.listFilter.v2";
+
+type WearerReference = {
+  status: "loading" | "resolved" | "miss";
+  url?: string;
+  source?: "wearer_current_profile";
+};
+
+type WearerProfileResponse = {
+  profile: {
+    currentAvatarThumbnailImageUrl?: string | null;
+    currentAvatarImageUrl?: string | null;
+    profilePicOverride?: string | null;
+  } | null;
+};
 
 // Raw JSON from /api/1/avatars/{id}. VRChat's payload shape is loose and
 // evolves over time, so we type the fields we actually render as
@@ -136,6 +155,22 @@ function compareIsoish(a?: string | null, b?: string | null): number {
   return a.localeCompare(b);
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 /**
  * Row thumbnail — real CDN image when available, else the procedural
  * cube at a smaller size so the list pane reads like a Unity hierarchy
@@ -145,12 +180,14 @@ function compareIsoish(a?: string | null, b?: string | null): number {
 function AvatarRowThumb({
   avatarId,
   fallbackUrl,
+  isReference,
   placeholder = "cube",
   isFavorited,
   onToggleFavorite,
 }: {
   avatarId: string;
   fallbackUrl?: string;
+  isReference?: boolean;
   placeholder?: "cube" | "image";
   isFavorited: boolean;
   onToggleFavorite?: (thumbnailUrl: string | null) => void;
@@ -192,6 +229,11 @@ function AvatarRowThumb({
         >
           <Heart className={cn("size-2.5", isFavorited && "fill-current")} />
         </button>
+      ) : null}
+      {resolvedUrl && isReference ? (
+        <span className="absolute left-0.5 top-0.5 rounded bg-black/65 px-0.5 py-px text-[7px] font-bold leading-none text-white/90">
+          参考
+        </span>
       ) : null}
     </div>
   );
@@ -316,6 +358,8 @@ function AvatarInspector({
     selected.resolved_thumbnail_url ||
     undefined;
   const isEncounterLog = selected.source === "encounter-log";
+  const referenceUrl = !fallbackUrl && isEncounterLog ? selected.reference_thumbnail_url : undefined;
+  const previewUrl = fallbackUrl || referenceUrl;
   const can3D = !isEncounterLog && Boolean(windowsAssetUrl);
   const show3D = can3D && preview3DFor === selected.avatar_id;
 
@@ -338,7 +382,7 @@ function AvatarInspector({
                     avatarId={selected.avatar_id}
                     assetUrl={windowsAssetUrl}
                     bundlePath={selected.path || undefined}
-                    fallbackImageUrl={fallbackUrl}
+                    fallbackImageUrl={previewUrl}
                     size={220}
                     expandedSize={720}
                   />
@@ -355,14 +399,21 @@ function AvatarInspector({
             }
             return (
               <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]" style={{ width: 220, height: 220 }}>
-                {fallbackUrl ? (
-                  <ImageZoom src={fallbackUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
+                {previewUrl ? (
+                  <>
+                    <ImageZoom src={previewUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
+                    {referenceUrl ? (
+                      <div className="absolute left-2 top-2 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white/90 backdrop-blur-sm">
+                        {t("avatars.referenceImageBadge", { defaultValue: "Reference image" })}
+                      </div>
+                    ) : null}
+                  </>
                 ) : isEncounterLog ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[hsl(var(--canvas))] text-[11px] text-[hsl(var(--muted-foreground))]">
                     <User className="size-12 opacity-60" />
                     <span>
-                      {selected.thumbnail_status === "loading"
-                        ? t("avatars.thumbnailResolving", { defaultValue: "Resolving thumbnail…" })
+                      {selected.reference_status === "loading"
+                        ? t("avatars.referenceImageLoading", { defaultValue: "Loading wearer reference image…" })
                         : t("avatars.noThumbnail", { defaultValue: "No thumbnail" })}
                     </span>
                   </div>
@@ -371,7 +422,7 @@ function AvatarInspector({
                     <User className="size-12 text-[hsl(var(--muted-foreground))]" />
                   </div>
                 )}
-                {can3D && fallbackUrl && (
+                {can3D && previewUrl && (
                   <button
                     type="button"
                     className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm hover:bg-black/80 transition-colors"
@@ -624,7 +675,9 @@ function AvatarInspector({
               <span>
                 {t("avatars.encounterLogNote", {
                   defaultValue:
-                    "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL. Thumbnails are resolved by public name search when possible.",
+                    referenceUrl
+                      ? "This row is indexed from local VRChat logs. VRChat logs do not include avtr_* or the historical thumbnail URL, so the image shown is the wearer's current public avatar/profile image and may not be the avatar seen at that time."
+                      : "This row is indexed from local VRChat logs. VRChat logs expose avatar name and wearer, but not avtr_* or the official thumbnail URL. No verified thumbnail was found for this encounter.",
                 })}
               </span>
             </div>
@@ -693,7 +746,8 @@ function AvatarRow({
       ) : null}
       <AvatarRowThumb
         avatarId={item.avatar_id}
-        fallbackUrl={item.resolved_thumbnail_url}
+        fallbackUrl={item.resolved_thumbnail_url ?? item.reference_thumbnail_url}
+        isReference={!item.resolved_thumbnail_url && Boolean(item.reference_thumbnail_url)}
         placeholder={item.source === "encounter-log" ? "image" : "cube"}
         isFavorited={isFavorited}
         onToggleFavorite={item.avatar_id.startsWith("avtr_") ? onToggleFavorite : undefined}
@@ -706,6 +760,11 @@ function AvatarRow({
           {item.source === "encounter-log" ? (
             <span className="shrink-0 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
               {t("avatars.encounterLog", { defaultValue: "Seen" })}
+            </span>
+          ) : null}
+          {item.source === "encounter-log" && !item.resolved_thumbnail_url && item.reference_thumbnail_url ? (
+            <span className="shrink-0 rounded-[var(--radius-sm)] border border-amber-500/40 bg-amber-500/12 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-600">
+              {t("avatars.referenceImageBadgeShort", { defaultValue: "Reference" })}
             </span>
           ) : nameMismatch ? (
             <span
@@ -855,6 +914,8 @@ function Avatars() {
     url?: string;
     status: "loading" | "resolved" | "miss";
   }>>({});
+  const [wearerReferences, setWearerReferences] = useState<Record<string, WearerReference>>({});
+  const wearerReferencesRef = useRef<Record<string, WearerReference>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
   const { toggleFavorite } = useFavoriteActions();
@@ -1034,6 +1095,10 @@ function Avatars() {
     setSelectedId(null);
   }, [filter, listFilter]);
 
+  useEffect(() => {
+    wearerReferencesRef.current = wearerReferences;
+  }, [wearerReferences]);
+
   const pagedFiltered = useMemo(() => {
     if (listFilter !== "encounters") return filtered;
     const start = (seenPage - 1) * SEEN_PAGE_SIZE;
@@ -1106,20 +1171,91 @@ function Avatars() {
     });
   }, [listFilter, resolvedThumbs, pagedFiltered]);
 
+  useEffect(() => {
+    if (listFilter !== "encounters") return;
+    let cancelled = false;
+    const candidates = pagedFiltered.filter((item) => {
+      if (item.source !== "encounter-log") return false;
+      if (item.resolved_thumbnail_url) return false;
+      if (!item.wearer_user_id?.startsWith("usr_")) return false;
+      const ref = wearerReferencesRef.current[item.avatar_id];
+      return !ref;
+    });
+    if (candidates.length === 0) return;
+
+    const queue = candidates.slice(0, SEEN_PAGE_SIZE);
+    setWearerReferences((prev) => {
+      const next = { ...prev };
+      for (const item of queue) {
+        next[item.avatar_id] = { status: "loading" };
+      }
+      wearerReferencesRef.current = next;
+      return next;
+    });
+
+    async function resolveOne(item: AugmentedAvatar) {
+      const userId = item.wearer_user_id;
+      if (!userId) return;
+      try {
+        const res = await withTimeout(
+          ipc.call<{ userId: string }, WearerProfileResponse>("user.getProfile", { userId }),
+          WEARER_REFERENCE_TIMEOUT_MS,
+        );
+        if (cancelled) return;
+        const profile = res.profile;
+        const url =
+          profile?.currentAvatarThumbnailImageUrl ||
+          profile?.currentAvatarImageUrl ||
+          profile?.profilePicOverride ||
+          undefined;
+        setWearerReferences((prev) => ({
+          ...prev,
+          [item.avatar_id]: url
+            ? { status: "resolved", url, source: "wearer_current_profile" }
+            : { status: "miss" },
+        }));
+      } catch {
+        if (cancelled) return;
+        setWearerReferences((prev) => ({
+          ...prev,
+          [item.avatar_id]: { status: "miss" },
+        }));
+      }
+    }
+
+    const workers = Array.from(
+      { length: Math.min(WEARER_REFERENCE_CONCURRENCY, queue.length) },
+      async (_, workerIndex) => {
+        for (let i = workerIndex; i < queue.length && !cancelled; i += WEARER_REFERENCE_CONCURRENCY) {
+          await resolveOne(queue[i]);
+        }
+      },
+    );
+    void Promise.all(workers);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listFilter, pagedFiltered]);
+
   const displayRows = useMemo(
     () =>
       pagedFiltered.map((item) => {
         if (item.source !== "encounter-log" || !item.display_name) return item;
         const hit = resolvedThumbs[item.avatar_id];
-        if (!hit) return item;
+        const ref = wearerReferences[item.avatar_id];
+        if (!hit && !ref) return item;
         return {
           ...item,
-          resolved_avatar_id: hit.avatarId,
-          resolved_thumbnail_url: hit.url,
-          thumbnail_status: hit.status,
+          resolved_avatar_id: hit?.avatarId ?? item.resolved_avatar_id,
+          resolved_thumbnail_url: hit?.url ?? item.resolved_thumbnail_url,
+          thumbnail_status: hit?.status ?? item.thumbnail_status,
+          reference_thumbnail_url: !(hit?.url ?? item.resolved_thumbnail_url) ? ref?.url : undefined,
+          reference_source: !(hit?.url ?? item.resolved_thumbnail_url) ? ref?.source : undefined,
+          reference_status: !(hit?.url ?? item.resolved_thumbnail_url) ? ref?.status : undefined,
         };
       }),
-    [resolvedThumbs, pagedFiltered],
+    [resolvedThumbs, wearerReferences, pagedFiltered],
   );
 
   async function handleToggleFavorite(
