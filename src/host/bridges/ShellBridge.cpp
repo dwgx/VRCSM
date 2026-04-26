@@ -8,6 +8,7 @@
 #include "../../core/ProcessGuard.h"
 #include "../WebViewHost.h"
 
+#include <fstream>
 #include <shellapi.h>
 #include <shlobj.h>
 #include <shobjidl.h>
@@ -401,9 +402,28 @@ nlohmann::json IpcBridge::HandleAppFactoryReset(const nlohmann::json&, const std
         }
     }
 
-    // 4. Schedule cookie clear + clean app exit on the UI thread. Once
+    // 4. Drop a marker so App::Run's HandlePendingFactoryReset wipes the
+    //    WebView2 user-data folder on next launch. We can't delete it now
+    //    because the live WebView2 environment is still using it to
+    //    deliver this very response — but cookies, IndexedDB, and
+    //    localStorage inside WebView2 must be gone before the React app
+    //    boots against the fresh appDataRoot, otherwise the renderer
+    //    crashes silently to a white screen.
+    if (std::filesystem::exists(dataRoot, ec))
+    {
+        std::error_code markerEc;
+        std::ofstream marker(dataRoot / L".factory-reset-pending", std::ios::trunc);
+        if (marker)
+        {
+            marker << "1";
+        }
+        (void)markerEc;
+    }
+
+    // 5. Schedule cookie clear + clean app exit on the UI thread. Once
     //    this returns the response goes back to the frontend; the user's
-    //    next launch hits a clean appDataRoot with no stale singletons.
+    //    next launch hits a clean appDataRoot AND a clean WebView2
+    //    profile (the marker triggers the wipe).
     HWND parentHwnd = m_host.ParentHwnd();
     if (parentHwnd != nullptr)
     {
