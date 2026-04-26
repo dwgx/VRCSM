@@ -18,7 +18,6 @@ import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { cn, formatDate } from "@/lib/utils";
-import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -135,30 +134,6 @@ function compareIsoish(a?: string | null, b?: string | null): number {
   if (!a) return -1;
   if (!b) return 1;
   return a.localeCompare(b);
-}
-
-function normalizeAvatarName(name: string): string {
-  return name.trim().toLocaleLowerCase().replace(/\s+/g, " ");
-}
-
-function normalizeAuthorName(name: string | undefined | null): string {
-  return normalizeAvatarName(name ?? "");
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error(`${label} timed out`)), ms);
-    promise.then(
-      (value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        window.clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
 }
 
 /**
@@ -300,7 +275,7 @@ function AvatarInspector({
 }) {
   const { t } = useTranslation();
   const { status: authStatus } = useAuth();
-  const [prefer3D, setPrefer3D] = useUiPrefBoolean("vrcsm.avatar.preview3d", false);
+  const [preview3DFor, setPreview3DFor] = useState<string | null>(null);
   const { details, loading: detailsLoading, unavailable } = useAvatarDetails(
     selected.avatar_id.startsWith("avtr_") ? selected.avatar_id : null,
   );
@@ -340,8 +315,13 @@ function AvatarInspector({
     cachedThumb ||
     selected.resolved_thumbnail_url ||
     undefined;
-  const can3D = Boolean(windowsAssetUrl);
   const isEncounterLog = selected.source === "encounter-log";
+  const can3D = !isEncounterLog && Boolean(windowsAssetUrl);
+  const show3D = can3D && preview3DFor === selected.avatar_id;
+
+  useEffect(() => {
+    setPreview3DFor(null);
+  }, [selected.avatar_id]);
 
   return (
     <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
@@ -351,7 +331,7 @@ function AvatarInspector({
       <div className="grid gap-5 p-5 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-3">
           {(() => {
-            if (prefer3D && can3D) {
+            if (show3D) {
               return (
                 <div className="relative" style={{ width: 220 }}>
                   <AvatarPreview3D
@@ -365,7 +345,7 @@ function AvatarInspector({
                   <button
                     type="button"
                     className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-0.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm hover:bg-black/80 transition-colors"
-                    onClick={() => setPrefer3D(false)}
+                    onClick={() => setPreview3DFor(null)}
                   >
                     <Eye className="size-2.5" />
                     2D
@@ -391,14 +371,14 @@ function AvatarInspector({
                     <User className="size-12 text-[hsl(var(--muted-foreground))]" />
                   </div>
                 )}
-                {can3D && (
+                {can3D && fallbackUrl && (
                   <button
                     type="button"
                     className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm hover:bg-black/80 transition-colors"
-                    onClick={() => setPrefer3D((v) => !v)}
+                    onClick={() => setPreview3DFor(selected.avatar_id)}
                   >
                     <Box className="size-2.5" />
-                    {prefer3D ? "2D" : "3D"}
+                    3D
                   </button>
                 )}
               </div>
@@ -1112,129 +1092,18 @@ function Avatars() {
     });
     if (missing.length === 0) return;
 
+    // VRChat output logs do not contain remote avtr_* ids or thumbnail URLs.
+    // The authenticated /avatars search endpoint does not search arbitrary
+    // public avatars either, so trying to "resolve" these rows just leaves the
+    // UI spinning and burns API calls. Only show thumbnails we already have
+    // from a verified source; otherwise mark the page rows as a fast miss.
     setResolvedThumbs((prev) => {
       const next = { ...prev };
       for (const item of missing) {
-        next[item.avatar_id] = { status: "loading" };
+        next[item.avatar_id] = { status: "miss" };
       }
       return next;
     });
-
-    let cancelled = false;
-    const run = async () => {
-      for (const item of missing) {
-        if (cancelled) return;
-        const name = item.display_name?.trim();
-        if (!name) continue;
-        const key = normalizeAvatarName(name);
-        try {
-          const persist = async (params: {
-            status: "resolved" | "miss";
-            source?: string;
-            avatarId?: string;
-            thumbnailUrl?: string;
-            imageUrl?: string;
-          }) => {
-            try {
-              await ipc.dbAvatarHistoryResolve({
-                avatar_id: item.avatar_id,
-                resolved_avatar_id: params.avatarId ?? null,
-                resolved_thumbnail_url: params.thumbnailUrl ?? null,
-                resolved_image_url: params.imageUrl ?? null,
-                resolution_source: params.source ?? null,
-                resolution_status: params.status,
-                resolved_at: new Date().toISOString(),
-              });
-            } catch {
-              // Resolution is still useful for the current page even if the
-              // persistence write fails; the next scan can retry.
-            }
-          };
-
-          if (item.wearer_user_id?.startsWith("usr_")) {
-            const profileResp = await withTimeout(
-              ipc.call<
-                { userId: string },
-                { profile: { currentAvatarName?: string; currentAvatarId?: string; currentAvatarThumbnailImageUrl?: string; currentAvatarImageUrl?: string } | null }
-              >("user.getProfile", { userId: item.wearer_user_id }),
-              8_000,
-              "user.getProfile",
-            );
-            const profile = profileResp.profile;
-            const profileName = normalizeAvatarName(profile?.currentAvatarName ?? "");
-            const profileUrl =
-              profile?.currentAvatarThumbnailImageUrl ||
-              profile?.currentAvatarImageUrl ||
-              undefined;
-            // Only accept wearer-profile thumbnails when the API confirms the
-            // same avatar name. Otherwise we would show the wearer's current
-            // skin, not necessarily the skin seen in the historical log row.
-            if (profileUrl && profileName === key) {
-              await persist({
-                status: "resolved",
-                source: "wearer_profile",
-                avatarId: profile?.currentAvatarId,
-                thumbnailUrl: profile?.currentAvatarThumbnailImageUrl,
-                imageUrl: profile?.currentAvatarImageUrl,
-              });
-              setResolvedThumbs((prev) => ({
-                ...prev,
-                [item.avatar_id]: {
-                  status: "resolved",
-                  avatarId: profile?.currentAvatarId,
-                  url: profileUrl,
-                },
-              }));
-              await new Promise((resolve) => window.setTimeout(resolve, 80));
-              continue;
-            }
-          }
-
-          const res = await withTimeout(ipc.searchAvatars(name, 5), 8_000, "avatar.search");
-          const avatars = res?.avatars ?? [];
-          const authorKey = normalizeAuthorName(item.author);
-          const nameMatches = avatars.filter((a) => normalizeAvatarName(a.name) === key);
-          const exact = authorKey ? nameMatches.find((a) => {
-            if (normalizeAvatarName(a.name) !== key) return false;
-            return normalizeAuthorName(a.authorName) === authorKey;
-          }) : (nameMatches.length === 1 ? nameMatches[0] : undefined);
-          const chosen = exact;
-          const url = chosen?.thumbnailImageUrl || chosen?.imageUrl || undefined;
-          await persist(url
-            ? {
-              status: "resolved",
-              source: authorKey ? "public_search_name_author" : "public_search_name",
-              avatarId: chosen?.id,
-              thumbnailUrl: chosen?.thumbnailImageUrl,
-              imageUrl: chosen?.imageUrl,
-            }
-            : { status: "miss", source: authorKey ? "public_search_name_author" : "public_search_name" });
-          setResolvedThumbs((prev) => ({
-            ...prev,
-            [item.avatar_id]: url
-              ? { status: "resolved", avatarId: chosen?.id, url }
-              : { status: "miss" },
-          }));
-        } catch {
-          try {
-            await ipc.dbAvatarHistoryResolve({
-              avatar_id: item.avatar_id,
-              resolution_status: "miss",
-              resolution_source: "resolver_error",
-              resolved_at: new Date().toISOString(),
-            });
-          } catch {
-            // Best-effort cache update.
-          }
-          setResolvedThumbs((prev) => ({ ...prev, [item.avatar_id]: { status: "miss" } }));
-        }
-        await new Promise((resolve) => window.setTimeout(resolve, 80));
-      }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
   }, [listFilter, resolvedThumbs, pagedFiltered]);
 
   const displayRows = useMemo(
