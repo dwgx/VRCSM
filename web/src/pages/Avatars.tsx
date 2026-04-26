@@ -17,7 +17,7 @@ import { IdBadge } from "@/components/IdBadge";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatBytes, formatDate } from "@/lib/utils";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
@@ -27,7 +27,7 @@ import {
   useFavoriteActions,
   useFavoriteItems,
 } from "@/lib/library";
-import type { AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
+import type { AvatarSearchResult, BundleEntry, LocalAvatarItem } from "@/lib/types";
 import { Eye, Sliders, Search, User, Info, Lock, Box, Heart, Globe2, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { ImageZoom } from "@/components/ImageZoom";
@@ -42,7 +42,13 @@ type AugmentedAvatar = LocalAvatarItem & {
   seen_count?: number;
   wearer_count?: number;
   wearer_names?: string[];
+  candidate_bundle_path?: string;
+  candidate_bundle_entry?: string;
+  candidate_bundle_bytes?: number;
+  candidate_bundle_delta_ms?: number;
 };
+
+type AvatarListFilter = "encounters" | "all" | "local";
 
 // Raw JSON from /api/1/avatars/{id}. VRChat's payload shape is loose and
 // evolves over time, so we type the fields we actually render as
@@ -130,6 +136,34 @@ function compareIsoish(a?: string | null, b?: string | null): number {
   if (!a) return -1;
   if (!b) return 1;
   return a.localeCompare(b);
+}
+
+function parseTime(iso?: string | null): number | null {
+  if (!iso) return null;
+  const time = new Date(iso).getTime();
+  return Number.isFinite(time) ? time : null;
+}
+
+function bestBundleCandidate(
+  eventIso: string | null | undefined,
+  entries: BundleEntry[],
+): { entry: BundleEntry; deltaMs: number } | null {
+  const eventTime = parseTime(eventIso);
+  if (eventTime == null) return null;
+  let best: { entry: BundleEntry; deltaMs: number } | null = null;
+  for (const entry of entries) {
+    const mtime = parseTime(entry.latest_mtime);
+    if (mtime == null) continue;
+    const deltaMs = Math.abs(mtime - eventTime);
+    // VRChat usually writes Cache-WindowsPlayer around the time the
+    // avatar is seen. Keep this broad because logs and filesystem mtimes
+    // can drift, but avoid pairing with unrelated old cache entries.
+    if (deltaMs > 20 * 60_000) continue;
+    if (!best || deltaMs < best.deltaMs) {
+      best = { entry, deltaMs };
+    }
+  }
+  return best;
 }
 
 /**
@@ -294,6 +328,8 @@ function AvatarInspector({
     undefined;
   const can3D = Boolean(windowsAssetUrl);
   const isEncounterLog = selected.source === "encounter-log";
+  const candidateBundlePath = isEncounterLog ? selected.candidate_bundle_path : undefined;
+  const canLocalPreview = Boolean(candidateBundlePath);
 
   return (
     <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
@@ -303,6 +339,21 @@ function AvatarInspector({
       <div className="grid gap-5 p-5 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-3">
           {(() => {
+            if (isEncounterLog && canLocalPreview) {
+              return (
+                <div className="relative" style={{ width: 220 }}>
+                  <AvatarPreview3D
+                    avatarId={selected.avatar_id}
+                    bundlePath={candidateBundlePath}
+                    size={220}
+                    expandedSize={720}
+                  />
+                  <div className="absolute bottom-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm">
+                    {t("avatars.cacheCandidate", { defaultValue: "cache candidate" })}
+                  </div>
+                </div>
+              );
+            }
             if (prefer3D && can3D) {
               return (
                 <div className="relative" style={{ width: 220 }}>
@@ -329,6 +380,8 @@ function AvatarInspector({
               <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]" style={{ width: 220, height: 220 }}>
                 {fallbackUrl ? (
                   <ImageZoom src={fallbackUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
+                ) : isEncounterLog ? (
+                  <Avatar3DPreview seed={selected.avatar_id} size={96} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-[hsl(var(--muted))]">
                     <User className="size-12 text-[hsl(var(--muted-foreground))]" />
@@ -410,6 +463,12 @@ function AvatarInspector({
                   count: selected.wearer_count,
                   defaultValue: "{{count}} wearer",
                 })}
+              </Badge>
+            ) : null}
+            {isEncounterLog && canLocalPreview ? (
+              <Badge variant="tonal">
+                <Box className="size-3" />
+                {t("avatars.previewCandidate", { defaultValue: "preview candidate" })}
               </Badge>
             ) : null}
             {details?.releaseStatus ? (
@@ -538,6 +597,27 @@ function AvatarInspector({
                 ) : null}
               </div>
             ) : null}
+            {isEncounterLog && selected.candidate_bundle_path ? (
+              <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-1.5 text-[10.5px]">
+                <div className="text-[hsl(var(--muted-foreground))]">
+                  {t("avatars.cacheCandidateHint", {
+                    defaultValue:
+                      "Best-effort cache match by timestamp. It can be wrong if multiple avatars loaded near the same time.",
+                  })}
+                </div>
+                <div className="font-mono text-[hsl(var(--foreground))]">
+                  {selected.candidate_bundle_bytes
+                    ? formatBytes(selected.candidate_bundle_bytes)
+                    : null}
+                  {typeof selected.candidate_bundle_delta_ms === "number"
+                    ? ` · ${Math.round(selected.candidate_bundle_delta_ms / 1000)}s`
+                    : null}
+                </div>
+                <div className="break-all font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                  {selected.candidate_bundle_path}
+                </div>
+              </div>
+            ) : null}
             {selected.path ? (
               <div className="flex items-start gap-1.5">
                 <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
@@ -582,7 +662,7 @@ function AvatarInspector({
               <span>
                 {t("avatars.encounterLogNote", {
                   defaultValue:
-                    "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL.",
+                    "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL. 3D preview is best-effort by matching nearby cache writes.",
                 })}
               </span>
             </div>
@@ -805,8 +885,8 @@ function Avatars() {
   // Virtual rows derived from logs are real local evidence, not full
   // LocalAvatarData files. Default to showing them because the Models page
   // is where users expect "avatars I have seen" to appear.
-  const [showLogOnly, setShowLogOnly] = useState(
-    () => localStorage.getItem("vrcsm.avatars.showLogOnly") !== "false",
+  const [listFilter, setListFilter] = useState<AvatarListFilter>(
+    () => (localStorage.getItem("vrcsm.avatars.listFilter") as AvatarListFilter | null) ?? "encounters",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
@@ -877,6 +957,7 @@ function Avatars() {
         .map((n) => n?.name?.trim().toLowerCase())
         .filter(Boolean) as string[],
     );
+    const cacheEntries = report.cache_windows_player?.entries ?? [];
     for (const ev of report.logs.avatar_switches ?? []) {
       const name = ev.avatar_name?.trim();
       const actor = ev.actor?.trim();
@@ -885,6 +966,7 @@ function Avatars() {
       const id = stableSeenAvatarId(name);
       const current = encounters.get(id);
       if (!current) {
+        const bundle = bestBundleCandidate(ev.iso_time, cacheEntries);
         encounters.set(id, {
           user_id: ev.actor_user_id ?? "",
           avatar_id: id,
@@ -900,6 +982,10 @@ function Avatars() {
           seen_count: 1,
           wearer_count: 1,
           wearer_names: [actor],
+          candidate_bundle_path: bundle?.entry.path,
+          candidate_bundle_entry: bundle?.entry.entry,
+          candidate_bundle_bytes: bundle?.entry.bytes,
+          candidate_bundle_delta_ms: bundle?.deltaMs,
         });
         continue;
       }
@@ -909,11 +995,16 @@ function Avatars() {
         current.wearer_count = current.wearer_names.length;
       }
       if (compareIsoish(ev.iso_time, current.last_seen_at) > 0) {
+        const bundle = bestBundleCandidate(ev.iso_time, cacheEntries);
         current.last_seen_at = ev.iso_time;
         current.modified_at = ev.iso_time;
         current.wearer_name = actor;
         current.wearer_user_id = ev.actor_user_id;
         current.user_id = ev.actor_user_id ?? current.user_id;
+        current.candidate_bundle_path = bundle?.entry.path ?? current.candidate_bundle_path;
+        current.candidate_bundle_entry = bundle?.entry.entry ?? current.candidate_bundle_entry;
+        current.candidate_bundle_bytes = bundle?.entry.bytes ?? current.candidate_bundle_bytes;
+        current.candidate_bundle_delta_ms = bundle?.deltaMs ?? current.candidate_bundle_delta_ms;
       }
     }
 
@@ -928,9 +1019,12 @@ function Avatars() {
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    const base = showLogOnly
-      ? items
-      : items.filter((it) => it.path !== "");
+    const base =
+      listFilter === "encounters"
+        ? items.filter((it) => it.source === "encounter-log")
+        : listFilter === "local"
+          ? items.filter((it) => it.path !== "")
+          : items;
     if (!q) return base;
     return base.filter(
       (it) =>
@@ -940,10 +1034,14 @@ function Avatars() {
         (it.author?.toLowerCase().includes(q) ?? false) ||
         (it.wearer_name?.toLowerCase().includes(q) ?? false),
       );
-  }, [items, filter, showLogOnly]);
+  }, [items, filter, listFilter]);
 
-  const logOnlyCount = useMemo(
-    () => items.filter((it) => it.path === "").length,
+  const encounterCount = useMemo(
+    () => items.filter((it) => it.source === "encounter-log").length,
+    [items],
+  );
+  const localCount = useMemo(
+    () => items.filter((it) => it.path !== "").length,
     [items],
   );
 
@@ -1067,36 +1165,37 @@ function Avatars() {
                   />
                 </div>
               </div>
-              {logOnlyCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !showLogOnly;
-                    setShowLogOnly(next);
-                    localStorage.setItem("vrcsm.avatars.showLogOnly", String(next));
-                  }}
-                  className={cn(
-                    "flex items-center justify-between gap-2 rounded-[var(--radius-sm)] px-2 py-1 text-[10.5px]",
-                    "border transition-colors",
-                    showLogOnly
-                      ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--foreground))]"
-                      : "border-[hsl(var(--border))] bg-[hsl(var(--surface))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
-                  )}
-                  title={t("avatars.includeLogOnlyHint", {
-                    defaultValue:
-                      "Show avatars that only appear in your VRChat output log (no on-disk metadata).",
-                  })}
-                >
-                  <span>
-                    {t("avatars.includeLogOnly", {
-                      defaultValue: "Include log-only / seen-on-others",
-                    })}
-                  </span>
-                  <span className="font-mono text-[10px]">
-                    {showLogOnly ? `+${logOnlyCount}` : logOnlyCount}
-                  </span>
-                </button>
-              )}
+              <div
+                className="grid grid-cols-3 gap-1"
+                title={t("avatars.includeLogOnlyHint", {
+                  defaultValue:
+                    "Show avatars that only appear in your VRChat output log, including avatars seen on other players.",
+                })}
+              >
+                {([
+                  ["encounters", t("avatars.filterSeen", { defaultValue: "Seen" }), encounterCount],
+                  ["all", t("common.all", { defaultValue: "All" }), items.length],
+                  ["local", t("avatars.filterLocal", { defaultValue: "Local" }), localCount],
+                ] as const).map(([key, label, count]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setListFilter(key);
+                      localStorage.setItem("vrcsm.avatars.listFilter", key);
+                    }}
+                    className={cn(
+                      "flex items-center justify-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-1 text-[10px] transition-colors",
+                      listFilter === key
+                        ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--foreground))]"
+                        : "border-[hsl(var(--border))] bg-[hsl(var(--surface))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
+                    )}
+                  >
+                    <span className="truncate">{label}</span>
+                    <span className="font-mono">{count}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="scrollbar-thin flex-1 overflow-y-auto px-1 py-1">
               {filtered.length === 0 ? (

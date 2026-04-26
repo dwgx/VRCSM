@@ -836,7 +836,12 @@
     "seenTimes": "seen {{count}} times",
     "wearerCount": "{{count}} wearer",
     "encounterSummary": "Seen on {{wearer}} · {{count}} log events",
-    "encounterLogNote": "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL.",
+    "encounterLogNote": "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL. 3D preview is best-effort by matching nearby cache writes.",
+    "filterSeen": "Seen",
+    "filterLocal": "Local",
+    "cacheCandidate": "cache candidate",
+    "previewCandidate": "preview candidate",
+    "cacheCandidateHint": "Best-effort cache match by timestamp. It can be wrong if multiple avatars loaded near the same time.",
     "previewWorkbench": "The inspector preview is now intentionally compact, and the top-right expand button opens a larger centered viewer. The current extractor still does not embed textures into the GLB, so Original mode can only show the raw exported material state for now; scroll to zoom, hold Shift and drag to pan, and right drag also pans.",
     "unityPackages": "{{count}} platform variants",
     "hiddenCount": "+{{count}} more. Use search to filter."

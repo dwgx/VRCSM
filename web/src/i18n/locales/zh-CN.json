@@ -846,7 +846,12 @@
     "seenTimes": "看到 {{count}} 次",
     "wearerCount": "{{count}} 位穿戴者",
     "encounterSummary": "见于 {{wearer}} · {{count}} 条日志事件",
-    "encounterLogNote": "此条目来自本地 VRChat 日志索引。日志只暴露模型名和穿戴者，不包含 avtr_* 或官方缩略图 URL。",
+    "encounterLogNote": "此条目来自本地 VRChat 日志索引。日志只暴露模型名和穿戴者，不包含 avtr_* 或官方缩略图 URL。3D 预览会按附近缓存写入时间尽力匹配。",
+    "filterSeen": "见过",
+    "filterLocal": "本地",
+    "cacheCandidate": "缓存候选",
+    "previewCandidate": "可尝试预览",
+    "cacheCandidateHint": "按时间戳推测的缓存候选。如果同一时间附近加载了多个模型，可能匹配错误。",
     "previewWorkbench": "默认检视器改为更紧凑的尺寸，可点右上角放大查看。当前解包链路仍未把贴图嵌入 GLB，所以“原始”模式暂时只能显示原始材质结果；滚轮缩放，Shift+拖拽平移，右键也可平移。",
     "hiddenCount": "另有 {{count}} 条被隐藏，使用搜索可进一步筛选。",
     "unityPackages": "{{count}} 个平台包"
