@@ -38,7 +38,7 @@ export interface ThumbImageProps {
 
 /**
  * Unified thumbnail renderer — deterministic colour placeholder in the
- * background + lazy-loading <img> fading in on load. Used across the
+ * background + <img> fading in on load. Used across the
  * app so every image slot looks "not empty" on the first paint.
  *
  * Design notes
@@ -46,9 +46,8 @@ export interface ThumbImageProps {
  *     retransition never flashes white.
  *   • Initials render only until the real image is up and decoded,
  *     avoiding a text-on-image flash.
- *   • <img> uses `loading` + `decoding` + `fetchPriority` hints so the
- *     browser does the right thing without us building an
- *     IntersectionObserver for every call-site.
+ *   • <img> defaults to eager loading because WebView2 can miss native
+ *     lazy-load triggers inside nested app scroll containers.
  */
 export function ThumbImage({
   src,
@@ -57,7 +56,7 @@ export function ThumbImage({
   aspect = "aspect-square",
   className,
   rounded = "rounded-[var(--radius-sm)]",
-  priority = "lazy",
+  priority = "eager",
   alt = "",
   fallbackClassName,
   style,

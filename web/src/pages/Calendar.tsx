@@ -68,6 +68,14 @@ interface Jam {
   submissionsCanBeVoted?: boolean;
   closedAt?: string;
   startedAt?: string;
+  coverImageUrl?: string;
+  cover_image_url?: string;
+  bannerImageUrl?: string;
+  banner_image_url?: string;
+  bannerUrl?: string;
+  banner_url?: string;
+  coverUrl?: string;
+  cover_url?: string;
   [key: string]: unknown;
 }
 
@@ -77,11 +85,75 @@ function getJamImage(jam: Jam): string | undefined {
     jam.thumbnail_image_url,
     jam.imageUrl,
     jam.image_url,
-  );
+    jam.coverImageUrl,
+    jam.cover_image_url,
+    jam.bannerImageUrl,
+    jam.banner_image_url,
+    jam.bannerUrl,
+    jam.banner_url,
+    jam.coverUrl,
+    jam.cover_url,
+  ) ?? findImageUrlDeep(jam);
 }
 
 function firstString(...values: (string | undefined | null)[]): string | undefined {
   for (const v of values) if (v) return v;
+  return undefined;
+}
+
+function looksLikeImageUrl(value: string): boolean {
+  return /^https?:\/\/\S+\.(?:avif|webp|png|jpe?g|gif)(?:[?#]\S*)?$/i.test(value)
+    || /^https?:\/\/api\.vrchat\.cloud\/api\/1\/file\/file_[^/\s]+\/[^/\s]+\/file$/i.test(value)
+    || /^https?:\/\/[^/\s]*vrchat[^/\s]*\/\S*(?:image|thumbnail|icon|banner|cover)\S*$/i.test(value);
+}
+
+function extractImageUrlFromText(value: string): string | undefined {
+  const markdownMatch = value.match(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/i);
+  if (markdownMatch?.[1] && looksLikeImageUrl(markdownMatch[1])) return markdownMatch[1];
+
+  const urlMatches = value.match(/https?:\/\/[^\s)]+/gi);
+  return urlMatches?.find(looksLikeImageUrl);
+}
+
+function findImageUrlDeep(value: unknown, depth = 0, seen = new Set<unknown>()): string | undefined {
+  if (depth > 4 || value == null) return undefined;
+  if (typeof value === "string") return extractImageUrlFromText(value);
+  if (typeof value !== "object") return undefined;
+  if (seen.has(value)) return undefined;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findImageUrlDeep(item, depth + 1, seen);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const preferredKeys = [
+    "thumbnailImageUrl", "thumbnail_image_url",
+    "imageUrl", "image_url",
+    "coverImageUrl", "cover_image_url",
+    "bannerImageUrl", "banner_image_url",
+    "bannerUrl", "banner_url",
+    "coverUrl", "cover_url",
+    "url", "fileUrl", "file_url",
+  ];
+  for (const key of preferredKeys) {
+    const candidate = record[key];
+    if (typeof candidate === "string") {
+      if (looksLikeImageUrl(candidate)) return candidate;
+      const extracted = extractImageUrlFromText(candidate);
+      if (extracted) return extracted;
+    }
+  }
+
+  for (const [key, candidate] of Object.entries(record)) {
+    if (!/(image|thumbnail|icon|banner|cover|media|asset|file|description)/i.test(key)) continue;
+    const found = findImageUrlDeep(candidate, depth + 1, seen);
+    if (found) return found;
+  }
   return undefined;
 }
 
