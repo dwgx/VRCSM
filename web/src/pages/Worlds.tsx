@@ -195,6 +195,7 @@ function WorldThumb({
   isFavorited?: boolean;
   onToggleFavorite?: (thumbnailUrl: string | null) => void;
 }) {
+  const { t } = useTranslation();
   const { url } = useThumbnail(id);
   const hue = hueFor(id);
   return (
@@ -253,7 +254,9 @@ function WorldThumb({
               ? "bg-[#C25B5B] text-white"
               : "bg-black/45 text-white/85 hover:bg-black/65",
           )}
-          title={isFavorited ? "Remove from library" : "Save to library"}
+          title={isFavorited
+            ? t("worlds.removeFromLibrary", { defaultValue: "Remove from library" })
+            : t("worlds.saveToLibrary", { defaultValue: "Save to library" })}
         >
           <Heart className={cn("size-3", isFavorited && "fill-current")} />
         </button>
@@ -373,7 +376,7 @@ function WorldHistoryPanel({
                 hour: "numeric",
                 minute: "2-digit",
               }).format(new Date(ev.iso_time.replace(/\./g, "-")))
-            : "Unknown time";
+            : t("worlds.unknownTime", { defaultValue: "Unknown time" });
 
           let sessionPlayers: { displayName: string; userId: string | null }[] = [];
           const orderedIndex = orderedSwitches.findIndex((entry) => entry.entry === ev);
@@ -493,6 +496,7 @@ function WorldVisitCard({ timeStr, accessLabel, AccessIcon, region, ownerId, ins
   ownerId?: string; instanceId?: string;
   sessionPlayers: { displayName: string; userId: string | null }[];
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="group relative flex flex-col rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-colors hover:bg-[hsl(var(--accent))]">
@@ -533,7 +537,9 @@ function WorldVisitCard({ timeStr, accessLabel, AccessIcon, region, ownerId, ins
                   variant="ghost"
                   size="icon"
                   className="size-6 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--foreground))]"
-                  title="Open Profile on vrchat.com"
+                  title={t("common.openOnVrchat", {
+                    defaultValue: "Open on VRChat website",
+                  })}
                   onClick={(e) => {
                     e.stopPropagation();
                     const urlPath = ownerId.startsWith("grp_") ? `group/${ownerId}` : `user/${ownerId}`;
@@ -549,7 +555,9 @@ function WorldVisitCard({ timeStr, accessLabel, AccessIcon, region, ownerId, ins
                     variant="ghost"
                     size="icon"
                     className="size-6 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--foreground))]"
-                    title="Launch this specific instance in VRChat"
+                    title={t("worlds.launchInVrc", {
+                      defaultValue: "Launch in VRChat",
+                    })}
                     onClick={(e) => {
                       e.stopPropagation();
                       ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
@@ -743,7 +751,11 @@ function Worlds() {
                 setRemoteSearching(true);
                 ipc.worldsSearch(remoteQuery.trim())
                   .then((r) => setRemoteResults(r.worlds))
-                  .catch(() => toast.error("Search failed"))
+                  .catch(() => {
+                    toast.error(
+                      t("worlds.searchFailed", { defaultValue: "Search failed" }),
+                    );
+                  })
                   .finally(() => setRemoteSearching(false));
               }
             }}
@@ -760,7 +772,11 @@ function Worlds() {
             setRemoteSearching(true);
             ipc.worldsSearch(filter.trim())
               .then((r) => setRemoteResults(r.worlds))
-              .catch(() => toast.error("Search failed"))
+              .catch(() => {
+                toast.error(
+                  t("worlds.searchFailed", { defaultValue: "Search failed" }),
+                );
+              })
               .finally(() => setRemoteSearching(false));
           }}
         >

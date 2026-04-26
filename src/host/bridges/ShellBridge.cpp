@@ -369,27 +369,53 @@ nlohmann::json IpcBridge::HandleAppFactoryReset(const nlohmann::json&, const std
     std::error_code ec;
     if (std::filesystem::exists(dataRoot, ec))
     {
+        // The MSI is a per-user install: VRCSM.exe, the bundled DLLs,
+        // and the `web/` UI bundle all sit inside %LocalAppData%\VRCSM
+        // alongside the app's own data files. A naive "delete every
+        // child of dataRoot" wipes the renderer assets too — next
+        // launch boots into a permanent white screen because
+        // app.vrcsm/index.html is gone. Treat anything that looks like
+        // an install artifact (running EXE, loaded DLLs, web/ bundle,
+        // WebView2 user-data) as off-limits and only purge known data
+        // files. Snapshot the entries first so we don't mutate the
+        // directory under an active iterator.
+        auto isInstallArtifact = [](const std::wstring& name) -> bool
+        {
+            if (name == L"WebView2") return true;
+            if (name == L"web") return true;
+            const auto endsWithCi = [&](std::wstring_view suffix) -> bool
+            {
+                if (name.size() < suffix.size()) return false;
+                return _wcsicmp(name.c_str() + name.size() - suffix.size(),
+                                suffix.data()) == 0;
+            };
+            return endsWithCi(L".exe") || endsWithCi(L".dll");
+        };
+
+        std::vector<std::filesystem::path> entries;
         for (const auto& child : std::filesystem::directory_iterator(dataRoot, ec))
         {
             if (ec) break;
-            const auto name = child.path().filename().wstring();
-            if (name == L"WebView2")
+            entries.push_back(child.path());
+        }
+
+        for (const auto& path : entries)
+        {
+            const auto name = path.filename().wstring();
+            if (isInstallArtifact(name))
             {
-                // Skip — WebView2 user data folder; deleting it mid-run
-                // would invalidate the live WebView2 environment that
-                // we're still using to deliver the response.
                 skipped.push_back(WideToUtf8(name));
                 continue;
             }
 
             std::error_code delEc;
-            if (child.is_directory(delEc))
+            if (std::filesystem::is_directory(path, delEc))
             {
-                std::filesystem::remove_all(child.path(), delEc);
+                std::filesystem::remove_all(path, delEc);
             }
             else
             {
-                std::filesystem::remove(child.path(), delEc);
+                std::filesystem::remove(path, delEc);
             }
             if (delEc)
             {

@@ -123,7 +123,9 @@ export function TabConfigJson({ vrcRunning }: { vrcRunning: boolean }) {
                   className="w-full h-8 text-[12px]"
                   value={config[key] ?? ""}
                   disabled={vrcRunning}
-                  placeholder="(default)"
+                  placeholder={t("settings.configJson.defaultPlaceholder", {
+                    defaultValue: "(default)",
+                  })}
                   onChange={(e) => setField(key, e.target.value)}
                 />
               ) : (
@@ -132,7 +134,9 @@ export function TabConfigJson({ vrcRunning }: { vrcRunning: boolean }) {
                   type="number"
                   value={config[key] ?? ""}
                   disabled={vrcRunning}
-                  placeholder="(default)"
+                  placeholder={t("settings.configJson.defaultPlaceholder", {
+                    defaultValue: "(default)",
+                  })}
                   onChange={(e) => setNumberString(key, e.target.value)}
                 />
               )}

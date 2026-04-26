@@ -473,7 +473,7 @@
   "radar": {
     "title": "ライブインスタンスレーダー",
     "subtitle": "ライブインスタンスレーダーとセッション履歴を統合したワークスペース",
-    "experimental": "実験機能。ログ解析のみ",
+    "logOnlyMode": "ログ解析のみ",
     "currentInstance": "現在のインスタンス",
     "waitingJoin": "ワールド参加イベントを待機中…",
     "host": "ホスト: {{owner}}",
@@ -574,7 +574,13 @@
     "copyId": "IDをコピー",
     "noDescription": "説明がありません...",
     "openInBrowser": "ブラウザで開く",
-    "openOnVrchat": "VRChatのWebサイトで開く"
+    "openOnVrchat": "VRChatのWebサイトで開く",
+    "centimeters": "cm",
+    "live": "ライブ",
+    "first": "最初",
+    "previous": "前へ",
+    "last": "最後",
+    "jumpTo": "移動"
   },
   "about": {
     "title": "VRCSM について",
@@ -623,6 +629,7 @@
   },
   "dashboard": {
     "title": "ダッシュボード",
+    "overviewLabel": "概要",
     "totalCache": "キャッシュ総容量",
     "totalCacheHint": "{{count}} カテゴリ分",
     "categories": "カテゴリ",
@@ -804,6 +811,8 @@
     "unknownUser": "不明なユーザー",
     "listPaneTitle": "ローカルアバター",
     "filterPlaceholder": "名前または id で絞り込み…",
+    "includeLogOnly": "ログのみのエントリを表示",
+    "includeLogOnlyHint": "VRChat の出力ログにのみ存在し、ディスク上にメタデータがないアバターを表示します。",
     "inspectorPaneTitle": "インスペクター",
     "previewPlaceholder": "3D プレビュー",
     "unknownName": "不明なアバター",
@@ -852,7 +861,11 @@
     "ownerLabel": "所有者:",
     "playersSeen": "ルーム内プレイヤー",
     "searchVrc": "VRChatを検索",
-    "searchResults": "VRChat 検索結果"
+    "searchResults": "VRChat 検索結果",
+    "removeFromLibrary": "ライブラリから削除",
+    "saveToLibrary": "ライブラリに保存",
+    "unknownTime": "不明な時刻",
+    "searchFailed": "検索に失敗しました"
   },
   "logs": {
     "title": "ログ",
@@ -892,7 +905,20 @@
     "clearFilesSuccess": "{{count}}個のログファイルを削除しました。",
     "clearFilesFailed": "ログファイルの削除に失敗しました: {{error}}",
     "clearFiles": "ログファイルをクリア",
-    "clearFilesConfirm": "保存されたVRChatのoutput_logファイルを削除しますか？VRChatが実行中の場合、現在アクティブなログは保持されます。"
+    "clearFilesConfirm": "保存されたVRChatのoutput_logファイルを削除しますか？VRChatが実行中の場合、現在アクティブなログは保持されます。",
+    "envLabel": {
+      "vrchatBuild": "VRChat ビルド",
+      "store": "ストア",
+      "platform": "プラットフォーム",
+      "deviceModel": "デバイスモデル",
+      "processor": "プロセッサ",
+      "systemMemory": "システムメモリ",
+      "operatingSystem": "オペレーティングシステム",
+      "gpu": "GPU",
+      "graphicsApi": "グラフィックス API",
+      "gpuMemory": "GPU メモリ",
+      "xrDevice": "XR デバイス"
+    }
   },
   "migrate": {
     "title": "移行",
@@ -1027,7 +1053,8 @@
       },
       "clientId": {
         "label": "アプリケーション ID",
-        "desc": "Discord Developer Dashboard にある 18〜19 桁の スノーフレーク。"
+        "desc": "Discord Developer Dashboard にある 18〜19 桁の スノーフレーク。",
+        "placeholder": "1234567890000000000"
       }
     },
     "screenshots": {
@@ -1277,6 +1304,7 @@
         "hint": "混雑したワールドでのパフォーマンスを劇的に向上させます",
         "label": "パーティクルを無視"
       },
+      "defaultPlaceholder": "（既定）",
       "reload": "再読み込み",
       "save": "設定を保存",
       "saving": "保存中...",
@@ -1343,12 +1371,41 @@
       "network": "ネットワーク",
       "audio": "オーディオ",
       "audioSwitched": "オーディオデバイスが切り替わりました",
-      "switchToSteamSpeakers": "再生デバイスをSteam Streaming Speakersに切り替える"
+      "switchToSteamSpeakers": "再生デバイスをSteam Streaming Speakersに切り替える",
+      "status": "状態",
+      "running": "起動中",
+      "stopped": "停止中",
+      "hmd": "HMD",
+      "driver": "ドライバー",
+      "refreshRate": "リフレッシュレート",
+      "supersampling": "スーパーサンプリング",
+      "targetBandwidth": "目標帯域",
+      "motionSmoothing": "モーションスムージング",
+      "on": "オン",
+      "off": "オフ",
+      "preferredCodec": "優先コーデック",
+      "gpu": "GPU",
+      "adapter": "アダプター",
+      "vram": "VRAM",
+      "warningCount": "{{count}} 件の警告",
+      "ok": "正常",
+      "virtual": "仮想",
+      "playback": "再生",
+      "recording": "録音",
+      "steamStreamingSpeakers": "Steam Streaming スピーカー",
+      "found": "検出済み",
+      "missing": "未検出",
+      "steamStreamingMicrophone": "Steam Streaming マイク",
+      "vrlinkIssues": "vrlink の問題"
     },
     "autoStart": {
       "label": "Windowsと同時に起動",
-      "hint": "WindowsにログインしたときにVRCSMを自動的に起動します。"
+      "hint": "WindowsにログインしたときにVRCSMを自動的に起動します。",
+      "errorUpdate": "自動起動の更新に失敗しました"
     }
+  },
+  "imageZoom": {
+    "previewTitle": "画像プレビュー"
   },
   "profileCard": {
     "home": "ホーム",
@@ -1452,6 +1509,8 @@
     "empty": "イベントが見つかりません。",
     "noJams": "現在アクティブなJamはありません。",
     "openInBrowser": "VRChatで開く",
+    "openJamPage": "Jamページを開く",
+    "closesAt": "{{when}} 終了",
     "tabDiscover": "発見",
     "tabFeatured": "注目",
     "tabJams": "Jam"
@@ -1505,7 +1564,11 @@
     "myAvatars": "マイアバター",
     "seenAvatars": "遭遇したアバター",
     "seenTitle": "他のプレイヤーが着用していたアバター",
-    "noSeen": "まだアバターが記録されていません。VRCSM は VRChat のログとフレンドのアクティビティから、他のプレイヤーで見たアバターを記録します。"
+    "noSeen": "まだアバターが記録されていません。VRCSM は VRChat のログとフレンドのアクティビティから、他のプレイヤーで見たアバターを記録します。",
+    "public": "公開",
+    "private": "非公開",
+    "logOnly": "ログのみ",
+    "byAuthor": "{{author}} 作"
   },
   "fbt": {
     "title": "FBTキャリブレーションモニター",
@@ -1517,7 +1580,9 @@
     "started": "FBTドリフト監視を開始しました",
     "thresholds": "ドリフトしきい値",
     "trackerStatus": "トラッカーの状態",
-    "notMonitoring": "トラッカーデータを見るには監視を開始してください。VRChatでOSCが有効になっていることを確認してください。"
+    "notMonitoring": "トラッカーデータを見るには監視を開始してください。VRChatでOSCが有効になっていることを確認してください。",
+    "minor": "軽度",
+    "major": "重大"
   },
   "rules": {
     "title": "自動化ルール",

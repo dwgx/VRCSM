@@ -554,7 +554,6 @@ function AvatarRow({
         isSelected
           ? "bg-[hsl(var(--primary)/0.20)] border-[hsl(var(--primary)/0.55)]"
           : "hover:bg-[hsl(var(--surface-raised))]",
-        item.parameter_count === 0 && "opacity-45",
       )}
     >
       {isSelected ? (
@@ -634,9 +633,6 @@ function PublicAvatarSearch() {
       <div className="unity-panel-header flex items-center gap-2">
         <Globe2 className="size-3" />
         <span>{t("avatars.search.title", { defaultValue: "Search Public Avatars" })}</span>
-        <span className="ml-1 rounded-[3px] bg-[hsl(45_93%_47%/0.15)] px-1 py-px text-[8px] font-semibold uppercase tracking-[0.06em] text-[hsl(45_93%_47%)]">
-          {t("common.experimental", { defaultValue: "Beta" })}
-        </span>
       </div>
       <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2">
         <div className="relative flex-1">
@@ -702,6 +698,13 @@ function Avatars() {
   const [searchParams] = useSearchParams();
   const { report, loading, error } = useReport();
   const [filter, setFilter] = useState("");
+  // Many "0 params" rows are virtual entries derived from the VRChat
+  // output_log (avatars worn recently but not in LocalAvatarData on disk).
+  // They confuse the user when they clear cache and these stay visible.
+  // Default to hiding them; the toggle below lets the user opt back in.
+  const [showLogOnly, setShowLogOnly] = useState(
+    () => localStorage.getItem("vrcsm.avatars.showLogOnly") === "true",
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
   const { toggleFavorite } = useFavoriteActions();
@@ -768,15 +771,23 @@ function Avatars() {
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
+    const base = showLogOnly
+      ? items
+      : items.filter((it) => it.path !== "");
+    if (!q) return base;
+    return base.filter(
       (it) =>
         it.avatar_id.toLowerCase().includes(q) ||
         it.user_id.toLowerCase().includes(q) ||
         (it.display_name?.toLowerCase().includes(q) ?? false) ||
         (it.author?.toLowerCase().includes(q) ?? false),
       );
-  }, [items, filter]);
+  }, [items, filter, showLogOnly]);
+
+  const logOnlyCount = useMemo(
+    () => items.filter((it) => it.path === "").length,
+    [items],
+  );
 
   const displayNameCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -883,16 +894,48 @@ function Avatars() {
                 {filtered.length}
               </span>
             </div>
-            <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-1.5">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
-                <Input
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  placeholder={t("avatars.filterPlaceholder")}
-                  className="h-7 pl-7 text-[12px]"
-                />
+            <div className="flex flex-col gap-1.5 border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-1.5">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+                  <Input
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    placeholder={t("avatars.filterPlaceholder")}
+                    className="h-7 pl-7 text-[12px]"
+                  />
+                </div>
               </div>
+              {logOnlyCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !showLogOnly;
+                    setShowLogOnly(next);
+                    localStorage.setItem("vrcsm.avatars.showLogOnly", String(next));
+                  }}
+                  className={cn(
+                    "flex items-center justify-between gap-2 rounded-[var(--radius-sm)] px-2 py-1 text-[10.5px]",
+                    "border transition-colors",
+                    showLogOnly
+                      ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--foreground))]"
+                      : "border-[hsl(var(--border))] bg-[hsl(var(--surface))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
+                  )}
+                  title={t("avatars.includeLogOnlyHint", {
+                    defaultValue:
+                      "Show avatars that only appear in your VRChat output log (no on-disk metadata).",
+                  })}
+                >
+                  <span>
+                    {t("avatars.includeLogOnly", {
+                      defaultValue: "Include log-only entries",
+                    })}
+                  </span>
+                  <span className="font-mono text-[10px]">
+                    {showLogOnly ? `+${logOnlyCount}` : logOnlyCount}
+                  </span>
+                </button>
+              )}
             </div>
             <div className="scrollbar-thin flex-1 overflow-y-auto px-1 py-1">
               {filtered.length === 0 ? (

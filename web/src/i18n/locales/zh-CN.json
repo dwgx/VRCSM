@@ -474,7 +474,7 @@
   "radar": {
     "title": "实例探测雷达",
     "subtitle": "把实时房间雷达和会话历史统一到一个工作区",
-    "experimental": "实验性功能 — 仅依赖日志分析",
+    "logOnlyMode": "仅日志分析",
     "currentInstance": "当前世界",
     "waitingJoin": "等待进入世界…",
     "host": "房主: {{owner}}",
@@ -587,7 +587,13 @@
     "sidebar": "侧边栏",
     "unknown": "未知",
     "remove": "移除",
-    "experimental": "测试版"
+    "experimental": "测试版",
+    "centimeters": "厘米",
+    "live": "实时",
+    "first": "首页",
+    "previous": "上一页",
+    "last": "末页",
+    "jumpTo": "跳转到"
   },
   "about": {
     "title": "关于 VRCSM",
@@ -636,6 +642,7 @@
   },
   "dashboard": {
     "title": "概览",
+    "overviewLabel": "概览",
     "totalCache": "缓存总大小",
     "totalCacheHint": "覆盖 {{count}} 个分类",
     "categories": "分类数",
@@ -817,6 +824,8 @@
     "unknownUser": "未知用户",
     "listPaneTitle": "本地模型",
     "filterPlaceholder": "按名字或 ID 过滤…",
+    "includeLogOnly": "包含仅日志中出现的条目",
+    "includeLogOnlyHint": "显示仅出现在 VRChat 输出日志、磁盘上没有元数据的模型。",
     "inspectorPaneTitle": "检视器",
     "previewPlaceholder": "3D 预览",
     "unknownName": "未知模型",
@@ -865,7 +874,11 @@
     "ownerLabel": "房主:",
     "playersSeen": "房间内玩家",
     "searchVrc": "搜索 VRChat",
-    "searchResults": "VRChat 搜索结果"
+    "searchResults": "VRChat 搜索结果",
+    "removeFromLibrary": "从资料库移除",
+    "saveToLibrary": "保存到资料库",
+    "unknownTime": "时间未知",
+    "searchFailed": "搜索失败"
   },
   "logs": {
     "title": "日志",
@@ -905,7 +918,20 @@
     "clearFilesConfirm": "确认删除已归档的 VRChat output_log 吗？如果 VRChat 正在运行，当前活动日志会被保留。",
     "clearFilesFailed": "清理日志失败：{{error}}",
     "clearFilesSkippedActive": "已保留 {{count}} 个正在使用的日志文件（VRChat 运行中）。",
-    "clearFilesSuccess": "已删除 {{count}} 个日志文件。"
+    "clearFilesSuccess": "已删除 {{count}} 个日志文件。",
+    "envLabel": {
+      "vrchatBuild": "VRChat 构建版本",
+      "store": "商店渠道",
+      "platform": "平台",
+      "deviceModel": "设备型号",
+      "processor": "处理器",
+      "systemMemory": "系统内存",
+      "operatingSystem": "操作系统",
+      "gpu": "GPU",
+      "graphicsApi": "图形 API",
+      "gpuMemory": "GPU 显存",
+      "xrDevice": "XR 设备"
+    }
   },
   "migrate": {
     "title": "迁移",
@@ -1040,7 +1066,8 @@
       },
       "clientId": {
         "label": "应用 ID",
-        "desc": "Discord 开发者后台的 18-19 位 snowflake。"
+        "desc": "Discord 开发者后台的 18-19 位 snowflake。",
+        "placeholder": "1234567890000000000"
       }
     },
     "screenshots": {
@@ -3041,7 +3068,8 @@
       "ignoreParticles": {
         "label": "忽略粒子特效",
         "hint": "在人多的世界中显著提升性能"
-      }
+      },
+      "defaultPlaceholder": "（默认）"
     },
     "steamvr": {
       "title": "VR 串流设置 (SteamVR / Steam Link)",
@@ -3149,12 +3177,41 @@
       "network": "网络",
       "audio": "音频",
       "audioSwitched": "音频设备已切换",
-      "switchToSteamSpeakers": "将播放切换到 Steam Streaming Speakers"
+      "switchToSteamSpeakers": "将播放切换到 Steam Streaming Speakers",
+      "status": "状态",
+      "running": "运行中",
+      "stopped": "已停止",
+      "hmd": "头显",
+      "driver": "驱动",
+      "refreshRate": "刷新率",
+      "supersampling": "超采样",
+      "targetBandwidth": "目标带宽",
+      "motionSmoothing": "运动平滑",
+      "on": "开",
+      "off": "关",
+      "preferredCodec": "首选编码器",
+      "gpu": "GPU",
+      "adapter": "适配器",
+      "vram": "显存",
+      "warningCount": "{{count}} 条警告",
+      "ok": "正常",
+      "virtual": "虚拟",
+      "playback": "播放",
+      "recording": "录音",
+      "steamStreamingSpeakers": "Steam Streaming 扬声器",
+      "found": "已找到",
+      "missing": "缺失",
+      "steamStreamingMicrophone": "Steam Streaming 麦克风",
+      "vrlinkIssues": "vrlink 问题"
     },
     "autoStart": {
       "label": "随 Windows 启动",
-      "hint": "登录 Windows 时自动启动 VRCSM。"
+      "hint": "登录 Windows 时自动启动 VRCSM。",
+      "errorUpdate": "更新开机启动失败"
     }
+  },
+  "imageZoom": {
+    "previewTitle": "图片预览"
   },
   "world": {
     "popup": {
@@ -3247,6 +3304,8 @@
     "empty": "未找到任何事件。",
     "noJams": "当前没有正在进行的 Jams。",
     "openInBrowser": "在 VRChat 中打开",
+    "openJamPage": "打开 Jam 页面",
+    "closesAt": "{{when}} 截止",
     "tabDiscover": "发现",
     "tabFeatured": "精选",
     "tabJams": "Jams"
@@ -3300,7 +3359,11 @@
     "myAvatars": "我的模型",
     "seenAvatars": "已见模型",
     "seenTitle": "在其他玩家身上看到的模型",
-    "noSeen": "暂无记录。VRCSM 会从 VRChat 日志和好友活动中记录其他玩家使用过的模型。"
+    "noSeen": "暂无记录。VRCSM 会从 VRChat 日志和好友活动中记录其他玩家使用过的模型。",
+    "public": "公开",
+    "private": "私有",
+    "logOnly": "仅日志",
+    "byAuthor": "作者：{{author}}"
   },
   "fbt": {
     "title": "FBT 校准监视器",
@@ -3312,7 +3375,9 @@
     "started": "FBT 漂移监视已启动",
     "thresholds": "漂移阈值",
     "trackerStatus": "追踪器状态",
-    "notMonitoring": "开始监视以查看追踪器数据。请确保在 VRChat 中已启用 OSC。"
+    "notMonitoring": "开始监视以查看追踪器数据。请确保在 VRChat 中已启用 OSC。",
+    "minor": "轻度",
+    "major": "重度"
   },
   "rules": {
     "title": "自动化规则",

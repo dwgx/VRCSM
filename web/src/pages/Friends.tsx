@@ -250,7 +250,9 @@ const FriendRow = memo(function FriendRow({
       const typeText = instanceTypeLabel(loc.instanceType);
       const regionText = regionLabel(loc.region);
       const pieces = [typeText, regionText].filter(Boolean);
-      return pieces.length > 0 ? pieces.join(" · ") : "In world";
+      return pieces.length > 0
+        ? pieces.join(" · ")
+        : t("friends.location.world", { defaultValue: "In world" });
     }
     return t(`friends.location.${loc.kind}`);
   })();

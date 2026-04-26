@@ -473,7 +473,7 @@
   "radar": {
     "title": "Радар живого инстанса",
     "subtitle": "Объединенное рабочее пространство радара текущего инстанса и истории сессии",
-    "experimental": "Экспериментально, только анализ логов",
+    "logOnlyMode": "Только анализ логов",
     "currentInstance": "Текущий инстанс",
     "waitingJoin": "Ожидание события входа в мир…",
     "host": "Хост: {{owner}}",
@@ -574,7 +574,13 @@
     "copyId": "Скопировать ID",
     "noDescription": "Нет описания...",
     "openInBrowser": "Открыть в браузере",
-    "openOnVrchat": "Открыть на сайте VRChat"
+    "openOnVrchat": "Открыть на сайте VRChat",
+    "centimeters": "см",
+    "live": "В эфире",
+    "first": "Первая",
+    "previous": "Назад",
+    "last": "Последняя",
+    "jumpTo": "Перейти"
   },
   "about": {
     "title": "О VRCSM",
@@ -623,6 +629,7 @@
   },
   "dashboard": {
     "title": "Панель",
+    "overviewLabel": "Обзор",
     "totalCache": "Общий размер кэша",
     "totalCacheHint": "по {{count}} категориям",
     "categories": "Категории",
@@ -804,6 +811,8 @@
     "unknownUser": "Неизвестный пользователь",
     "listPaneTitle": "Локальные аватары",
     "filterPlaceholder": "Фильтр по имени или id…",
+    "includeLogOnly": "Показать записи только из логов",
+    "includeLogOnlyHint": "Показывает аватаров, которые есть только в логе VRChat и не имеют метаданных на диске.",
     "inspectorPaneTitle": "Инспектор",
     "previewPlaceholder": "3D-просмотр",
     "unknownName": "Неизвестный аватар",
@@ -852,7 +861,11 @@
     "ownerLabel": "Владелец:",
     "playersSeen": "Игроков в комнате",
     "searchVrc": "Поиск в VRChat",
-    "searchResults": "Результаты поиска VRChat"
+    "searchResults": "Результаты поиска VRChat",
+    "removeFromLibrary": "Удалить из библиотеки",
+    "saveToLibrary": "Сохранить в библиотеку",
+    "unknownTime": "Неизвестное время",
+    "searchFailed": "Не удалось выполнить поиск"
   },
   "logs": {
     "title": "Логи",
@@ -892,7 +905,20 @@
     "clearFilesSuccess": "Удалено логов: {{count}}.",
     "clearFilesFailed": "Ошибка очистки логов: {{error}}",
     "clearFiles": "Очистить логи",
-    "clearFilesConfirm": "Удалить старые файлы output_log VRChat? Если игра сейчас запущена, активный лог не удалится."
+    "clearFilesConfirm": "Удалить старые файлы output_log VRChat? Если игра сейчас запущена, активный лог не удалится.",
+    "envLabel": {
+      "vrchatBuild": "Сборка VRChat",
+      "store": "Магазин",
+      "platform": "Платформа",
+      "deviceModel": "Модель устройства",
+      "processor": "Процессор",
+      "systemMemory": "Оперативная память",
+      "operatingSystem": "Операционная система",
+      "gpu": "GPU",
+      "graphicsApi": "Графический API",
+      "gpuMemory": "Память GPU",
+      "xrDevice": "XR-устройство"
+    }
   },
   "migrate": {
     "title": "Миграция",
@@ -1027,7 +1053,8 @@
       },
       "clientId": {
         "label": "ID приложения",
-        "desc": "18-19-значная снежинка из панели разработчика Discord."
+        "desc": "18-19-значная снежинка из панели разработчика Discord.",
+        "placeholder": "1234567890000000000"
       }
     },
     "screenshots": {
@@ -1277,6 +1304,7 @@
         "hint": "Значительно улучшает производительность в переполненных мирах",
         "label": "Игнорировать частицы"
       },
+      "defaultPlaceholder": "(по умолчанию)",
       "reload": "Перезагрузить",
       "save": "Сохранить конфиг",
       "saving": "Сохранение...",
@@ -1343,12 +1371,41 @@
       "network": "Сеть",
       "audio": "Аудио",
       "audioSwitched": "Аудиоустройство переключено",
-      "switchToSteamSpeakers": "Переключить воспроизведение на Steam Streaming Speakers"
+      "switchToSteamSpeakers": "Переключить воспроизведение на Steam Streaming Speakers",
+      "status": "Статус",
+      "running": "Запущен",
+      "stopped": "Остановлен",
+      "hmd": "Шлем",
+      "driver": "Драйвер",
+      "refreshRate": "Частота обновления",
+      "supersampling": "Суперсэмплинг",
+      "targetBandwidth": "Целевая пропускная способность",
+      "motionSmoothing": "Сглаживание движения",
+      "on": "Вкл.",
+      "off": "Выкл.",
+      "preferredCodec": "Предпочтительный кодек",
+      "gpu": "GPU",
+      "adapter": "Адаптер",
+      "vram": "Видеопамять",
+      "warningCount": "Предупреждений: {{count}}",
+      "ok": "OK",
+      "virtual": "виртуальный",
+      "playback": "Воспроизведение",
+      "recording": "Запись",
+      "steamStreamingSpeakers": "Steam Streaming Speakers",
+      "found": "Найдено",
+      "missing": "Отсутствует",
+      "steamStreamingMicrophone": "Steam Streaming Microphone",
+      "vrlinkIssues": "Проблемы vrlink"
     },
     "autoStart": {
       "label": "Запускать с Windows",
-      "hint": "Запускать VRCSM автоматически при входе в Windows."
+      "hint": "Запускать VRCSM автоматически при входе в Windows.",
+      "errorUpdate": "Не удалось обновить автозапуск"
     }
+  },
+  "imageZoom": {
+    "previewTitle": "Просмотр изображения"
   },
   "profileCard": {
     "home": "Главная",
@@ -1452,6 +1509,8 @@
     "empty": "События не найдены.",
     "noJams": "Активных джемов сейчас нет.",
     "openInBrowser": "Открыть в VRChat",
+    "openJamPage": "Открыть страницу джема",
+    "closesAt": "Закрывается {{when}}",
     "tabDiscover": "Обзор",
     "tabFeatured": "Рекомендуемые",
     "tabJams": "Джемы"
@@ -1505,7 +1564,11 @@
     "myAvatars": "Мои аватары",
     "seenAvatars": "Увиденные аватары",
     "seenTitle": "Аватары, увиденные на других",
-    "noSeen": "Аватары пока не записаны. VRCSM записывает аватары, увиденные на других игроках, из логов VRChat и активности друзей."
+    "noSeen": "Аватары пока не записаны. VRCSM записывает аватары, увиденные на других игроках, из логов VRChat и активности друзей.",
+    "public": "Публичный",
+    "private": "Приватный",
+    "logOnly": "Только лог",
+    "byAuthor": "автор: {{author}}"
   },
   "fbt": {
     "title": "Монитор калибровки FBT",
@@ -1517,7 +1580,9 @@
     "started": "Мониторинг смещения FBT запущен",
     "thresholds": "Пороги смещения",
     "trackerStatus": "Статус трекеров",
-    "notMonitoring": "Начните мониторинг, чтобы увидеть данные трекеров. Убедитесь, что OSC включен в VRChat."
+    "notMonitoring": "Начните мониторинг, чтобы увидеть данные трекеров. Убедитесь, что OSC включен в VRChat.",
+    "minor": "Незначительный",
+    "major": "Сильный"
   },
   "rules": {
     "title": "Правила автоматизации",

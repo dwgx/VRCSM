@@ -464,7 +464,7 @@
   "radar": {
     "title": "Live Instance Radar",
     "subtitle": "Unified live instance radar and session history workspace",
-    "experimental": "Experimental — log analysis only",
+    "logOnlyMode": "Log analysis only",
     "currentInstance": "Current Instance",
     "waitingJoin": "Waiting for world join event...",
     "host": "Host: {{owner}}",
@@ -577,7 +577,13 @@
     "unknown": "Unknown",
     "remove": "Remove",
     "sidebar": "Sidebar",
-    "experimental": "Beta"
+    "experimental": "Beta",
+    "centimeters": "cm",
+    "live": "Live",
+    "first": "First",
+    "previous": "Previous",
+    "last": "Last",
+    "jumpTo": "Jump to"
   },
   "about": {
     "title": "About VRCSM",
@@ -626,6 +632,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "overviewLabel": "Overview",
     "totalCache": "Total cache size",
     "totalCacheHint": "across {{count}} categories",
     "categories": "Categories",
@@ -807,6 +814,8 @@
     "unknownUser": "Unknown user",
     "listPaneTitle": "Local Avatars",
     "filterPlaceholder": "Filter by name or id…",
+    "includeLogOnly": "Include log-only entries",
+    "includeLogOnlyHint": "Show avatars that only appear in your VRChat output log (no on-disk metadata).",
     "inspectorPaneTitle": "Inspector",
     "previewPlaceholder": "3D preview",
     "unknownName": "Unknown avatar",
@@ -855,7 +864,11 @@
     "ownerLabel": "Owner:",
     "playersSeen": "Players in Room",
     "searchVrc": "Search VRChat",
-    "searchResults": "VRChat Search Results"
+    "searchResults": "VRChat Search Results",
+    "removeFromLibrary": "Remove from library",
+    "saveToLibrary": "Save to library",
+    "unknownTime": "Unknown time",
+    "searchFailed": "Search failed"
   },
   "logs": {
     "title": "Logs",
@@ -895,7 +908,20 @@
     "clearFilesSuccess": "Deleted {{count}} log files.",
     "clearFilesFailed": "Failed to clear log files: {{error}}",
     "clearFiles": "Clear Log Files",
-    "clearFilesConfirm": "Delete stored VRChat output_log files? If VRChat is running, the current active log will be kept."
+    "clearFilesConfirm": "Delete stored VRChat output_log files? If VRChat is running, the current active log will be kept.",
+    "envLabel": {
+      "vrchatBuild": "VRChat Build",
+      "store": "Store",
+      "platform": "Platform",
+      "deviceModel": "Device Model",
+      "processor": "Processor",
+      "systemMemory": "System Memory",
+      "operatingSystem": "Operating System",
+      "gpu": "GPU",
+      "graphicsApi": "Graphics API",
+      "gpuMemory": "GPU Memory",
+      "xrDevice": "XR Device"
+    }
   },
   "migrate": {
     "title": "Migrate",
@@ -1030,7 +1056,8 @@
       },
       "clientId": {
         "label": "Application ID",
-        "desc": "The 18-19 digit snowflake from your Discord developer dashboard."
+        "desc": "The 18-19 digit snowflake from your Discord developer dashboard.",
+        "placeholder": "1234567890000000000"
       }
     },
     "screenshots": {
@@ -1238,7 +1265,8 @@
       "ignoreParticles": {
         "label": "Ignore Particles",
         "hint": "Dramatically improves performance in crowded worlds"
-      }
+      },
+      "defaultPlaceholder": "(default)"
     },
     "steamvr": {
       "title": "VR Streaming Settings (SteamVR / Steam Link)",
@@ -1346,12 +1374,41 @@
       "network": "Network",
       "audio": "Audio",
       "audioSwitched": "Audio device switched",
-      "switchToSteamSpeakers": "Switch playback to Steam Streaming Speakers"
+      "switchToSteamSpeakers": "Switch playback to Steam Streaming Speakers",
+      "status": "Status",
+      "running": "Running",
+      "stopped": "Stopped",
+      "hmd": "HMD",
+      "driver": "Driver",
+      "refreshRate": "Refresh Rate",
+      "supersampling": "Supersampling",
+      "targetBandwidth": "Target Bandwidth",
+      "motionSmoothing": "Motion Smoothing",
+      "on": "On",
+      "off": "Off",
+      "preferredCodec": "Preferred Codec",
+      "gpu": "GPU",
+      "adapter": "Adapter",
+      "vram": "VRAM",
+      "warningCount": "{{count}} warnings",
+      "ok": "OK",
+      "virtual": "virtual",
+      "playback": "Playback",
+      "recording": "Recording",
+      "steamStreamingSpeakers": "Steam Streaming Speakers",
+      "found": "Found",
+      "missing": "Missing",
+      "steamStreamingMicrophone": "Steam Streaming Microphone",
+      "vrlinkIssues": "vrlink Issues"
     },
     "autoStart": {
       "label": "Launch with Windows",
-      "hint": "Start VRCSM automatically when you log in to Windows."
+      "hint": "Start VRCSM automatically when you log in to Windows.",
+      "errorUpdate": "Failed to update autostart"
     }
+  },
+  "imageZoom": {
+    "previewTitle": "Image preview"
   },
   "world": {
     "popup": {
@@ -1376,6 +1433,8 @@
     "empty": "No events found.",
     "noJams": "No active jams right now.",
     "openInBrowser": "Open in VRChat",
+    "openJamPage": "Open jam page",
+    "closesAt": "Closes {{when}}",
     "tabDiscover": "Discover",
     "tabFeatured": "Featured",
     "tabJams": "Jams"
@@ -1496,7 +1555,11 @@
     "myAvatars": "My Avatars",
     "seenAvatars": "Seen Avatars",
     "seenTitle": "Avatars Seen on Others",
-    "noSeen": "No avatars recorded yet. VRCSM records avatars seen on other players from VRChat logs and friend activity."
+    "noSeen": "No avatars recorded yet. VRCSM records avatars seen on other players from VRChat logs and friend activity.",
+    "public": "Public",
+    "private": "Private",
+    "logOnly": "Log only",
+    "byAuthor": "by {{author}}"
   },
   "fbt": {
     "title": "FBT Calibration Monitor",
@@ -1508,7 +1571,9 @@
     "started": "FBT drift monitoring started",
     "thresholds": "Drift Thresholds",
     "trackerStatus": "Tracker Status",
-    "notMonitoring": "Start monitoring to see tracker data. Make sure OSC is enabled in VRChat."
+    "notMonitoring": "Start monitoring to see tracker data. Make sure OSC is enabled in VRChat.",
+    "minor": "Minor",
+    "major": "Major"
   },
   "rules": {
     "title": "Automation Rules",

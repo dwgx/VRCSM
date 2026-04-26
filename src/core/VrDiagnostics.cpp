@@ -133,7 +133,10 @@ static VrlinkStats ScanVrlinkStats(const std::vector<std::string>& lines, int ta
                 bitrateSum += std::stod(m[1].str());
                 ++bitrateCount;
             }
-            catch (...) {}
+            catch (const std::exception& ex)
+            {
+                spdlog::debug("VrDiag: failed to parse bitrate '{}': {}", m[1].str(), ex.what());
+            }
         }
         if (std::regex_search(l, m, kLatency))
         {
@@ -142,7 +145,10 @@ static VrlinkStats ScanVrlinkStats(const std::vector<std::string>& lines, int ta
                 const double v = std::stod(m[1].str());
                 if (v > s.maxLatencyMs) s.maxLatencyMs = v;
             }
-            catch (...) {}
+            catch (const std::exception& ex)
+            {
+                spdlog::debug("VrDiag: failed to parse latency '{}': {}", m[1].str(), ex.what());
+            }
         }
     }
     if (bitrateCount > 0) s.avgBitrateMbps = bitrateSum / bitrateCount;
@@ -305,7 +311,10 @@ Result<VrDiagResult> VrDiagnostics::RunDiagnostics()
                 if (e.find("bad link events") != std::string::npos)
                 {
                     try { r.vrlinkBadLinkEvents = std::stoi(e.substr(e.find(']') + 2)); }
-                    catch (...) {}
+                    catch (const std::exception& ex)
+                    {
+                        spdlog::debug("VrDiag: failed to parse bad link summary '{}': {}", e, ex.what());
+                    }
                 }
             }
 

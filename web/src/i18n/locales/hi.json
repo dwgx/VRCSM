@@ -473,7 +473,7 @@
   "radar": {
     "title": "लाइव इंस्टेंस रडार",
     "subtitle": "लाइव इंस्टेंस रडार और सेशन इतिहास के लिए एकीकृत वर्कस्पेस",
-    "experimental": "प्रयोगात्मक, केवल लॉग विश्लेषण",
+    "logOnlyMode": "केवल लॉग विश्लेषण",
     "currentInstance": "वर्तमान इंस्टेंस",
     "waitingJoin": "वर्ल्ड जॉइन इवेंट का इंतज़ार…",
     "host": "होस्ट: {{owner}}",
@@ -574,7 +574,13 @@
     "copyId": "ID कॉपी करें",
     "noDescription": "कोई विवरण नहीं...",
     "openInBrowser": "ब्राउज़र में खोलें",
-    "openOnVrchat": "VRChat वेबसाइट पर खोलें"
+    "openOnVrchat": "VRChat वेबसाइट पर खोलें",
+    "centimeters": "सेमी",
+    "live": "लाइव",
+    "first": "पहला",
+    "previous": "पिछला",
+    "last": "अंतिम",
+    "jumpTo": "यहाँ जाएँ"
   },
   "about": {
     "title": "VRCSM के बारे में",
@@ -623,6 +629,7 @@
   },
   "dashboard": {
     "title": "डैशबोर्ड",
+    "overviewLabel": "अवलोकन",
     "totalCache": "कुल कैश आकार",
     "totalCacheHint": "{{count}} श्रेणियों में",
     "categories": "श्रेणियाँ",
@@ -804,6 +811,8 @@
     "unknownUser": "अज्ञात यूज़र",
     "listPaneTitle": "लोकल अवतार",
     "filterPlaceholder": "नाम या id से फ़िल्टर करें…",
+    "includeLogOnly": "केवल-लॉग प्रविष्टियाँ शामिल करें",
+    "includeLogOnlyHint": "ऐसे अवतार दिखाएँ जो केवल VRChat आउटपुट लॉग में आते हैं और जिनकी डिस्क पर मेटाडेटा नहीं है।",
     "inspectorPaneTitle": "इंस्पेक्टर",
     "previewPlaceholder": "3D पूर्वावलोकन",
     "unknownName": "अज्ञात अवतार",
@@ -852,7 +861,11 @@
     "ownerLabel": "मालिक:",
     "playersSeen": "कमरे में खिलाड़ी",
     "searchVrc": "VRChat खोजें",
-    "searchResults": "VRChat खोज परिणाम"
+    "searchResults": "VRChat खोज परिणाम",
+    "removeFromLibrary": "लाइब्रेरी से हटाएँ",
+    "saveToLibrary": "लाइब्रेरी में सहेजें",
+    "unknownTime": "समय अज्ञात",
+    "searchFailed": "खोज विफल रही"
   },
   "logs": {
     "title": "लॉग",
@@ -892,7 +905,20 @@
     "clearFilesSuccess": "{{count}} लॉग फ़ाइलें हटा दी गईं।",
     "clearFilesFailed": "लॉग फ़ाइलें मिटाने में विफल: {{error}}",
     "clearFiles": "लॉग फ़ाइलें मिटाएं",
-    "clearFilesConfirm": "संग्रहीत VRChat output_log फ़ाइलें हटाएं? यदि VRChat चल रहा है, तो वर्तमान सक्रिय लॉग रखा जाएगा।"
+    "clearFilesConfirm": "संग्रहीत VRChat output_log फ़ाइलें हटाएं? यदि VRChat चल रहा है, तो वर्तमान सक्रिय लॉग रखा जाएगा।",
+    "envLabel": {
+      "vrchatBuild": "VRChat बिल्ड",
+      "store": "स्टोर",
+      "platform": "प्लैटफ़ॉर्म",
+      "deviceModel": "डिवाइस मॉडल",
+      "processor": "प्रोसेसर",
+      "systemMemory": "सिस्टम मेमोरी",
+      "operatingSystem": "ऑपरेटिंग सिस्टम",
+      "gpu": "GPU",
+      "graphicsApi": "ग्राफ़िक्स API",
+      "gpuMemory": "GPU मेमोरी",
+      "xrDevice": "XR डिवाइस"
+    }
   },
   "migrate": {
     "title": "माइग्रेट",
@@ -1027,7 +1053,8 @@
       },
       "clientId": {
         "label": "एप्लिकेशन ID",
-        "desc": "आपके Discord डेवलपर डैशबोर्ड से 18-19 अंकों का स्नोफ्लेक (snowflake)।"
+        "desc": "आपके Discord डेवलपर डैशबोर्ड से 18-19 अंकों का स्नोफ्लेक (snowflake)।",
+        "placeholder": "1234567890000000000"
       }
     },
     "screenshots": {
@@ -1277,6 +1304,7 @@
         "hint": "भीड़-भाड़ वाली दुनिया में प्रदर्शन में नाटकीय रूप से सुधार करता है",
         "label": "पार्टिकल्स को अनदेखा करें"
       },
+      "defaultPlaceholder": "(डिफ़ॉल्ट)",
       "reload": "पुनः लोड करें",
       "save": "कॉन्फ़िग सहेजें",
       "saving": "सहेजा जा रहा है...",
@@ -1343,12 +1371,41 @@
       "network": "नेटवर्क",
       "audio": "ऑडियो",
       "audioSwitched": "ऑडियो डिवाइस स्विच किया गया",
-      "switchToSteamSpeakers": "प्लेबैक को Steam स्ट्रीमिंग स्पीकर पर स्विच करें"
+      "switchToSteamSpeakers": "प्लेबैक को Steam स्ट्रीमिंग स्पीकर पर स्विच करें",
+      "status": "स्थिति",
+      "running": "चल रहा है",
+      "stopped": "रुका हुआ",
+      "hmd": "HMD",
+      "driver": "ड्राइवर",
+      "refreshRate": "रिफ्रेश रेट",
+      "supersampling": "सुपरसैम्पलिंग",
+      "targetBandwidth": "लक्षित बैंडविड्थ",
+      "motionSmoothing": "मोशन स्मूदिंग",
+      "on": "चालू",
+      "off": "बंद",
+      "preferredCodec": "पसंदीदा कोडेक",
+      "gpu": "GPU",
+      "adapter": "एडैप्टर",
+      "vram": "VRAM",
+      "warningCount": "{{count}} चेतावनियाँ",
+      "ok": "ठीक",
+      "virtual": "वर्चुअल",
+      "playback": "प्लेबैक",
+      "recording": "रिकॉर्डिंग",
+      "steamStreamingSpeakers": "Steam Streaming Speakers",
+      "found": "मिला",
+      "missing": "नहीं मिला",
+      "steamStreamingMicrophone": "Steam Streaming Microphone",
+      "vrlinkIssues": "vrlink समस्याएँ"
     },
     "autoStart": {
       "label": "विंडोज के साथ लॉन्च करें",
-      "hint": "जब आप विंडोज में लॉग इन करते हैं तो VRCSM स्वचालित रूप से शुरू करें।"
+      "hint": "जब आप विंडोज में लॉग इन करते हैं तो VRCSM स्वचालित रूप से शुरू करें।",
+      "errorUpdate": "ऑटोस्टार्ट अपडेट नहीं हो सका"
     }
+  },
+  "imageZoom": {
+    "previewTitle": "चित्र पूर्वावलोकन"
   },
   "profileCard": {
     "home": "होम",
@@ -1452,6 +1509,8 @@
     "empty": "कोई ईवेंट नहीं मिला।",
     "noJams": "अभी कोई सक्रिय जैम नहीं है।",
     "openInBrowser": "VRChat में खोलें",
+    "openJamPage": "जैम पेज खोलें",
+    "closesAt": "{{when}} को बंद",
     "tabDiscover": "खोजें",
     "tabFeatured": "विशेष रुप से प्रदर्शित",
     "tabJams": "जैम्स"
@@ -1505,7 +1564,11 @@
     "myAvatars": "मेरे अवतार",
     "seenAvatars": "देखे गए अवतार",
     "seenTitle": "दूसरों पर देखे गए अवतार",
-    "noSeen": "अभी तक कोई अवतार रिकॉर्ड नहीं किया गया है। VRCSM VRChat लॉग और मित्र गतिविधि से अन्य खिलाड़ियों पर देखे गए अवतारों को रिकॉर्ड करता है।"
+    "noSeen": "अभी तक कोई अवतार रिकॉर्ड नहीं किया गया है। VRCSM VRChat लॉग और मित्र गतिविधि से अन्य खिलाड़ियों पर देखे गए अवतारों को रिकॉर्ड करता है।",
+    "public": "सार्वजनिक",
+    "private": "निजी",
+    "logOnly": "केवल लॉग",
+    "byAuthor": "{{author}} द्वारा"
   },
   "fbt": {
     "title": "FBT कैलिब्रेशन मॉनिटर",
@@ -1517,7 +1580,9 @@
     "started": "FBT बहाव निगरानी शुरू हो गई है",
     "thresholds": "बहाव थ्रेसहोल्ड",
     "trackerStatus": "ट्रैकर स्थिति",
-    "notMonitoring": "ट्रैकर डेटा देखने के लिए निगरानी शुरू करें। सुनिश्चित करें कि VRChat में OSC सक्षम है।"
+    "notMonitoring": "ट्रैकर डेटा देखने के लिए निगरानी शुरू करें। सुनिश्चित करें कि VRChat में OSC सक्षम है।",
+    "minor": "हल्का",
+    "major": "गंभीर"
   },
   "rules": {
     "title": "स्वचालन नियम",

@@ -622,7 +622,7 @@ function Dashboard() {
               {t("dashboard.title")}
             </span>
             <span className="text-[10px] font-mono uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-              overview
+              {t("dashboard.overviewLabel", { defaultValue: "Overview" })}
             </span>
             {vrcRunning ? (
               <Badge

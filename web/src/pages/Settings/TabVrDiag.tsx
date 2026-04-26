@@ -98,41 +98,43 @@ export function TabVrDiag() {
             <CardHeader className="pb-2">
               <CardTitle className="text-[12px] font-mono uppercase tracking-wider flex items-center gap-2">
                 <Activity className="size-3" />
-                SteamVR
+                {t("settings.tabs.steamvr", { defaultValue: "SteamVR" })}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-1 text-[11px] font-mono">
               <div className="flex justify-between">
-                <span>Status</span>
+                <span>{t("settings.vrDiag.status", { defaultValue: "Status" })}</span>
                 <Badge variant={result.steamvrRunning ? "default" : "outline"}>
-                  {result.steamvrRunning ? "Running" : "Stopped"}
+                  {result.steamvrRunning
+                    ? t("settings.vrDiag.running", { defaultValue: "Running" })
+                    : t("settings.vrDiag.stopped", { defaultValue: "Stopped" })}
                 </Badge>
               </div>
               {result.hmdModel && (
-                <div className="flex justify-between"><span>HMD</span><span>{result.hmdModel}</span></div>
+                <div className="flex justify-between"><span>{t("settings.vrDiag.hmd", { defaultValue: "HMD" })}</span><span>{result.hmdModel}</span></div>
               )}
               {result.hmdDriver && (
-                <div className="flex justify-between"><span>Driver</span><span>{result.hmdDriver}</span></div>
+                <div className="flex justify-between"><span>{t("settings.vrDiag.driver", { defaultValue: "Driver" })}</span><span>{result.hmdDriver}</span></div>
               )}
               {result.preferredRefreshRate > 0 && (
-                <div className="flex justify-between"><span>Refresh Rate</span><span>{result.preferredRefreshRate} Hz</span></div>
+                <div className="flex justify-between"><span>{t("settings.vrDiag.refreshRate", { defaultValue: "Refresh Rate" })}</span><span>{result.preferredRefreshRate} Hz</span></div>
               )}
               {result.supersampleScale > 0 && (
-                <div className="flex justify-between"><span>Supersampling</span><span>{result.supersampleScale}x</span></div>
+                <div className="flex justify-between"><span>{t("settings.vrDiag.supersampling", { defaultValue: "Supersampling" })}</span><span>{result.supersampleScale}x</span></div>
               )}
               {result.targetBandwidth > 0 && (
-                <div className="flex justify-between"><span>Target Bandwidth</span><span>{result.targetBandwidth} Mbps</span></div>
+                <div className="flex justify-between"><span>{t("settings.vrDiag.targetBandwidth", { defaultValue: "Target Bandwidth" })}</span><span>{result.targetBandwidth} Mbps</span></div>
               )}
               <div className="flex justify-between">
-                <span>Motion Smoothing</span>
-                <span>{result.motionSmoothing ? "On" : "Off"}</span>
+                <span>{t("settings.vrDiag.motionSmoothing", { defaultValue: "Motion Smoothing" })}</span>
+                <span>{result.motionSmoothing ? t("settings.vrDiag.on", { defaultValue: "On" }) : t("settings.vrDiag.off", { defaultValue: "Off" })}</span>
               </div>
               <div className="flex justify-between">
-                <span>Supersample Filtering</span>
-                <span>{result.allowSupersampleFiltering ? "On" : "Off"}</span>
+                <span>{t("settings.vrDiag.supersampleFiltering", { defaultValue: "Supersample Filtering" })}</span>
+                <span>{result.allowSupersampleFiltering ? t("settings.vrDiag.on", { defaultValue: "On" }) : t("settings.vrDiag.off", { defaultValue: "Off" })}</span>
               </div>
               {result.preferredCodec && (
-                <div className="flex justify-between"><span>Preferred Codec</span><span>{result.preferredCodec}</span></div>
+                <div className="flex justify-between"><span>{t("settings.vrDiag.preferredCodec", { defaultValue: "Preferred Codec" })}</span><span>{result.preferredCodec}</span></div>
               )}
             </CardContent>
           </Card>
@@ -143,23 +145,23 @@ export function TabVrDiag() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-[12px] font-mono uppercase tracking-wider flex items-center gap-2">
                   <Cpu className="size-3" />
-                  GPU
+                  {t("settings.vrDiag.gpu", { defaultValue: "GPU" })}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-1 text-[11px] font-mono">
                 {result.gpuName && (
                   <div className="flex justify-between gap-3">
-                    <span>Adapter</span>
+                    <span>{t("settings.vrDiag.adapter", { defaultValue: "Adapter" })}</span>
                     <span className="text-right">{result.gpuName}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span>VRAM</span>
+                  <span>{t("settings.vrDiag.vram", { defaultValue: "VRAM" })}</span>
                   <span>{formatVram(result.gpuVramBytes)}</span>
                 </div>
                 {result.gpuDriverVersion && (
                   <div className="flex justify-between">
-                    <span>Driver</span>
+                    <span>{t("settings.vrDiag.driver", { defaultValue: "Driver" })}</span>
                     <span>{result.gpuDriverVersion}</span>
                   </div>
                 )}
@@ -174,9 +176,14 @@ export function TabVrDiag() {
                 <Wifi className="size-3" />
                 {t("settings.vrDiag.network", { defaultValue: "Network" })}
                 {result.networkWarnings.length > 0 ? (
-                  <Badge variant="destructive">{result.networkWarnings.length} warnings</Badge>
+                  <Badge variant="destructive">
+                    {t("settings.vrDiag.warningCount", {
+                      count: result.networkWarnings.length,
+                      defaultValue: "{{count}} warnings",
+                    })}
+                  </Badge>
                 ) : (
-                  <Badge variant="default"><CheckCircle2 className="size-2.5 mr-1" />OK</Badge>
+                  <Badge variant="default"><CheckCircle2 className="size-2.5 mr-1" />{t("settings.vrDiag.ok", { defaultValue: "OK" })}</Badge>
                 )}
               </CardTitle>
             </CardHeader>
@@ -190,7 +197,7 @@ export function TabVrDiag() {
               {result.adapters.filter(a => a.isUp).map((a, i) => (
                 <div key={i} className="flex justify-between">
                   <span className={a.isVirtual ? "text-[hsl(var(--destructive))]" : ""}>
-                    {a.name} {a.isVirtual && "⚠ virtual"}
+                    {a.name} {a.isVirtual && `⚠ ${t("settings.vrDiag.virtual", { defaultValue: "virtual" })}`}
                   </span>
                   <span>{a.ipAddress || "—"}</span>
                 </div>
@@ -208,23 +215,27 @@ export function TabVrDiag() {
             </CardHeader>
             <CardContent className="flex flex-col gap-2 text-[11px] font-mono">
               <div className="flex justify-between items-center">
-                <span>Playback</span>
+                <span>{t("settings.vrDiag.playback", { defaultValue: "Playback" })}</span>
                 <span>{result.defaultPlaybackDevice || "—"}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span>Recording</span>
+                <span>{t("settings.vrDiag.recording", { defaultValue: "Recording" })}</span>
                 <span>{result.defaultRecordingDevice || "—"}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span>Steam Streaming Speakers</span>
+                <span>{t("settings.vrDiag.steamStreamingSpeakers", { defaultValue: "Steam Streaming Speakers" })}</span>
                 <Badge variant={result.steamSpeakersFound ? "default" : "destructive"}>
-                  {result.steamSpeakersFound ? "Found" : "Missing"}
+                  {result.steamSpeakersFound
+                    ? t("settings.vrDiag.found", { defaultValue: "Found" })
+                    : t("settings.vrDiag.missing", { defaultValue: "Missing" })}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span>Steam Streaming Microphone</span>
+                <span>{t("settings.vrDiag.steamStreamingMicrophone", { defaultValue: "Steam Streaming Microphone" })}</span>
                 <Badge variant={result.steamMicFound ? "default" : "destructive"}>
-                  {result.steamMicFound ? "Found" : "Missing"}
+                  {result.steamMicFound
+                    ? t("settings.vrDiag.found", { defaultValue: "Found" })
+                    : t("settings.vrDiag.missing", { defaultValue: "Missing" })}
                 </Badge>
               </div>
               {result.steamSpeakersFound && !result.defaultPlaybackDevice.includes("Steam Streaming") && (
@@ -280,7 +291,7 @@ export function TabVrDiag() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-[12px] font-mono uppercase tracking-wider flex items-center gap-2">
                   <AlertTriangle className="size-3" />
-                  vrlink Issues
+                  {t("settings.vrDiag.vrlinkIssues", { defaultValue: "vrlink Issues" })}
                   <Badge variant="destructive">{result.vrlinkErrors.length}</Badge>
                 </CardTitle>
               </CardHeader>

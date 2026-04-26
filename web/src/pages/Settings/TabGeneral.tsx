@@ -258,7 +258,11 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
                   setAutoStart(v);
                   ipc.autoStartSet(v).catch(() => {
                     setAutoStart(!v);
-                    toast.error("Failed to update autostart");
+                    toast.error(
+                      t("settings.autoStart.errorUpdate", {
+                        defaultValue: "Failed to update autostart",
+                      }),
+                    );
                   });
                 }}
                 className="w-4 h-4 cursor-pointer border border-[hsl(var(--border-strong))]"
@@ -499,7 +503,9 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
             <Input
               value={discordClientId}
               onChange={(e) => setDiscordClientId(e.target.value.replace(/\D/g, "").slice(0, 20))}
-              placeholder="1234567890000000000"
+              placeholder={t("settings.discord.clientId.placeholder", {
+                defaultValue: "1234567890000000000",
+              })}
               className="h-8 w-[220px] font-mono text-[12px]"
             />
           </SettingRow>

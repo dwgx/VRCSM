@@ -473,7 +473,7 @@
   "radar": {
     "title": "เรดาร์อินสแตนซ์แบบสด",
     "subtitle": "พื้นที่ทำงานรวมเรดาร์อินสแตนซ์แบบสดและประวัติเซสชัน",
-    "experimental": "ฟีเจอร์ทดลอง ใช้การวิเคราะห์บันทึกเท่านั้น",
+    "logOnlyMode": "วิเคราะห์บันทึกเท่านั้น",
     "currentInstance": "อินสแตนซ์ปัจจุบัน",
     "waitingJoin": "กำลังรอเหตุการณ์เข้าร่วมโลก…",
     "host": "โฮสต์: {{owner}}",
@@ -574,7 +574,13 @@
     "copyId": "คัดลอก ID",
     "noDescription": "ไม่มีคำอธิบาย...",
     "openInBrowser": "เปิดในเบราว์เซอร์",
-    "openOnVrchat": "เปิดบนเว็บไซต์ VRChat"
+    "openOnVrchat": "เปิดบนเว็บไซต์ VRChat",
+    "centimeters": "ซม.",
+    "live": "สด",
+    "first": "หน้าแรก",
+    "previous": "ก่อนหน้า",
+    "last": "หน้าสุดท้าย",
+    "jumpTo": "ไปที่"
   },
   "about": {
     "title": "เกี่ยวกับ VRCSM",
@@ -623,6 +629,7 @@
   },
   "dashboard": {
     "title": "แดชบอร์ด",
+    "overviewLabel": "ภาพรวม",
     "totalCache": "ขนาดแคชรวม",
     "totalCacheHint": "ครอบคลุม {{count}} หมวดหมู่",
     "categories": "หมวดหมู่",
@@ -804,6 +811,8 @@
     "unknownUser": "ผู้ใช้ไม่ทราบ",
     "listPaneTitle": "อวาตาร์โลคัล",
     "filterPlaceholder": "กรองตามชื่อหรือ id…",
+    "includeLogOnly": "รวมรายการที่อยู่ในล็อกเท่านั้น",
+    "includeLogOnlyHint": "แสดงอวาตาร์ที่ปรากฏเฉพาะในล็อก VRChat และไม่มีเมตาดาต้าบนดิสก์",
     "inspectorPaneTitle": "ตัวตรวจสอบ",
     "previewPlaceholder": "ดูตัวอย่าง 3D",
     "unknownName": "อวาตาร์ไม่ทราบ",
@@ -852,7 +861,11 @@
     "ownerLabel": "เจ้าของ:",
     "playersSeen": "ผู้เล่นในห้อง",
     "searchVrc": "ค้นหา VRChat",
-    "searchResults": "ผลการค้นหา VRChat"
+    "searchResults": "ผลการค้นหา VRChat",
+    "removeFromLibrary": "นำออกจากไลบรารี",
+    "saveToLibrary": "บันทึกลงไลบรารี",
+    "unknownTime": "ไม่ทราบเวลา",
+    "searchFailed": "ค้นหาไม่สำเร็จ"
   },
   "logs": {
     "title": "บันทึก",
@@ -892,7 +905,20 @@
     "clearFilesSuccess": "ลบไฟล์ล็อก {{count}} ไฟล์แล้ว",
     "clearFilesFailed": "ลบไฟล์ล้มเหลว: {{error}}",
     "clearFiles": "ล้างไฟล์ล็อก",
-    "clearFilesConfirm": "แน่ใจไหมว่าจะลบไฟล์ output_log ของ VRChat ที่เก็บไว้? ถ้า VRChat เปิดอยู่ไฟล์ปัจจุบันจะไม่ถูกลบ"
+    "clearFilesConfirm": "แน่ใจไหมว่าจะลบไฟล์ output_log ของ VRChat ที่เก็บไว้? ถ้า VRChat เปิดอยู่ไฟล์ปัจจุบันจะไม่ถูกลบ",
+    "envLabel": {
+      "vrchatBuild": "บิลด์ VRChat",
+      "store": "สโตร์",
+      "platform": "แพลตฟอร์ม",
+      "deviceModel": "รุ่นอุปกรณ์",
+      "processor": "โปรเซสเซอร์",
+      "systemMemory": "หน่วยความจำระบบ",
+      "operatingSystem": "ระบบปฏิบัติการ",
+      "gpu": "GPU",
+      "graphicsApi": "กราฟิก API",
+      "gpuMemory": "หน่วยความจำ GPU",
+      "xrDevice": "อุปกรณ์ XR"
+    }
   },
   "migrate": {
     "title": "ย้ายข้อมูล",
@@ -1046,7 +1072,8 @@
       },
       "clientId": {
         "label": "ID แอปพลิเคชัน",
-        "desc": "รหัส 18-19 หลักจากแดชบอร์ดนักพัฒนา Discord ของคุณ"
+        "desc": "รหัส 18-19 หลักจากแดชบอร์ดนักพัฒนา Discord ของคุณ",
+        "placeholder": "1234567890000000000"
       }
     },
     "screenshots": {
@@ -1296,6 +1323,7 @@
         "hint": "ปรับปรุงประสิทธิภาพอย่างมากในโลกที่มีคนเยอะ",
         "label": "ละเว้นพาร์ติเคิล"
       },
+      "defaultPlaceholder": "(ค่าเริ่มต้น)",
       "reload": "โหลดซ้ำ",
       "save": "บันทึกการตั้งค่า",
       "saving": "กำลังบันทึก...",
@@ -1362,12 +1390,41 @@
       "network": "เครือข่าย",
       "audio": "เสียง",
       "audioSwitched": "สลับอุปกรณ์เสียงแล้ว",
-      "switchToSteamSpeakers": "สลับการเล่นไปยัง Steam Streaming Speakers"
+      "switchToSteamSpeakers": "สลับการเล่นไปยัง Steam Streaming Speakers",
+      "status": "สถานะ",
+      "running": "กำลังทำงาน",
+      "stopped": "หยุดแล้ว",
+      "hmd": "HMD",
+      "driver": "ไดรเวอร์",
+      "refreshRate": "อัตรารีเฟรช",
+      "supersampling": "ซูเปอร์แซมปลิง",
+      "targetBandwidth": "แบนด์วิดท์เป้าหมาย",
+      "motionSmoothing": "Motion Smoothing",
+      "on": "เปิด",
+      "off": "ปิด",
+      "preferredCodec": "โคเดกที่ต้องการ",
+      "gpu": "GPU",
+      "adapter": "อะแดปเตอร์",
+      "vram": "VRAM",
+      "warningCount": "คำเตือน {{count}} รายการ",
+      "ok": "ปกติ",
+      "virtual": "เสมือน",
+      "playback": "การเล่น",
+      "recording": "การบันทึก",
+      "steamStreamingSpeakers": "ลำโพง Steam Streaming",
+      "found": "พบ",
+      "missing": "ไม่พบ",
+      "steamStreamingMicrophone": "ไมโครโฟน Steam Streaming",
+      "vrlinkIssues": "ปัญหา vrlink"
     },
     "autoStart": {
       "label": "เปิดพร้อมกับ Windows",
-      "hint": "เริ่ม VRCSM โดยอัตโนมัติเมื่อคุณเข้าสู่ระบบ Windows"
+      "hint": "เริ่ม VRCSM โดยอัตโนมัติเมื่อคุณเข้าสู่ระบบ Windows",
+      "errorUpdate": "อัปเดตการเปิดอัตโนมัติไม่สำเร็จ"
     }
+  },
+  "imageZoom": {
+    "previewTitle": "ดูภาพ"
   },
   "profileCard": {
     "home": "หน้าแรก",
@@ -1471,6 +1528,8 @@
     "empty": "ไม่พบกิจกรรม",
     "noJams": "ขณะนี้ไม่มีแจมที่ใช้งานอยู่",
     "openInBrowser": "เปิดใน VRChat",
+    "openJamPage": "เปิดหน้าแจม",
+    "closesAt": "ปิด {{when}}",
     "tabDiscover": "ค้นพบ",
     "tabFeatured": "แนะนำ",
     "tabJams": "แจม"
@@ -1524,7 +1583,11 @@
     "myAvatars": "อวาตาร์ของฉัน",
     "seenAvatars": "อวาตาร์ที่เห็น",
     "seenTitle": "อวาตาร์ที่เห็นบนผู้อื่น",
-    "noSeen": "ยังไม่มีการบันทึกอวาตาร์ VRCSM จะบันทึกอวาตาร์ที่เห็นบนผู้เล่นคนอื่นจากล็อกของ VRChat และกิจกรรมของเพื่อน"
+    "noSeen": "ยังไม่มีการบันทึกอวาตาร์ VRCSM จะบันทึกอวาตาร์ที่เห็นบนผู้เล่นคนอื่นจากล็อกของ VRChat และกิจกรรมของเพื่อน",
+    "public": "สาธารณะ",
+    "private": "ส่วนตัว",
+    "logOnly": "เฉพาะล็อก",
+    "byAuthor": "โดย {{author}}"
   },
   "fbt": {
     "title": "เครื่องมือติดตามการเทียบมาตรฐาน FBT",
@@ -1536,7 +1599,9 @@
     "started": "เริ่มการติดตามการเคลื่อนของ FBT แล้ว",
     "thresholds": "เกณฑ์การเคลื่อน",
     "trackerStatus": "สถานะตัวติดตาม",
-    "notMonitoring": "เริ่มติดตามเพื่อดูข้อมูลตัวติดตาม ตรวจสอบให้แน่ใจว่าเปิดใช้งาน OSC ใน VRChat"
+    "notMonitoring": "เริ่มติดตามเพื่อดูข้อมูลตัวติดตาม ตรวจสอบให้แน่ใจว่าเปิดใช้งาน OSC ใน VRChat",
+    "minor": "เล็กน้อย",
+    "major": "รุนแรง"
   },
   "rules": {
     "title": "กฎอัตโนมัติ",

@@ -40,18 +40,18 @@ import { toast } from "sonner";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ENV_ORDER: Array<{ key: keyof LogEnvironment; label: string }> = [
-  { key: "vrchat_build", label: "VRChat Build" },
-  { key: "store", label: "Store" },
-  { key: "platform", label: "Platform" },
-  { key: "device_model", label: "Device Model" },
-  { key: "processor", label: "Processor" },
-  { key: "system_memory", label: "System Memory" },
-  { key: "operating_system", label: "Operating System" },
-  { key: "gpu_name", label: "GPU" },
-  { key: "gpu_api", label: "Graphics API" },
-  { key: "gpu_memory", label: "GPU Memory" },
-  { key: "xr_device", label: "XR Device" },
+const ENV_ORDER: Array<keyof LogEnvironment> = [
+  "vrchat_build",
+  "store",
+  "platform",
+  "device_model",
+  "processor",
+  "system_memory",
+  "operating_system",
+  "gpu_name",
+  "gpu_api",
+  "gpu_memory",
+  "xr_device",
 ];
 
 /** Compact env keys shown as badges in the collapsed bar. */
@@ -294,6 +294,20 @@ function Logs() {
   const [clearingLogFiles, setClearingLogFiles] = useState(false);
   const [clearLogFilesOpen, setClearLogFilesOpen] = useState(false);
 
+  const envLabels: Record<keyof LogEnvironment, string> = useMemo(() => ({
+    vrchat_build: t("logs.envLabel.vrchatBuild", { defaultValue: "VRChat Build" }),
+    store: t("logs.envLabel.store", { defaultValue: "Store" }),
+    platform: t("logs.envLabel.platform", { defaultValue: "Platform" }),
+    device_model: t("logs.envLabel.deviceModel", { defaultValue: "Device Model" }),
+    processor: t("logs.envLabel.processor", { defaultValue: "Processor" }),
+    system_memory: t("logs.envLabel.systemMemory", { defaultValue: "System Memory" }),
+    operating_system: t("logs.envLabel.operatingSystem", { defaultValue: "Operating System" }),
+    gpu_name: t("logs.envLabel.gpu", { defaultValue: "GPU" }),
+    gpu_api: t("logs.envLabel.graphicsApi", { defaultValue: "Graphics API" }),
+    gpu_memory: t("logs.envLabel.gpuMemory", { defaultValue: "GPU Memory" }),
+    xr_device: t("logs.envLabel.xrDevice", { defaultValue: "XR Device" }),
+  }), [t]);
+
   const toggleFilter = useCallback((key: FilterKey) => {
     setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
     setVisibleCount(PAGE_SIZE);
@@ -474,7 +488,7 @@ function Logs() {
 
   const hasEnvironment = useMemo(() => {
     if (!logs) return false;
-    return ENV_ORDER.some(({ key }) => logs.environment[key] !== null);
+    return ENV_ORDER.some((key) => logs.environment[key] !== null);
   }, [logs]);
 
   // -- Settings sections filter ---------------------------------------------
@@ -607,9 +621,9 @@ function Logs() {
             <div className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400">
               <span className="relative flex size-2">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-              </span>
-              Live
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+            </span>
+              {t("common.live", { defaultValue: "Live" })}
             </div>
           ) : null}
           {logs.local_user_name ? (
@@ -686,14 +700,14 @@ function Logs() {
           {envExpanded ? (
             <CardContent className="border-t border-[hsl(var(--border))] pt-3 pb-3">
               <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
-                {ENV_ORDER.filter(({ key }) => logs.environment[key] !== null).map(
-                  ({ key, label }) => (
+                {ENV_ORDER.filter((key) => logs.environment[key] !== null).map(
+                  (key) => (
                     <div
                       key={key}
                       className="flex items-baseline justify-between gap-3 border-b border-dashed border-[hsl(var(--border))] py-1 last:border-b-0"
                     >
                       <span className="text-[11px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                        {label}
+                        {envLabels[key]}
                       </span>
                       <span className="truncate text-right font-mono text-[11px] text-[hsl(var(--foreground))]">
                         {logs.environment[key]}

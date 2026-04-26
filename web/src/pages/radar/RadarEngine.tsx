@@ -485,7 +485,7 @@ function RadarEngine({
           </Button>
           <Badge variant="outline" className="shrink-0 gap-1.5 border-amber-500/40 text-amber-500 bg-amber-500/5 text-[10px] font-medium px-2.5 py-1">
             <AlertTriangle className="size-3" />
-            {t("radar.experimental", { defaultValue: "Experimental — log analysis only" })}
+            {t("radar.logOnlyMode", { defaultValue: "Log analysis only" })}
           </Badge>
         </div>
       </header>

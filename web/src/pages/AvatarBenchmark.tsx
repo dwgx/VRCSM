@@ -352,12 +352,32 @@ function SeenAvatarRow({ a }: { a: SeenAvatar }) {
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         <div className="flex items-center gap-1.5">
           <span className="font-medium truncate">{displayName}</span>
-          {isPublic && <Badge variant="default" className="h-4 text-[9px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">PUBLIC</Badge>}
-          {isPrivate && <Badge variant="outline" className="h-4 text-[9px] gap-0.5"><Lock className="size-2" />PRIVATE</Badge>}
-          {isUnknown && <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">LOG-ONLY</Badge>}
+          {isPublic && (
+            <Badge variant="default" className="h-4 text-[9px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+              {t("benchmark.public", { defaultValue: "Public" })}
+            </Badge>
+          )}
+          {isPrivate && (
+            <Badge variant="outline" className="h-4 text-[9px] gap-0.5">
+              <Lock className="size-2" />
+              {t("benchmark.private", { defaultValue: "Private" })}
+            </Badge>
+          )}
+          {isUnknown && (
+            <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">
+              {t("benchmark.logOnly", { defaultValue: "Log only" })}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--muted-foreground))]">
-          {authorName && <span className="truncate">by {authorName}</span>}
+          {authorName && (
+            <span className="truncate">
+              {t("benchmark.byAuthor", {
+                author: authorName,
+                defaultValue: "by {{author}}",
+              })}
+            </span>
+          )}
           {a.first_seen_on && (
             <span className="flex items-center gap-1">
               <span>·</span>
@@ -389,7 +409,7 @@ function SeenAvatarRow({ a }: { a: SeenAvatar }) {
             className="h-6 text-[10px] gap-1"
             onClick={() => {
               void navigator.clipboard.writeText(a.avatar_id);
-              toast.success("Avatar ID copied");
+              toast.success(t("common.copied", { defaultValue: "Copied" }));
             }}
           >
             <Copy className="size-2.5" />
@@ -400,10 +420,10 @@ function SeenAvatarRow({ a }: { a: SeenAvatar }) {
             className="h-6 text-[10px]"
             onClick={() => {
               void navigator.clipboard.writeText(`https://vrchat.com/home/avatar/${a.avatar_id}`);
-              toast.success("Avatar link copied");
+              toast.success(t("common.copied", { defaultValue: "Copied" }));
             }}
           >
-            Link
+            {t("common.copy", { defaultValue: "Copy" })}
           </Button>
         </>
       )}

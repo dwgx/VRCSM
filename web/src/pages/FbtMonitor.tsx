@@ -35,7 +35,9 @@ export default function FbtMonitor() {
     try {
       await ipc.oscSend("/chatbox/typing", [false]);
       setMonitoring(false);
-    } catch { }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function sendCalibrationNudge() {
@@ -59,14 +61,11 @@ export default function FbtMonitor() {
           <span className="text-[11px] uppercase tracking-[0.08em] font-semibold">
             {t("fbt.title", { defaultValue: "FBT Calibration Monitor" })}
           </span>
-          <Badge variant="secondary" className="text-[9px]">
-            {t("common.experimental", { defaultValue: "Beta" })}
-          </Badge>
         </div>
         <div className="flex gap-2">
           {monitoring ? (
             <Button size="sm" variant="destructive" onClick={() => void stopMonitor()}>
-              Stop
+              {t("fbt.stop", { defaultValue: "Stop" })}
             </Button>
           ) : (
             <Button size="sm" onClick={() => void startMonitor()}>
@@ -96,24 +95,32 @@ export default function FbtMonitor() {
         </CardHeader>
         <CardContent className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-[11px]">Minor:</span>
+            <span className="text-[11px]">
+              {t("fbt.minor", { defaultValue: "Minor" })}:
+            </span>
             <Input
               type="number"
               value={thresholdMinor}
               onChange={(e) => setThresholdMinor(Number(e.target.value))}
               className="h-7 w-16 text-[12px]"
             />
-            <span className="text-[11px] text-[hsl(var(--muted-foreground))]">cm</span>
+            <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
+              {t("common.centimeters", { defaultValue: "cm" })}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px]">Major:</span>
+            <span className="text-[11px]">
+              {t("fbt.major", { defaultValue: "Major" })}:
+            </span>
             <Input
               type="number"
               value={thresholdMajor}
               onChange={(e) => setThresholdMajor(Number(e.target.value))}
               className="h-7 w-16 text-[12px]"
             />
-            <span className="text-[11px] text-[hsl(var(--muted-foreground))]">cm</span>
+            <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
+              {t("common.centimeters", { defaultValue: "cm" })}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -122,7 +129,11 @@ export default function FbtMonitor() {
         <CardHeader className="pb-2">
           <CardTitle className="text-[12px] font-mono uppercase tracking-wider">
             {t("fbt.trackerStatus", { defaultValue: "Tracker Status" })}
-            {monitoring && <Badge variant="default" className="ml-2 animate-pulse">LIVE</Badge>}
+            {monitoring && (
+              <Badge variant="default" className="ml-2 animate-pulse">
+                {t("common.live", { defaultValue: "Live" })}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -151,7 +162,7 @@ export default function FbtMonitor() {
                     tr.driftCm > thresholdMinor ? "text-yellow-400" :
                     "text-emerald-400"
                   }>
-                    {tr.driftCm.toFixed(1)} cm
+                    {tr.driftCm.toFixed(1)} {t("common.centimeters", { defaultValue: "cm" })}
                   </span>
                 </div>
               ))}

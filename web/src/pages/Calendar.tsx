@@ -60,12 +60,24 @@ interface Jam {
   name?: string;
   description?: string;
   thumbnailImageUrl?: string;
+  thumbnail_image_url?: string;
+  imageUrl?: string;
+  image_url?: string;
   state?: string;
   isActive?: boolean;
   submissionsCanBeVoted?: boolean;
   closedAt?: string;
   startedAt?: string;
   [key: string]: unknown;
+}
+
+function getJamImage(jam: Jam): string | undefined {
+  return firstString(
+    jam.thumbnailImageUrl,
+    jam.thumbnail_image_url,
+    jam.imageUrl,
+    jam.image_url,
+  );
 }
 
 function firstString(...values: (string | undefined | null)[]): string | undefined {
@@ -135,7 +147,7 @@ function openEvent(event: CalendarEvent) {
 
 export default function CalendarPage() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<CalendarTab>("discover");
+  const [tab, setTab] = useState<CalendarTab>("jams");
 
   const discover = useQuery({
     queryKey: ["calendar.discover"],
@@ -186,9 +198,9 @@ export default function CalendarPage() {
 
       <div className="flex gap-1 border-b border-[hsl(var(--border))] pb-0">
         {([
+          { key: "jams" as const, icon: Trophy, label: "Jams", count: Array.isArray(rawJams) ? rawJams.length : 0 },
           { key: "discover" as const, icon: Compass, label: "Discover", count: (discover.data?.events as CalendarEvent[] | undefined)?.length ?? 0 },
           { key: "featured" as const, icon: Star, label: "Featured", count: (featured.data?.events as CalendarEvent[] | undefined)?.length ?? 0 },
-          { key: "jams" as const, icon: Trophy, label: "Jams", count: Array.isArray(rawJams) ? rawJams.length : 0 },
         ]).map((tabDef) => (
           <button
             key={tabDef.key}
@@ -336,21 +348,31 @@ function EventCard({ event, onOpen }: { event: CalendarEvent; onOpen: (e: Calend
   );
 }
 
+function openJam(jam: Jam) {
+  const url = jam.id
+    ? `https://vrchat.com/home/jams/${jam.id}`
+    : "https://vrchat.com/home/jams";
+  void ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", { url });
+}
+
 function JamCard({ jam }: { jam: Jam }) {
+  const { t } = useTranslation();
   const title = firstString(jam.title, jam.name) ?? "Untitled Jam";
-  const thumb = jam.thumbnailImageUrl;
+  const thumb = getJamImage(jam);
   const state = firstString(jam.state) ?? (jam.isActive ? "active" : undefined);
 
   return (
     <Card className="unity-panel overflow-hidden flex flex-col">
-      <ThumbImage
-        src={thumb}
-        seedKey={jam.id ?? title}
-        label={title}
-        className="h-28 w-full rounded-none border-0"
-        aspect=""
-        priority="eager"
-      />
+      <div className="relative h-32 overflow-hidden">
+        <ThumbImage
+          src={thumb}
+          seedKey={jam.id ?? title}
+          label={title}
+          className="h-full w-full rounded-none border-0"
+          aspect=""
+          priority="eager"
+        />
+      </div>
       <CardHeader className="pb-1.5">
         <CardTitle className="text-[13px] flex items-center gap-2 line-clamp-1">
           <Trophy className="size-3.5 text-amber-400" />
@@ -360,7 +382,7 @@ function JamCard({ jam }: { jam: Jam }) {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 pt-0 flex-1">
+      <CardContent className="p-3 pt-0 flex-1 flex flex-col">
         {jam.description && (
           <p className="text-[11px] text-[hsl(var(--muted-foreground))] line-clamp-3">
             {String(jam.description)}
@@ -368,9 +390,20 @@ function JamCard({ jam }: { jam: Jam }) {
         )}
         {jam.closedAt && (
           <div className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">
-            Closes {formatWhen(jam.closedAt)}
+            {t("calendar.closesAt", { defaultValue: "Closes {{when}}", when: formatWhen(jam.closedAt) })}
           </div>
         )}
+        <div className="mt-auto pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-7 text-[11px]"
+            onClick={() => openJam(jam)}
+          >
+            <ExternalLink className="size-3" />
+            {t("calendar.openJamPage", { defaultValue: "Open jam page" })}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

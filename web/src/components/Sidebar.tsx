@@ -39,7 +39,6 @@ interface NavItem {
   to: string;
   labelKey: string;
   icon: LucideIcon;
-  experimental?: boolean;
 }
 
 const coreItems: NavItem[] = [
@@ -62,13 +61,13 @@ const coreItems: NavItem[] = [
 ];
 
 const labItems: NavItem[] = [
-  { to: "/plugins", labelKey: "nav.plugins", icon: Plug, experimental: true },
-  { to: "/events", labelKey: "nav.events", icon: CircleDot, experimental: true },
-  { to: "/social", labelKey: "nav.social", icon: TrendingUp, experimental: true },
-  { to: "/benchmark", labelKey: "nav.benchmark", icon: Gauge, experimental: true },
-  { to: "/fbt", labelKey: "nav.fbt", icon: Activity, experimental: true },
-  { to: "/rules", labelKey: "nav.rules", icon: Zap, experimental: true },
-  { to: "/tools/osc", labelKey: "nav.osc", icon: Zap, experimental: true },
+  { to: "/plugins", labelKey: "nav.plugins", icon: Plug },
+  { to: "/events", labelKey: "nav.events", icon: CircleDot },
+  { to: "/social", labelKey: "nav.social", icon: TrendingUp },
+  { to: "/benchmark", labelKey: "nav.benchmark", icon: Gauge },
+  { to: "/fbt", labelKey: "nav.fbt", icon: Activity },
+  { to: "/rules", labelKey: "nav.rules", icon: Zap },
+  { to: "/tools/osc", labelKey: "nav.osc", icon: Zap },
 ];
 
 function LanguageMenu() {
@@ -190,9 +189,6 @@ function LabSection({ items }: { items: NavItem[] }) {
         >
           <item.icon className="size-[14px] shrink-0" aria-hidden />
           <span className="flex-1 truncate">{t(item.labelKey)}</span>
-          <span className="shrink-0 rounded-[3px] bg-[hsl(45_93%_47%/0.15)] px-1 py-px text-[8px] font-semibold uppercase tracking-[0.06em] text-[hsl(45_93%_47%)]">
-            {t("common.experimental", { defaultValue: "Beta" })}
-          </span>
         </NavLink>
       ))}
     </>
@@ -274,11 +270,6 @@ export function Sidebar() {
                 ) : null}
                 <item.icon className="size-[14px] shrink-0" aria-hidden />
                 <span className="flex-1 truncate">{t(item.labelKey)}</span>
-                {item.experimental ? (
-                  <span className="shrink-0 rounded-[3px] bg-[hsl(var(--warn-foreground,45_93%_47%)/0.15)] px-1 py-px text-[8px] font-semibold uppercase tracking-[0.06em] text-[hsl(var(--warn-foreground,45_93%_47%))]">
-                    {t("common.experimental", { defaultValue: "Beta" })}
-                  </span>
-                ) : null}
               </>
             )}
           </NavLink>
