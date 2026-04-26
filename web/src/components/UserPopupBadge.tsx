@@ -19,13 +19,10 @@ interface UserPopupBadgeProps {
 export function UserPopupBadge({ userId, displayName }: UserPopupBadgeProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  // Defer profile fetch until the dialog actually opens. Long rosters with
-  // hundreds of badges previously fired hundreds of user.getProfile IPCs at
-  // mount. Row shows the fallback name/icon, click → fetch → rich card.
   const { data } = useIpcQuery<{ userId: string }, { profile: VrcUserProfile | null }>(
     "user.getProfile",
     { userId },
-    { staleTime: 5 * 60_000, enabled: open && !!userId && userId.startsWith("usr_") },
+    { staleTime: 5 * 60_000, enabled: !!userId && userId.startsWith("usr_") },
   );
   const profile = data?.profile ?? null;
 
