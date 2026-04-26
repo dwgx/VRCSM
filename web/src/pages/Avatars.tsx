@@ -35,6 +35,13 @@ import { ImageZoom } from "@/components/ImageZoom";
 type AugmentedAvatar = LocalAvatarItem & {
   display_name?: string;
   author?: string;
+  source?: "local" | "avatar-log" | "encounter-log";
+  wearer_name?: string;
+  wearer_user_id?: string | null;
+  last_seen_at?: string | null;
+  seen_count?: number;
+  wearer_count?: number;
+  wearer_names?: string[];
 };
 
 // Raw JSON from /api/1/avatars/{id}. VRChat's payload shape is loose and
@@ -107,6 +114,22 @@ function shortenId(id: string, head = 8, tail = 4): string {
   const clean = id.replace(/^avtr_/, "");
   if (clean.length <= head + tail + 3) return clean;
   return `${clean.slice(0, head)}…${clean.slice(-tail)}`;
+}
+
+function stableSeenAvatarId(name: string): string {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < name.length; i++) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return `seen_${h.toString(16).padStart(8, "0")}`;
+}
+
+function compareIsoish(a?: string | null, b?: string | null): number {
+  if (!a && !b) return 0;
+  if (!a) return -1;
+  if (!b) return 1;
+  return a.localeCompare(b);
 }
 
 /**
@@ -232,9 +255,11 @@ function AvatarInspector({
   const { status: authStatus } = useAuth();
   const [prefer3D, setPrefer3D] = useUiPrefBoolean("vrcsm.avatar.preview3d", false);
   const { details, loading: detailsLoading, unavailable } = useAvatarDetails(
-    selected.avatar_id,
+    selected.avatar_id.startsWith("avtr_") ? selected.avatar_id : null,
   );
-  const { url: cachedThumb } = useThumbnail(selected.avatar_id);
+  const { url: cachedThumb } = useThumbnail(
+    selected.avatar_id.startsWith("avtr_") ? selected.avatar_id : null,
+  );
 
 
   // Broadcast the API-resolved name back up so the left list can show
@@ -268,6 +293,7 @@ function AvatarInspector({
     cachedThumb ||
     undefined;
   const can3D = Boolean(windowsAssetUrl);
+  const isEncounterLog = selected.source === "encounter-log";
 
   return (
     <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
@@ -333,6 +359,14 @@ function AvatarInspector({
               <div className="text-[12px] text-[hsl(var(--muted-foreground))]">
                 {t("avatars.byAuthor", { author: authorName })}
               </div>
+            ) : isEncounterLog ? (
+              <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                {t("avatars.encounterSummary", {
+                  wearer: selected.wearer_name ?? t("common.unknown", { defaultValue: "Unknown" }),
+                  count: selected.seen_count ?? 1,
+                  defaultValue: "Seen on {{wearer}} · {{count}} log events",
+                })}
+              </div>
             ) : detailsLoading ? (
               <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
                 {t("avatars.loadingDetails", {
@@ -360,10 +394,24 @@ function AvatarInspector({
                 })}
               </Badge>
             )}
-            <Badge variant="outline">
-              <Sliders className="size-3" />
-              {t("avatars.params", { count: selected.parameter_count })}
-            </Badge>
+            {isEncounterLog ? (
+              <Badge variant="outline">
+                {t("avatars.logOnly", { defaultValue: "Log only" })}
+              </Badge>
+            ) : (
+              <Badge variant="outline">
+                <Sliders className="size-3" />
+                {t("avatars.params", { count: selected.parameter_count })}
+              </Badge>
+            )}
+            {isEncounterLog && selected.wearer_count ? (
+              <Badge variant="secondary">
+                {t("avatars.wearerCount", {
+                  count: selected.wearer_count,
+                  defaultValue: "{{count}} wearer",
+                })}
+              </Badge>
+            ) : null}
             {details?.releaseStatus ? (
               <Badge
                 variant={details.releaseStatus === "public" ? "success" : "secondary"}
@@ -436,7 +484,7 @@ function AvatarInspector({
           ) : null}
 
           {/* Switch avatar button — hidden when avatar is unavailable */}
-          {authStatus.authed && !unavailable ? (
+          {authStatus.authed && !unavailable && selected.avatar_id.startsWith("avtr_") ? (
             <SmartWearButton
               avatarId={selected.avatar_id}
               avatarName={displayName}
@@ -456,9 +504,38 @@ function AvatarInspector({
             <div className="flex gap-2 min-w-0">
                <IdBadge id={selected.avatar_id} size="sm" />
             </div>
-            {details?.authorId || selected.user_id ? (
+            {details?.authorId || (selected.user_id && selected.user_id.startsWith("usr_")) ? (
               <div className="flex gap-2 min-w-0">
                  <UserPopupBadge userId={(details?.authorId ?? selected.user_id) as string} />
+              </div>
+            ) : null}
+            {isEncounterLog && selected.wearer_name ? (
+              <div className="flex flex-col gap-1 text-[10.5px]">
+                <div>
+                  <span className="text-[hsl(var(--muted-foreground))]">
+                    {t("avatars.wornBy", { defaultValue: "worn by" })}:{" "}
+                  </span>
+                  {selected.wearer_user_id?.startsWith("usr_") ? (
+                    <UserPopupBadge
+                      userId={selected.wearer_user_id}
+                      displayName={selected.wearer_name}
+                    />
+                  ) : (
+                    <span className="font-medium text-[hsl(var(--foreground))]">
+                      {selected.wearer_name}
+                    </span>
+                  )}
+                </div>
+                {selected.last_seen_at ? (
+                  <div>
+                    <span className="text-[hsl(var(--muted-foreground))]">
+                      {t("common.updated", { defaultValue: "Updated" })}:{" "}
+                    </span>
+                    <span className="font-mono text-[hsl(var(--foreground))]">
+                      {formatDate(selected.last_seen_at)}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {selected.path ? (
@@ -499,7 +576,17 @@ function AvatarInspector({
               <span>{t("avatars.thumbnailNote")}</span>
             </div>
           ) : null}
-          {!selected.display_name && !details?.name ? (
+          {isEncounterLog ? (
+            <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
+              <Info className="mt-px size-3 shrink-0" />
+              <span>
+                {t("avatars.encounterLogNote", {
+                  defaultValue:
+                    "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL.",
+                })}
+              </span>
+            </div>
+          ) : !selected.display_name && !details?.name ? (
             <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[10.5px] text-[hsl(var(--muted-foreground))]">
               <Info className="mt-px size-3 shrink-0" />
               <span>{t("avatars.nameNote")}</span>
@@ -565,14 +652,18 @@ function AvatarRow({
       <AvatarRowThumb
         avatarId={item.avatar_id}
         isFavorited={isFavorited}
-        onToggleFavorite={onToggleFavorite}
+        onToggleFavorite={item.avatar_id.startsWith("avtr_") ? onToggleFavorite : undefined}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-center gap-1.5">
           <div className="truncate text-[12.5px] font-medium text-[hsl(var(--foreground))]">
             {display}
           </div>
-          {nameMismatch ? (
+          {item.source === "encounter-log" ? (
+            <span className="shrink-0 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+              {t("avatars.encounterLog", { defaultValue: "Seen" })}
+            </span>
+          ) : nameMismatch ? (
             <span
               className="shrink-0 rounded-[var(--radius-sm)] border border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.12)] px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[hsl(var(--primary))]"
               title={t("avatars.localNameWas", {
@@ -591,11 +682,24 @@ function AvatarRow({
           ) : null}
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
-          <span className="font-mono">{shortenId(item.avatar_id, 6, 4)}</span>
-          <span>·</span>
-          <span>
-            {t("avatars.params", { count: item.parameter_count })}
-          </span>
+          {item.source === "encounter-log" ? (
+            <>
+              <span>{t("avatars.wornBy", { defaultValue: "worn by" })}</span>
+              <span className="truncate text-[hsl(var(--foreground))]">
+                {item.wearer_name ?? t("common.unknown", { defaultValue: "Unknown" })}
+              </span>
+              <span>·</span>
+              <span>{t("avatars.seenTimes", { count: item.seen_count ?? 1, defaultValue: "seen {{count}} times" })}</span>
+            </>
+          ) : (
+            <>
+              <span className="font-mono">{shortenId(item.avatar_id, 6, 4)}</span>
+              <span>·</span>
+              <span>
+                {t("avatars.params", { count: item.parameter_count })}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </button>
@@ -698,12 +802,11 @@ function Avatars() {
   const [searchParams] = useSearchParams();
   const { report, loading, error } = useReport();
   const [filter, setFilter] = useState("");
-  // Many "0 params" rows are virtual entries derived from the VRChat
-  // output_log (avatars worn recently but not in LocalAvatarData on disk).
-  // They confuse the user when they clear cache and these stay visible.
-  // Default to hiding them; the toggle below lets the user opt back in.
+  // Virtual rows derived from logs are real local evidence, not full
+  // LocalAvatarData files. Default to showing them because the Models page
+  // is where users expect "avatars I have seen" to appear.
   const [showLogOnly, setShowLogOnly] = useState(
-    () => localStorage.getItem("vrcsm.avatars.showLogOnly") === "true",
+    () => localStorage.getItem("vrcsm.avatars.showLogOnly") !== "false",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
@@ -748,6 +851,7 @@ function Avatars() {
         ...it,
         display_name: n?.name,
         author: n?.author ?? undefined,
+        source: "local",
       });
     }
 
@@ -763,8 +867,61 @@ function Avatars() {
         modified_at: null,
         display_name: n?.name,
         author: n?.author ?? undefined,
+        source: "avatar-log",
       });
     }
+
+    const encounters = new Map<string, AugmentedAvatar>();
+    const avatarNameSet = new Set(
+      Object.values(names)
+        .map((n) => n?.name?.trim().toLowerCase())
+        .filter(Boolean) as string[],
+    );
+    for (const ev of report.logs.avatar_switches ?? []) {
+      const name = ev.avatar_name?.trim();
+      const actor = ev.actor?.trim();
+      if (!name || !actor) continue;
+      if (avatarNameSet.has(name.toLowerCase())) continue;
+      const id = stableSeenAvatarId(name);
+      const current = encounters.get(id);
+      if (!current) {
+        encounters.set(id, {
+          user_id: ev.actor_user_id ?? "",
+          avatar_id: id,
+          path: "",
+          eye_height: null,
+          parameter_count: 0,
+          modified_at: ev.iso_time,
+          display_name: name,
+          source: "encounter-log",
+          wearer_name: actor,
+          wearer_user_id: ev.actor_user_id,
+          last_seen_at: ev.iso_time,
+          seen_count: 1,
+          wearer_count: 1,
+          wearer_names: [actor],
+        });
+        continue;
+      }
+      current.seen_count = (current.seen_count ?? 0) + 1;
+      if (!current.wearer_names?.includes(actor)) {
+        current.wearer_names = [...(current.wearer_names ?? []), actor];
+        current.wearer_count = current.wearer_names.length;
+      }
+      if (compareIsoish(ev.iso_time, current.last_seen_at) > 0) {
+        current.last_seen_at = ev.iso_time;
+        current.modified_at = ev.iso_time;
+        current.wearer_name = actor;
+        current.wearer_user_id = ev.actor_user_id;
+        current.user_id = ev.actor_user_id ?? current.user_id;
+      }
+    }
+
+    out.push(
+      ...[...encounters.values()].sort((a, b) =>
+        compareIsoish(b.last_seen_at, a.last_seen_at),
+      ),
+    );
 
     return out;
   }, [report]);
@@ -780,7 +937,8 @@ function Avatars() {
         it.avatar_id.toLowerCase().includes(q) ||
         it.user_id.toLowerCase().includes(q) ||
         (it.display_name?.toLowerCase().includes(q) ?? false) ||
-        (it.author?.toLowerCase().includes(q) ?? false),
+        (it.author?.toLowerCase().includes(q) ?? false) ||
+        (it.wearer_name?.toLowerCase().includes(q) ?? false),
       );
   }, [items, filter, showLogOnly]);
 
@@ -808,8 +966,11 @@ function Avatars() {
   // row icons + inspector preview don't each trigger individual fetches
   // as the user scrolls. One batched IPC → WinHTTP → CDN.
   useEffect(() => {
-    if (items.length > 0) {
-      prefetchThumbnails(items.map((it) => it.avatar_id));
+    const lookupIds = items
+      .map((it) => it.avatar_id)
+      .filter((id) => id.startsWith("avtr_"));
+    if (lookupIds.length > 0) {
+      prefetchThumbnails(lookupIds);
     }
   }, [items]);
 
@@ -928,7 +1089,7 @@ function Avatars() {
                 >
                   <span>
                     {t("avatars.includeLogOnly", {
-                      defaultValue: "Include log-only entries",
+                      defaultValue: "Include log-only / seen-on-others",
                     })}
                   </span>
                   <span className="font-mono text-[10px]">
