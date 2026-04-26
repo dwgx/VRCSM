@@ -1449,6 +1449,8 @@
     "openInBrowser": "Open in VRChat",
     "openJamPage": "Open jam page",
     "closesAt": "Closes {{when}}",
+    "resolvingPreview": "Looking for preview...",
+    "noPreview": "No preview image",
     "tabDiscover": "Discover",
     "tabFeatured": "Featured",
     "tabJams": "Jams"
