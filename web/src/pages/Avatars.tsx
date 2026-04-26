@@ -17,7 +17,7 @@ import { IdBadge } from "@/components/IdBadge";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
-import { cn, formatBytes, formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
@@ -27,7 +27,7 @@ import {
   useFavoriteActions,
   useFavoriteItems,
 } from "@/lib/library";
-import type { AvatarSearchResult, BundleEntry, LocalAvatarItem } from "@/lib/types";
+import type { AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
 import { Eye, Sliders, Search, User, Info, Lock, Box, Heart, Globe2, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { ImageZoom } from "@/components/ImageZoom";
@@ -42,13 +42,15 @@ type AugmentedAvatar = LocalAvatarItem & {
   seen_count?: number;
   wearer_count?: number;
   wearer_names?: string[];
-  candidate_bundle_path?: string;
-  candidate_bundle_entry?: string;
-  candidate_bundle_bytes?: number;
-  candidate_bundle_delta_ms?: number;
+  resolved_avatar_id?: string;
+  resolved_thumbnail_url?: string;
+  thumbnail_status?: "idle" | "loading" | "resolved" | "miss";
 };
 
-type AvatarListFilter = "encounters" | "all" | "local";
+type AvatarListFilter = "local" | "encounters" | "all";
+
+const SEEN_PAGE_SIZE = 40;
+const AVATAR_LIST_FILTER_KEY = "vrcsm.avatars.listFilter.v2";
 
 // Raw JSON from /api/1/avatars/{id}. VRChat's payload shape is loose and
 // evolves over time, so we type the fields we actually render as
@@ -138,32 +140,8 @@ function compareIsoish(a?: string | null, b?: string | null): number {
   return a.localeCompare(b);
 }
 
-function parseTime(iso?: string | null): number | null {
-  if (!iso) return null;
-  const time = new Date(iso).getTime();
-  return Number.isFinite(time) ? time : null;
-}
-
-function bestBundleCandidate(
-  eventIso: string | null | undefined,
-  entries: BundleEntry[],
-): { entry: BundleEntry; deltaMs: number } | null {
-  const eventTime = parseTime(eventIso);
-  if (eventTime == null) return null;
-  let best: { entry: BundleEntry; deltaMs: number } | null = null;
-  for (const entry of entries) {
-    const mtime = parseTime(entry.latest_mtime);
-    if (mtime == null) continue;
-    const deltaMs = Math.abs(mtime - eventTime);
-    // VRChat usually writes Cache-WindowsPlayer around the time the
-    // avatar is seen. Keep this broad because logs and filesystem mtimes
-    // can drift, but avoid pairing with unrelated old cache entries.
-    if (deltaMs > 20 * 60_000) continue;
-    if (!best || deltaMs < best.deltaMs) {
-      best = { entry, deltaMs };
-    }
-  }
-  return best;
+function normalizeAvatarName(name: string): string {
+  return name.trim().toLocaleLowerCase().replace(/\s+/g, " ");
 }
 
 /**
@@ -174,19 +152,22 @@ function bestBundleCandidate(
  */
 function AvatarRowThumb({
   avatarId,
+  fallbackUrl,
   isFavorited,
   onToggleFavorite,
 }: {
   avatarId: string;
+  fallbackUrl?: string;
   isFavorited: boolean;
   onToggleFavorite?: (thumbnailUrl: string | null) => void;
 }) {
   const { url } = useThumbnail(avatarId);
+  const resolvedUrl = url || fallbackUrl || null;
   return (
     <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
-      {url ? (
+      {resolvedUrl ? (
         <img
-          src={url}
+          src={resolvedUrl}
           alt=""
           loading="lazy"
           decoding="async"
@@ -203,7 +184,7 @@ function AvatarRowThumb({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onToggleFavorite(url);
+            onToggleFavorite(resolvedUrl);
           }}
           className={cn(
             "absolute right-0.5 bottom-0.5 flex size-4 items-center justify-center rounded-full border border-black/20 transition-colors",
@@ -325,11 +306,10 @@ function AvatarInspector({
     details?.imageUrl ||
     details?.thumbnailImageUrl ||
     cachedThumb ||
+    selected.resolved_thumbnail_url ||
     undefined;
   const can3D = Boolean(windowsAssetUrl);
   const isEncounterLog = selected.source === "encounter-log";
-  const candidateBundlePath = isEncounterLog ? selected.candidate_bundle_path : undefined;
-  const canLocalPreview = Boolean(candidateBundlePath);
 
   return (
     <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
@@ -339,21 +319,6 @@ function AvatarInspector({
       <div className="grid gap-5 p-5 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-3">
           {(() => {
-            if (isEncounterLog && canLocalPreview) {
-              return (
-                <div className="relative" style={{ width: 220 }}>
-                  <AvatarPreview3D
-                    avatarId={selected.avatar_id}
-                    bundlePath={candidateBundlePath}
-                    size={220}
-                    expandedSize={720}
-                  />
-                  <div className="absolute bottom-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm">
-                    {t("avatars.cacheCandidate", { defaultValue: "cache candidate" })}
-                  </div>
-                </div>
-              );
-            }
             if (prefer3D && can3D) {
               return (
                 <div className="relative" style={{ width: 220 }}>
@@ -465,10 +430,9 @@ function AvatarInspector({
                 })}
               </Badge>
             ) : null}
-            {isEncounterLog && canLocalPreview ? (
+            {isEncounterLog && selected.resolved_avatar_id ? (
               <Badge variant="tonal">
-                <Box className="size-3" />
-                {t("avatars.previewCandidate", { defaultValue: "preview candidate" })}
+                {t("avatars.thumbnailResolved", { defaultValue: "thumbnail match" })}
               </Badge>
             ) : null}
             {details?.releaseStatus ? (
@@ -597,27 +561,6 @@ function AvatarInspector({
                 ) : null}
               </div>
             ) : null}
-            {isEncounterLog && selected.candidate_bundle_path ? (
-              <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-1.5 text-[10.5px]">
-                <div className="text-[hsl(var(--muted-foreground))]">
-                  {t("avatars.cacheCandidateHint", {
-                    defaultValue:
-                      "Best-effort cache match by timestamp. It can be wrong if multiple avatars loaded near the same time.",
-                  })}
-                </div>
-                <div className="font-mono text-[hsl(var(--foreground))]">
-                  {selected.candidate_bundle_bytes
-                    ? formatBytes(selected.candidate_bundle_bytes)
-                    : null}
-                  {typeof selected.candidate_bundle_delta_ms === "number"
-                    ? ` · ${Math.round(selected.candidate_bundle_delta_ms / 1000)}s`
-                    : null}
-                </div>
-                <div className="break-all font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                  {selected.candidate_bundle_path}
-                </div>
-              </div>
-            ) : null}
             {selected.path ? (
               <div className="flex items-start gap-1.5">
                 <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
@@ -662,7 +605,7 @@ function AvatarInspector({
               <span>
                 {t("avatars.encounterLogNote", {
                   defaultValue:
-                    "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL. 3D preview is best-effort by matching nearby cache writes.",
+                    "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL. Thumbnails are resolved by public name search when possible.",
                 })}
               </span>
             </div>
@@ -731,6 +674,7 @@ function AvatarRow({
       ) : null}
       <AvatarRowThumb
         avatarId={item.avatar_id}
+        fallbackUrl={item.resolved_thumbnail_url}
         isFavorited={isFavorited}
         onToggleFavorite={item.avatar_id.startsWith("avtr_") ? onToggleFavorite : undefined}
       />
@@ -882,12 +826,15 @@ function Avatars() {
   const [searchParams] = useSearchParams();
   const { report, loading, error } = useReport();
   const [filter, setFilter] = useState("");
-  // Virtual rows derived from logs are real local evidence, not full
-  // LocalAvatarData files. Default to showing them because the Models page
-  // is where users expect "avatars I have seen" to appear.
   const [listFilter, setListFilter] = useState<AvatarListFilter>(
-    () => (localStorage.getItem("vrcsm.avatars.listFilter") as AvatarListFilter | null) ?? "encounters",
+    () => (localStorage.getItem(AVATAR_LIST_FILTER_KEY) as AvatarListFilter | null) ?? "local",
   );
+  const [seenPage, setSeenPage] = useState(1);
+  const [nameThumbs, setNameThumbs] = useState<Record<string, {
+    avatarId?: string;
+    url?: string;
+    status: "loading" | "resolved" | "miss";
+  }>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
   const { toggleFavorite } = useFavoriteActions();
@@ -957,7 +904,6 @@ function Avatars() {
         .map((n) => n?.name?.trim().toLowerCase())
         .filter(Boolean) as string[],
     );
-    const cacheEntries = report.cache_windows_player?.entries ?? [];
     for (const ev of report.logs.avatar_switches ?? []) {
       const name = ev.avatar_name?.trim();
       const actor = ev.actor?.trim();
@@ -966,7 +912,6 @@ function Avatars() {
       const id = stableSeenAvatarId(name);
       const current = encounters.get(id);
       if (!current) {
-        const bundle = bestBundleCandidate(ev.iso_time, cacheEntries);
         encounters.set(id, {
           user_id: ev.actor_user_id ?? "",
           avatar_id: id,
@@ -982,10 +927,6 @@ function Avatars() {
           seen_count: 1,
           wearer_count: 1,
           wearer_names: [actor],
-          candidate_bundle_path: bundle?.entry.path,
-          candidate_bundle_entry: bundle?.entry.entry,
-          candidate_bundle_bytes: bundle?.entry.bytes,
-          candidate_bundle_delta_ms: bundle?.deltaMs,
         });
         continue;
       }
@@ -995,16 +936,11 @@ function Avatars() {
         current.wearer_count = current.wearer_names.length;
       }
       if (compareIsoish(ev.iso_time, current.last_seen_at) > 0) {
-        const bundle = bestBundleCandidate(ev.iso_time, cacheEntries);
         current.last_seen_at = ev.iso_time;
         current.modified_at = ev.iso_time;
         current.wearer_name = actor;
         current.wearer_user_id = ev.actor_user_id;
         current.user_id = ev.actor_user_id ?? current.user_id;
-        current.candidate_bundle_path = bundle?.entry.path ?? current.candidate_bundle_path;
-        current.candidate_bundle_entry = bundle?.entry.entry ?? current.candidate_bundle_entry;
-        current.candidate_bundle_bytes = bundle?.entry.bytes ?? current.candidate_bundle_bytes;
-        current.candidate_bundle_delta_ms = bundle?.deltaMs ?? current.candidate_bundle_delta_ms;
       }
     }
 
@@ -1035,6 +971,22 @@ function Avatars() {
         (it.wearer_name?.toLowerCase().includes(q) ?? false),
       );
   }, [items, filter, listFilter]);
+
+  useEffect(() => {
+    setSeenPage(1);
+    setSelectedId(null);
+  }, [filter, listFilter]);
+
+  const pagedFiltered = useMemo(() => {
+    if (listFilter !== "encounters") return filtered;
+    const start = (seenPage - 1) * SEEN_PAGE_SIZE;
+    return filtered.slice(start, start + SEEN_PAGE_SIZE);
+  }, [filtered, listFilter, seenPage]);
+
+  const seenTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filtered.length / SEEN_PAGE_SIZE)),
+    [filtered.length],
+  );
 
   const encounterCount = useMemo(
     () => items.filter((it) => it.source === "encounter-log").length,
@@ -1072,6 +1024,73 @@ function Avatars() {
     }
   }, [items]);
 
+  useEffect(() => {
+    if (listFilter !== "encounters") return;
+    const candidates = pagedFiltered
+      .filter((item) => item.source === "encounter-log" && item.display_name)
+      .slice(0, SEEN_PAGE_SIZE);
+    const missing = candidates.filter((item) => {
+      const key = normalizeAvatarName(item.display_name ?? "");
+      return key && !nameThumbs[key];
+    });
+    if (missing.length === 0) return;
+
+    setNameThumbs((prev) => {
+      const next = { ...prev };
+      for (const item of missing) {
+        const key = normalizeAvatarName(item.display_name ?? "");
+        if (key) next[key] = { status: "loading" };
+      }
+      return next;
+    });
+
+    let cancelled = false;
+    const run = async () => {
+      for (const item of missing) {
+        if (cancelled) return;
+        const name = item.display_name?.trim();
+        if (!name) continue;
+        const key = normalizeAvatarName(name);
+        try {
+          const res = await ipc.searchAvatars(name, 5);
+          const avatars = res?.avatars ?? [];
+          const exact = avatars.find((a) => normalizeAvatarName(a.name) === key);
+          const chosen = exact ?? avatars[0];
+          const url = chosen?.thumbnailImageUrl || chosen?.imageUrl || undefined;
+          setNameThumbs((prev) => ({
+            ...prev,
+            [key]: url
+              ? { status: "resolved", avatarId: chosen.id, url }
+              : { status: "miss" },
+          }));
+        } catch {
+          setNameThumbs((prev) => ({ ...prev, [key]: { status: "miss" } }));
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 80));
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [listFilter, nameThumbs, pagedFiltered]);
+
+  const displayRows = useMemo(
+    () =>
+      pagedFiltered.map((item) => {
+        if (item.source !== "encounter-log" || !item.display_name) return item;
+        const hit = nameThumbs[normalizeAvatarName(item.display_name)];
+        if (!hit) return item;
+        return {
+          ...item,
+          resolved_avatar_id: hit.avatarId,
+          resolved_thumbnail_url: hit.url,
+          thumbnail_status: hit.status,
+        };
+      }),
+    [nameThumbs, pagedFiltered],
+  );
+
   async function handleToggleFavorite(
     item: AugmentedAvatar,
     thumbnailUrl: string | null,
@@ -1103,10 +1122,10 @@ function Avatars() {
   }
 
   const selected = useMemo(() => {
-    if (!filtered.length) return null;
-    if (!selectedId) return filtered[0] ?? null;
-    return filtered.find((it) => it.avatar_id === selectedId) ?? filtered[0];
-  }, [filtered, selectedId]);
+    if (!displayRows.length) return null;
+    if (!selectedId) return displayRows[0] ?? null;
+    return displayRows.find((it) => it.avatar_id === selectedId) ?? displayRows[0];
+  }, [displayRows, selectedId]);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
@@ -1173,16 +1192,16 @@ function Avatars() {
                 })}
               >
                 {([
+                  ["local", t("avatars.filterLocal", { defaultValue: "Local" }), localCount],
                   ["encounters", t("avatars.filterSeen", { defaultValue: "Seen" }), encounterCount],
                   ["all", t("common.all", { defaultValue: "All" }), items.length],
-                  ["local", t("avatars.filterLocal", { defaultValue: "Local" }), localCount],
                 ] as const).map(([key, label, count]) => (
                   <button
                     key={key}
                     type="button"
                     onClick={() => {
                       setListFilter(key);
-                      localStorage.setItem("vrcsm.avatars.listFilter", key);
+                      localStorage.setItem(AVATAR_LIST_FILTER_KEY, key);
                     }}
                     className={cn(
                       "flex items-center justify-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-1 text-[10px] transition-colors",
@@ -1204,7 +1223,7 @@ function Avatars() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-px">
-                  {filtered.slice(0, 250).map((item) => (
+                  {displayRows.map((item) => (
                     <AvatarRow
                       key={item.avatar_id}
                       item={item}
@@ -1222,9 +1241,34 @@ function Avatars() {
                       }
                     />
                   ))}
-                  {filtered.length > 250 && (
+                  {listFilter === "encounters" && seenTotalPages > 1 && (
+                    <div className="flex items-center justify-between gap-2 border-t border-[hsl(var(--border))] px-1 py-2 text-[10px] text-[hsl(var(--muted-foreground))]">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        disabled={seenPage <= 1}
+                        onClick={() => setSeenPage((p) => Math.max(1, p - 1))}
+                      >
+                        {t("common.previous", { defaultValue: "Prev" })}
+                      </Button>
+                      <span className="font-mono">
+                        {seenPage}/{seenTotalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        disabled={seenPage >= seenTotalPages}
+                        onClick={() => setSeenPage((p) => Math.min(seenTotalPages, p + 1))}
+                      >
+                        {t("common.next", { defaultValue: "Next" })}
+                      </Button>
+                    </div>
+                  )}
+                  {listFilter !== "encounters" && filtered.length > displayRows.length && (
                     <div className="py-4 text-center text-[10px] text-[hsl(var(--muted-foreground))]">
-                      {t("avatars.hiddenCount", { count: filtered.length - 250, defaultValue: `+${filtered.length - 250} more. Use search to filter.` })}
+                      {t("avatars.hiddenCount", { count: filtered.length - displayRows.length, defaultValue: `+${filtered.length - displayRows.length} more. Use search to filter.` })}
                     </div>
                   )}
                 </div>
