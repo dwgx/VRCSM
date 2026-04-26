@@ -12,13 +12,54 @@ int main(int argc, char** argv)
 {
     if (argc < 2)
     {
-        std::cerr << "usage: dump_avatar_details <avtr_id> [--preview]\n";
+        std::cerr << "usage: dump_avatar_details <avtr_id> [--preview]\n"
+                  << "       dump_avatar_details --search <avatar_name> [count]\n"
+                  << "       dump_avatar_details --user <usr_id>\n";
         return 1;
+    }
+
+    (void)vrcsm::core::AuthStore::Instance().Load();
+
+    const std::string mode = argv[1];
+    if (mode == "--search")
+    {
+        if (argc < 3)
+        {
+            std::cerr << "usage: dump_avatar_details --search <avatar_name> [count]\n";
+            return 1;
+        }
+        const int count = argc >= 4 ? std::stoi(argv[3]) : 10;
+        const auto result = vrcsm::core::VrcApi::searchAvatars(argv[2], count, 0);
+        if (!vrcsm::core::isOk(result))
+        {
+            const auto& err = vrcsm::core::error(result);
+            std::cerr << "error: " << err.code << " :: " << err.message << " (http=" << err.httpStatus << ")\n";
+            return 2;
+        }
+        std::cout << vrcsm::core::value(result).dump(2) << "\n";
+        return 0;
+    }
+
+    if (mode == "--user")
+    {
+        if (argc < 3)
+        {
+            std::cerr << "usage: dump_avatar_details --user <usr_id>\n";
+            return 1;
+        }
+        const auto result = vrcsm::core::VrcApi::fetchUser(argv[2]);
+        if (!vrcsm::core::isOk(result))
+        {
+            const auto& err = vrcsm::core::error(result);
+            std::cerr << "error: " << err.code << " :: " << err.message << " (http=" << err.httpStatus << ")\n";
+            return 2;
+        }
+        std::cout << vrcsm::core::value(result).dump(2) << "\n";
+        return 0;
     }
 
     const std::string avatarId = argv[1];
     const bool runPreview = argc >= 3 && std::string(argv[2]) == "--preview";
-    (void)vrcsm::core::AuthStore::Instance().Load();
     const auto result = vrcsm::core::VrcApi::fetchAvatarDetails(avatarId);
     if (!vrcsm::core::isOk(result))
     {

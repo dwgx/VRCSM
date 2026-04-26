@@ -126,12 +126,7 @@ function shortenId(id: string, head = 8, tail = 4): string {
 }
 
 function stableSeenAvatarId(name: string): string {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < name.length; i++) {
-    h ^= name.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
-  }
-  return `seen_${h.toString(16).padStart(8, "0")}`;
+  return `name:${name}`;
 }
 
 function compareIsoish(a?: string | null, b?: string | null): number {
@@ -1163,7 +1158,13 @@ function Avatars() {
               profile?.currentAvatarThumbnailImageUrl ||
               profile?.currentAvatarImageUrl ||
               undefined;
-            if (profileUrl && profileName === key) {
+            // VRChat's user profile endpoint often exposes current avatar
+            // image URLs without exposing currentAvatarName/currentAvatar.
+            // For log-only rows the wearer usr_* is the strongest local
+            // evidence we have, so accept the profile thumbnail when the
+            // API omits the name; still enforce equality when the API does
+            // provide a name.
+            if (profileUrl && (!profileName || profileName === key)) {
               await persist({
                 status: "resolved",
                 source: "wearer_profile",
