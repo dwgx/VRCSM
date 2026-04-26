@@ -96,6 +96,7 @@ export interface AvatarSwitchEvent {
   actor: string;
   actor_user_id?: string | null;
   avatar_name: string;
+  author_name?: string | null;
   world_id?: string | null;
   instance_id?: string | null;
 }
@@ -467,6 +468,14 @@ export interface AvatarHistoryItem {
   author_name: string | null;
   first_seen_on: string | null;
   first_seen_at: string | null;
+  first_seen_user_id?: string | null;
+  release_status?: string | null;
+  resolved_avatar_id?: string | null;
+  resolved_thumbnail_url?: string | null;
+  resolved_image_url?: string | null;
+  resolution_source?: string | null;
+  resolution_status?: string | null;
+  resolved_at?: string | null;
 }
 
 export interface AvatarHistoryResult {

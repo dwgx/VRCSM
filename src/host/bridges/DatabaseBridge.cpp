@@ -110,6 +110,28 @@ nlohmann::json IpcBridge::HandleDbAvatarHistoryRecord(const nlohmann::json& para
     return nlohmann::json{{"ok", true}};
 }
 
+nlohmann::json IpcBridge::HandleDbAvatarHistoryResolve(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    vrcsm::core::Database::AvatarResolveUpdate u;
+    u.avatar_id = JsonStringField(params, "avatar_id").value_or("");
+    if (u.avatar_id.empty())
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'avatar_id'", 0});
+
+    u.resolved_avatar_id = JsonStringField(params, "resolved_avatar_id");
+    u.resolved_thumbnail_url = JsonStringField(params, "resolved_thumbnail_url");
+    u.resolved_image_url = JsonStringField(params, "resolved_image_url");
+    u.resolution_source = JsonStringField(params, "resolution_source");
+    u.resolution_status = JsonStringField(params, "resolution_status").value_or("");
+    if (u.resolution_status.empty())
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "Missing 'resolution_status'", 0});
+    u.resolved_at = JsonStringField(params, "resolved_at").value_or(vrcsm::core::nowIso());
+
+    auto res = vrcsm::core::Database::Instance().UpdateAvatarResolution(u);
+    if (!vrcsm::core::isOk(res))
+        throw IpcException(vrcsm::core::error(res));
+    return nlohmann::json{{"ok", true}};
+}
+
 nlohmann::json IpcBridge::HandleDbStatsHeatmap(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const int days = ParamInt(params, "days", 30);

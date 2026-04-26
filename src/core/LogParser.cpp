@@ -111,6 +111,7 @@ void to_json(nlohmann::json& j, const AvatarSwitchEvent& e)
         {"actor", e.actor},
         {"actor_user_id", e.actor_user_id ? nlohmann::json(*e.actor_user_id) : nlohmann::json(nullptr)},
         {"avatar_name", e.avatar_name},
+        {"author_name", e.author_name ? nlohmann::json(*e.author_name) : nlohmann::json(nullptr)},
         {"world_id", e.world_id ? nlohmann::json(*e.world_id) : nlohmann::json(nullptr)},
         {"instance_id", e.instance_id ? nlohmann::json(*e.instance_id) : nlohmann::json(nullptr)},
     };
@@ -335,6 +336,7 @@ struct ParseState
     // Avatar pairing state: most recent local-player switch name + author.
     std::string pendingLocalAvatarName;
     std::string pendingLocalAvatarAuthor;
+    std::unordered_map<std::string, std::string> remoteAvatarAuthorsByName;
 
     // Settings block state: last section header seen.
     bool hasCurrentSection = false;
@@ -507,6 +509,10 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
                 ev.actor_user_id = report.local_user_id;
             }
             ev.avatar_name = name;
+            if (auto authorIt = st.remoteAvatarAuthorsByName.find(name); authorIt != st.remoteAvatarAuthorsByName.end())
+            {
+                ev.author_name = authorIt->second;
+            }
             if (!st.currentWorldId.empty())
             {
                 ev.world_id = st.currentWorldId;
@@ -599,6 +605,18 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
     {
         const std::string name = stripTrailing(m[1]);
         const std::string author = stripTrailing(m[2]);
+        if (!name.empty() && !author.empty())
+        {
+            st.remoteAvatarAuthorsByName[name] = author;
+            for (auto it = report.avatar_switches.rbegin(); it != report.avatar_switches.rend(); ++it)
+            {
+                if (it->avatar_name == name && !it->author_name.has_value())
+                {
+                    it->author_name = author;
+                    break;
+                }
+            }
+        }
         if (!st.pendingLocalAvatarName.empty() && name == st.pendingLocalAvatarName)
         {
             st.pendingLocalAvatarAuthor = author;

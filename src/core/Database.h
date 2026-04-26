@@ -126,9 +126,20 @@ public:
         std::optional<std::string> first_seen_user_id;  // wearer usr_xxx — set when pipeline knows it
         std::string first_seen_at;
     };
+    struct AvatarResolveUpdate
+    {
+        std::string avatar_id;
+        std::optional<std::string> resolved_avatar_id;
+        std::optional<std::string> resolved_thumbnail_url;
+        std::optional<std::string> resolved_image_url;
+        std::optional<std::string> resolution_source;
+        std::string resolution_status;
+        std::string resolved_at;
+    };
     // INSERT OR IGNORE — only records the first time each avatar_id
     // is seen. Matches antigravity's spec for the history table.
     Result<std::monostate> RecordAvatarSeen(const AvatarSeenInsert& a);
+    Result<std::monostate> UpdateAvatarResolution(const AvatarResolveUpdate& u);
 
     Result<nlohmann::json> RecentAvatarHistory(int limit, int offset);
     Result<std::int64_t> AvatarHistoryCount();
