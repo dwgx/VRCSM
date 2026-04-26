@@ -14,6 +14,15 @@ namespace
 
 const std::regex kOutputLogFileRe(R"(^output_log_.*\.txt$)");
 
+std::string LogOnlyAvatarKey(const std::string& name, const std::optional<std::string>& author)
+{
+    if (author.has_value() && !author->empty())
+    {
+        return "name:" + name + "|author:" + *author;
+    }
+    return "name:" + name;
+}
+
 std::filesystem::path FindLatestLogFile(const std::filesystem::path& logDir)
 {
     std::error_code ec;
@@ -97,7 +106,7 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
         if (!parsed.world_switches.empty())
         {
             const auto& latestSwitch = parsed.world_switches.back();
-            std::lock_guard<std::mutex> lk(m_currentWorldMutex);
+            std::lock_guard<std::mutex> worldLock(m_currentWorldMutex);
             m_currentWorldId = latestSwitch.world_id;
             m_currentInstanceId = latestSwitch.instance_id;
         }
@@ -270,11 +279,17 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                 {
                     const auto actorName = data.value("actor", std::string{});
                     const auto avatarName = data.value("avatar_name", std::string{});
+                    std::optional<std::string> authorName;
+                    if (auto it = data.find("author_name"); it != data.end() && it->is_string())
+                    {
+                        authorName = it->get<std::string>();
+                    }
                     if (!avatarName.empty())
                     {
                         vrcsm::core::Database::AvatarSeenInsert a;
-                        a.avatar_id = "name:" + avatarName;
+                        a.avatar_id = LogOnlyAvatarKey(avatarName, authorName);
                         a.avatar_name = avatarName;
+                        a.author_name = authorName;
                         a.first_seen_on = actorName;
                         a.first_seen_at = iso.empty() ? vrcsm::core::nowIso() : iso;
                         if (!actorName.empty())

@@ -125,8 +125,9 @@ function shortenId(id: string, head = 8, tail = 4): string {
   return `${clean.slice(0, head)}…${clean.slice(-tail)}`;
 }
 
-function stableSeenAvatarId(name: string): string {
-  return `name:${name}`;
+function stableSeenAvatarId(name: string, author?: string | null): string {
+  const cleanAuthor = author?.trim();
+  return cleanAuthor ? `name:${name}|author:${cleanAuthor}` : `name:${name}`;
 }
 
 function compareIsoish(a?: string | null, b?: string | null): number {
@@ -960,7 +961,7 @@ function Avatars() {
       const actor = ev.actor?.trim();
       if (!name || !actor) continue;
       if (avatarNameSet.has(name.toLowerCase())) continue;
-      const id = stableSeenAvatarId(name);
+      const id = stableSeenAvatarId(name, ev.author_name);
       const current = encounters.get(id);
       if (!current) {
         encounters.set(id, {
@@ -998,16 +999,23 @@ function Avatars() {
     }
 
     const withDbResolution = [...encounters.values()].map((item) => {
-      const db = avatarHistoryById.get(item.avatar_id);
+      const legacyDb = item.display_name ? avatarHistoryById.get(stableSeenAvatarId(item.display_name)) : undefined;
+      const db = avatarHistoryById.get(item.avatar_id) ?? legacyDb;
       if (!db) return item;
+      const unsafeLegacyProfileMatch =
+        db.avatar_id !== item.avatar_id &&
+        (db.resolution_source === "wearer_profile" || db.resolution_source === "wearer_profile_verified") &&
+        !db.resolved_avatar_id;
       return {
         ...item,
         author: item.author ?? db.author_name ?? undefined,
         wearer_user_id: item.wearer_user_id ?? db.first_seen_user_id ?? undefined,
-        resolved_avatar_id: db.resolved_avatar_id ?? undefined,
-        resolved_thumbnail_url: db.resolved_thumbnail_url ?? db.resolved_image_url ?? undefined,
+        resolved_avatar_id: unsafeLegacyProfileMatch ? undefined : db.resolved_avatar_id ?? undefined,
+        resolved_thumbnail_url: unsafeLegacyProfileMatch ? undefined : db.resolved_thumbnail_url ?? db.resolved_image_url ?? undefined,
         resolution_source: db.resolution_source,
-        thumbnail_status: db.resolution_status === "resolved" || db.resolution_status === "miss"
+        thumbnail_status: unsafeLegacyProfileMatch
+          ? item.thumbnail_status
+          : db.resolution_status === "resolved" || db.resolution_status === "miss"
           ? db.resolution_status
           : item.thumbnail_status,
       };
@@ -1158,13 +1166,10 @@ function Avatars() {
               profile?.currentAvatarThumbnailImageUrl ||
               profile?.currentAvatarImageUrl ||
               undefined;
-            // VRChat's user profile endpoint often exposes current avatar
-            // image URLs without exposing currentAvatarName/currentAvatar.
-            // For log-only rows the wearer usr_* is the strongest local
-            // evidence we have, so accept the profile thumbnail when the
-            // API omits the name; still enforce equality when the API does
-            // provide a name.
-            if (profileUrl && (!profileName || profileName === key)) {
+            // Only accept wearer-profile thumbnails when the API confirms the
+            // same avatar name. Otherwise we would show the wearer's current
+            // skin, not necessarily the skin seen in the historical log row.
+            if (profileUrl && profileName === key) {
               await persist({
                 status: "resolved",
                 source: "wearer_profile",
