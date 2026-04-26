@@ -1099,7 +1099,7 @@
       "factoryResetConfirmBody": "此操作将清除 VRCSM 在 %LocalAppData%\\VRCSM 下保存的 VRChat 会话、缩略图缓存和日志。VRChat 自身的模型、缓存和注册表设置不受影响。此操作无法撤销。",
       "factoryResetting": "正在清除…",
       "factoryResetConfirm": "清除 VRCSM 数据",
-      "factoryResetOkToast": "VRCSM 已重置，请稍等片刻…",
+      "factoryResetOkToast": "VRCSM 已重置，将自动重启。",
       "clearVrcCacheLabel": "清理 VRC 缓存",
       "clearVrcCacheHint": "按分类清理 VRChat 的模型、地图、贴图等缓存。",
       "clearCacheTitle": "清理 VRC 缓存",

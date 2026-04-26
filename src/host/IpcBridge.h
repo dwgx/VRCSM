@@ -241,6 +241,8 @@ private:
                    const std::string& targetPluginId = {}) const;
     void PostError(const std::optional<std::string>& id, const vrcsm::core::Error& err,
                    const std::string& targetPluginId = {}) const;
+    bool EnqueueAsync(std::function<void()> fn);
+    void FinishAsyncTask() noexcept;
 
     // Plugin-aware handler signature — identical to Handler but with
     // the caller plugin id threaded through so bridges know whether a
@@ -251,6 +253,10 @@ private:
 
     WebViewHost& m_host;
     std::shared_ptr<std::atomic<bool>> m_alive;
+    mutable std::mutex m_asyncMutex;
+    std::condition_variable m_asyncCv;
+    std::size_t m_activeAsyncTasks = 0;
+    bool m_drainingAsync = false;
     std::unordered_map<std::string, Handler> m_handlers;
     std::unordered_map<std::string, PluginHandler> m_pluginHandlers;
     std::unique_ptr<vrcsm::core::LogTailer> m_logTailer;

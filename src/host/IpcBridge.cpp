@@ -288,13 +288,6 @@ IpcThreadPool& GetIpcPool()
 
 } // anonymous namespace
 
-// Wrapper so bridge files (MigrateBridge.cpp) can submit async work
-// without coupling to IpcThreadPool which lives in the anon namespace.
-void IpcEnqueueAsync(std::function<void()> fn)
-{
-    GetIpcPool().enqueue(std::move(fn));
-}
-
 // ── Constructor / Destructor ────────────────────────────────────────
 
 IpcBridge::IpcBridge(WebViewHost& host)
@@ -319,8 +312,10 @@ IpcBridge::IpcBridge(WebViewHost& host)
     }
 
     // Spin up the VRChat process watcher.
-    vrcsm::core::ProcessGuard::StartWatcher([this](const vrcsm::core::ProcessStatus& status)
+    vrcsm::core::ProcessGuard::StartWatcher([this, alive = m_alive](const vrcsm::core::ProcessStatus& status)
     {
+        if (!*alive) return;
+
         if (!status.running)
         {
             CloseTrackedWorldVisits(vrcsm::core::nowIso());
@@ -337,6 +332,16 @@ IpcBridge::IpcBridge(WebViewHost& host)
 IpcBridge::~IpcBridge()
 {
     *m_alive = false;
+    {
+        std::lock_guard<std::mutex> lk(m_asyncMutex);
+        m_drainingAsync = true;
+    }
+    vrcsm::core::ProcessGuard::StopWatcher();
+    {
+        std::unique_lock<std::mutex> lk(m_asyncMutex);
+        m_asyncCv.wait(lk, [this] { return m_activeAsyncTasks == 0; });
+    }
+
     if (m_pipeline)
     {
         m_pipeline->Stop();
@@ -353,7 +358,6 @@ IpcBridge::~IpcBridge()
     {
         m_screenshotWatcher->Stop();
     }
-    vrcsm::core::ProcessGuard::StopWatcher();
     vrcsm::core::Database::Instance().Close();
 }
 
@@ -403,27 +407,30 @@ void IpcBridge::DispatchFromOrigin(const std::string& originUri, const std::stri
         {
             auto handler = pit->second;
             const auto capturedId = id;
-            GetIpcPool().enqueue([this, handler = std::move(handler), params, capturedId,
-                                   alive = m_alive, callerPluginId]()
+            if (!EnqueueAsync([this, handler = std::move(handler), params, capturedId,
+                               callerPluginId]()
             {
                 try
                 {
                     auto result = handler(params, capturedId, callerPluginId);
-                    if (*alive) PostResult(capturedId, result, callerPluginId);
+                    PostResult(capturedId, result, callerPluginId);
                 }
                 catch (const IpcException& ex)
                 {
-                    if (*alive) PostError(capturedId, ex.err, callerPluginId);
+                    PostError(capturedId, ex.err, callerPluginId);
                 }
                 catch (const std::exception& ex)
                 {
-                    if (*alive) PostError(capturedId, "handler_error", ex.what(), callerPluginId);
+                    PostError(capturedId, "handler_error", ex.what(), callerPluginId);
                 }
                 catch (...)
                 {
-                    if (*alive) PostError(capturedId, "handler_error", "Unknown handler failure", callerPluginId);
+                    PostError(capturedId, "handler_error", "Unknown handler failure", callerPluginId);
                 }
-            });
+            }))
+            {
+                PostError(id, "shutting_down", "IPC bridge is shutting down", callerPluginId);
+            }
             return;
         }
 
@@ -440,26 +447,29 @@ void IpcBridge::DispatchFromOrigin(const std::string& originUri, const std::stri
         {
             auto handler = it->second;
             const auto capturedId = id;
-            GetIpcPool().enqueue([this, handler = std::move(handler), params, capturedId, alive = m_alive, method, callerPluginId]()
+            if (!EnqueueAsync([this, handler = std::move(handler), params, capturedId, method, callerPluginId]()
             {
                 try
                 {
                     auto result = handler(params, capturedId);
-                    if (*alive) PostResult(capturedId, result, callerPluginId);
+                    PostResult(capturedId, result, callerPluginId);
                 }
                 catch (const IpcException& ex)
                 {
-                    if (*alive) PostError(capturedId, ex.err, callerPluginId);
+                    PostError(capturedId, ex.err, callerPluginId);
                 }
                 catch (const std::exception& ex)
                 {
-                    if (*alive) PostError(capturedId, "handler_error", ex.what(), callerPluginId);
+                    PostError(capturedId, "handler_error", ex.what(), callerPluginId);
                 }
                 catch (...)
                 {
-                    if (*alive) PostError(capturedId, "handler_error", "Unknown handler failure", callerPluginId);
+                    PostError(capturedId, "handler_error", "Unknown handler failure", callerPluginId);
                 }
-            });
+            }))
+            {
+                PostError(id, "shutting_down", "IPC bridge is shutting down", callerPluginId);
+            }
             return;
         }
 
@@ -709,6 +719,8 @@ void IpcBridge::RegisterHandlers()
 void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann::json& result,
                            const std::string& targetPluginId) const
 {
+    if (!*m_alive) return;
+
     nlohmann::json response{
         {"result", result}
     };
@@ -723,6 +735,8 @@ void IpcBridge::PostResult(const std::optional<std::string>& id, const nlohmann:
 void IpcBridge::PostEventToUi(std::string_view eventName, const nlohmann::json& data,
                               const std::string& targetPluginId) const
 {
+    if (!*m_alive) return;
+
     nlohmann::json envelope{
         {"event", eventName},
         {"data", data}
@@ -733,6 +747,8 @@ void IpcBridge::PostEventToUi(std::string_view eventName, const nlohmann::json& 
 void IpcBridge::PostError(const std::optional<std::string>& id, std::string_view code, std::string_view message,
                           const std::string& targetPluginId) const
 {
+    if (!*m_alive) return;
+
     nlohmann::json response{
         {"error", {
             {"code", code},
@@ -750,6 +766,8 @@ void IpcBridge::PostError(const std::optional<std::string>& id, std::string_view
 void IpcBridge::PostError(const std::optional<std::string>& id, const vrcsm::core::Error& err,
                           const std::string& targetPluginId) const
 {
+    if (!*m_alive) return;
+
     nlohmann::json errJson;
     to_json(errJson, err);
     nlohmann::json response{{"error", errJson}};
@@ -758,4 +776,36 @@ void IpcBridge::PostError(const std::optional<std::string>& id, const vrcsm::cor
         response["id"] = *id;
     }
     m_host.PostMessageToWeb(response.dump(), targetPluginId);
+}
+
+bool IpcBridge::EnqueueAsync(std::function<void()> fn)
+{
+    {
+        std::lock_guard<std::mutex> lk(m_asyncMutex);
+        if (m_drainingAsync)
+        {
+            return false;
+        }
+        ++m_activeAsyncTasks;
+    }
+
+    GetIpcPool().enqueue([this, fn = std::move(fn)]()
+    {
+        auto done = wil::scope_exit([this]() { FinishAsyncTask(); });
+        if (!*m_alive) return;
+        fn();
+    });
+    return true;
+}
+
+void IpcBridge::FinishAsyncTask() noexcept
+{
+    {
+        std::lock_guard<std::mutex> lk(m_asyncMutex);
+        if (m_activeAsyncTasks > 0)
+        {
+            --m_activeAsyncTasks;
+        }
+    }
+    m_asyncCv.notify_all();
 }

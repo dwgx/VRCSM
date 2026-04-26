@@ -182,10 +182,10 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
       // The host process will exit immediately after this returns
       // (WM_APP_FACTORY_RESET_QUIT is posted from the C++ handler so
       // background workers + DB get torn down cleanly before exit).
-      // Trying to reload would race against window destruction; just
-      // tell the user to relaunch.
+      // Trying to reload would race against window destruction; the
+      // native host starts a delayed relaunch helper instead.
       toast.success(t("settings.app.factoryResetOkToast", {
-        defaultValue: "VRCSM has been reset. Please reopen the app.",
+        defaultValue: "VRCSM has been reset. It will restart automatically.",
       }));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);

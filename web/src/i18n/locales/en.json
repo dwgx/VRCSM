@@ -1089,7 +1089,7 @@
       "factoryResetConfirmBody": "This wipes VRCSM's saved VRChat session, thumbnail cache and logs under %LocalAppData%\\VRCSM. VRChat's own avatars, cache and registry settings are NOT affected. This action cannot be undone.",
       "factoryResetting": "Wiping…",
       "factoryResetConfirm": "Wipe VRCSM data",
-      "factoryResetOkToast": "VRCSM has been reset. Wait a moment...",
+      "factoryResetOkToast": "VRCSM has been reset. It will restart automatically.",
       "clearVrcCacheLabel": "Clear VRC Cache",
       "clearVrcCacheHint": "Selectively wipe VRChat caches like Avatars, Worlds, and Textures.",
       "clearCacheTitle": "Clear VRC Cache",
