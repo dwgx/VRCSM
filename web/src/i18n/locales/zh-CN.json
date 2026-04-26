@@ -3365,7 +3365,11 @@
     "public": "公开",
     "private": "私有",
     "logOnly": "仅日志",
-    "byAuthor": "作者：{{author}}"
+    "byAuthor": "作者：{{author}}",
+    "localEncounterIndexHint": "基于本地 VRChat 日志生成。仅日志条目可能没有模型 ID 或官方缩略图，但会保留是谁穿过、什么时候看到。",
+    "wearerCount": "{{count}} 位穿戴者",
+    "seenTimes": "看到 {{count}} 次",
+    "showWearers": "穿戴者"
   },
   "fbt": {
     "title": "FBT 校准监视器",

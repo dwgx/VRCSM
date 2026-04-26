@@ -94,6 +94,7 @@ export interface PlayerEvent {
 export interface AvatarSwitchEvent {
   iso_time: string | null;
   actor: string;
+  actor_user_id?: string | null;
   avatar_name: string;
   world_id?: string | null;
   instance_id?: string | null;
