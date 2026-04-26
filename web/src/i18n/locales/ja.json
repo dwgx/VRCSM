@@ -1086,7 +1086,7 @@
       "factoryResetConfirmBody": "これは %LocalAppData%\\VRCSM 配下の保存済み VRChat セッション、サムネイルキャッシュ、ログを削除します。VRChat 本体のアバター、キャッシュ、レジストリ設定には影響しません。この操作は元に戻せません。",
       "factoryResetting": "削除中…",
       "factoryResetConfirm": "VRCSM データを削除",
-      "factoryResetOkToast": "VRCSM をリセットしました。しばらくお待ちください…",
+      "factoryResetOkToast": "VRCSM をリセットしました。自動的に再起動します。",
       "clearVrcCacheLabel": "VRC キャッシュをクリア",
       "clearVrcCacheHint": "アバター、ワールド、テクスチャなどの VRChat キャッシュを選択的に削除します。",
       "clearCacheTitle": "VRC キャッシュをクリア",

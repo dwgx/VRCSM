@@ -1086,7 +1086,7 @@
       "factoryResetConfirmBody": "Будут удалены сохраненная сессия VRChat, кэш миниатюр и логи VRCSM в %LocalAppData%\\VRCSM. Аватары, кэш и настройки реестра самого VRChat не затрагиваются. Действие необратимо.",
       "factoryResetting": "Очистка…",
       "factoryResetConfirm": "Удалить данные VRCSM",
-      "factoryResetOkToast": "VRCSM сброшен. Подождите немного…",
+      "factoryResetOkToast": "VRCSM сброшен. Он перезапустится автоматически.",
       "clearVrcCacheLabel": "Очистить кэш VRC",
       "clearVrcCacheHint": "Выборочно удалить кэш VRChat: аватары, миры, текстуры и другое.",
       "clearCacheTitle": "Очистить кэш VRC",

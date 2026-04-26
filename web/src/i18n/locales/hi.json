@@ -1086,7 +1086,7 @@
       "factoryResetConfirmBody": "यह %LocalAppData%\\VRCSM के भीतर सेव VRChat session, thumbnail cache और logs मिटा देगा। VRChat के अपने avatars, cache और registry settings प्रभावित नहीं होंगे। यह क्रिया वापस नहीं हो सकती।",
       "factoryResetting": "मिटाया जा रहा है…",
       "factoryResetConfirm": "VRCSM डेटा मिटाएँ",
-      "factoryResetOkToast": "VRCSM रीसेट हो गया है। कृपया थोड़ा इंतज़ार करें…",
+      "factoryResetOkToast": "VRCSM रीसेट हो गया है। यह अपने आप फिर से शुरू होगा।",
       "clearVrcCacheLabel": "VRC कैश साफ़ करें",
       "clearVrcCacheHint": "Avatars, worlds और textures जैसी VRChat caches को चुनकर साफ़ करें।",
       "clearCacheTitle": "VRC कैश साफ़ करें",

@@ -1105,7 +1105,7 @@
       "factoryResetConfirmBody": "จะลบเซสชัน VRChat ที่บันทึกไว้ แคชภาพย่อ และบันทึกใต้ %LocalAppData%\\VRCSM โดยไม่กระทบอวาตาร์ แคช และการตั้งค่ารีจิสทรีของ VRChat เอง การกระทำนี้ไม่สามารถย้อนกลับได้",
       "factoryResetting": "กำลังลบ…",
       "factoryResetConfirm": "ลบข้อมูล VRCSM",
-      "factoryResetOkToast": "รีเซ็ต VRCSM แล้ว กรุณารอสักครู่…",
+      "factoryResetOkToast": "รีเซ็ต VRCSM แล้ว แอปจะเริ่มใหม่โดยอัตโนมัติ",
       "clearVrcCacheLabel": "ล้างแคช VRC",
       "clearVrcCacheHint": "ล้างแคช VRChat แบบเลือกได้ เช่น อวาตาร์ โลก และพื้นผิว",
       "clearCacheTitle": "ล้างแคช VRC",

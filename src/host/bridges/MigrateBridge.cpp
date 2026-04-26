@@ -4,10 +4,6 @@
 #include "../../core/JunctionUtil.h"
 #include "../../core/Migrator.h"
 
-// IpcEnqueueAsync is defined in IpcBridge.cpp — it wraps GetIpcPool().enqueue()
-// so bridge files can submit async work without coupling to the pool class.
-void IpcEnqueueAsync(std::function<void()> fn);
-
 nlohmann::json IpcBridge::HandleMigratePreflight(const nlohmann::json& params, const std::optional<std::string>&)
 {
     return ToJson(vrcsm::core::Migrator::Preflight(params));
@@ -18,7 +14,7 @@ nlohmann::json IpcBridge::HandleMigrateExecute(const nlohmann::json& params, con
     const auto request = params;
     const auto requestId = id;
 
-    IpcEnqueueAsync([this, request, requestId]()
+    if (!EnqueueAsync([this, request, requestId]()
     {
         try
         {
@@ -45,7 +41,10 @@ nlohmann::json IpcBridge::HandleMigrateExecute(const nlohmann::json& params, con
         {
             PostError(requestId, "migrate_failed", "Unknown migration failure");
         }
-    });
+    }))
+    {
+        throw std::runtime_error("migrate.execute: IPC bridge is shutting down");
+    }
 
     return nlohmann::json{{"started", true}};
 }
