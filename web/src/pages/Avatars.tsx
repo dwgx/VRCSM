@@ -153,11 +153,13 @@ function normalizeAvatarName(name: string): string {
 function AvatarRowThumb({
   avatarId,
   fallbackUrl,
+  placeholder = "cube",
   isFavorited,
   onToggleFavorite,
 }: {
   avatarId: string;
   fallbackUrl?: string;
+  placeholder?: "cube" | "image";
   isFavorited: boolean;
   onToggleFavorite?: (thumbnailUrl: string | null) => void;
 }) {
@@ -176,6 +178,8 @@ function AvatarRowThumb({
             (e.currentTarget as HTMLImageElement).style.display = "none";
           }}
         />
+      ) : placeholder === "image" ? (
+        <ImageIconPlaceholder size="sm" />
       ) : (
         <Avatar3DPreview seed={avatarId} size={22} />
       )}
@@ -197,6 +201,17 @@ function AvatarRowThumb({
           <Heart className={cn("size-2.5", isFavorited && "fill-current")} />
         </button>
       ) : null}
+    </div>
+  );
+}
+
+function ImageIconPlaceholder({ size = "lg" }: { size?: "sm" | "lg" }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-[hsl(var(--canvas))]">
+      <User className={cn(
+        "text-[hsl(var(--muted-foreground))] opacity-60",
+        size === "sm" ? "size-4" : "size-12",
+      )} />
     </div>
   );
 }
@@ -346,7 +361,14 @@ function AvatarInspector({
                 {fallbackUrl ? (
                   <ImageZoom src={fallbackUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
                 ) : isEncounterLog ? (
-                  <Avatar3DPreview seed={selected.avatar_id} size={96} />
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[hsl(var(--canvas))] text-[11px] text-[hsl(var(--muted-foreground))]">
+                    <User className="size-12 opacity-60" />
+                    <span>
+                      {selected.thumbnail_status === "loading"
+                        ? t("avatars.thumbnailResolving", { defaultValue: "Resolving thumbnail…" })
+                        : t("avatars.noThumbnail", { defaultValue: "No thumbnail" })}
+                    </span>
+                  </div>
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-[hsl(var(--muted))]">
                     <User className="size-12 text-[hsl(var(--muted-foreground))]" />
@@ -675,6 +697,7 @@ function AvatarRow({
       <AvatarRowThumb
         avatarId={item.avatar_id}
         fallbackUrl={item.resolved_thumbnail_url}
+        placeholder={item.source === "encounter-log" ? "image" : "cube"}
         isFavorited={isFavorited}
         onToggleFavorite={item.avatar_id.startsWith("avtr_") ? onToggleFavorite : undefined}
       />
@@ -1052,15 +1075,40 @@ function Avatars() {
         if (!name) continue;
         const key = normalizeAvatarName(name);
         try {
+          if (item.wearer_user_id?.startsWith("usr_")) {
+            const profileResp = await ipc.call<
+              { userId: string },
+              { profile: { currentAvatarName?: string; currentAvatarId?: string; currentAvatarThumbnailImageUrl?: string; currentAvatarImageUrl?: string } | null }
+            >("user.getProfile", { userId: item.wearer_user_id });
+            const profile = profileResp.profile;
+            const profileName = normalizeAvatarName(profile?.currentAvatarName ?? "");
+            const profileUrl =
+              profile?.currentAvatarThumbnailImageUrl ||
+              profile?.currentAvatarImageUrl ||
+              undefined;
+            if (profileUrl && profileName === key) {
+              setNameThumbs((prev) => ({
+                ...prev,
+                [key]: {
+                  status: "resolved",
+                  avatarId: profile?.currentAvatarId,
+                  url: profileUrl,
+                },
+              }));
+              await new Promise((resolve) => window.setTimeout(resolve, 80));
+              continue;
+            }
+          }
+
           const res = await ipc.searchAvatars(name, 5);
           const avatars = res?.avatars ?? [];
           const exact = avatars.find((a) => normalizeAvatarName(a.name) === key);
-          const chosen = exact ?? avatars[0];
+          const chosen = exact;
           const url = chosen?.thumbnailImageUrl || chosen?.imageUrl || undefined;
           setNameThumbs((prev) => ({
             ...prev,
             [key]: url
-              ? { status: "resolved", avatarId: chosen.id, url }
+              ? { status: "resolved", avatarId: chosen?.id, url }
               : { status: "miss" },
           }));
         } catch {
