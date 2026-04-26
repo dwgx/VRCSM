@@ -149,6 +149,22 @@ function normalizeAuthorName(name: string | undefined | null): string {
   return normalizeAvatarName(name ?? "");
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 /**
  * Row thumbnail — real CDN image when available, else the procedural
  * cube at a smaller size so the list pane reads like a Unity hierarchy
@@ -858,7 +874,7 @@ function Avatars() {
     () => (localStorage.getItem(AVATAR_LIST_FILTER_KEY) as AvatarListFilter | null) ?? "local",
   );
   const [seenPage, setSeenPage] = useState(1);
-  const [nameThumbs, setNameThumbs] = useState<Record<string, {
+  const [resolvedThumbs, setResolvedThumbs] = useState<Record<string, {
     avatarId?: string;
     url?: string;
     status: "loading" | "resolved" | "miss";
@@ -1089,16 +1105,14 @@ function Avatars() {
       .slice(0, SEEN_PAGE_SIZE);
     const missing = candidates.filter((item) => {
       if (item.thumbnail_status === "resolved" || item.thumbnail_status === "miss") return false;
-      const key = normalizeAvatarName(item.display_name ?? "");
-      return key && !nameThumbs[key];
+      return !resolvedThumbs[item.avatar_id];
     });
     if (missing.length === 0) return;
 
-    setNameThumbs((prev) => {
+    setResolvedThumbs((prev) => {
       const next = { ...prev };
       for (const item of missing) {
-        const key = normalizeAvatarName(item.display_name ?? "");
-        if (key) next[key] = { status: "loading" };
+        next[item.avatar_id] = { status: "loading" };
       }
       return next;
     });
@@ -1135,10 +1149,14 @@ function Avatars() {
           };
 
           if (item.wearer_user_id?.startsWith("usr_")) {
-            const profileResp = await ipc.call<
-              { userId: string },
-              { profile: { currentAvatarName?: string; currentAvatarId?: string; currentAvatarThumbnailImageUrl?: string; currentAvatarImageUrl?: string } | null }
-            >("user.getProfile", { userId: item.wearer_user_id });
+            const profileResp = await withTimeout(
+              ipc.call<
+                { userId: string },
+                { profile: { currentAvatarName?: string; currentAvatarId?: string; currentAvatarThumbnailImageUrl?: string; currentAvatarImageUrl?: string } | null }
+              >("user.getProfile", { userId: item.wearer_user_id }),
+              8_000,
+              "user.getProfile",
+            );
             const profile = profileResp.profile;
             const profileName = normalizeAvatarName(profile?.currentAvatarName ?? "");
             const profileUrl =
@@ -1153,9 +1171,9 @@ function Avatars() {
                 thumbnailUrl: profile?.currentAvatarThumbnailImageUrl,
                 imageUrl: profile?.currentAvatarImageUrl,
               });
-              setNameThumbs((prev) => ({
+              setResolvedThumbs((prev) => ({
                 ...prev,
-                [key]: {
+                [item.avatar_id]: {
                   status: "resolved",
                   avatarId: profile?.currentAvatarId,
                   url: profileUrl,
@@ -1166,7 +1184,7 @@ function Avatars() {
             }
           }
 
-          const res = await ipc.searchAvatars(name, 5);
+          const res = await withTimeout(ipc.searchAvatars(name, 5), 8_000, "avatar.search");
           const avatars = res?.avatars ?? [];
           const authorKey = normalizeAuthorName(item.author);
           const nameMatches = avatars.filter((a) => normalizeAvatarName(a.name) === key);
@@ -1185,9 +1203,9 @@ function Avatars() {
               imageUrl: chosen?.imageUrl,
             }
             : { status: "miss", source: authorKey ? "public_search_name_author" : "public_search_name" });
-          setNameThumbs((prev) => ({
+          setResolvedThumbs((prev) => ({
             ...prev,
-            [key]: url
+            [item.avatar_id]: url
               ? { status: "resolved", avatarId: chosen?.id, url }
               : { status: "miss" },
           }));
@@ -1202,7 +1220,7 @@ function Avatars() {
           } catch {
             // Best-effort cache update.
           }
-          setNameThumbs((prev) => ({ ...prev, [key]: { status: "miss" } }));
+          setResolvedThumbs((prev) => ({ ...prev, [item.avatar_id]: { status: "miss" } }));
         }
         await new Promise((resolve) => window.setTimeout(resolve, 80));
       }
@@ -1211,13 +1229,13 @@ function Avatars() {
     return () => {
       cancelled = true;
     };
-  }, [listFilter, nameThumbs, pagedFiltered]);
+  }, [listFilter, resolvedThumbs, pagedFiltered]);
 
   const displayRows = useMemo(
     () =>
       pagedFiltered.map((item) => {
         if (item.source !== "encounter-log" || !item.display_name) return item;
-        const hit = nameThumbs[normalizeAvatarName(item.display_name)];
+        const hit = resolvedThumbs[item.avatar_id];
         if (!hit) return item;
         return {
           ...item,
@@ -1226,7 +1244,7 @@ function Avatars() {
           thumbnail_status: hit.status,
         };
       }),
-    [nameThumbs, pagedFiltered],
+    [resolvedThumbs, pagedFiltered],
   );
 
   async function handleToggleFavorite(
