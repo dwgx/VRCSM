@@ -15,6 +15,7 @@ import {
   Users,
   ExternalLink,
   UserCircle,
+  ImageOff,
 } from "lucide-react";
 import { useThumbnail } from "@/lib/thumbnails";
 import { ThumbImage } from "@/components/ThumbImage";
@@ -76,6 +77,10 @@ interface Jam {
   banner_url?: string;
   coverUrl?: string;
   cover_url?: string;
+  previewImageUrl?: string;
+  preview_image_url?: string;
+  posterImageUrl?: string;
+  poster_image_url?: string;
   [key: string]: unknown;
 }
 
@@ -93,7 +98,27 @@ function getJamImage(jam: Jam): string | undefined {
     jam.banner_url,
     jam.coverUrl,
     jam.cover_url,
+    jam.previewImageUrl,
+    jam.preview_image_url,
+    jam.posterImageUrl,
+    jam.poster_image_url,
   ) ?? findImageUrlDeep(jam);
+}
+
+function mergeJamDetail(jam: Jam, detail: unknown): Jam {
+  if (!detail || typeof detail !== "object" || Array.isArray(detail)) return jam;
+  const record = detail as Record<string, unknown>;
+  const inner =
+    (record.jam && typeof record.jam === "object" && !Array.isArray(record.jam))
+      ? record.jam as Record<string, unknown>
+      : (record.data && typeof record.data === "object" && !Array.isArray(record.data))
+        ? record.data as Record<string, unknown>
+        : (record.result && typeof record.result === "object" && !Array.isArray(record.result))
+          ? record.result as Record<string, unknown>
+          : (record.details && typeof record.details === "object" && !Array.isArray(record.details))
+            ? record.details as Record<string, unknown>
+            : record;
+  return { ...jam, ...record, ...inner };
 }
 
 function firstString(...values: (string | undefined | null)[]): string | undefined {
@@ -104,7 +129,7 @@ function firstString(...values: (string | undefined | null)[]): string | undefin
 function looksLikeImageUrl(value: string): boolean {
   return /^https?:\/\/\S+\.(?:avif|webp|png|jpe?g|gif)(?:[?#]\S*)?$/i.test(value)
     || /^https?:\/\/api\.vrchat\.cloud\/api\/1\/file\/file_[^/\s]+\/[^/\s]+\/file$/i.test(value)
-    || /^https?:\/\/[^/\s]*vrchat[^/\s]*\/\S*(?:image|thumbnail|icon|banner|cover)\S*$/i.test(value);
+    || /^https?:\/\/[^/\s]*vrchat[^/\s]*\/\S*(?:image|thumbnail|icon|banner|cover|preview|poster|media)\S*$/i.test(value);
 }
 
 function extractImageUrlFromText(value: string): string | undefined {
@@ -138,6 +163,11 @@ function findImageUrlDeep(value: unknown, depth = 0, seen = new Set<unknown>()):
     "bannerImageUrl", "banner_image_url",
     "bannerUrl", "banner_url",
     "coverUrl", "cover_url",
+    "previewImageUrl", "preview_image_url",
+    "posterImageUrl", "poster_image_url",
+    "previewUrl", "preview_url",
+    "posterUrl", "poster_url",
+    "image", "thumbnail", "cover", "banner", "preview", "poster",
     "url", "fileUrl", "file_url",
   ];
   for (const key of preferredKeys) {
@@ -150,7 +180,7 @@ function findImageUrlDeep(value: unknown, depth = 0, seen = new Set<unknown>()):
   }
 
   for (const [key, candidate] of Object.entries(record)) {
-    if (!/(image|thumbnail|icon|banner|cover|media|asset|file|description)/i.test(key)) continue;
+    if (!/(image|thumbnail|icon|banner|cover|preview|poster|media|asset|file|gallery|screenshot|submission|description)/i.test(key)) continue;
     const found = findImageUrlDeep(candidate, depth + 1, seen);
     if (found) return found;
   }
@@ -429,40 +459,59 @@ function openJam(jam: Jam) {
 
 function JamCard({ jam }: { jam: Jam }) {
   const { t } = useTranslation();
-  const title = firstString(jam.title, jam.name) ?? "Untitled Jam";
-  const thumb = getJamImage(jam);
-  const state = firstString(jam.state) ?? (jam.isActive ? "active" : undefined);
+  const detail = useQuery({
+    queryKey: ["jams.detail", jam.id],
+    queryFn: () => ipc.jamsDetail(jam.id!),
+    enabled: !!jam.id && !getJamImage(jam),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const mergedJam = mergeJamDetail(jam, detail.data);
+  const title = firstString(mergedJam.title, mergedJam.name) ?? "Untitled Jam";
+  const thumb = getJamImage(mergedJam);
+  const state = firstString(mergedJam.state) ?? (mergedJam.isActive ? "active" : undefined);
 
   return (
     <Card className="unity-panel overflow-hidden flex flex-col">
       <div className="relative h-32 overflow-hidden">
-        <ThumbImage
-          src={thumb}
-          seedKey={jam.id ?? title}
-          label={title}
-          className="h-full w-full rounded-none border-0"
-          aspect=""
-          priority="eager"
-        />
+        {thumb ? (
+          <ThumbImage
+            src={thumb}
+            seedKey={mergedJam.id ?? title}
+            label={title}
+            className="h-full w-full rounded-none border-0"
+            aspect=""
+            priority="eager"
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.18)] text-[hsl(var(--muted-foreground))]">
+            <ImageOff className="size-7 opacity-70" />
+            <span className="text-[11px] font-medium">
+              {detail.isFetching
+                ? t("calendar.resolvingPreview", { defaultValue: "Looking for preview…" })
+                : t("calendar.noPreview", { defaultValue: "No preview image" })}
+            </span>
+          </div>
+        )}
       </div>
       <CardHeader className="pb-1.5">
         <CardTitle className="text-[13px] flex items-center gap-2 line-clamp-1">
           <Trophy className="size-3.5 text-amber-400" />
           {title}
           {state && (
-            <Badge variant={jam.isActive ? "default" : "outline"} className="text-[9px] h-4">{state.toUpperCase()}</Badge>
+            <Badge variant={mergedJam.isActive ? "default" : "outline"} className="text-[9px] h-4">{state.toUpperCase()}</Badge>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-0 flex-1 flex flex-col">
-        {jam.description && (
+        {mergedJam.description && (
           <p className="text-[11px] text-[hsl(var(--muted-foreground))] line-clamp-3">
-            {String(jam.description)}
+            {String(mergedJam.description)}
           </p>
         )}
-        {jam.closedAt && (
+        {mergedJam.closedAt && (
           <div className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">
-            {t("calendar.closesAt", { defaultValue: "Closes {{when}}", when: formatWhen(jam.closedAt) })}
+            {t("calendar.closesAt", { defaultValue: "Closes {{when}}", when: formatWhen(mergedJam.closedAt) })}
           </div>
         )}
         <div className="mt-auto pt-2">

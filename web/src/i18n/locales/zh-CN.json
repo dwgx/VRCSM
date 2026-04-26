@@ -3320,6 +3320,8 @@
     "openInBrowser": "在 VRChat 中打开",
     "openJamPage": "打开 Jam 页面",
     "closesAt": "{{when}} 截止",
+    "resolvingPreview": "正在查找预览图...",
+    "noPreview": "无预览图",
     "tabDiscover": "发现",
     "tabFeatured": "精选",
     "tabJams": "Jams"
