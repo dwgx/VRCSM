@@ -713,6 +713,8 @@
     "previewFailed": "预览失败:{{error}}",
     "dryRunFailed": "预检查失败:{{error}}",
     "infoFields": "__info 字段",
+    "local3dPreview": "本地 3D 预览",
+    "local3dPreviewHint": "直接使用缓存中的 __data 资源包，不需要模型 ID；加密资源包或非模型资源包仍可能无法渲染。",
     "noInfoFields": "__info 中没有可解析的字段。",
     "fileTree": "条目内容",
     "emptyTree": "条目为空。"

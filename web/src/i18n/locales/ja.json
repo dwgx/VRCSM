@@ -700,6 +700,8 @@
     "previewFailed": "プレビュー失敗: {{error}}",
     "dryRunFailed": "事前チェック失敗: {{error}}",
     "infoFields": "__info フィールド",
+    "local3dPreview": "ローカル 3D プレビュー",
+    "local3dPreviewHint": "キャッシュ済みの __data バンドルを直接使用します。アバター ID は不要ですが、暗号化済みまたはアバター以外のバンドルは表示できない場合があります。",
     "noInfoFields": "__info に解析可能なフィールドはありません。",
     "fileTree": "項目内容",
     "emptyTree": "項目は空です。"

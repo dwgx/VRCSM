@@ -199,6 +199,8 @@ export interface BundlePreview {
   infoText: string;
   magic: string;
   fileTree: string[];
+  versionPath?: string;
+  dataPath?: string;
 }
 
 export interface DryRunResult {

@@ -27,6 +27,7 @@ import { useReport } from "@/lib/report-context";
 import { formatBytes, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import type { BundleEntry, BundlePreview } from "@/lib/types";
+import { AvatarPreview3D } from "@/components/AvatarPreview3D";
 
 /** Extract asset type and ID from a VRChat cache __info URL */
 function parseInfoUrl(url: string): { type: "avatar" | "world" | "unknown"; id: string | null } {
@@ -58,6 +59,10 @@ function parseInfoText(infoText: string): Record<string, string> {
     if (key && value) out[key] = value;
   }
   return out;
+}
+
+function syntheticAvatarId(entry: BundleEntry): string {
+  return `cache:${entry.entry}`;
 }
 
 interface TreeNode {
@@ -407,6 +412,38 @@ function Bundles() {
           </DialogHeader>
           {preview ? (
             <div className="flex flex-col gap-3">
+              <Card elevation="flat" className="p-0">
+                <div className="unity-panel-header flex items-center justify-between">
+                  <span>{t("bundles.local3dPreview", { defaultValue: "Local 3D preview" })}</span>
+                  <span className="font-mono text-[10px] normal-case tracking-normal">
+                    {preview.data.dataPath ? "__data" : t("common.unavailable", { defaultValue: "Unavailable" })}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-3 p-3 md:flex-row">
+                  <AvatarPreview3D
+                    avatarId={syntheticAvatarId(preview.entry)}
+                    bundlePath={preview.data.dataPath || preview.data.versionPath || preview.entry.path}
+                    size={260}
+                    expandedSize={760}
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+                    <p>
+                      {t("bundles.local3dPreviewHint", {
+                        defaultValue: "Uses the cached __data bundle directly. This does not require an avatar ID; encrypted or non-avatar bundles may still fail to render.",
+                      })}
+                    </p>
+                    <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 font-mono text-[10.5px]">
+                      <span className="text-[hsl(var(--muted-foreground))]">
+                        {t("common.path", { defaultValue: "Path" })}:{" "}
+                      </span>
+                      <span className="break-all text-[hsl(var(--foreground))]">
+                        {preview.data.dataPath || preview.data.versionPath || preview.entry.path}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
               {/* Format badges — magic + sniffer classification */}
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge variant="tonal">

@@ -700,6 +700,8 @@
     "previewFailed": "पूर्वावलोकन विफल: {{error}}",
     "dryRunFailed": "प्री-चेक विफल: {{error}}",
     "infoFields": "__info फ़ील्ड्स",
+    "local3dPreview": "स्थानीय 3D पूर्वावलोकन",
+    "local3dPreviewHint": "कैश किए गए __data बंडल को सीधे उपयोग करता है। इसके लिए avatar ID की जरूरत नहीं है; encrypted या non-avatar बंडल फिर भी render नहीं हो सकते।",
     "noInfoFields": "__info में कोई parseable फ़ील्ड नहीं है।",
     "fileTree": "एंट्री सामग्री",
     "emptyTree": "एंट्री खाली है।"

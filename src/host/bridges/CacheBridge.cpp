@@ -94,6 +94,8 @@ nlohmann::json IpcBridge::HandleBundlePreview(const nlohmann::json& params, cons
     auto sniff = vrcsm::core::BundleSniff::sniff(versionDir);
     nlohmann::json result = ToJson(sniff);
     result["infoText"] = infoText;
+    result["versionPath"] = vrcsm::core::toUtf8(versionDir.wstring());
+    result["dataPath"] = vrcsm::core::toUtf8((versionDir / L"__data").wstring());
     return result;
 }
 
