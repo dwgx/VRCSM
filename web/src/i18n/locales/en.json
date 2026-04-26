@@ -703,6 +703,8 @@
     "previewFailed": "Preview failed: {{error}}",
     "dryRunFailed": "Pre-check failed: {{error}}",
     "infoFields": "__info fields",
+    "local3dPreview": "Local 3D preview",
+    "local3dPreviewHint": "Uses the cached __data bundle directly. This does not require an avatar ID; encrypted or non-avatar bundles may still fail to render.",
     "noInfoFields": "No parsable fields in __info.",
     "fileTree": "Entry contents",
     "emptyTree": "Entry is empty."

@@ -700,6 +700,8 @@
     "previewFailed": "ดูตัวอย่างล้มเหลว: {{error}}",
     "dryRunFailed": "การตรวจสอบก่อนทำงานล้มเหลว: {{error}}",
     "infoFields": "ฟิลด์ __info",
+    "local3dPreview": "ตัวอย่าง 3D ในเครื่อง",
+    "local3dPreviewHint": "ใช้บันเดิล __data ที่แคชไว้โดยตรง ไม่ต้องใช้ avatar ID แต่บันเดิลที่เข้ารหัสหรือไม่ใช่อวาตาร์อาจยังแสดงผลไม่ได้",
     "noInfoFields": "ไม่มีฟิลด์ที่แปลได้ใน __info",
     "fileTree": "เนื้อหารายการ",
     "emptyTree": "รายการว่างเปล่า"
