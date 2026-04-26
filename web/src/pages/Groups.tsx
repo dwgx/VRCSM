@@ -220,8 +220,9 @@ export default function Groups() {
       </div>
 
       {query.isPending ? (
-        <div className="py-12 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
-          {t("common.loading")}
+        <div className="flex items-center justify-center gap-2 py-12 text-[12px] text-[hsl(var(--muted-foreground))]">
+          <Loader2 className="size-4 animate-spin" />
+          <span>{t("common.loading")}</span>
         </div>
       ) : groups.length === 0 ? (
         <Card>

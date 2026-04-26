@@ -34,9 +34,9 @@ export function placeholderGradient(seed: string): string {
   const h = fnv1a(seed || "vrcsm");
   const hue1 = h % 360;
   const hue2 = (hue1 + 40 + ((h >>> 8) % 100)) % 360;
-  const sat = 30 + ((h >>> 16) % 25);
-  const l1 = 26 + ((h >>> 20) % 10);
-  const l2 = 12 + ((h >>> 24) % 10);
+  const sat = 45 + ((h >>> 16) % 25);
+  const l1 = 38 + ((h >>> 20) % 10);
+  const l2 = 26 + ((h >>> 24) % 10);
   return `linear-gradient(135deg, hsl(${hue1} ${sat}% ${l1}%) 0%, hsl(${hue2} ${sat}% ${l2}%) 100%)`;
 }
 

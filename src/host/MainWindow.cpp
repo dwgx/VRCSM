@@ -166,6 +166,25 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         }
         return 0;
     }
+    case WM_APP_FACTORY_RESET_QUIT:
+    {
+        // Factory reset finished file deletion on a worker thread.
+        // Run the WebView2-bound cookie clear here (UI thread / COM
+        // apartment), then exit so the next launch picks up a fresh
+        // appDataRoot. Without this, the app keeps running with stale
+        // singletons referencing deleted files and the next start can
+        // hang on the inconsistent WebView2 profile.
+        if (m_webViewHost != nullptr)
+        {
+            m_webViewHost->ClearVrcCookies();
+        }
+        if (m_hwnd != nullptr && IsWindow(m_hwnd))
+        {
+            DestroyWindow(m_hwnd);
+        }
+        PostQuitMessage(0);
+        return 0;
+    }
     default:
         return DefWindowProcW(m_hwnd, message, wParam, lParam);
     }

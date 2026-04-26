@@ -84,6 +84,14 @@ nlohmann::json IpcBridge::HandleDbAvatarHistory(const nlohmann::json& params, co
     return nlohmann::json{{"items", unwrapResult(std::move(res))}};
 }
 
+nlohmann::json IpcBridge::HandleDbAvatarHistoryCount(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto res = vrcsm::core::Database::Instance().AvatarHistoryCount();
+    if (!vrcsm::core::isOk(res))
+        throw IpcException(vrcsm::core::error(res));
+    return nlohmann::json{{"count", std::get<std::int64_t>(res)}};
+}
+
 nlohmann::json IpcBridge::HandleDbAvatarHistoryRecord(const nlohmann::json& params, const std::optional<std::string>&)
 {
     vrcsm::core::Database::AvatarSeenInsert a;
@@ -93,6 +101,7 @@ nlohmann::json IpcBridge::HandleDbAvatarHistoryRecord(const nlohmann::json& para
     if (auto n = JsonStringField(params, "avatar_name"); n.has_value()) a.avatar_name = *n;
     if (auto n = JsonStringField(params, "author_name"); n.has_value()) a.author_name = *n;
     if (auto n = JsonStringField(params, "first_seen_on"); n.has_value()) a.first_seen_on = *n;
+    if (auto n = JsonStringField(params, "first_seen_user_id"); n.has_value()) a.first_seen_user_id = *n;
     if (auto n = JsonStringField(params, "release_status"); n.has_value()) a.release_status = *n;
     a.first_seen_at = JsonStringField(params, "first_seen_at").value_or(vrcsm::core::nowIso());
     auto res = vrcsm::core::Database::Instance().RecordAvatarSeen(a);

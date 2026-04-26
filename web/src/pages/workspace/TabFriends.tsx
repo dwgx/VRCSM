@@ -9,9 +9,11 @@ import { Heart, Play, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThumbImage } from "@/components/ThumbImage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { useAuth } from "@/lib/auth-context";
+import { ipc } from "@/lib/ipc";
 import {
   LIBRARY_LIST_NAME,
   normalizeFavoriteType,
@@ -142,15 +144,14 @@ function JoinFriendRow({ friend }: { friend: Friend }) {
       <div className="relative shrink-0">
         <div className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--canvas))]">
           {thumb ? (
-            <img
+            <ThumbImage
               src={thumb}
+              seedKey={friend.id}
+              label={friend.displayName}
               alt=""
-              loading="lazy"
-              decoding="async"
-              className="size-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
+              className="size-full border-0"
+              aspect=""
+              rounded=""
             />
           ) : (
             <Users className="size-4 text-[hsl(var(--muted-foreground))]" />
@@ -211,12 +212,24 @@ function JoinFriendRow({ friend }: { friend: Friend }) {
           variant="ghost"
           size="icon"
           className="size-6"
-          disabled
           title={t("vrchatWorkspace.requestInvite", {
             defaultValue: "Request invite",
           })}
+          onClick={async () => {
+            try {
+              await ipc.requestInvite(friend.id);
+              toast.success(
+                t("friends.actions.requestInviteSent", {
+                  defaultValue: "向 {{name}} 发送了加入请求",
+                  name: friend.displayName,
+                }),
+              );
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : String(err));
+            }
+          }}
         >
-          <Users className="size-3 opacity-40" />
+          <Users className="size-3" />
         </Button>
         <Button
           variant="ghost"
@@ -259,15 +272,14 @@ function FavoriteFriendRow({
       <div className="relative shrink-0">
         <div className="flex size-7 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--canvas))]">
           {thumb ? (
-            <img
+            <ThumbImage
               src={thumb}
+              seedKey={friend.id}
+              label={friend.displayName}
               alt=""
-              loading="lazy"
-              decoding="async"
-              className="size-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
+              className="size-full border-0"
+              aspect=""
+              rounded=""
             />
           ) : (
             <Users className="size-3.5 text-[hsl(var(--muted-foreground))]" />

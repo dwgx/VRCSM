@@ -110,6 +110,7 @@ private:
     nlohmann::json HandleFriendsRequest(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserInvite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserInviteTo(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserRequestInvite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserMute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserUnmute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserBlock(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -180,6 +181,7 @@ private:
     nlohmann::json HandleDbPlayerEvents(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbPlayerEncounters(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarHistory(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleDbAvatarHistoryCount(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarHistoryRecord(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbStatsHeatmap(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbStatsOverview(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -252,6 +254,13 @@ private:
     std::unordered_map<std::string, Handler> m_handlers;
     std::unordered_map<std::string, PluginHandler> m_pluginHandlers;
     std::unique_ptr<vrcsm::core::LogTailer> m_logTailer;
+    // Refcount of subscribers to logs.stream — each frontend page that
+    // depends on the live tail (Logs page, RadarEngine) calls
+    // logs.stream.start on mount and logs.stream.stop on unmount. We only
+    // tear down the tailer when the count returns to zero, so one page
+    // navigating away never kills another page's live feed.
+    int m_logTailerRefCount = 0;
+    std::mutex m_logTailerMutex;
     std::unique_ptr<vrcsm::core::Pipeline> m_pipeline;
     std::unique_ptr<vrcsm::core::DiscordRpc> m_discordRpc;
     std::unique_ptr<vrcsm::core::OscBridge> m_osc;
@@ -266,6 +275,12 @@ private:
     std::mutex m_currentWorldMutex;
     std::string m_currentWorldId;
     std::string m_currentInstanceId;
+
+    // Live name→user_id map fed by OnPlayerJoined log lines. Looked up at
+    // avatar-switch time so avatar_history rows recorded by the live tailer
+    // carry usr_xxx alongside the wearer's display name.
+    std::mutex m_playerIdMutex;
+    std::unordered_map<std::string, std::string> m_playerNameToUserId;
 
     // Coalesce same-avatar preview requests so repeated renders / panes
     // join the existing extraction instead of cancelling and restarting it.

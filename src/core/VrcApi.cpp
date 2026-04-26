@@ -8,6 +8,7 @@
 #include <chrono>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <mutex>
 #include <system_error>
 #include <thread>
@@ -854,11 +855,56 @@ ThumbnailResult VrcApi::fetchThumbnail(const std::string& id)
 
 std::vector<ThumbnailResult> VrcApi::fetchThumbnails(const std::vector<std::string>& ids)
 {
-    std::vector<ThumbnailResult> out;
-    out.reserve(ids.size());
-    for (const auto& id : ids)
+    // Fire performLookup() in parallel up to a small fan-out so a 40-row
+    // avatar list resolves in roughly one HTTP RTT instead of N. The on-disk
+    // cache mutex inside performLookup serializes the cache section only;
+    // the network leg is already lock-free per the existing comment block.
+    constexpr std::size_t kMaxConcurrent = 8;
+    std::vector<ThumbnailResult> out(ids.size());
+    if (ids.empty()) return out;
+
+    // Deduplicate within the batch so a list with the same id repeated does
+    // not race two parallel network requests for it. The first occurrence
+    // does the lookup; later occurrences copy the result.
+    std::unordered_map<std::string, std::size_t> firstIndex;
+    firstIndex.reserve(ids.size());
+    std::vector<std::size_t> uniqueIndices;
+    uniqueIndices.reserve(ids.size());
+    for (std::size_t i = 0; i < ids.size(); ++i)
     {
-        out.push_back(performLookup(id));
+        if (firstIndex.try_emplace(ids[i], i).second)
+        {
+            uniqueIndices.push_back(i);
+        }
+    }
+
+    std::size_t cursor = 0;
+    while (cursor < uniqueIndices.size())
+    {
+        const std::size_t batchEnd = std::min(cursor + kMaxConcurrent, uniqueIndices.size());
+        std::vector<std::future<ThumbnailResult>> futures;
+        futures.reserve(batchEnd - cursor);
+        for (std::size_t i = cursor; i < batchEnd; ++i)
+        {
+            const std::size_t idx = uniqueIndices[i];
+            futures.push_back(std::async(std::launch::async,
+                [id = ids[idx]]() { return performLookup(id); }));
+        }
+        for (std::size_t i = cursor; i < batchEnd; ++i)
+        {
+            out[uniqueIndices[i]] = futures[i - cursor].get();
+        }
+        cursor = batchEnd;
+    }
+
+    // Fill in duplicate slots from their canonical first-occurrence result.
+    for (std::size_t i = 0; i < ids.size(); ++i)
+    {
+        const auto it = firstIndex.find(ids[i]);
+        if (it != firstIndex.end() && it->second != i)
+        {
+            out[i] = out[it->second];
+        }
     }
     return out;
 }
@@ -1667,6 +1713,42 @@ Result<nlohmann::json> VrcApi::inviteSelf(const std::string& instanceLocation)
     return nlohmann::json{{"ok", true}};
 }
 
+Result<nlohmann::json> VrcApi::requestInvite(const std::string& targetUserId, int requestSlot)
+{
+    if (targetUserId.empty())
+    {
+        return Error{"invalid_params", "Empty targetUserId", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    nlohmann::json body = nlohmann::json::object();
+    if (requestSlot > 0) body["requestSlot"] = requestSlot;
+
+    const auto response = httpRequest(
+        L"POST", kApiHostW,
+        toWide(fmt::format("/api/1/requestInvite/{}?apiKey={}", targetUserId, kApiKey)),
+        headers, body.dump(), false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("requestInvite/{} returned HTTP {}", targetUserId, response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
 Result<nlohmann::json> VrcApi::addPlayerModeration(
     const std::string& type, const std::string& targetUserId)
 {
@@ -2018,6 +2100,14 @@ Result<nlohmann::json> VrcApi::sendUserMessage(
         toWide(fmt::format("/api/1/user/{}/message?apiKey={}",
                            targetUserId, kApiKey)),
         headers, body, false);
+
+    // VRChat quietly routes "not a friend" / "channel disabled" / "rate
+    // limited" to a generic 'endpoint not implemented' 404. Log the raw
+    // status + body at debug level so we can distinguish those cases when
+    // a user reports a failure.
+    spdlog::debug("sendUserMessage target={} status={} body={}",
+        targetUserId, response.status,
+        response.body.size() > 500 ? response.body.substr(0, 500) : response.body);
 
     if (auto err = checkStandardHttpError(response, "")) return *err;
     if (response.status < 200 || response.status >= 300)

@@ -88,6 +88,11 @@ private:
     std::filesystem::path m_currentFile;
     std::uint64_t m_offset{0};
     std::string m_carryover;
+    // True for the very first file we attach to. After that, every
+    // OnFileSwitched is a VRChat log rotation: start that new file at
+    // byte 0 instead of EOF so we don't lose the lines written between
+    // file creation and the next 1-second poll.
+    bool m_attachedOnce{false};
 };
 
 } // namespace vrcsm::core

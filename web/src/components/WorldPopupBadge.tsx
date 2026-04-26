@@ -10,21 +10,19 @@ import {
   DialogTrigger,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ThumbImage } from "@/components/ThumbImage";
 import { Users, Globe2, Play } from "lucide-react";
 
 export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worldId: string }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  // Defer world.details fetch until the dialog opens. See AvatarPopupBadge.
   const { data, isLoading } = useIpcQuery<{ id: string }, { details: WorldDetails | null }>(
     "world.details",
     { id: worldId },
-    { staleTime: 120_000, enabled: !!worldId && worldId.startsWith("wrld_") },
+    { staleTime: 120_000, enabled: open && !!worldId && worldId.startsWith("wrld_") },
   );
   const details = data?.details ?? null;
-  const [open, setOpen] = useState(false);
-
-  if (isLoading || !details) {
-    return <IdBadge id={worldId} size="xs" />;
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -37,15 +35,15 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worl
           className="flex w-fit items-center gap-1.5 rounded bg-[hsl(var(--surface-raised))] hover:bg-[hsl(var(--primary)/0.1)] px-2 py-0.5 border border-[hsl(var(--border))] transition-colors group"
         >
           <div className="relative size-[18px] shrink-0 overflow-hidden rounded-[2px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
-            {details.thumbnailImageUrl ? ( // VRC uses thumbnailImageUrl
-                <img
+            {details?.thumbnailImageUrl ? (
+                <ThumbImage
                   src={details.thumbnailImageUrl}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
+                  seedKey={worldId}
+                  label={details.name}
                   alt=""
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  className="h-full w-full border-0"
+                  aspect=""
+                  rounded=""
                 />
             ) : (
                 <Globe2 className="size-full text-[hsl(var(--muted-foreground))]" />
@@ -55,19 +53,24 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worl
              WRLD
           </span>
           <span className="text-[11.5px] font-medium text-[hsl(var(--foreground))]">
-            {details.name}
+            {details?.name || `${worldId.slice(0, 12)}…`}
           </span>
         </button>
       </DialogTrigger>
       
-      <DialogContent 
-        className="max-w-[420px] p-0 border-none bg-transparent shadow-none duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out" 
+      <DialogContent
+        className="max-w-[420px] p-0 border-none bg-transparent shadow-none duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out"
         onClick={(e) => e.stopPropagation()}
       >
         <DialogTitle className="sr-only">
-          {details.name} World Record
+          {details?.name ?? worldId} World Record
         </DialogTitle>
-        
+
+        {!details ? (
+          <div className="rounded-[calc(var(--radius-sm)+4px)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] p-12 text-center text-[12px] text-[hsl(var(--muted-foreground))] shadow-lg backdrop-blur-md">
+            {isLoading ? t("common.loading") : t("worlds.unavailable", { defaultValue: "World unavailable." })}
+          </div>
+        ) : (
         <div className="group flex flex-col gap-0 overflow-hidden rounded-[calc(var(--radius-sm)+4px)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] shadow-lg backdrop-blur-md">
             {/* Banner Area */}
             <div className="relative h-[200px] w-full shrink-0 bg-[hsl(var(--muted))] overflow-hidden">
@@ -138,6 +141,7 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worl
                </div>
             </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

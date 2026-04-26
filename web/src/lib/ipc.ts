@@ -89,7 +89,9 @@ const LONG_RUNNING_METHODS = new Set<string>([
   "favorites.syncOfficial",
   "favorites.export",
   "favorites.import",
-  "thumbnails.fetch",
+  // thumbnails.fetch removed: a batch of ~50 ids parallel-fetches in ~6s,
+  // a stuck call should not pin the pending map forever — let the default
+  // 60s timeout reject it so memo entries can clear and retry.
 ]);
 
 /**
@@ -1067,8 +1069,12 @@ class IpcClient {
     return this.call<undefined, SteamVrConfig>("steamvr.read");
   }
 
-  async writeSteamVrConfig(config: any): Promise<{ ok: boolean }> {
-    return this.call<{ config: any }, { ok: boolean }>("steamvr.write", { config });
+  async writeSteamVrConfig(updates: any): Promise<{ ok: boolean }> {
+    // Pass the updates through as-is. SteamVrConfig::Write iterates the top
+    // level keys (driver_vrlink / steamvr / ...) and deep-merges into
+    // steamvr.vrsettings. Wrapping in { config } caused the merge to create
+    // a stray "config" section while leaving the real sections untouched.
+    return this.call<any, { ok: boolean }>("steamvr.write", updates);
   }
 
   async readMemoryStatus(): Promise<MemoryStatus> {
@@ -1105,6 +1111,13 @@ class IpcClient {
       { userId: string; location: string; slot: number },
       { ok: boolean }
     >("user.inviteTo", { userId, location, slot });
+  }
+
+  async requestInvite(userId: string, slot = 0) {
+    return this.call<{ userId: string; slot: number }, { ok: boolean }>(
+      "user.requestInvite",
+      { userId, slot },
+    );
   }
 
   // ── Pipeline WebSocket (real-time events) ───────────────────────────
@@ -1317,6 +1330,10 @@ class IpcClient {
     return this.call<{ limit: number; offset: number }, { items: any[] }>(
       "db.avatarHistory.list", { limit, offset },
     );
+  }
+
+  async dbAvatarHistoryCount() {
+    return this.call<undefined, { count: number }>("db.avatarHistory.count");
   }
 
   async dbStatsHeatmap(days = 30) {

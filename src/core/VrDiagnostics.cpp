@@ -12,11 +12,14 @@
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include <wrl/client.h>
+#include <dxgi.h>
+#include <regex>
 
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 #pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "dxgi.lib")
 
 namespace vrcsm::core
 {
@@ -43,14 +46,110 @@ void to_json(nlohmann::json& j, const VrDiagResult& r)
         {"preferredRefreshRate", r.preferredRefreshRate},
         {"supersampleScale", r.supersampleScale},
         {"targetBandwidth", r.targetBandwidth},
+        {"motionSmoothing", r.motionSmoothing},
+        {"allowSupersampleFiltering", r.allowSupersampleFiltering},
+        {"preferredCodec", r.preferredCodec},
+        {"gpuName", r.gpuName},
+        {"gpuVramBytes", r.gpuVramBytes},
+        {"gpuDriverVersion", r.gpuDriverVersion},
         {"defaultPlaybackDevice", r.defaultPlaybackDevice},
         {"defaultRecordingDevice", r.defaultRecordingDevice},
         {"steamSpeakersFound", r.steamSpeakersFound},
         {"steamMicFound", r.steamMicFound},
         {"vrlinkErrors", r.vrlinkErrors},
         {"vrlinkBadLinkEvents", r.vrlinkBadLinkEvents},
+        {"vrlinkDroppedFrames", r.vrlinkDroppedFrames},
+        {"vrlinkAvgBitrateMbps", r.vrlinkAvgBitrateMbps},
+        {"vrlinkMaxLatencyMs", r.vrlinkMaxLatencyMs},
     };
 }
+
+namespace {
+
+struct GpuInfo
+{
+    std::string name;
+    uint64_t vramBytes{0};
+};
+
+static GpuInfo DetectPrimaryGpu()
+{
+    GpuInfo info;
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory;
+    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1),
+        reinterpret_cast<void**>(factory.GetAddressOf())))) return info;
+
+    // Pick the adapter with the largest dedicated VRAM — that's almost
+    // always the discrete GPU the headset is driven from.
+    Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+    for (UINT i = 0; factory->EnumAdapters1(i, adapter.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND; ++i)
+    {
+        DXGI_ADAPTER_DESC1 desc{};
+        if (FAILED(adapter->GetDesc1(&desc))) continue;
+        if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
+        if (desc.DedicatedVideoMemory > info.vramBytes)
+        {
+            info.vramBytes = desc.DedicatedVideoMemory;
+            int sz = WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, nullptr, 0, nullptr, nullptr);
+            if (sz > 0)
+            {
+                std::string utf8(sz - 1, '\0');
+                WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, utf8.data(), sz, nullptr, nullptr);
+                info.name = std::move(utf8);
+            }
+        }
+    }
+    return info;
+}
+
+struct VrlinkStats
+{
+    int droppedFrames{0};
+    double avgBitrateMbps{0};
+    double maxLatencyMs{0};
+};
+
+static VrlinkStats ScanVrlinkStats(const std::vector<std::string>& lines, int tailLines)
+{
+    VrlinkStats s;
+    const int start = std::max(0, static_cast<int>(lines.size()) - tailLines);
+    const std::regex kBitrate(R"(bitrate[^\d]{0,20}(\d+(?:\.\d+)?)\s*[Mm]bps)");
+    const std::regex kLatency(R"(latency[^\d]{0,20}(\d+(?:\.\d+)?)\s*ms)");
+    double bitrateSum = 0;
+    int bitrateCount = 0;
+    for (int i = start; i < static_cast<int>(lines.size()); ++i)
+    {
+        const auto& l = lines[i];
+        if (l.find("Dropped frame") != std::string::npos ||
+            l.find("Frame dropped") != std::string::npos)
+        {
+            ++s.droppedFrames;
+        }
+        std::smatch m;
+        if (std::regex_search(l, m, kBitrate))
+        {
+            try
+            {
+                bitrateSum += std::stod(m[1].str());
+                ++bitrateCount;
+            }
+            catch (...) {}
+        }
+        if (std::regex_search(l, m, kLatency))
+        {
+            try
+            {
+                const double v = std::stod(m[1].str());
+                if (v > s.maxLatencyMs) s.maxLatencyMs = v;
+            }
+            catch (...) {}
+        }
+    }
+    if (bitrateCount > 0) s.avgBitrateMbps = bitrateSum / bitrateCount;
+    return s;
+}
+
+} // namespace
 
 static std::string wideToUtf8(const std::wstring& w)
 {
@@ -180,10 +279,14 @@ Result<VrDiagResult> VrDiagnostics::RunDiagnostics()
                 auto& sv = doc["steamvr"];
                 r.preferredRefreshRate = sv.value("preferredRefreshRate", 0);
                 r.supersampleScale = sv.value("supersampleScale", 0.0);
+                r.motionSmoothing = sv.value("motionSmoothing", false);
+                r.allowSupersampleFiltering = sv.value("allowSupersampleFiltering", false);
             }
             if (doc.contains("driver_vrlink"))
             {
-                r.targetBandwidth = doc["driver_vrlink"].value("targetBandwidth", 0);
+                auto& vl = doc["driver_vrlink"];
+                r.targetBandwidth = vl.value("targetBandwidth", 0);
+                r.preferredCodec = vl.value("preferredCodec", std::string{});
             }
         }
         catch (const std::exception& e)
@@ -205,7 +308,29 @@ Result<VrDiagResult> VrDiagnostics::RunDiagnostics()
                     catch (...) {}
                 }
             }
+
+            // Second pass for link-quality metrics; we re-read so we can scan
+            // the same tail window without reshuffling ParseVrlinkErrors.
+            std::ifstream f(vrlinkLog);
+            if (f.is_open())
+            {
+                std::vector<std::string> lines;
+                std::string line;
+                while (std::getline(f, line)) lines.push_back(std::move(line));
+                const auto stats = ScanVrlinkStats(lines, 400);
+                r.vrlinkDroppedFrames = stats.droppedFrames;
+                r.vrlinkAvgBitrateMbps = stats.avgBitrateMbps;
+                r.vrlinkMaxLatencyMs = stats.maxLatencyMs;
+            }
         }
+    }
+
+    // GPU — DXGI is lightweight and works without admin. Failures leave
+    // the fields empty, UI renders a dash.
+    {
+        const auto gpu = DetectPrimaryGpu();
+        r.gpuName = gpu.name;
+        r.gpuVramBytes = gpu.vramBytes;
     }
 
     // Audio — check for Steam Streaming devices

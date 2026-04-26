@@ -56,3 +56,4 @@ vrcget-bin/
 tools/build-*-force.bat
 tools/build-test-extract.bat
 
+.playwright-mcp/

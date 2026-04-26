@@ -17,6 +17,7 @@ import { FriendDetailDialog } from "@/components/FriendDetailDialog";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { ImageZoom } from "@/components/ImageZoom";
 import { IdBadge } from "@/components/IdBadge";
+import { ThumbImage } from "@/components/ThumbImage";
 
 
 import { ipc } from "@/lib/ipc";
@@ -41,15 +42,33 @@ import {
   trustRank,
   type StatusBucket,
 } from "@/lib/vrcFriends";
+import { useSelfLocation } from "@/lib/useSelfLocation";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ChevronDown,
   ChevronRight,
   LogIn,
+  MailPlus,
+  MoreHorizontal,
   RefreshCcw,
   Search,
   Shield,
   Users,
   Globe2,
+  Home,
   Monitor,
   Smartphone,
   UserRound,
@@ -110,6 +129,102 @@ function FriendAvatar({ friend }: { friend: Friend }) {
 
 // CloneAvatarButton replaced by SmartWearButton
 
+function useFriendActions(friend: Friend, onOpenDetail: (f: Friend) => void) {
+  const { t } = useTranslation();
+  const self = useSelfLocation();
+  const loc = parseLocation(friend.location);
+
+  const doJoin = useCallback(() => {
+    ipc
+      .call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+        url: `vrchat://launch?ref=vrchat.com&id=${friend.location}`,
+      })
+      .catch(console.error);
+  }, [friend.location]);
+
+  const doRequestInvite = useCallback(async () => {
+    try {
+      await ipc.requestInvite(friend.id);
+      toast.success(
+        t("friends.actions.requestInviteSent", {
+          defaultValue: "向 {{name}} 发送了加入请求",
+          name: friend.displayName,
+        }),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [friend.id, friend.displayName, t]);
+
+  const doInviteToMyRoom = useCallback(async () => {
+    if (!self.raw || !self.isInWorld) return;
+    try {
+      await ipc.inviteUser(friend.id, self.raw);
+      toast.success(
+        t("friends.actions.inviteSent", {
+          defaultValue: "已邀请 {{name}} 到你的房间",
+          name: friend.displayName,
+        }),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [friend.id, friend.displayName, self.raw, self.isInWorld, t]);
+
+  const openDetail = useCallback(() => onOpenDetail(friend), [onOpenDetail, friend]);
+
+  return {
+    canJoin: loc.kind === "world" && !!loc.worldId,
+    canRequestInvite: loc.kind === "world" && !!loc.worldId,
+    canInviteToMyRoom: self.isInWorld,
+    doJoin,
+    doRequestInvite,
+    doInviteToMyRoom,
+    openDetail,
+  };
+}
+
+type FriendActions = ReturnType<typeof useFriendActions>;
+
+function FriendMenuItems({
+  actions,
+  MenuItem,
+  MenuSeparator,
+}: {
+  actions: FriendActions;
+  MenuItem: typeof ContextMenuItem | typeof DropdownMenuItem;
+  MenuSeparator: typeof ContextMenuSeparator | typeof DropdownMenuSeparator;
+}) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <MenuItem onSelect={actions.openDetail}>
+        <UserSearch className="size-3.5" />
+        {t("friendDetail.title", { defaultValue: "好友详情" })}
+      </MenuItem>
+      <MenuSeparator />
+      <MenuItem disabled={!actions.canJoin} onSelect={actions.canJoin ? actions.doJoin : undefined}>
+        <Play className="size-3.5" />
+        {t("friends.actions.joinRoom", { defaultValue: "加入房间" })}
+      </MenuItem>
+      <MenuItem
+        disabled={!actions.canRequestInvite}
+        onSelect={actions.canRequestInvite ? actions.doRequestInvite : undefined}
+      >
+        <MailPlus className="size-3.5" />
+        {t("friends.actions.requestInvite", { defaultValue: "申请加入" })}
+      </MenuItem>
+      <MenuItem
+        disabled={!actions.canInviteToMyRoom}
+        onSelect={actions.canInviteToMyRoom ? actions.doInviteToMyRoom : undefined}
+      >
+        <Home className="size-3.5" />
+        {t("friends.actions.inviteToMyRoom", { defaultValue: "邀请到我的房间" })}
+      </MenuItem>
+    </>
+  );
+}
+
 const FriendRow = memo(function FriendRow({
   friend,
   colocatedFriends = [],
@@ -121,6 +236,7 @@ const FriendRow = memo(function FriendRow({
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const actions = useFriendActions(friend, onOpenDetail);
 
   const loc = parseLocation(friend.location);
   const PlatformIcon = platformIcon(friend.last_platform);
@@ -155,52 +271,23 @@ const FriendRow = memo(function FriendRow({
   })();
 
   const lastSeen = relativeTime(friend.last_login || friend.last_activity);
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
 
   return (
-    <div
-      className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] hover:border-[hsl(var(--border-strong))]"
-      onContextMenu={(e) => {
-        e.preventDefault();
-        setCtxMenu({ x: e.clientX, y: e.clientY });
-      }}
-    >
-      {ctxMenu ? (
-        <>
-          <div className="fixed inset-0 z-50" onClick={() => setCtxMenu(null)} />
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] hover:border-[hsl(var(--border-strong))]">
           <div
-            className="fixed z-50 min-w-[160px] rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-1 shadow-lg backdrop-blur-md"
-            style={{ left: ctxMenu.x, top: ctxMenu.y }}
+            role="button"
+            tabIndex={0}
+            onClick={() => setExpanded((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setExpanded((v) => !v);
+              }
+            }}
+            className="flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left"
           >
-            {loc.kind === "world" && loc.worldId && (
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-1.5 text-[11px] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]"
-                onClick={() => {
-                  void ipc.call("shell.openUrl", { url: `vrchat://launch?ref=vrchat.com&id=${friend.location}` });
-                  setCtxMenu(null);
-                }}
-              >
-                <Play className="size-3" />
-                {t("friendDetail.joinInstance", { defaultValue: "Join Instance" })}
-              </button>
-            )}
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-1.5 text-[11px] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]"
-              onClick={() => { onOpenDetail(friend); setCtxMenu(null); }}
-            >
-              <UserSearch className="size-3" />
-              {t("friendDetail.title", { defaultValue: "Friend Details" })}
-            </button>
-          </div>
-        </>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-3 px-3 py-2 text-left"
-      >
         {expanded ? (
           <ChevronDown className="size-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
         ) : (
@@ -225,7 +312,9 @@ const FriendRow = memo(function FriendRow({
               variant={statusColor(statusBucket(friend.status))}
               className="h-4 rounded-full px-1.5 text-[9.5px] uppercase"
             >
-              {friend.status ?? "unknown"}
+              {t(`friends.bucket.${statusBucket(friend.status)}`, {
+                defaultValue: friend.status ?? "unknown",
+              })}
             </Badge>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -255,7 +344,27 @@ const FriendRow = memo(function FriendRow({
             ) : null}
           </div>
         </div>
-      </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={t("friends.actions.menu", { defaultValue: "操作" })}
+            >
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <FriendMenuItems
+              actions={actions}
+              MenuItem={DropdownMenuItem}
+              MenuSeparator={DropdownMenuSeparator}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+          </div>
       {expanded ? (
         <div className="border-t border-[hsl(var(--border))] px-3 py-2.5">
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px]">
@@ -280,15 +389,14 @@ const FriendRow = memo(function FriendRow({
                 <div className="flex items-center gap-2">
                   {friend.currentAvatarThumbnailImageUrl ? (
                     <div className="size-7 shrink-0 overflow-hidden rounded border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
-                      <img
+                      <ThumbImage
                         src={friend.currentAvatarThumbnailImageUrl}
+                        seedKey={friend.currentAvatarId ?? friend.id}
+                        label={friend.currentAvatarName ?? friend.displayName}
                         alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
+                        className="h-full w-full border-0"
+                        aspect=""
+                        rounded=""
                       />
                     </div>
                   ) : null}
@@ -369,15 +477,18 @@ const FriendRow = memo(function FriendRow({
                     className="flex w-fit items-center gap-2 hover:bg-[hsl(var(--muted))] rounded pr-2 py-0.5"
                   >
                     <div className="relative size-4 shrink-0 overflow-hidden rounded shadow-sm">
-                      <img
+                      <ThumbImage
                         src={
                           cf.profilePicOverride ||
                           cf.currentAvatarThumbnailImageUrl ||
                           ""
                         }
-                        className="h-full w-full object-cover"
-                        loading="lazy"
+                        seedKey={cf.id}
+                        label={cf.displayName}
                         alt=""
+                        className="h-full w-full border-0"
+                        aspect=""
+                        rounded=""
                       />
                     </div>
                     <span className="text-[11px] font-medium text-[hsl(var(--foreground))]">
@@ -423,7 +534,16 @@ const FriendRow = memo(function FriendRow({
           </div>
         </div>
       ) : null}
-    </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <FriendMenuItems
+          actions={actions}
+          MenuItem={ContextMenuItem}
+          MenuSeparator={ContextMenuSeparator}
+        />
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });
 

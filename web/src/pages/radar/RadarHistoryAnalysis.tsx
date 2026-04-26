@@ -3,7 +3,7 @@
  * Extracted from the monolithic Radar.tsx.
  */
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -287,30 +287,54 @@ export function RadarHistoryAnalysis() {
     };
   }, [sessions, authStatus.userId, authStatus.displayName]);
 
+  // Already-attempted ids live outside the effect so each successful tag
+  // write does NOT tear the queue down and resubmit. The previous version
+  // depended on `playerTags` and restarted on every state update, which
+  // both wasted IPC and could miss already-finished work.
+  const attemptedTagIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
-    const candidates = new Set<string>();
+    const candidates: string[] = [];
     for (const s of sessions) {
       for (const p of s.players) {
-        if (p.userId && p.userId.startsWith("usr_") && !playerTags[p.userId]) {
-          candidates.add(p.userId);
+        if (
+          p.userId
+          && p.userId.startsWith("usr_")
+          && !playerTags[p.userId]
+          && !attemptedTagIdsRef.current.has(p.userId)
+        ) {
+          attemptedTagIdsRef.current.add(p.userId);
+          candidates.push(p.userId);
         }
       }
     }
-    if (candidates.size === 0) return;
+    if (candidates.length === 0) return;
     let alive = true;
-    const list = Array.from(candidates).slice(0, 24);
-    for (const uid of list) {
-      void ipc
-        .call<{ userId: string }, { profile: any }>("user.getProfile", { userId: uid })
-        .then((res) => {
-          if (!alive) return;
-          const tags = res?.profile?.tags;
-          if (tags && Array.isArray(tags)) {
-            setPlayerTags((prev) => (prev[uid] ? prev : { ...prev, [uid]: tags }));
-          }
-        })
-        .catch(() => undefined);
-    }
+    // Concurrency-limited queue over ALL candidates instead of slice(0, 24).
+    const queue = candidates;
+    const MAX_INFLIGHT = 4;
+    let inflight = 0;
+    const pump = () => {
+      while (alive && inflight < MAX_INFLIGHT && queue.length > 0) {
+        const uid = queue.shift()!;
+        inflight += 1;
+        void ipc
+          .call<{ userId: string }, { profile: any }>("user.getProfile", { userId: uid })
+          .then((res) => {
+            if (!alive) return;
+            const tags = res?.profile?.tags;
+            if (tags && Array.isArray(tags)) {
+              setPlayerTags((prev) => (prev[uid] ? prev : { ...prev, [uid]: tags }));
+            }
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            inflight -= 1;
+            if (alive) pump();
+          });
+      }
+    };
+    pump();
     return () => {
       alive = false;
     };
@@ -449,10 +473,21 @@ export function RadarHistoryAnalysis() {
             <ul className="divide-y divide-[hsl(var(--border)/0.4)]">
               {sessions.map((session, idx) => {
                 const isOpen = expanded[session.id] ?? false;
-                const isOngoing = idx === 0 && session.endMs === null;
+                // A session lacking endMs is only "ongoing" if it's the most
+                // recent AND not stale. VRChat crashes/SIGKILLs leave the log
+                // unterminated, which would otherwise make every reopened app
+                // show a multi-day "ongoing" session that fakes the duration
+                // against Date.now(). Cap at 4h since user inactivity that
+                // long without a fresh log line means VRC isn't actually live.
+                const STALE_OPEN_MS = 4 * 60 * 60_000;
+                const noEnd = session.endMs === null;
+                const isStaleOpen =
+                  noEnd && session.startMs !== null
+                    && Date.now() - session.startMs > STALE_OPEN_MS;
+                const isOngoing = idx === 0 && noEnd && !isStaleOpen;
                 const durationMs =
                   session.startMs !== null
-                    ? (session.endMs ?? Date.now()) - session.startMs
+                    ? (session.endMs ?? (isStaleOpen ? session.startMs : Date.now())) - session.startMs
                     : 0;
                 return (
                   <li key={session.id} className="flex flex-col">
@@ -484,6 +519,10 @@ export function RadarHistoryAnalysis() {
                           {isOngoing ? (
                             <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[9px]">
                               {t("radar.analysis.ongoing", { defaultValue: "Ongoing" })}
+                            </Badge>
+                          ) : isStaleOpen ? (
+                            <Badge variant="outline" className="text-[9px] text-[hsl(var(--muted-foreground))]">
+                              {t("radar.analysis.unclosed", { defaultValue: "Unclosed" })}
                             </Badge>
                           ) : null}
                         </div>

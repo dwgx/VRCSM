@@ -58,9 +58,16 @@ nlohmann::json IpcBridge::HandleSteamVrWrite(const nlohmann::json& params, const
         throw std::runtime_error("SteamVR settings file not found.");
     }
 
-    vrcsm::core::SteamVrConfig::Write(*path, params);
+    auto res = vrcsm::core::SteamVrConfig::Write(*path, params);
+    if (res.is_object() && res.contains("error")) {
+        // Surface the failure to the frontend so the toast is accurate instead
+        // of silently claiming success.
+        const auto& err = res["error"];
+        const std::string msg = err.value("message", "SteamVR write failed");
+        throw std::runtime_error(msg);
+    }
     return nlohmann::json{
-        {"success", true},
+        {"ok", true},
         {"message", "SteamVR settings written successfully."}
     };
 }

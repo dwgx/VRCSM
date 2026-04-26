@@ -121,6 +121,7 @@ export function useFriendsPipelineSync() {
                     author_name: details.details?.authorName,
                     release_status: details.details?.releaseStatus,
                     first_seen_on: patch.displayName ?? userId,
+                    first_seen_user_id: userId,
                   });
                 } catch {
                   // Even without release_status, record the sighting
@@ -128,6 +129,7 @@ export function useFriendsPipelineSync() {
                     avatar_id: avatarId,
                     avatar_name: avatarName,
                     first_seen_on: patch.displayName ?? userId,
+                    first_seen_user_id: userId,
                   }).catch(() => {});
                 }
               })();

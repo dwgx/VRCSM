@@ -12,6 +12,12 @@ class IpcBridge;
 // after dispatch. Must be ≤ WM_APP + 0x3FFF.
 inline constexpr UINT WM_APP_POST_WEB_MESSAGE = WM_APP + 1;
 
+// Posted from a worker thread after the file-deletion phase of factory
+// reset completes. The UI-thread handler runs ClearVrcCookies (a COM call
+// that must execute on the WebView2 apartment) and then posts WM_QUIT so
+// the next launch starts from a clean slate. WParam/LParam unused.
+inline constexpr UINT WM_APP_FACTORY_RESET_QUIT = WM_APP + 2;
+
 // Marshalled payload for WM_APP_POST_WEB_MESSAGE. `targetPluginId`
 // is non-empty only when the message should go to a specific plugin
 // iframe; otherwise DeliverWebMessage falls back to the top-level

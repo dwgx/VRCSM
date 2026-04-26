@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ipc, type CalendarEvent } from "@/lib/ipc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ThumbImage } from "@/components/ThumbImage";
 
 // VRChat-official upcoming events tile. Read-only for v0.11 — clicking
 // an event opens the event's landing page in the browser (VRChat has no
@@ -91,11 +92,14 @@ export function CalendarTile() {
               }}
             >
               {thumb ? (
-                <img
+                <ThumbImage
                   src={thumb}
+                  seedKey={e.worldId ?? e.id ?? String(i)}
+                  label={e.name ?? t("calendar.untitledEvent")}
                   alt=""
-                  className="w-10 h-10 rounded object-cover shrink-0"
-                  loading="lazy"
+                  className="h-10 w-10 shrink-0"
+                  aspect=""
+                  rounded="rounded"
                 />
               ) : (
                 <div className="w-10 h-10 rounded bg-[hsl(var(--muted))] shrink-0" />

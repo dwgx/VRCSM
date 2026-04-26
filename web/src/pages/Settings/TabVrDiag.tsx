@@ -5,7 +5,7 @@ import { ipc } from "@/lib/ipc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Wifi, Volume2, AlertTriangle, CheckCircle2, RefreshCcw } from "lucide-react";
+import { Activity, Wifi, Volume2, AlertTriangle, CheckCircle2, RefreshCcw, Cpu } from "lucide-react";
 
 interface DiagResult {
   adapters: Array<{ name: string; description: string; ipAddress: string; isVirtual: boolean; isUp: boolean }>;
@@ -16,12 +16,27 @@ interface DiagResult {
   preferredRefreshRate: number;
   supersampleScale: number;
   targetBandwidth: number;
+  motionSmoothing: boolean;
+  allowSupersampleFiltering: boolean;
+  preferredCodec: string;
+  gpuName: string;
+  gpuVramBytes: number;
+  gpuDriverVersion: string;
   defaultPlaybackDevice: string;
   defaultRecordingDevice: string;
   steamSpeakersFound: boolean;
   steamMicFound: boolean;
   vrlinkErrors: string[];
   vrlinkBadLinkEvents: number;
+  vrlinkDroppedFrames: number;
+  vrlinkAvgBitrateMbps: number;
+  vrlinkMaxLatencyMs: number;
+}
+
+function formatVram(bytes: number): string {
+  if (!bytes) return "—";
+  const gb = bytes / (1024 * 1024 * 1024);
+  return gb >= 1 ? `${gb.toFixed(1)} GiB` : `${(bytes / (1024 * 1024)).toFixed(0)} MiB`;
 }
 
 export function TabVrDiag() {
@@ -108,8 +123,49 @@ export function TabVrDiag() {
               {result.targetBandwidth > 0 && (
                 <div className="flex justify-between"><span>Target Bandwidth</span><span>{result.targetBandwidth} Mbps</span></div>
               )}
+              <div className="flex justify-between">
+                <span>Motion Smoothing</span>
+                <span>{result.motionSmoothing ? "On" : "Off"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Supersample Filtering</span>
+                <span>{result.allowSupersampleFiltering ? "On" : "Off"}</span>
+              </div>
+              {result.preferredCodec && (
+                <div className="flex justify-between"><span>Preferred Codec</span><span>{result.preferredCodec}</span></div>
+              )}
             </CardContent>
           </Card>
+
+          {/* GPU */}
+          {(result.gpuName || result.gpuVramBytes > 0) && (
+            <Card className="unity-panel">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[12px] font-mono uppercase tracking-wider flex items-center gap-2">
+                  <Cpu className="size-3" />
+                  GPU
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-1 text-[11px] font-mono">
+                {result.gpuName && (
+                  <div className="flex justify-between gap-3">
+                    <span>Adapter</span>
+                    <span className="text-right">{result.gpuName}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>VRAM</span>
+                  <span>{formatVram(result.gpuVramBytes)}</span>
+                </div>
+                {result.gpuDriverVersion && (
+                  <div className="flex justify-between">
+                    <span>Driver</span>
+                    <span>{result.gpuDriverVersion}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Network */}
           <Card className="unity-panel">
@@ -183,6 +239,40 @@ export function TabVrDiag() {
               )}
             </CardContent>
           </Card>
+
+          {/* vrlink link quality */}
+          {(result.vrlinkAvgBitrateMbps > 0 ||
+            result.vrlinkMaxLatencyMs > 0 ||
+            result.vrlinkDroppedFrames > 0) && (
+            <Card className="unity-panel">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[12px] font-mono uppercase tracking-wider flex items-center gap-2">
+                  <Activity className="size-3" />
+                  {t("settings.vrDiag.linkQuality", { defaultValue: "Link Quality" })}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-1 text-[11px] font-mono">
+                {result.vrlinkAvgBitrateMbps > 0 && (
+                  <div className="flex justify-between">
+                    <span>{t("settings.vrDiag.avgBitrate", { defaultValue: "Avg Bitrate" })}</span>
+                    <span>{result.vrlinkAvgBitrateMbps.toFixed(1)} Mbps</span>
+                  </div>
+                )}
+                {result.vrlinkMaxLatencyMs > 0 && (
+                  <div className="flex justify-between">
+                    <span>{t("settings.vrDiag.maxLatency", { defaultValue: "Max Latency" })}</span>
+                    <span>{result.vrlinkMaxLatencyMs.toFixed(1)} ms</span>
+                  </div>
+                )}
+                {result.vrlinkDroppedFrames > 0 && (
+                  <div className="flex justify-between">
+                    <span>{t("settings.vrDiag.droppedFrames", { defaultValue: "Dropped Frames" })}</span>
+                    <Badge variant="destructive">{result.vrlinkDroppedFrames}</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* vrlink errors */}
           {result.vrlinkErrors.length > 0 && (
