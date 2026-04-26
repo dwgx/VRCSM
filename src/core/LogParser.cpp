@@ -6,6 +6,7 @@
 #include <cctype>
 #include <fstream>
 #include <regex>
+#include <spdlog/spdlog.h>
 #include <system_error>
 #include <unordered_map>
 #include <unordered_set>
@@ -648,7 +649,10 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
     if (!report.settings.cache_size_mb && std::regex_search(line, m, kCacheSizeRe))
     {
         try { report.settings.cache_size_mb = std::stoi(m[1]); }
-        catch (...) {}
+        catch (const std::exception& ex)
+        {
+            spdlog::debug("LogParser: failed to parse cache size '{}': {}", m[1].str(), ex.what());
+        }
     }
     if (!report.settings.clear_cache_on_start && std::regex_search(line, m, kClearCacheRe))
     {

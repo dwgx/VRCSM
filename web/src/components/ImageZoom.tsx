@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Copy, Download, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -18,6 +19,7 @@ interface ImageZoomProps {
 }
 
 export function ImageZoom({ src, alt, className, imgClassName, children }: ImageZoomProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -44,8 +46,12 @@ export function ImageZoom({ src, alt, className, imgClassName, children }: Image
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-[90vw] w-fit p-0 gap-0 overflow-hidden border-[hsl(var(--border-strong))]">
-          <DialogTitle className="sr-only">{alt || "Image preview"}</DialogTitle>
-          <DialogDescription className="sr-only">Full size image preview</DialogDescription>
+          <DialogTitle className="sr-only">
+            {alt || t("imageZoom.previewTitle", { defaultValue: "Image preview" })}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            {alt || t("imageZoom.previewTitle", { defaultValue: "Image preview" })}
+          </DialogDescription>
 
           {/* Image */}
           <div className="relative flex items-center justify-center bg-black/40 min-h-[200px]">
@@ -66,10 +72,10 @@ export function ImageZoom({ src, alt, className, imgClassName, children }: Image
                 type="button"
                 onClick={() => {
                   void navigator.clipboard.writeText(src);
-                  toast.success("URL copied");
+                  toast.success(t("common.copied", { defaultValue: "Copied" }));
                 }}
                 className="rounded-[var(--radius-sm)] p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))] hover:text-[hsl(var(--foreground))] transition-colors"
-                title="Copy URL"
+                title={t("common.copy", { defaultValue: "Copy" })}
               >
                 <Copy className="size-3.5" />
               </button>
@@ -79,7 +85,7 @@ export function ImageZoom({ src, alt, className, imgClassName, children }: Image
                 rel="noopener noreferrer"
                 download
                 className="rounded-[var(--radius-sm)] p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))] hover:text-[hsl(var(--foreground))] transition-colors"
-                title="Download"
+                title={t("updates.download", { defaultValue: "Download" })}
               >
                 <Download className="size-3.5" />
               </a>
@@ -88,7 +94,9 @@ export function ImageZoom({ src, alt, className, imgClassName, children }: Image
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-[var(--radius-sm)] p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))] hover:text-[hsl(var(--foreground))] transition-colors"
-                title="Open in browser"
+                title={t("common.openInBrowser", {
+                  defaultValue: "Open in browser",
+                })}
               >
                 <ExternalLink className="size-3.5" />
               </a>

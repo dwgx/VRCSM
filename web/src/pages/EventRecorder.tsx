@@ -123,7 +123,7 @@ export default function EventRecorder() {
       );
       setActiveId(r.id);
       setNewName("");
-      toast.success("Recording started");
+      toast.success(t("common.done", { defaultValue: "Done" }));
       void refresh();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
   }
@@ -133,7 +133,7 @@ export default function EventRecorder() {
     try {
       await ipc.eventStop(activeId);
       setActiveId(null);
-      toast.success("Recording stopped");
+      toast.success(t("common.done", { defaultValue: "Done" }));
       void refresh();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
   }
@@ -151,10 +151,16 @@ export default function EventRecorder() {
         <CardContent className="p-3 flex items-center gap-2">
           {activeId ? (
             <>
-              <Badge variant="destructive" className="animate-pulse">REC</Badge>
-              <span className="text-[12px] flex-1">Recording #{activeId} in progress...</span>
+              <Badge variant="destructive" className="animate-pulse">
+                {t("common.live", { defaultValue: "Live" })}
+              </Badge>
+              <span className="text-[12px] flex-1">
+                {t("eventRecorder.recording", {
+                  defaultValue: "Recording in progress...",
+                })}
+              </span>
               <Button size="sm" variant="destructive" onClick={() => void stopRec()}>
-                <Square className="size-3" /> Stop
+                <Square className="size-3" /> {t("eventRecorder.stopRecording", { defaultValue: "Stop" })}
               </Button>
             </>
           ) : (
@@ -162,12 +168,14 @@ export default function EventRecorder() {
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Event name..."
+                placeholder={t("eventRecorder.namePlaceholder", {
+                  defaultValue: "Event name...",
+                })}
                 className="h-7 text-[12px] flex-1"
                 onKeyDown={(e) => { if (e.key === "Enter") void startRec(); }}
               />
               <Button size="sm" onClick={() => void startRec()} disabled={!newName.trim()}>
-                <CircleDot className="size-3" /> Start Recording
+                <CircleDot className="size-3" /> {t("eventRecorder.startRecording", { defaultValue: "Start Recording" })}
               </Button>
             </>
           )}
@@ -206,7 +214,11 @@ export default function EventRecorder() {
                 <div className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono flex gap-2">
                   <span><Users className="inline size-2.5" /> {rec.attendee_count}</span>
                   <span><Clock className="inline size-2.5" /> {new Date(rec.started_at).toLocaleString()}</span>
-                  {!rec.ended_at && <Badge variant="destructive" className="text-[8px]">LIVE</Badge>}
+                  {!rec.ended_at && (
+                    <Badge variant="destructive" className="text-[8px]">
+                      {t("common.live", { defaultValue: "Live" })}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </button>

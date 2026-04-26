@@ -5,6 +5,7 @@
 #include "ProcessGuard.h"
 
 #include <fstream>
+#include <spdlog/spdlog.h>
 #include <sstream>
 #include <system_error>
 
@@ -29,7 +30,11 @@ Result<nlohmann::json> VrcConfig::Read(const std::filesystem::path& configPath)
         if (std::filesystem::exists(backupPath, ec) && !ec) {
             auto bContent = read_from(backupPath);
             if (bContent && !bContent->empty()) {
-                try { return nlohmann::json::parse(*bContent); } catch (...) {}
+                try { return nlohmann::json::parse(*bContent); }
+                catch (const std::exception& ex)
+                {
+                    spdlog::debug("VrcConfig: failed to parse backup config '{}': {}", backupPath.string(), ex.what());
+                }
             }
         }
         return Error{"not_found", "Config file not found"};
@@ -56,7 +61,11 @@ Result<nlohmann::json> VrcConfig::Read(const std::filesystem::path& configPath)
         backupPath += L".bak";
         auto bContent = read_from(backupPath);
         if (bContent && !bContent->empty()) {
-            try { return nlohmann::json::parse(*bContent); } catch (...) {}
+            try { return nlohmann::json::parse(*bContent); }
+            catch (const std::exception& backupEx)
+            {
+                spdlog::debug("VrcConfig: failed to parse backup config '{}': {}", backupPath.string(), backupEx.what());
+            }
         }
         return Error{"parse_failed", ex.what()};
     }

@@ -8,6 +8,7 @@
 #include <unordered_set>
 
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 namespace vrcsm::core
 {
@@ -72,8 +73,10 @@ LocalAvatarItem parseAvatarFile(const std::filesystem::path& usrDir, const std::
             item.parameter_count = data["animationParameters"].size();
         }
     }
-    catch (...)
+    catch (const std::exception& ex)
     {
+        spdlog::debug("AvatarData: failed to parse {}: {}",
+                      toUtf8(avtrFile.wstring()), ex.what());
     }
 
     return item;

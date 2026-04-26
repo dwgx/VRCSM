@@ -170,14 +170,50 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
     {
         // Factory reset finished file deletion on a worker thread.
         // Run the WebView2-bound cookie clear here (UI thread / COM
-        // apartment), then exit so the next launch picks up a fresh
-        // appDataRoot. Without this, the app keeps running with stale
-        // singletons referencing deleted files and the next start can
-        // hang on the inconsistent WebView2 profile.
+        // apartment), schedule a self-relaunch, then exit so the
+        // user lands back in a freshly-initialized VRCSM without
+        // having to manually click the desktop icon again.
         if (m_webViewHost != nullptr)
         {
             m_webViewHost->ClearVrcCookies();
         }
+
+        // Spawn a detached cmd helper that waits a couple of seconds
+        // for our process (and the WebView2 service process it owns)
+        // to fully exit and release the file locks on the user-data
+        // folder, then launches a fresh VRCSM.exe. The new process
+        // will pick up the .factory-reset-pending marker in
+        // App::Run::HandlePendingFactoryReset and wipe the WebView2
+        // dir before initializing the new environment. Using
+        // `ping -n 3 127.0.0.1` as the sleep keeps us off Win32-only
+        // `timeout`, which behaves oddly under DETACHED_PROCESS.
+        wchar_t exePath[MAX_PATH]{};
+        if (GetModuleFileNameW(nullptr, exePath, MAX_PATH) > 0)
+        {
+            std::wstring cmdLine = L"cmd.exe /c ping -n 3 127.0.0.1 >nul && start \"\" \"";
+            cmdLine += exePath;
+            cmdLine += L"\"";
+
+            STARTUPINFOW si{};
+            si.cb = sizeof(si);
+            PROCESS_INFORMATION pi{};
+            if (CreateProcessW(
+                    nullptr,
+                    cmdLine.data(),
+                    nullptr,
+                    nullptr,
+                    FALSE,
+                    CREATE_NO_WINDOW | DETACHED_PROCESS,
+                    nullptr,
+                    nullptr,
+                    &si,
+                    &pi))
+            {
+                CloseHandle(pi.hThread);
+                CloseHandle(pi.hProcess);
+            }
+        }
+
         if (m_hwnd != nullptr && IsWindow(m_hwnd))
         {
             DestroyWindow(m_hwnd);

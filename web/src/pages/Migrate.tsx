@@ -316,7 +316,11 @@ function Migrate() {
         }),
       );
       // Trigger rescan to refresh state
-      try { await ipc.scan(); } catch {}
+      try {
+        await ipc.scan();
+      } catch (scanError) {
+        console.warn("migrate.repair: scan refresh failed", scanError);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(
