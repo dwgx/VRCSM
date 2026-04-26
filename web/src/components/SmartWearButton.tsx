@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogTitle,
 } from "@/components/ui/dialog";
+import { ThumbImage } from "@/components/ThumbImage";
 import { ipc } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
 
@@ -295,8 +296,15 @@ export function SmartWearButton({
               >
                 {alt.thumbnailImageUrl ? (
                   <div className="size-10 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]">
-                    <img src={alt.thumbnailImageUrl} alt="" className="h-full w-full object-cover" loading="lazy"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    <ThumbImage
+                      src={alt.thumbnailImageUrl}
+                      seedKey={alt.id}
+                      label={alt.name}
+                      alt=""
+                      className="h-full w-full border-0"
+                      aspect=""
+                      rounded=""
+                    />
                   </div>
                 ) : (
                   <div className="flex size-10 items-center justify-center rounded-[var(--radius-sm)] bg-[hsl(var(--muted))]">

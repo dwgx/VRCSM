@@ -16,6 +16,33 @@ import {
 } from "@/components/ui/card";
 import { SettingRow } from "./components/SettingRow";
 
+// HMD native per-eye render-target resolution lookup. Steam Link's
+// "Encoder Resolution" number is this × supersampleScale (per eye),
+// which is why that value doesn't appear as a standalone key in
+// steamvr.vrsettings. Numbers are SteamVR render targets (include
+// barrel-distortion padding), not the raw panel pixels.
+const HMD_NATIVE_PER_EYE: Array<{ match: RegExp; w: number; h: number; name: string }> = [
+  { match: /quest\s*3s/i,          w: 1832, h: 1920, name: "Quest 3S" },
+  { match: /quest\s*3/i,           w: 2064, h: 2208, name: "Quest 3" },
+  { match: /quest\s*pro/i,         w: 1800, h: 1920, name: "Quest Pro" },
+  { match: /quest\s*2/i,           w: 1832, h: 1920, name: "Quest 2" },
+  { match: /quest/i,               w: 1440, h: 1600, name: "Quest" },
+  { match: /valve\s*index|index/i, w: 1440, h: 1600, name: "Valve Index" },
+  { match: /pico\s*4/i,            w: 2160, h: 2160, name: "Pico 4" },
+  { match: /pimax\s*crystal/i,     w: 2880, h: 2880, name: "Pimax Crystal" },
+  { match: /vive\s*pro\s*2/i,      w: 2448, h: 2448, name: "Vive Pro 2" },
+  { match: /vive\s*pro/i,          w: 1440, h: 1600, name: "Vive Pro" },
+  { match: /vive/i,                w: 1080, h: 1200, name: "Vive" },
+];
+
+function lookupHmdNative(model: string | undefined | null): { w: number; h: number; name: string } | null {
+  if (!model) return null;
+  for (const entry of HMD_NATIVE_PER_EYE) {
+    if (entry.match.test(model)) return { w: entry.w, h: entry.h, name: entry.name };
+  }
+  return null;
+}
+
 export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
   const { t } = useTranslation();
   const [config, setConfig] = useState<any>(null);
@@ -67,7 +94,13 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
   }
 
   const steamVrProcRunning = config.steamvr_running === true;
-  const locked = vrcRunning || steamVrProcRunning;
+  // Only SteamVR itself blocks a safe write — its rolling autosave
+  // races with our atomic rename. VRChat running is irrelevant when it's
+  // in desktop mode; when it's in VR mode, SteamVR is already up and
+  // steamVrProcRunning covers it. Locking on vrcRunning too was an
+  // overcautious blanket ban that surprised users.
+  const locked = steamVrProcRunning;
+  void vrcRunning;
   const knownDevices: string[] = Array.isArray(config.knownDevices) ? config.knownDevices : [];
 
   const setField = (section: string, key: string, val: any) => {
@@ -268,6 +301,64 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
                {steamvr.allowSupersampleFiltering ? t("settings.steamvr.enabled", { defaultValue: "Enabled" }) : t("settings.steamvr.disabled", { defaultValue: "Disabled" })}
             </Button>
           </SettingRow>
+          {(() => {
+            const native = lookupHmdNative(hw.hmdModel);
+            const scale = Number(steamvr.supersampleScale ?? 1.0);
+            const w = native ? Math.round(native.w * scale) : null;
+            const h = native ? Math.round(native.h * scale) : null;
+            const applyScaleFrom = (targetPixels: number, nativePixels: number) => {
+              if (!native || !targetPixels || Number.isNaN(targetPixels)) return;
+              const raw = targetPixels / nativePixels;
+              const clamped = Math.min(2.0, Math.max(0.5, raw));
+              const snapped = Math.round(clamped * 10) / 10;
+              setField("steamvr", "supersampleScale", snapped);
+            };
+            return (
+              <SettingRow
+                label={t("settings.steamvr.effectiveResolution.label", { defaultValue: "有效渲染分辨率 (每眼)" })}
+                hint={t("settings.steamvr.effectiveResolution.hint", {
+                  defaultValue:
+                    "Steam Link 显示的 Encoder Resolution 就是这个值。改任一字段会反推 Supersampling Scale (0.5–2.0, 步进 0.1)。",
+                })}
+              >
+                {native ? (
+                  <div className="flex items-center gap-1.5 font-mono text-[12px]">
+                    <Input
+                      type="number"
+                      min={Math.round(native.w * 0.5)}
+                      max={Math.round(native.w * 2.0)}
+                      step={Math.round(native.w * 0.1)}
+                      className="w-20 h-7 text-right text-[12px]"
+                      disabled={locked}
+                      value={w ?? 0}
+                      onChange={(e) => applyScaleFrom(Number(e.target.value), native.w)}
+                    />
+                    <span className="text-[hsl(var(--muted-foreground))]">×</span>
+                    <Input
+                      type="number"
+                      min={Math.round(native.h * 0.5)}
+                      max={Math.round(native.h * 2.0)}
+                      step={Math.round(native.h * 0.1)}
+                      className="w-20 h-7 text-right text-[12px]"
+                      disabled={locked}
+                      value={h ?? 0}
+                      onChange={(e) => applyScaleFrom(Number(e.target.value), native.h)}
+                    />
+                    <span
+                      className="ml-1 text-[10px] text-[hsl(var(--muted-foreground))]"
+                      title={`${native.name} native ${native.w}×${native.h} × ${scale.toFixed(2)}×`}
+                    >
+                      {native.name} · {scale.toFixed(2)}×
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[12px] text-[hsl(var(--muted-foreground))]">
+                    {t("settings.steamvr.effectiveResolution.unknown", { defaultValue: "未知 HMD" })}
+                  </span>
+                )}
+              </SettingRow>
+            );
+          })()}
         </div>
       </CardContent>
     </Card>

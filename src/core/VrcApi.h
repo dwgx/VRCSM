@@ -168,6 +168,12 @@ public:
     /// Self-invite to a friend's instance via POST /api/1/invite/myself.
     static Result<nlohmann::json> inviteSelf(const std::string& instanceLocation);
 
+    /// Ask a friend to invite us to their instance via POST
+    /// `/api/1/requestInvite/{userId}`. `requestSlot` is 0 for the default
+    /// "please invite me" message; slots 1-n reference saved canned lines.
+    /// VRChat drops this silently if the target isn't a friend.
+    static Result<nlohmann::json> requestInvite(const std::string& targetUserId, int requestSlot = 0);
+
     /// Add a player moderation (mute or block) via POST /api/1/auth/user/playermoderations.
     static Result<nlohmann::json> addPlayerModeration(const std::string& type, const std::string& targetUserId);
 

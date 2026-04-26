@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { BadgeCheck, Calendar, ExternalLink, Gamepad2, Globe2, Glasses, KeyRound, Languages, Link2, LogIn, Mail, Monitor, RefreshCcw, Shield, ShieldCheck, Shirt, Sword, Users, LibraryBig, Orbit } from "lucide-react";
+import { BadgeCheck, Calendar, ExternalLink, Gamepad2, Globe2, Glasses, KeyRound, Languages, Link2, Loader2, LogIn, Mail, Monitor, RefreshCcw, Shield, ShieldCheck, Shirt, Sword, Users, LibraryBig, Orbit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileCard, type VrcUserProfile, type VrcStatus } from "@/components/ProfileCard";
@@ -486,8 +486,9 @@ export default function Profile() {
       </header>
 
       {loading && !profile ? (
-        <div className="py-12 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
-          {t("common.loading")}
+        <div className="flex items-center justify-center gap-2 py-12 text-[12px] text-[hsl(var(--muted-foreground))]">
+          <Loader2 className="size-4 animate-spin" />
+          <span>{t("common.loading")}</span>
         </div>
       ) : profile ? (
         <div className="flex flex-col gap-4 max-w-4xl">

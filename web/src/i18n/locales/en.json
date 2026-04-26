@@ -145,13 +145,21 @@
     "inviteAccept": "On my way!"
   },
   "friendDetail": {
+    "title": "Friend Details",
     "sendMessage": "Send a message",
     "messagePlaceholder": "Hi! Want to hop into a world?",
     "messageSent": "Message sent",
     "messageHint": "Ctrl+Enter to send. VRChat drops DMs from non-friends.",
     "send": "Send",
     "unfriend": "Unfriend",
-    "unfriended": "Unfriended {{name}}"
+    "unfriended": "Unfriended {{name}}",
+    "block": "Block",
+    "blockConfirmTitle": "Block {{name}}?",
+    "blockConfirmShort": "Block {{name}}? They won't be able to interact with you.",
+    "mute": "Mute",
+    "inviteMe": "Invite Me",
+    "joinInstance": "Join Instance",
+    "notSignedIn": "Sign in to VRChat to view friend details."
   },
   "osc": {
     "title": "OSC Tools",
@@ -325,7 +333,44 @@
     },
     "alsoInInstance": "Also in instance",
     "detailPaneTitle": "Details",
-    "platform": "Platform"
+    "platform": "Platform",
+    "joinRoom": "Join Room",
+    "actions": {
+      "menu": "Actions",
+      "joinRoom": "Join Room",
+      "requestInvite": "Request Invite",
+      "requestInviteSent": "Requested invite from {{name}}",
+      "inviteToMyRoom": "Invite to My Room",
+      "inviteSent": "Invited {{name}} to your room",
+      "sendMessage": "Send Message",
+      "viewProfile": "View Profile"
+    }
+  },
+  "layout": {
+    "switcher": "Switch layout",
+    "default": "Default",
+    "grid3": "3-column grid",
+    "grid2": "2-column grid",
+    "row": "Rows",
+    "list": "List"
+  },
+  "wear": {
+    "btn": "Wear",
+    "resolving": "Finding…",
+    "checking": "Checking…",
+    "wearing": "Wearing…",
+    "done": "Done!",
+    "failed": "Failed",
+    "alternatives": "Alternatives",
+    "success": "Now wearing: {{name}}",
+    "saveToLib": "Save to Library",
+    "saved": "Saved to Library!",
+    "saveFailed": "Could not save to library.",
+    "noAvatar": "Could not find this avatar.",
+    "notCloneable": "This avatar does not allow cloning. No public alternatives found.",
+    "altTitle": "Public Alternatives Found",
+    "altDesc": "The original avatar isn't cloneable. Pick a public alternative below.",
+    "noAlternatives": "No public alternatives found."
   },
   "groups": {
     "subtitle": "Every VRChat group you belong to — sorted by your representative first, then by online activity.",
@@ -1440,14 +1485,18 @@
   },
   "benchmark": {
     "title": "Avatar Performance Benchmark",
-    "desc": "Estimates VRChat performance rank based on synced parameter count. Lower parameter count = better network performance.",
+    "desc": "Estimates VRChat performance rank based on synced parameter count from LocalAvatarData. Lower parameter count = better network performance.",
     "breakdown": "Avatar Breakdown",
     "excellent": "Excellent",
     "good": "Good",
     "medium": "Medium",
     "poor": "Poor",
     "veryPoor": "Very Poor",
-    "empty": "No avatar parameter data found. Run a cache scan from Dashboard first, then revisit this page."
+    "empty": "No avatar parameter data found. Run a cache scan from Dashboard first, then revisit this page.",
+    "myAvatars": "My Avatars",
+    "seenAvatars": "Seen Avatars",
+    "seenTitle": "Avatars Seen on Others",
+    "noSeen": "No avatars recorded yet. VRCSM records avatars seen on other players from VRChat logs and friend activity."
   },
   "fbt": {
     "title": "FBT Calibration Monitor",

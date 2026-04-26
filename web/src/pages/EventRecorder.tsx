@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ipc } from "@/lib/ipc";
@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePipelineEvent } from "@/lib/pipeline-events";
+import { useSelfLocation } from "@/lib/useSelfLocation";
+import { parseLocation } from "@/lib/vrcFriends";
 import { CircleDot, Square, Users, Clock } from "lucide-react";
 
 interface Recording {
@@ -24,6 +26,10 @@ export default function EventRecorder() {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [newName, setNewName] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Local user's current world+instance — used to gate attendee inserts so
+  // recordings only capture people actually in the same room as the user,
+  // not every random user-location event flying past on the global pipeline.
+  const selfLoc = useSelfLocation();
 
   const refresh = useCallback(async () => {
     const r = await ipc.eventList();
@@ -39,8 +45,64 @@ export default function EventRecorder() {
     ).catch(() => {});
   }, [selectedId]);
 
+  // Buffered events that arrived before useSelfLocation() resolved. Without
+  // this, the user-location stream's first ~1-2s of events (often the very
+  // people already in the room when the user opens the recorder) get
+  // dropped silently because selfLoc.isInWorld is still false.
+  type LocEvent = { userId: string; displayName?: string; location?: string };
+  const pendingLocEventsRef = useRef<LocEvent[]>([]);
+  const PENDING_TTL_MS = 10_000;
+  const pendingTimeoutRef = useRef<number | null>(null);
+
+  // Drain the buffer once selfLoc resolves to a world+instance. Apply the
+  // same-instance gate retroactively. We only drain when we have a real
+  // location to compare against — staying offline / in private just means
+  // the events won't match anything and will be discarded by the gate
+  // when the buffer ages out.
+  useEffect(() => {
+    if (!activeId || !selfLoc.isInWorld || !selfLoc.worldId || !selfLoc.instanceId) return;
+    const queued = pendingLocEventsRef.current;
+    if (queued.length === 0) return;
+    pendingLocEventsRef.current = [];
+    if (pendingTimeoutRef.current !== null) {
+      window.clearTimeout(pendingTimeoutRef.current);
+      pendingTimeoutRef.current = null;
+    }
+    for (const ev of queued) {
+      const target = parseLocation(ev.location ?? null);
+      if (target.kind !== "world") continue;
+      if (target.worldId !== selfLoc.worldId || target.instanceId !== selfLoc.instanceId) continue;
+      ipc.eventAddAttendee(activeId, ev.userId, ev.displayName ?? ev.userId).catch(() => {});
+    }
+  }, [activeId, selfLoc.isInWorld, selfLoc.worldId, selfLoc.instanceId]);
+
   usePipelineEvent("user-location", (content: { userId?: string; user?: { displayName?: string }; location?: string }) => {
     if (!activeId || !content?.userId) return;
+    // Buffer events while selfLoc hasn't resolved yet so we don't drop the
+    // initial burst of people already in the room.
+    if (!selfLoc.isInWorld || !selfLoc.worldId || !selfLoc.instanceId) {
+      pendingLocEventsRef.current.push({
+        userId: content.userId,
+        displayName: content.user?.displayName,
+        location: content.location,
+      });
+      // Cap the buffer so a permanently-offline user doesn't accumulate
+      // events forever.
+      if (pendingLocEventsRef.current.length > 200) {
+        pendingLocEventsRef.current.splice(0, pendingLocEventsRef.current.length - 200);
+      }
+      // Auto-clear if we never resolve.
+      if (pendingTimeoutRef.current === null) {
+        pendingTimeoutRef.current = window.setTimeout(() => {
+          pendingLocEventsRef.current = [];
+          pendingTimeoutRef.current = null;
+        }, PENDING_TTL_MS);
+      }
+      return;
+    }
+    const target = parseLocation(content.location ?? null);
+    if (target.kind !== "world") return;
+    if (target.worldId !== selfLoc.worldId || target.instanceId !== selfLoc.instanceId) return;
     const name = content.user?.displayName ?? content.userId;
     ipc.eventAddAttendee(activeId, content.userId, name).catch(() => {});
   });
@@ -48,7 +110,17 @@ export default function EventRecorder() {
   async function startRec() {
     if (!newName.trim()) return;
     try {
-      const r = await ipc.eventStart(newName.trim());
+      // Pass the local user's current world+instance so the recording row
+      // is anchored to a known room. If the user starts a recording while
+      // outside any world, the row is created with empty location and the
+      // attendee gate will simply never match anything until selfLoc
+      // catches up — that's fine because the room of record is whatever
+      // the user was in when they hit start.
+      const r = await ipc.eventStart(
+        newName.trim(),
+        selfLoc.worldId ?? undefined,
+        selfLoc.instanceId ?? undefined,
+      );
       setActiveId(r.id);
       setNewName("");
       toast.success("Recording started");

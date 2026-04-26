@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
   Globe2,
+  Loader2,
   Search,
   Shirt,
   Trash2,
@@ -372,6 +373,10 @@ function Logs() {
     });
     return () => {
       off();
+      // Drop our refcount on the shared log tailer so navigating away from
+      // this page tears it down only when no other subscriber (e.g. radar)
+      // is also using it.
+      void ipc.call("logs.stream.stop").catch(() => undefined);
       if (flushTimerRef.current !== null) {
         window.clearTimeout(flushTimerRef.current);
         flushTimerRef.current = null;
@@ -383,32 +388,56 @@ function Logs() {
 
   const worldNames = logs?.world_names ?? {};
 
-  const timeline = useMemo<TimelineEvent[]>(() => {
+  // Stable historical timeline — only rebuilds when the parsed log report or
+  // world-name lookup changes. The previous implementation sorted the entire
+  // history + live deltas on every flush, making live tail cost O(N log N)
+  // against the full session length.
+  const historicalTimeline = useMemo<TimelineEvent[]>(() => {
     if (!logs) return [];
-
     const events: TimelineEvent[] = [];
-
-    for (const ev of logs.player_events.concat(livePlayer)) {
-      events.push(playerToTimeline(ev));
-    }
-    for (const ev of logs.avatar_switches.concat(liveSwitch)) {
-      events.push(avatarToTimeline(ev));
-    }
-    for (const ev of logs.screenshots.concat(liveScreenshot)) {
-      events.push(screenshotToTimeline(ev));
-    }
+    for (const ev of logs.player_events) events.push(playerToTimeline(ev));
+    for (const ev of logs.avatar_switches) events.push(avatarToTimeline(ev));
+    for (const ev of logs.screenshots) events.push(screenshotToTimeline(ev));
     for (const ev of logs.world_switches ?? []) {
       const te = worldToTimeline(ev);
-      // Resolve world names
       const name = worldNames[ev.world_id];
       if (name) te.title = name;
       events.push(te);
     }
-
-    // Sort newest first
     events.sort((a, b) => b.sortKey - a.sortKey);
     return events;
-  }, [logs, livePlayer, liveSwitch, liveScreenshot, worldNames]);
+  }, [logs, worldNames]);
+
+  // Live deltas projected to TimelineEvent. Tiny in size (current session),
+  // sorted on its own so we don't disturb `historicalTimeline`.
+  const liveTimeline = useMemo<TimelineEvent[]>(() => {
+    const events: TimelineEvent[] = [];
+    for (const ev of livePlayer) events.push(playerToTimeline(ev));
+    for (const ev of liveSwitch) events.push(avatarToTimeline(ev));
+    for (const ev of liveScreenshot) events.push(screenshotToTimeline(ev));
+    events.sort((a, b) => b.sortKey - a.sortKey);
+    return events;
+  }, [livePlayer, liveSwitch, liveScreenshot]);
+
+  // Merge: live (newest, at top) + historical (already sorted). Live size is
+  // bounded by current session, historical by parsed log cap, so this is at
+  // worst a single pass. We keep them merged with a single sort over both
+  // arrays only because live events can land out-of-order across kinds.
+  const timeline = useMemo<TimelineEvent[]>(() => {
+    if (liveTimeline.length === 0) return historicalTimeline;
+    if (historicalTimeline.length === 0) return liveTimeline;
+    // Both are pre-sorted desc by sortKey — n-way merge.
+    const out: TimelineEvent[] = new Array(liveTimeline.length + historicalTimeline.length);
+    let i = 0, j = 0, k = 0;
+    while (i < liveTimeline.length && j < historicalTimeline.length) {
+      out[k++] = liveTimeline[i].sortKey >= historicalTimeline[j].sortKey
+        ? liveTimeline[i++]
+        : historicalTimeline[j++];
+    }
+    while (i < liveTimeline.length) out[k++] = liveTimeline[i++];
+    while (j < historicalTimeline.length) out[k++] = historicalTimeline[j++];
+    return out;
+  }, [historicalTimeline, liveTimeline]);
 
   const filteredTimeline = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
@@ -526,8 +555,9 @@ function Logs() {
   if (loading && !logs) {
     return (
       <Card>
-        <CardContent className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">
-          {t("logs.scanning")}
+        <CardContent className="flex items-center justify-center gap-2 py-10 text-sm text-[hsl(var(--muted-foreground))]">
+          <Loader2 className="size-4 animate-spin" />
+          <span>{t("logs.scanning")}</span>
         </CardContent>
       </Card>
     );

@@ -34,6 +34,14 @@ struct VrDiagResult
     int preferredRefreshRate{0};
     double supersampleScale{0};
     int targetBandwidth{0};
+    bool motionSmoothing{false};
+    bool allowSupersampleFiltering{false};
+    std::string preferredCodec;
+
+    // GPU (via DXGI)
+    std::string gpuName;
+    uint64_t gpuVramBytes{0};
+    std::string gpuDriverVersion; // may be empty
 
     // Audio
     std::string defaultPlaybackDevice;
@@ -44,6 +52,9 @@ struct VrDiagResult
     // vrlink
     std::vector<std::string> vrlinkErrors;
     int vrlinkBadLinkEvents{0};
+    int vrlinkDroppedFrames{0};
+    double vrlinkAvgBitrateMbps{0};
+    double vrlinkMaxLatencyMs{0};
 };
 
 void to_json(nlohmann::json& j, const VrDiagResult& r);

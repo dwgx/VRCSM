@@ -179,13 +179,14 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
     setFactoryResetting(true);
     try {
       await ipc.call("app.factoryReset");
+      // The host process will exit immediately after this returns
+      // (WM_APP_FACTORY_RESET_QUIT is posted from the C++ handler so
+      // background workers + DB get torn down cleanly before exit).
+      // Trying to reload would race against window destruction; just
+      // tell the user to relaunch.
       toast.success(t("settings.app.factoryResetOkToast", {
-        defaultValue: "VRCSM has been reset. Wait a moment...",
+        defaultValue: "VRCSM has been reset. Please reopen the app.",
       }));
-      // Use absolute replace instead of reload — avoids ERR_FILE_NOT_FOUND if
-      // the current location is a preview.local / plugin iframe URL that the
-      // reset just invalidated.
-      setTimeout(() => window.location.replace("https://app.vrcsm/"), 1500);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(t("settings.app.factoryResetFailed", {

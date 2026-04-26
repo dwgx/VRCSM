@@ -29,10 +29,22 @@ interface IpcResponse {
 }
 
 type CacheEntry =
-  | { state: "resolved"; url: string | null }
+  | { state: "resolved"; url: string | null; expiresAt: number }
   | { state: "pending"; promise: Promise<string | null> };
 
 const memo = new Map<string, CacheEntry>();
+
+// A successful URL never expires (the resolved CDN URL doesn't move within a
+// session). A negative result (genuinely not-found) is cached for 5 min so
+// signing in / privacy changes don't keep showing a stale empty tile forever.
+// A transient IPC/network failure is NOT cached — every subsequent useThumbnail
+// call will retry, instead of the old "miss once, dark forever" behaviour.
+const NEG_TTL_MS = 5 * 60_000;
+const FOREVER = Number.POSITIVE_INFINITY;
+
+function isResolvedFresh(e: CacheEntry, now: number): e is { state: "resolved"; url: string | null; expiresAt: number } {
+  return e.state === "resolved" && e.expiresAt > now;
+}
 
 // Generation counter + listeners let mounted `useThumbnail` hooks re-run
 // their fetch effect after something clears the cache. Without this,
@@ -71,27 +83,40 @@ function isLookupSupported(id: string): boolean {
 }
 
 function fetchOne(id: string): Promise<string | null> {
+  const now = Date.now();
   const hit = memo.get(id);
   if (hit) {
-    if (hit.state === "resolved") return Promise.resolve(hit.url);
-    return hit.promise;
+    if (hit.state === "pending") return hit.promise;
+    if (isResolvedFresh(hit, now)) return Promise.resolve(hit.url);
+    // Expired negative-cache entry — fall through and re-fetch.
   }
   if (!isLookupSupported(id)) {
-    memo.set(id, { state: "resolved", url: null });
+    memo.set(id, { state: "resolved", url: null, expiresAt: FOREVER });
     return Promise.resolve(null);
   }
   const promise = ipc
     .call<{ ids: string[] }, IpcResponse>("thumbnails.fetch", { ids: [id] })
     .then((resp) => {
       const row = resp.results.find((r) => r.id === id) ?? resp.results[0];
+      const hadError = !!row?.error;
       const url = row?.url ?? null;
-      memo.set(id, { state: "resolved", url });
+      if (hadError) {
+        // Backend reported a transient failure (network, 5xx). Don't poison
+        // the cache — drop the entry so the next useThumbnail tries again.
+        memo.delete(id);
+      } else {
+        memo.set(id, {
+          state: "resolved",
+          url,
+          expiresAt: url ? FOREVER : Date.now() + NEG_TTL_MS,
+        });
+      }
       return url;
     })
     .catch(() => {
-      // On network / IPC failure, cache a null so we don't retry storm.
-      // The user can invalidate by refreshing the app.
-      memo.set(id, { state: "resolved", url: null });
+      // IPC-layer failure (bridge dropped the call, deserialization). Treat
+      // as transient — don't cache.
+      memo.delete(id);
       return null;
     });
   memo.set(id, { state: "pending", promise });
@@ -106,7 +131,7 @@ export function useThumbnail(id: string | null): {
     () => {
       if (!id) return { url: null, loading: false };
       const hit = memo.get(id);
-      if (hit && hit.state === "resolved") {
+      if (hit && isResolvedFresh(hit, Date.now())) {
         return { url: hit.url, loading: false };
       }
       return { url: null, loading: true };
@@ -130,7 +155,7 @@ export function useThumbnail(id: string | null): {
       return;
     }
     const hit = memo.get(id);
-    if (hit && hit.state === "resolved") {
+    if (hit && isResolvedFresh(hit, Date.now())) {
       setState({ url: hit.url, loading: false });
       return;
     }
@@ -152,26 +177,46 @@ export function useThumbnail(id: string | null): {
  * already cached or in-flight are skipped. Unsupported prefixes (avatars)
  * resolve synchronously to `null` without any IPC traffic. */
 export function prefetchThumbnails(ids: string[]): void {
+  const now = Date.now();
   // Resolve unsupported ids inline so later useThumbnail calls hit the
   // memo directly. No IPC, no round-trip.
   for (const id of ids) {
-    if (memo.has(id)) continue;
+    const existing = memo.get(id);
+    if (existing && (existing.state === "pending" || isResolvedFresh(existing, now))) continue;
     if (!isLookupSupported(id)) {
-      memo.set(id, { state: "resolved", url: null });
+      memo.set(id, { state: "resolved", url: null, expiresAt: FOREVER });
     }
   }
 
   const need = ids.filter((id) => {
     const hit = memo.get(id);
-    return !hit && isLookupSupported(id);
+    if (!hit) return isLookupSupported(id);
+    if (hit.state === "pending") return false;
+    return isLookupSupported(id) && !isResolvedFresh(hit, now);
   });
   if (need.length === 0) return;
 
   const batchPromise = ipc
     .call<{ ids: string[] }, IpcResponse>("thumbnails.fetch", { ids: need })
     .then((resp) => {
+      const seen = new Set<string>();
       for (const row of resp.results) {
-        memo.set(row.id, { state: "resolved", url: row.url ?? null });
+        seen.add(row.id);
+        if (row.error) {
+          memo.delete(row.id);
+          continue;
+        }
+        const url = row.url ?? null;
+        memo.set(row.id, {
+          state: "resolved",
+          url,
+          expiresAt: url ? FOREVER : Date.now() + NEG_TTL_MS,
+        });
+      }
+      // Any id we requested but the backend didn't return a row for: drop
+      // the pending placeholder so a follow-up call retries.
+      for (const id of need) {
+        if (!seen.has(id)) memo.delete(id);
       }
       // Notify mounted useThumbnail hooks so they immediately render the
       // newly-cached URLs instead of waiting for individual promise chains.
@@ -181,9 +226,8 @@ export function prefetchThumbnails(ids: string[]): void {
       }
     })
     .catch(() => {
-      for (const id of need) {
-        memo.set(id, { state: "resolved", url: null });
-      }
+      // Transient batch failure — drop pending entries so retries go through.
+      for (const id of need) memo.delete(id);
       memoGeneration += 1;
       for (const listener of invalidationListeners) {
         listener();

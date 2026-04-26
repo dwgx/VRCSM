@@ -476,6 +476,21 @@ nlohmann::json IpcBridge::HandleUserInvite(const nlohmann::json& params, const s
     return unwrapResult(vrcsm::core::VrcApi::inviteSelf(*location));
 }
 
+nlohmann::json IpcBridge::HandleUserRequestInvite(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId");
+    if (!userId.has_value() || userId->empty())
+    {
+        throw std::runtime_error("user.requestInvite: missing 'userId'");
+    }
+    int slot = 0;
+    if (params.contains("slot") && params["slot"].is_number_integer())
+    {
+        slot = params["slot"].get<int>();
+    }
+    return unwrapResult(vrcsm::core::VrcApi::requestInvite(*userId, slot));
+}
+
 nlohmann::json IpcBridge::HandleUserMute(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto userId = JsonStringField(params, "userId");

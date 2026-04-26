@@ -122,7 +122,8 @@ public:
         std::optional<std::string> release_status;
         std::optional<std::string> avatar_name;
         std::optional<std::string> author_name;
-        std::optional<std::string> first_seen_on;  // wearer display name
+        std::optional<std::string> first_seen_on;       // wearer display name
+        std::optional<std::string> first_seen_user_id;  // wearer usr_xxx — set when pipeline knows it
         std::string first_seen_at;
     };
     // INSERT OR IGNORE — only records the first time each avatar_id
@@ -130,6 +131,7 @@ public:
     Result<std::monostate> RecordAvatarSeen(const AvatarSeenInsert& a);
 
     Result<nlohmann::json> RecentAvatarHistory(int limit, int offset);
+    Result<std::int64_t> AvatarHistoryCount();
 
     // ─── friend_log + friend_notes ───────────────────────────────
 

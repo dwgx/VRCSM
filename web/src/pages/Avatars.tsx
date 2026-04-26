@@ -234,6 +234,7 @@ function AvatarInspector({
   const { details, loading: detailsLoading, unavailable } = useAvatarDetails(
     selected.avatar_id,
   );
+  const { url: cachedThumb } = useThumbnail(selected.avatar_id);
 
 
   // Broadcast the API-resolved name back up so the left list can show
@@ -261,7 +262,11 @@ function AvatarInspector({
   const windowsAssetUrl = details?.unityPackages?.find(
     (p) => p.platform === "standalonewindows"
   )?.assetUrl;
-  const fallbackUrl = details?.imageUrl || details?.thumbnailImageUrl;
+  const fallbackUrl =
+    details?.imageUrl ||
+    details?.thumbnailImageUrl ||
+    cachedThumb ||
+    undefined;
   const can3D = Boolean(windowsAssetUrl);
 
   return (

@@ -130,6 +130,22 @@ void Pipeline::Stop()
     }
     m_wakeCv.notify_all();
 
+    // Force-close any in-flight WebSocket so a blocked
+    // WinHttpWebSocketReceive() returns immediately with an error and the
+    // worker thread sees m_running=false and exits. Without this, Stop()
+    // would join a thread that is parked indefinitely inside WinHTTP.
+    HINTERNET socketToClose = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(m_activeSocketMutex);
+        socketToClose = static_cast<HINTERNET>(m_activeSocket);
+        m_activeSocket = nullptr;
+    }
+    if (socketToClose)
+    {
+        WinHttpWebSocketClose(socketToClose, WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, nullptr, 0);
+        WinHttpCloseHandle(socketToClose);
+    }
+
     if (m_worker.joinable())
     {
         m_worker.join();
@@ -314,6 +330,37 @@ bool Pipeline::RunOneConnection(const std::string& wsToken)
         WinHttpCloseHandle(rh);
     }
 
+    // Hand ownership of the live socket to the Pipeline so Stop() can
+    // force-close it from the calling thread. The hWebSocket wrapper
+    // releases the raw handle (its destructor becomes a no-op). At end of
+    // this connection we atomically reclaim the handle and let RAII close
+    // it; if Stop() got there first the slot is already null and Stop()
+    // already closed the handle.
+    HINTERNET ownedSocket = hWebSocket.release();
+    {
+        std::lock_guard<std::mutex> lock(m_activeSocketMutex);
+        m_activeSocket = ownedSocket;
+    }
+    struct ScopedSocketReclaim
+    {
+        Pipeline* p;
+        ~ScopedSocketReclaim()
+        {
+            HINTERNET reclaimed = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(p->m_activeSocketMutex);
+                reclaimed = static_cast<HINTERNET>(p->m_activeSocket);
+                p->m_activeSocket = nullptr;
+            }
+            if (reclaimed)
+            {
+                // Best-effort graceful close — server may already be gone.
+                WinHttpWebSocketClose(reclaimed, WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, nullptr, 0);
+                WinHttpCloseHandle(reclaimed);
+            }
+        }
+    } reclaimOnExit{this};
+
     spdlog::info("Pipeline: connected to pipeline.vrchat.cloud");
     SetState(ConnState::Connected, "");
 
@@ -329,7 +376,7 @@ bool Pipeline::RunOneConnection(const std::string& wsToken)
         DWORD bytesRead = 0;
         WINHTTP_WEB_SOCKET_BUFFER_TYPE bufferType{};
         const DWORD rc = WinHttpWebSocketReceive(
-            hWebSocket.get(),
+            ownedSocket,
             buffer,
             static_cast<DWORD>(sizeof(buffer)),
             &bytesRead,
@@ -349,13 +396,13 @@ bool Pipeline::RunOneConnection(const std::string& wsToken)
             std::uint8_t reason[123]{};
             DWORD reasonLen = 0;
             WinHttpWebSocketQueryCloseStatus(
-                hWebSocket.get(),
+                ownedSocket,
                 &closeStatus,
                 reason,
                 sizeof(reason),
                 &reasonLen);
             spdlog::info("Pipeline: server closed ({})", closeStatus);
-            WinHttpWebSocketClose(hWebSocket.get(), WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, nullptr, 0);
+            WinHttpWebSocketClose(ownedSocket, WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, nullptr, 0);
             return true; // clean close → reset backoff
         }
 
@@ -432,7 +479,7 @@ bool Pipeline::RunOneConnection(const std::string& wsToken)
     }
 
     // m_running went false — tell the server and unwind.
-    WinHttpWebSocketClose(hWebSocket.get(), WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, nullptr, 0);
+    WinHttpWebSocketClose(ownedSocket, WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, nullptr, 0);
     return true;
 }
 

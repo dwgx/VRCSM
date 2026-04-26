@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
+import { ThumbImage } from "@/components/ThumbImage";
 import { ipc } from "@/lib/ipc";
 import {
   LIBRARY_LIST_NAME,
@@ -22,6 +23,19 @@ import {
   useFavoriteItems,
 } from "@/lib/library";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import {
+  LayoutModeSwitcher,
+  useLayoutMode,
+  type LayoutMode,
+} from "@/components/LayoutModeSwitcher";
+
+const WORLDS_LAYOUT_CLASS: Record<LayoutMode, string> = {
+  "default": "grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+  "grid-3": "grid gap-2 grid-cols-3",
+  "grid-2": "grid gap-2 grid-cols-2",
+  "row": "flex flex-col gap-2",
+  "list": "flex flex-col divide-y divide-[hsl(var(--border))] rounded-[var(--radius-md)] border border-[hsl(var(--border))]",
+};
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { type WorldSwitchEvent, type PlayerEvent } from "@/lib/types";
@@ -211,15 +225,14 @@ function WorldThumb({
         </div>
       ) : null}
       {url ? (
-        <img
+        <ThumbImage
           src={url}
+          seedKey={id}
+          label={id}
           alt=""
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 h-full w-full object-cover animate-fade-in"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
+          className="absolute inset-0 h-full w-full border-0"
+          aspect=""
+          rounded=""
         />
       ) : null}
       {label ? (
@@ -563,6 +576,7 @@ function Worlds() {
   const { report, loading, error } = useReport();
   const logs = report?.logs ?? null;
   const [filter, setFilter] = useState("");
+  const [layoutMode, setLayoutMode] = useLayoutMode("worlds");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [remoteQuery, setRemoteQuery] = useState("");
   const [remoteResults, setRemoteResults] = useState<Array<{ id: string; name: string; authorName: string; thumbnailImageUrl: string; occupants: number; capacity: number; favorites: number }>>([]);
@@ -753,6 +767,7 @@ function Worlds() {
           <Globe2 className="size-3" />
           {t("worlds.searchVrc", { defaultValue: "Search VRChat" })}
         </Button>
+        <LayoutModeSwitcher value={layoutMode} onChange={setLayoutMode} />
       </div>
       <div className="scrollbar-thin flex-1 overflow-y-auto p-3">
         {filtered.length === 0 ? (
@@ -760,7 +775,7 @@ function Worlds() {
             {t("worlds.noMatch")}
           </div>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={WORLDS_LAYOUT_CLASS[layoutMode]}>
             {filtered.map((id) => (
               <WorldTile
                 key={id}
@@ -782,7 +797,7 @@ function Worlds() {
               {t("worlds.searchResults", { defaultValue: "VRChat Search Results" })}
               <Badge variant="secondary" className="ml-2">{remoteResults.length}</Badge>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className={WORLDS_LAYOUT_CLASS[layoutMode]}>
               {remoteResults.map((w) => (
                 <button
                   key={w.id}
@@ -795,7 +810,15 @@ function Worlds() {
                   )}
                 >
                   {w.thumbnailImageUrl ? (
-                    <img src={w.thumbnailImageUrl} alt="" className="w-10 h-10 rounded object-cover shrink-0" loading="lazy" />
+                    <ThumbImage
+                      src={w.thumbnailImageUrl}
+                      seedKey={w.id}
+                      label={w.name}
+                      alt=""
+                      className="h-10 w-10 shrink-0"
+                      aspect=""
+                      rounded="rounded"
+                    />
                   ) : (
                     <div className="w-10 h-10 rounded bg-[hsl(var(--muted))] shrink-0" />
                   )}

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ProfileCard } from "@/components/ProfileCard";
+import { ThumbImage } from "@/components/ThumbImage";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { ipc } from "@/lib/ipc";
 import { trustRank, trustDotColor } from "@/lib/vrcFriends";
@@ -101,10 +102,11 @@ export function PlayerProfileDialog({ userId, displayName }: { userId: string | 
 // ── Player avatar thumbnail ───────────────────────────────────────────────
 
 export function PlayerAvatar({ userId, size = 20 }: { userId: string | null; size?: number }) {
+  const isRealUser = !!userId && userId.startsWith("usr_");
   const { data } = useIpcQuery<{ userId: string }, { profile: { currentAvatarThumbnailImageUrl?: string; profilePicOverride?: string } | null }>(
     "user.getProfile",
     { userId: userId! },
-    { staleTime: 300_000, enabled: !!userId },
+    { staleTime: 300_000, enabled: isRealUser },
   );
   const url = data?.profile?.profilePicOverride || data?.profile?.currentAvatarThumbnailImageUrl;
   return (
@@ -113,7 +115,15 @@ export function PlayerAvatar({ userId, size = 20 }: { userId: string | null; siz
       style={{ width: size, height: size }}
     >
       {url ? (
-        <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+        <ThumbImage
+          src={url}
+          seedKey={userId ?? "unknown-user"}
+          label={userId}
+          alt=""
+          className="h-full w-full border-0"
+          aspect=""
+          rounded=""
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center">
           <Users className="size-2.5 text-[hsl(var(--muted-foreground)/0.5)]" />

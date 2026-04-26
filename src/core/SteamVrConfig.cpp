@@ -87,6 +87,30 @@ std::string slurpFile(const std::filesystem::path& path)
     return buf.str();
 }
 
+// steamvr.vrsettings frequently contains non-UTF-8 bytes (device names in
+// the system locale). nlohmann::json validates UTF-8 both on parse (when
+// strict) and on dump, so we fold invalid bytes / truncated sequences
+// into a single '?' before handing the buffer to parse(). This keeps
+// Read() and Write() using the same sanitized view of the file.
+std::string sanitizeUtf8(const std::string& raw)
+{
+    std::string content;
+    content.reserve(raw.size());
+    for (std::size_t i = 0; i < raw.size(); )
+    {
+        auto c = static_cast<unsigned char>(raw[i]);
+        if (c < 0x80) { content += raw[i++]; continue; }
+        int expect = (c >= 0xF0) ? 4 : (c >= 0xE0) ? 3 : (c >= 0xC0) ? 2 : 0;
+        if (expect == 0) { content += '?'; ++i; continue; }
+        bool ok = (i + expect <= raw.size());
+        for (int j = 1; ok && j < expect; ++j)
+            ok = (static_cast<unsigned char>(raw[i + j]) & 0xC0) == 0x80;
+        if (ok) { content.append(raw, i, expect); i += expect; }
+        else    { content += '?'; ++i; }
+    }
+    return content;
+}
+
 bool isProcessRunning(const wchar_t* processName)
 {
     // Minimal check — snapshot all processes and look for the name.
@@ -174,23 +198,7 @@ nlohmann::json SteamVrConfig::Read(const std::filesystem::path& path)
             {"error", {{"code", "empty"}, {"message", "steamvr.vrsettings is empty"}}}};
     }
 
-    // SteamVR config files contain locale-encoded device names that break
-    // nlohmann's strict UTF-8 validation. Sanitize: keep valid ASCII and
-    // valid multi-byte UTF-8 sequences, replace everything else with '?'.
-    std::string content;
-    content.reserve(raw.size());
-    for (std::size_t i = 0; i < raw.size(); )
-    {
-        auto c = static_cast<unsigned char>(raw[i]);
-        if (c < 0x80) { content += raw[i++]; continue; }
-        int expect = (c >= 0xF0) ? 4 : (c >= 0xE0) ? 3 : (c >= 0xC0) ? 2 : 0;
-        if (expect == 0) { content += '?'; ++i; continue; }
-        bool ok = (i + expect <= raw.size());
-        for (int j = 1; ok && j < expect; ++j)
-            ok = (static_cast<unsigned char>(raw[i + j]) & 0xC0) == 0x80;
-        if (ok) { content.append(raw, i, expect); i += expect; }
-        else    { content += '?'; ++i; }
-    }
+    std::string content = sanitizeUtf8(raw);
 
     try
     {
@@ -280,11 +288,14 @@ nlohmann::json SteamVrConfig::Write(
             {"error", {{"code", "not_found"}, {"message", "steamvr.vrsettings not found"}}}};
     }
 
-    // 1) Read existing content.
+    // 1) Read existing content. Share the same UTF-8 sanitization path as
+    //    Read() — without it, locale-encoded device names fail
+    //    nlohmann's UTF-8 validation (seen in prod as type_error.316 on
+    //    dump, because parse swallows the bytes but dump later rejects).
     nlohmann::json doc;
     try
     {
-        std::string content = slurpFile(path);
+        std::string content = sanitizeUtf8(slurpFile(path));
         doc = nlohmann::json::parse(content);
     }
     catch (const std::exception& ex)
@@ -322,7 +333,10 @@ nlohmann::json SteamVrConfig::Write(
             return nlohmann::json{
                 {"error", {{"code", "open_failed"}, {"message", "Cannot open tmp file for writing"}}}};
         }
-        out << doc.dump(3);
+        // error_handler::replace swaps any surviving invalid UTF-8 for
+        // U+FFFD instead of throwing. Belt-and-suspenders with
+        // sanitizeUtf8() on the input side.
+        out << doc.dump(3, ' ', false, nlohmann::json::error_handler_t::replace);
         out.flush();
         if (!out)
         {

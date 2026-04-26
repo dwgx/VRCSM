@@ -4,12 +4,53 @@
 #include "../../core/BundleSniff.h"
 #include "../../core/CacheScanner.h"
 #include "../../core/Common.h"
+#include "../../core/Database.h"
+#include "../../core/LogParser.h"
 #include "../../core/PathProbe.h"
 #include "../../core/SafeDelete.h"
+
+#include <spdlog/spdlog.h>
 
 nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<std::string>&)
 {
     const auto probe = vrcsm::core::PathProbe::Probe();
+
+    // Side-effect: backfill avatar_history from the VRChat logs. LogTailer
+    // only captures lines written *after* VRCSM started, so avatar switches
+    // from earlier sessions (or from before VRCSM launched) never hit the
+    // DB and Seen Avatars stays at 0. A scan is the user's way of saying
+    // "re-sync everything" — replay the avatar_switches stream into
+    // avatar_history here. RecordAvatarSeen has ON CONFLICT upsert so
+    // replaying is idempotent.
+    if (probe.baseDirExists && !probe.baseDir.empty())
+    {
+        try
+        {
+            auto report = vrcsm::core::LogParser::parse(probe.baseDir);
+            int inserted = 0;
+            for (const auto& ev : report.avatar_switches)
+            {
+                if (ev.avatar_name.empty()) continue;
+                vrcsm::core::Database::AvatarSeenInsert a;
+                a.avatar_id = "name:" + ev.avatar_name;
+                a.avatar_name = ev.avatar_name;
+                if (!ev.actor.empty()) a.first_seen_on = ev.actor;
+                if (ev.actor_user_id.has_value()) a.first_seen_user_id = *ev.actor_user_id;
+                // Never write empty timestamp — schema sorts by it and an empty
+                // string poisons ordering. Fall back to nowIso() when log line
+                // didn't carry a stamp (continuation/spam lines).
+                a.first_seen_at = ev.iso_time.value_or(vrcsm::core::nowIso());
+                (void)vrcsm::core::Database::Instance().RecordAvatarSeen(a);
+                ++inserted;
+            }
+            spdlog::info("scan: backfilled {} avatar_history rows from logs", inserted);
+        }
+        catch (const std::exception& ex)
+        {
+            spdlog::warn("scan: avatar_history backfill failed: {}", ex.what());
+        }
+    }
+
     return ToJson(vrcsm::core::CacheScanner::buildReport(probe.baseDir));
 }
 

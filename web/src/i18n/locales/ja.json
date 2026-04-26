@@ -145,13 +145,21 @@
     "inviteAccept": "今行きます！"
   },
   "friendDetail": {
+    "title": "フレンド詳細",
     "sendMessage": "メッセージを送信",
     "messagePlaceholder": "こんにちは！ワールドに行きませんか？",
     "messageSent": "メッセージを送信しました",
     "messageHint": "Ctrl+Enter で送信。フレンド以外からの DM は VRChat では破棄されます。",
     "send": "送信",
     "unfriend": "フレンド解除",
-    "unfriended": "{{name}}さんをフレンド解除しました"
+    "unfriended": "{{name}}さんをフレンド解除しました",
+    "block": "ブロック",
+    "blockConfirmTitle": "{{name}}さんをブロックしますか？",
+    "blockConfirmShort": "{{name}}さんをブロックしますか？ブロックすると、相手はあなたと交流できなくなります。",
+    "mute": "ミュート",
+    "inviteMe": "招待してほしい",
+    "joinInstance": "インスタンスに参加",
+    "notSignedIn": "フレンドの詳細を表示するにはVRChatにサインインしてください。"
   },
   "osc": {
     "title": "OSC ツール",
@@ -335,7 +343,43 @@
     },
     "alsoInInstance": "同じインスタンスのフレンド",
     "detailPaneTitle": "詳細",
-    "platform": "プラットフォーム"
+    "platform": "プラットフォーム",
+    "actions": {
+      "menu": "アクション",
+      "joinRoom": "ルームに参加",
+      "requestInvite": "招待をリクエスト",
+      "requestInviteSent": "{{name}}からの招待をリクエストしました",
+      "inviteToMyRoom": "自分のルームに招待",
+      "inviteSent": "{{name}}をルームに招待しました",
+      "sendMessage": "メッセージを送信",
+      "viewProfile": "プロフィールを表示"
+    }
+  },
+  "layout": {
+    "switcher": "レイアウトを切り替える",
+    "default": "デフォルト",
+    "grid3": "3列グリッド",
+    "grid2": "2列グリッド",
+    "row": "行",
+    "list": "リスト"
+  },
+  "wear": {
+    "btn": "着用",
+    "resolving": "検索中…",
+    "checking": "確認中…",
+    "wearing": "着用中…",
+    "done": "完了！",
+    "failed": "失敗しました",
+    "alternatives": "代替",
+    "success": "現在着用中: {{name}}",
+    "saveToLib": "ライブラリに保存",
+    "saved": "ライブラリに保存されました！",
+    "saveFailed": "ライブラリに保存できませんでした。",
+    "noAvatar": "このアバターは見つかりませんでした。",
+    "notCloneable": "このアバターはクローンできません。公開されている代替アバターは見つかりませんでした。",
+    "altTitle": "公開されている代替アバターが見つかりました",
+    "altDesc": "元のアバターはクローンできません。以下の公開されている代替アバターを選択してください。",
+    "noAlternatives": "公開されている代替アバターは見つかりませんでした。"
   },
   "groups": {
     "subtitle": "参加しているすべての VRChat グループです。代表設定中のグループを先頭に、その後オンライン活動順で並びます。",
@@ -1457,7 +1501,11 @@
     "medium": "普通",
     "poor": "悪い",
     "veryPoor": "非常に悪い",
-    "empty": "アバターパラメータデータが見つかりません。まずダッシュボードからキャッシュスキャンを実行してから、このページに戻ってください。"
+    "empty": "アバターパラメータデータが見つかりません。まずダッシュボードからキャッシュスキャンを実行してから、このページに戻ってください。",
+    "myAvatars": "マイアバター",
+    "seenAvatars": "遭遇したアバター",
+    "seenTitle": "他のプレイヤーが着用していたアバター",
+    "noSeen": "まだアバターが記録されていません。VRCSM は VRChat のログとフレンドのアクティビティから、他のプレイヤーで見たアバターを記録します。"
   },
   "fbt": {
     "title": "FBTキャリブレーションモニター",

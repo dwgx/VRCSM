@@ -3,8 +3,10 @@
 
 #include "../../core/AuthStore.h"
 #include "../../core/Common.h"
+#include "../../core/Database.h"
 #include "../../core/PathProbe.h"
 #include "../../core/ProcessGuard.h"
+#include "../WebViewHost.h"
 
 #include <shellapi.h>
 #include <shlobj.h>
@@ -322,55 +324,97 @@ nlohmann::json IpcBridge::HandleAppFactoryReset(const nlohmann::json&, const std
     nlohmann::json removed = nlohmann::json::array();
     nlohmann::json skipped = nlohmann::json::array();
 
+    // 1. Wipe in-memory auth state. Cookie eviction in WebView2 is a COM
+    //    call and must run on the UI thread — defer that to the
+    //    WM_APP_FACTORY_RESET_QUIT handler at the end.
     vrcsm::core::AuthStore::Instance().Clear();
     removed.push_back("session.dat");
 
-    m_host.ClearVrcCookies();
+    // 2. Stop every background worker that holds a file handle inside
+    //    appDataRoot. Without this the SQLite db, log tailer poll, and
+    //    pipeline socket would keep file/handle references alive and
+    //    leave the app in a half-reset state on next launch.
+    if (m_pipeline)
+    {
+        m_pipeline->Stop();
+    }
+    if (m_logTailer)
+    {
+        std::lock_guard<std::mutex> lk(m_logTailerMutex);
+        m_logTailer->Stop();
+        m_logTailer.reset();
+        m_logTailerRefCount = 0;
+    }
+    if (m_screenshotWatcher)
+    {
+        m_screenshotWatcher->Stop();
+    }
+    if (m_discordRpc)
+    {
+        m_discordRpc->Stop();
+    }
+    if (m_osc)
+    {
+        m_osc->StopListen();
+    }
+
+    // 3. Close the SQLite handle so vrcsm.db, its journal, and shm/wal
+    //    sidecar files are unlocked for std::filesystem::remove on
+    //    Windows. Sqlite3 holds an exclusive lock by default; without
+    //    this, the .db survives the reset and breaks the next start.
+    vrcsm::core::Database::Instance().Close();
 
     const std::filesystem::path dataRoot = vrcsm::core::getAppDataRoot();
     std::error_code ec;
-    if (!std::filesystem::exists(dataRoot, ec))
+    if (std::filesystem::exists(dataRoot, ec))
     {
-        return nlohmann::json{
-            {"ok", true},
-            {"removed", std::move(removed)},
-            {"skipped", std::move(skipped)},
-        };
+        for (const auto& child : std::filesystem::directory_iterator(dataRoot, ec))
+        {
+            if (ec) break;
+            const auto name = child.path().filename().wstring();
+            if (name == L"WebView2")
+            {
+                // Skip — WebView2 user data folder; deleting it mid-run
+                // would invalidate the live WebView2 environment that
+                // we're still using to deliver the response.
+                skipped.push_back(WideToUtf8(name));
+                continue;
+            }
+
+            std::error_code delEc;
+            if (child.is_directory(delEc))
+            {
+                std::filesystem::remove_all(child.path(), delEc);
+            }
+            else
+            {
+                std::filesystem::remove(child.path(), delEc);
+            }
+            if (delEc)
+            {
+                skipped.push_back(fmt::format("{} ({})", WideToUtf8(name), delEc.message()));
+            }
+            else
+            {
+                removed.push_back(WideToUtf8(name));
+            }
+        }
     }
 
-    for (const auto& child : std::filesystem::directory_iterator(dataRoot, ec))
+    // 4. Schedule cookie clear + clean app exit on the UI thread. Once
+    //    this returns the response goes back to the frontend; the user's
+    //    next launch hits a clean appDataRoot with no stale singletons.
+    HWND parentHwnd = m_host.ParentHwnd();
+    if (parentHwnd != nullptr)
     {
-        if (ec) break;
-        const auto name = child.path().filename().wstring();
-        if (name == L"WebView2")
-        {
-            skipped.push_back(WideToUtf8(name));
-            continue;
-        }
-
-        std::error_code delEc;
-        if (child.is_directory(delEc))
-        {
-            std::filesystem::remove_all(child.path(), delEc);
-        }
-        else
-        {
-            std::filesystem::remove(child.path(), delEc);
-        }
-        if (delEc)
-        {
-            skipped.push_back(fmt::format("{} ({})", WideToUtf8(name), delEc.message()));
-        }
-        else
-        {
-            removed.push_back(WideToUtf8(name));
-        }
+        PostMessageW(parentHwnd, WM_APP_FACTORY_RESET_QUIT, 0, 0);
     }
 
     return nlohmann::json{
         {"ok", true},
         {"removed", std::move(removed)},
         {"skipped", std::move(skipped)},
+        {"willExit", true},
     };
 }
 

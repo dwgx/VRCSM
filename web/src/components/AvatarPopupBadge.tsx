@@ -10,22 +10,22 @@ import {
   DialogTrigger,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ThumbImage } from "@/components/ThumbImage";
 import { Box, User, AlertTriangle, CloudSun } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { avatarId: string }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  // Defer the avatar.details fetch until the dialog actually opens. Lists
+  // that mount many of these badges previously made N HTTP calls to VRChat
+  // for nothing — the row only needs id/name, the rich card needs details.
   const { data, isLoading } = useIpcQuery<{ id: string }, { details: AvatarDetails | null }>(
     "avatar.details",
     { id: avatarId },
-    { staleTime: 120_000, enabled: !!avatarId && avatarId.startsWith("avtr_") },
+    { staleTime: 120_000, enabled: open && !!avatarId && avatarId.startsWith("avtr_") },
   );
   const details = data?.details ?? null;
-  const [open, setOpen] = useState(false);
-
-  if (isLoading || !details) {
-    return <IdBadge id={avatarId} size="xs" />;
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -38,15 +38,15 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
           className="flex w-fit items-center gap-1.5 rounded bg-[hsl(var(--surface-raised))] hover:bg-[hsl(var(--primary)/0.1)] px-2 py-0.5 border border-[hsl(var(--border))] transition-colors group"
         >
           <div className="relative size-[18px] shrink-0 overflow-hidden rounded-[2px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
-            {details.thumbnailImageUrl ? (
-                <img
+            {details?.thumbnailImageUrl ? (
+                <ThumbImage
                   src={details.thumbnailImageUrl}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
+                  seedKey={avatarId}
+                  label={details.name}
                   alt=""
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  className="h-full w-full border-0"
+                  aspect=""
+                  rounded=""
                 />
             ) : (
                 <User className="size-full text-[hsl(var(--muted-foreground))]" />
@@ -56,19 +56,24 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
              AVTR
           </span>
           <span className="text-[11.5px] font-medium text-[hsl(var(--foreground))]">
-            {details.name || "Unknown Avatar"}
+            {details?.name || `${avatarId.slice(0, 12)}…`}
           </span>
         </button>
       </DialogTrigger>
       
-      <DialogContent 
-        className="max-w-[400px] p-0 border-none bg-transparent shadow-none duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95" 
+      <DialogContent
+        className="max-w-[400px] p-0 border-none bg-transparent shadow-none duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
         onClick={(e) => e.stopPropagation()}
       >
         <DialogTitle className="sr-only">
-          {details.name} Avatar Record
+          {details?.name ?? avatarId} Avatar Record
         </DialogTitle>
-        
+
+        {!details ? (
+          <div className="rounded-[calc(var(--radius-sm)+4px)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] p-12 text-center text-[12px] text-[hsl(var(--muted-foreground))] shadow-lg backdrop-blur-md">
+            {isLoading ? t("common.loading") : t("avatars.unavailable", { defaultValue: "Avatar unavailable." })}
+          </div>
+        ) : (
         <div className="group flex flex-col gap-0 overflow-hidden rounded-[calc(var(--radius-sm)+4px)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] shadow-lg backdrop-blur-md">
             {/* Display Image */}
             <div className="relative h-[240px] w-full shrink-0 bg-[hsl(var(--muted))] overflow-hidden flex items-center justify-center">
@@ -81,7 +86,7 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
                />
                {/* Fade from image to content */}
                <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--surface))] via-[hsl(var(--surface)/0.2)] to-transparent" />
-               
+
                <div className="absolute top-2 right-2 flex gap-1">
                  <div className={`flex items-center gap-1 rounded-full backdrop-blur-sm px-2 py-0.5 text-[9px] font-bold shadow-sm uppercase ${details.releaseStatus === "private" ? "bg-red-500/80 text-white" : "bg-emerald-500/80 text-white"}`}>
                    {details.releaseStatus || "Unknown"}
@@ -145,6 +150,7 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
                </div>
             </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

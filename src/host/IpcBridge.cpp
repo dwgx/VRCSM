@@ -150,6 +150,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "friends.request",
         "user.invite",
         "user.inviteTo",
+        "user.requestInvite",
         "user.mute",
         "user.unmute",
         "user.block",
@@ -159,11 +160,14 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "user.updateProfile",
         "screenshots.list",
         "logs.files.clear",
+        "logs.stream.start",
+        "logs.stream.stop",
         "app.factoryReset",
         "db.worldVisits.list",
         "db.playerEvents.list",
         "db.playerEncounters",
         "db.avatarHistory.list",
+        "db.avatarHistory.count",
         "db.stats.heatmap",
         "db.stats.overview",
         "db.history.clear",
@@ -610,6 +614,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("friends.request", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsRequest(p, id); });
     m_handlers.emplace("user.invite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInvite(p, id); });
     m_handlers.emplace("user.inviteTo", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInviteTo(p, id); });
+    m_handlers.emplace("user.requestInvite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserRequestInvite(p, id); });
     m_handlers.emplace("user.mute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserMute(p, id); });
     m_handlers.emplace("user.unmute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserUnmute(p, id); });
     m_handlers.emplace("user.block", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserBlock(p, id); });
@@ -659,6 +664,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("db.playerEvents.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbPlayerEvents(p, id); });
     m_handlers.emplace("db.playerEncounters", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbPlayerEncounters(p, id); });
     m_handlers.emplace("db.avatarHistory.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistory(p, id); });
+    m_handlers.emplace("db.avatarHistory.count", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistoryCount(p, id); });
     m_handlers.emplace("db.avatarHistory.record", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistoryRecord(p, id); });
     m_handlers.emplace("db.stats.heatmap", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsHeatmap(p, id); });
     m_handlers.emplace("db.stats.overview", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsOverview(p, id); });

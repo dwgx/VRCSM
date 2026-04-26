@@ -145,13 +145,21 @@
     "inviteAccept": "我马上到！"
   },
   "friendDetail": {
+    "title": "好友详情",
     "sendMessage": "发送消息",
     "messagePlaceholder": "嗨！想一起进个世界吗？",
     "messageSent": "消息已发送",
     "messageHint": "Ctrl+Enter 发送。VRChat 会丢弃非好友的私信。",
     "send": "发送",
     "unfriend": "解除好友关系",
-    "unfriended": "已解除与 {{name}} 的好友关系"
+    "unfriended": "已解除与 {{name}} 的好友关系",
+    "block": "屏蔽",
+    "blockConfirmTitle": "屏蔽 {{name}}？",
+    "blockConfirmShort": "屏蔽 {{name}}？对方将无法与你互动。",
+    "mute": "静音",
+    "inviteMe": "邀请我加入",
+    "joinInstance": "加入房间",
+    "notSignedIn": "登录 VRChat 才能查看好友详情。"
   },
   "osc": {
     "title": "OSC 工具",
@@ -336,7 +344,43 @@
     "alsoInInstance": "同行好友",
     "detailPaneTitle": "好友详情",
     "joinRoom": "加入同房",
-    "platform": "平台"
+    "platform": "平台",
+    "actions": {
+      "menu": "操作",
+      "joinRoom": "加入房间",
+      "requestInvite": "申请加入",
+      "requestInviteSent": "已向 {{name}} 发送加入请求",
+      "inviteToMyRoom": "邀请到我的房间",
+      "inviteSent": "已邀请 {{name}} 到你的房间",
+      "sendMessage": "发送消息",
+      "viewProfile": "查看详情"
+    }
+  },
+  "layout": {
+    "switcher": "切换布局",
+    "default": "默认",
+    "grid3": "九宫格",
+    "grid2": "四宫格",
+    "row": "一排",
+    "list": "一列"
+  },
+  "wear": {
+    "btn": "穿戴",
+    "resolving": "查找中…",
+    "checking": "检查中…",
+    "wearing": "穿戴中…",
+    "done": "完成",
+    "failed": "失败",
+    "alternatives": "可选模型",
+    "success": "已穿戴：{{name}}",
+    "saveToLib": "保存到资料库",
+    "saved": "已保存到资料库！",
+    "saveFailed": "保存到资料库失败。",
+    "noAvatar": "找不到此模型。",
+    "notCloneable": "该模型不允许克隆，也没有可用的公开替代。",
+    "altTitle": "找到公开替代模型",
+    "altDesc": "原模型不允许克隆，从下方公开替代中挑选一个。",
+    "noAlternatives": "未找到公开替代模型。"
   },
   "groups": {
     "subtitle": "你加入的所有 VRChat 团体，优先按当前代表的团体排序，其次按在线活跃度排序。",
@@ -3245,14 +3289,18 @@
   },
   "benchmark": {
     "title": "虚拟形象性能基准测试",
-    "desc": "根据同步参数数量估算 VRChat 性能排名。参数数量越低 = 网络性能越好。",
+    "desc": "根据 LocalAvatarData 的同步参数数量估算 VRChat 性能排名。参数数量越低 = 网络性能越好。",
     "breakdown": "虚拟形象详情",
     "excellent": "优秀",
     "good": "良好",
     "medium": "中等",
     "poor": "差",
     "veryPoor": "非常差",
-    "empty": "未找到虚拟形象参数数据。请先在面板中运行缓存扫描，然后再来查看此页面。"
+    "empty": "未找到虚拟形象参数数据。请先在面板中运行缓存扫描，然后再来查看此页面。",
+    "myAvatars": "我的模型",
+    "seenAvatars": "已见模型",
+    "seenTitle": "在其他玩家身上看到的模型",
+    "noSeen": "暂无记录。VRCSM 会从 VRChat 日志和好友活动中记录其他玩家使用过的模型。"
   },
   "fbt": {
     "title": "FBT 校准监视器",

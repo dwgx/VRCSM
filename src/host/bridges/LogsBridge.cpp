@@ -65,11 +65,20 @@ std::filesystem::path FindLatestLogFile(const std::filesystem::path& logDir)
 
 nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std::optional<std::string>&)
 {
-    // Idempotent — React StrictMode double-effects and two docks mounting
-    // in quick succession must not spawn two tailers.
+    // Refcounted — multiple frontend pages can subscribe (Logs page,
+    // RadarEngine). The first start spawns the tailer; subsequent starts
+    // bump the count. Stops decrement; only the last stop tears down.
+    // The lock is held across init (probe/parse/Start) so two concurrent
+    // worker-thread calls can't both observe a null m_logTailer and race
+    // to build two tailers. logs.stream.start lives on AsyncMethodSet so
+    // this handler runs off the UI thread; the lock blocks the second
+    // caller for the duration of LogParser::parse, which only the first
+    // call pays for.
+    std::unique_lock<std::mutex> lk(m_logTailerMutex);
     if (m_logTailer)
     {
-        return nlohmann::json{{"running", true}};
+        m_logTailerRefCount += 1;
+        return nlohmann::json{{"running", true}, {"subscribers", m_logTailerRefCount}};
     }
 
     const auto probe = vrcsm::core::PathProbe::Probe();
@@ -267,7 +276,15 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                         a.avatar_id = "name:" + avatarName;
                         a.avatar_name = avatarName;
                         a.first_seen_on = actorName;
-                        a.first_seen_at = iso;
+                        a.first_seen_at = iso.empty() ? vrcsm::core::nowIso() : iso;
+                        if (!actorName.empty())
+                        {
+                            std::lock_guard<std::mutex> lk(m_playerIdMutex);
+                            if (auto it = m_playerNameToUserId.find(actorName); it != m_playerNameToUserId.end())
+                            {
+                                a.first_seen_user_id = it->second;
+                            }
+                        }
                         (void)vrcsm::core::Database::Instance().RecordAvatarSeen(a);
                     }
                 }
@@ -278,6 +295,11 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                     e.display_name = data.value("display_name", std::string{});
                     if (data.contains("user_id") && data["user_id"].is_string())
                         e.user_id = data["user_id"].get<std::string>();
+                    if (e.kind == "joined" && e.user_id.has_value() && !e.display_name.empty())
+                    {
+                        std::lock_guard<std::mutex> lk(m_playerIdMutex);
+                        m_playerNameToUserId[e.display_name] = *e.user_id;
+                    }
                     {
                         std::lock_guard<std::mutex> lk(m_currentWorldMutex);
                         if (!m_currentWorldId.empty()) e.world_id = m_currentWorldId;
@@ -298,17 +320,30 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
         });
     m_logTailer->Start();
 
-    return nlohmann::json{{"running", true}};
+    // lk still held — refcount bump under the same critical section as
+    // tailer assignment so the (m_logTailer != nullptr) and refcount
+    // states stay coherent for any other caller that acquires the lock.
+    m_logTailerRefCount += 1;
+    int refs = m_logTailerRefCount;
+    return nlohmann::json{{"running", true}, {"subscribers", refs}};
 }
 
 nlohmann::json IpcBridge::HandleLogsStreamStop(const nlohmann::json&, const std::optional<std::string>&)
 {
-    if (m_logTailer)
+    bool teardown = false;
+    int refs = 0;
+    {
+        std::lock_guard<std::mutex> lk(m_logTailerMutex);
+        if (m_logTailerRefCount > 0) m_logTailerRefCount -= 1;
+        refs = m_logTailerRefCount;
+        teardown = (m_logTailerRefCount == 0 && m_logTailer != nullptr);
+    }
+    if (teardown)
     {
         m_logTailer->Stop();
         m_logTailer.reset();
     }
-    return nlohmann::json{{"running", false}};
+    return nlohmann::json{{"running", refs > 0}, {"subscribers", refs}};
 }
 
 nlohmann::json IpcBridge::HandleLogsFilesClear(const nlohmann::json&, const std::optional<std::string>&)

@@ -86,6 +86,13 @@ private:
     std::mutex m_wakeMutex;
     std::condition_variable m_wakeCv;
     bool m_wakeFlag{false};
+
+    // Active WebSocket handle, owned by the worker thread but exposed to
+    // Stop() so it can interrupt a blocking WinHttpWebSocketReceive() that
+    // would otherwise pin the worker forever during shutdown. Holds an
+    // HINTERNET cast to void* so Pipeline.h doesn't need <wininet.h>.
+    std::mutex m_activeSocketMutex;
+    void* m_activeSocket{nullptr};
 };
 
 } // namespace vrcsm::core

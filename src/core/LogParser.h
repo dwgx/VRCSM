@@ -89,6 +89,7 @@ struct AvatarSwitchEvent
 {
     std::optional<std::string> iso_time;
     std::string actor;
+    std::optional<std::string> actor_user_id;  // resolved from prior OnPlayerJoined when the same name is seen
     std::string avatar_name;
     std::optional<std::string> world_id;
     std::optional<std::string> instance_id;

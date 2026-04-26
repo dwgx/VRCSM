@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   Card,
@@ -92,6 +93,9 @@ function RadarEngine({
 
   // ── Player trust rank tags cache ─────────────────────────────────────
   const [playerTags, setPlayerTags] = useState<Record<string, string[]>>({});
+  // Shared QueryClient cache so trust-tag fetches reuse the user.getProfile
+  // query that PlayerAvatar already issues for thumbnails — no duplicate IPC.
+  const queryClient = useQueryClient();
   // ── Player platform cache ────────────────────────────────────────────
   // playerPlatform removed — avatars now show in compact pills via PlayerAvatar
   const [recentSessionEvents, setRecentSessionEvents] = useState<RecentSessionEvent[]>([]);
@@ -126,24 +130,30 @@ function RadarEngine({
     if (count > peakPlayerCount) setPeakPlayerCount(count);
   }, [activePlayers, peakPlayerCount]);
 
-  // Fetch trust tags for players with userId
+  // Fetch trust tags for players with a real userId. Goes through the same
+  // QueryClient cache as PlayerAvatar's useIpcQuery("user.getProfile") call,
+  // so two simultaneous needers of the same userId share one IPC round-trip
+  // instead of fanning out N+1 requests.
   useEffect(() => {
     const fetchable = Object.values(activePlayers).filter(
       p => p.userId && p.userId.startsWith("usr_") && !playerTags[p.userId]
     );
     for (const p of fetchable) {
-      void ipc.call<{ userId: string }, { profile: any }>("user.getProfile", { userId: p.userId! })
-        .then(res => {
+      const userId = p.userId!;
+      void queryClient.fetchQuery({
+        queryKey: ["user.getProfile", { userId }],
+        queryFn: () => ipc.call<{ userId: string }, { profile: any }>("user.getProfile", { userId }),
+        staleTime: 300_000,
+      })
+        .then((res: any) => {
           const tags = res?.profile?.tags;
-          const platform = res?.profile?.last_platform;
           if (tags && Array.isArray(tags)) {
-            setPlayerTags(prev => ({ ...prev, [p.userId!]: tags }));
+            setPlayerTags(prev => (prev[userId] ? prev : { ...prev, [userId]: tags }));
           }
-          void platform;
         })
         .catch(() => {/* silently ignore */});
     }
-  }, [activePlayers, playerTags]);
+  }, [activePlayers, playerTags, queryClient]);
 
   useEffect(() => {
     let alive = true;

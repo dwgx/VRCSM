@@ -7,6 +7,7 @@
 #include <fstream>
 #include <regex>
 #include <system_error>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace vrcsm::core
@@ -107,6 +108,7 @@ void to_json(nlohmann::json& j, const AvatarSwitchEvent& e)
     j = nlohmann::json{
         {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
         {"actor", e.actor},
+        {"actor_user_id", e.actor_user_id ? nlohmann::json(*e.actor_user_id) : nlohmann::json(nullptr)},
         {"avatar_name", e.avatar_name},
         {"world_id", e.world_id ? nlohmann::json(*e.world_id) : nlohmann::json(nullptr)},
         {"instance_id", e.instance_id ? nlohmann::json(*e.instance_id) : nlohmann::json(nullptr)},
@@ -340,6 +342,11 @@ struct ParseState
     // Dedup helpers so recent_*_ids preserves first-seen order.
     std::unordered_set<std::string> worldSet;
     std::unordered_set<std::string> avatarSet;
+
+    // playerName → usr_xxx map populated from OnPlayerJoined lines so we
+    // can attach the actor's user_id to AvatarSwitchEvents (logs put the
+    // id only on join, never on the avatar-switch line).
+    std::unordered_map<std::string, std::string> playerNameToUserId;
 };
 
 void maybeApplyLegacyClearCache(const std::string& value, LogReport& report)
@@ -429,32 +436,39 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             ev.world_id = worldId;
             ev.instance_id = fullInstanceId;
             
-            // Parse tags
+            // Parse tags. Patterns are static so std::regex doesn't recompile
+            // on every world-switch line during a long log replay.
+            static const std::regex kPrivateOwnerRe(R"(private\((usr_[0-9a-fA-F-]+)\))");
+            static const std::regex kFriendsOwnerRe(R"(friends\((usr_[0-9a-fA-F-]+)\))");
+            static const std::regex kHiddenOwnerRe(R"(hidden\((usr_[0-9a-fA-F-]+)\))");
+            static const std::regex kGroupOwnerRe(R"(group\((grp_[0-9a-fA-F-]+)\))");
+            static const std::regex kRegionRe(R"(~region\(([a-zA-Z]+)\))");
+
             ev.access_type = "public"; // default
             if (instanceIdStr.find("~private(") != std::string::npos) {
                 ev.access_type = "private";
                 std::smatch t;
-                if (std::regex_search(instanceIdStr, t, std::regex(R"(private\((usr_[0-9a-fA-F-]+)\))")))
+                if (std::regex_search(instanceIdStr, t, kPrivateOwnerRe))
                     ev.owner_id = t[1].str();
             } else if (instanceIdStr.find("~friends(") != std::string::npos) {
                 ev.access_type = "friends";
                 std::smatch t;
-                if (std::regex_search(instanceIdStr, t, std::regex(R"(friends\((usr_[0-9a-fA-F-]+)\))")))
+                if (std::regex_search(instanceIdStr, t, kFriendsOwnerRe))
                     ev.owner_id = t[1].str();
             } else if (instanceIdStr.find("~hidden(") != std::string::npos) {
                 ev.access_type = "hidden";
                 std::smatch t;
-                if (std::regex_search(instanceIdStr, t, std::regex(R"(hidden\((usr_[0-9a-fA-F-]+)\))")))
+                if (std::regex_search(instanceIdStr, t, kHiddenOwnerRe))
                     ev.owner_id = t[1].str();
             } else if (instanceIdStr.find("~group(") != std::string::npos) {
                 ev.access_type = "group";
                 std::smatch t;
-                if (std::regex_search(instanceIdStr, t, std::regex(R"(group\((grp_[0-9a-fA-F-]+)\))")))
+                if (std::regex_search(instanceIdStr, t, kGroupOwnerRe))
                     ev.owner_id = t[1].str();
             }
-            
+
             std::smatch r;
-            if (std::regex_search(instanceIdStr, r, std::regex(R"(~region\(([a-zA-Z]+)\))"))) {
+            if (std::regex_search(instanceIdStr, r, kRegionRe)) {
                 ev.region = r[1].str();
             }
             
@@ -480,6 +494,17 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             AvatarSwitchEvent ev;
             ev.iso_time = st.lastTimestamp;
             ev.actor = player;
+            // Attach user_id when we've seen this player join with one. Logs
+            // never put the id on the Switching line itself, so this map
+            // lookup is the only path to a clickable wearer card.
+            if (auto it = st.playerNameToUserId.find(player); it != st.playerNameToUserId.end())
+            {
+                ev.actor_user_id = it->second;
+            }
+            else if (report.local_user_name && player == *report.local_user_name && report.local_user_id)
+            {
+                ev.actor_user_id = report.local_user_id;
+            }
             ev.avatar_name = name;
             if (!st.currentWorldId.empty())
             {
@@ -502,12 +527,19 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
     // Player presence — OnPlayerJoined / OnPlayerLeft.
     if (std::regex_search(line, m, kPlayerJoinedRe))
     {
+        const std::string joinedName = stripTrailing(m[1]);
+        if (m.size() > 2 && m[2].matched)
+        {
+            // Persist for the entire parse so any later avatar switch by the
+            // same display name can be tagged with the matching usr_xxx.
+            st.playerNameToUserId[joinedName] = stripTrailing(m[2]);
+        }
         if (report.player_events.size() < kMaxEventsPerKind)
         {
             PlayerEvent ev;
             ev.kind = "joined";
             ev.iso_time = st.lastTimestamp;
-            ev.display_name = stripTrailing(m[1]);
+            ev.display_name = joinedName;
             if (m.size() > 2 && m[2].matched)
             {
                 ev.user_id = stripTrailing(m[2]);

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Globe2, Heart, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThumbImage } from "@/components/ThumbImage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ipc } from "@/lib/ipc";
 import { OFFICIAL_FAVORITES_LIST_NAME, normalizeFavoriteType, useFavoriteItems } from "@/lib/library";
@@ -199,15 +200,14 @@ function FavoriteWorldsSection() {
                 {/* Thumbnail or icon placeholder */}
                 {item.thumbnail_url ? (
                   <div className="size-8 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
-                    <img
+                    <ThumbImage
                       src={item.thumbnail_url}
+                      seedKey={item.target_id}
+                      label={item.display_name ?? item.target_id}
                       alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                      }}
+                      className="h-full w-full border-0"
+                      aspect=""
+                      rounded=""
                     />
                   </div>
                 ) : (

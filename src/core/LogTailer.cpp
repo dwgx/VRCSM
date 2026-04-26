@@ -139,13 +139,26 @@ std::filesystem::path LogTailer::FindLatestLog() const
 
 void LogTailer::OnFileSwitched(const std::filesystem::path& path)
 {
+    const bool firstAttach = !m_attachedOnce;
     m_currentFile = path;
     m_carryover.clear();
+    m_attachedOnce = true;
 
-    // Seek to EOF so the panel doesn't replay history on first attach. The
+    // First attach: seek to EOF so the panel doesn't replay history. The
     // batch `LogParser` already fills the UI with the last session's
     // structured events — this class only produces "what happened since I
     // started watching".
+    //
+    // Subsequent file switches mean VRChat rotated to a new output_log_*.
+    // VRChat may have written several seconds of lines between file
+    // creation and our 1-second poll noticing it. Start at byte 0 so those
+    // lines aren't silently dropped.
+    if (!firstAttach)
+    {
+        m_offset = 0;
+        return;
+    }
+
     HANDLE handle = OpenShared(path);
     if (handle == INVALID_HANDLE_VALUE)
     {

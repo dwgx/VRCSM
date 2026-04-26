@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { User } from "lucide-react";
 import { ProfileCard, type VrcUserProfile } from "./ProfileCard";
+import { ThumbImage } from "./ThumbImage";
 import {
   Dialog,
   DialogContent,
@@ -17,13 +18,16 @@ interface UserPopupBadgeProps {
 
 export function UserPopupBadge({ userId, displayName }: UserPopupBadgeProps) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  // Defer profile fetch until the dialog actually opens. Long rosters with
+  // hundreds of badges previously fired hundreds of user.getProfile IPCs at
+  // mount. Row shows the fallback name/icon, click → fetch → rich card.
   const { data } = useIpcQuery<{ userId: string }, { profile: VrcUserProfile | null }>(
     "user.getProfile",
     { userId },
-    { staleTime: 5 * 60_000, enabled: !!userId && userId.startsWith("usr_") },
+    { staleTime: 5 * 60_000, enabled: open && !!userId && userId.startsWith("usr_") },
   );
   const profile = data?.profile ?? null;
-  const [open, setOpen] = useState(false);
 
   const rank = profile ? trustRank(profile.tags || []) : null;
   const name = profile?.displayName ?? displayName ?? userId.slice(0, 12) + "…";
@@ -41,12 +45,14 @@ export function UserPopupBadge({ userId, displayName }: UserPopupBadgeProps) {
       >
         <div className="relative size-5 shrink-0 overflow-hidden rounded-[calc(var(--radius-sm)-2px)] bg-[hsl(var(--canvas))]">
           {thumb ? (
-            <img
+            <ThumbImage
               src={thumb}
-              className="h-full w-full object-cover"
-              loading="lazy"
+              seedKey={userId}
+              label={name}
               alt=""
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              className="h-full w-full border-0"
+              aspect=""
+              rounded=""
             />
           ) : (
             <User className="size-3 m-auto text-[hsl(var(--muted-foreground))]" />

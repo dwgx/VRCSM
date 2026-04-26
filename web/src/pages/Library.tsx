@@ -48,6 +48,19 @@ import {
 } from "@/lib/library";
 import { useAuth } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
+import {
+  LayoutModeSwitcher,
+  useLayoutMode,
+  type LayoutMode,
+} from "@/components/LayoutModeSwitcher";
+
+const LIBRARY_LAYOUT_CLASS: Record<LayoutMode, string> = {
+  "default": "grid gap-4 md:grid-cols-2 2xl:grid-cols-3",
+  "grid-3": "grid gap-4 grid-cols-3",
+  "grid-2": "grid gap-4 grid-cols-2",
+  "row": "flex flex-col gap-3",
+  "list": "flex flex-col divide-y divide-[hsl(var(--border))] rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))]",
+};
 import { useThumbnail } from "@/lib/thumbnails";
 import type { FavoriteItem } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
@@ -371,6 +384,7 @@ function Library() {
   const { mergedLists, isLoading: listsLoading } = useFavoriteLists();
   const [selectedListName, setSelectedListName] = useState(LIBRARY_LIST_NAME);
   const [search, setSearch] = useState("");
+  const [layoutMode, setLayoutMode] = useLayoutMode("library");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<FavoriteItem | null>(null);
@@ -633,8 +647,9 @@ function Library() {
             </button>
 
             {listsLoading ? (
-              <div className="px-3 py-4 text-[11px] text-[hsl(var(--muted-foreground))]">
-                {t("common.loading")}
+              <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-[hsl(var(--muted-foreground))]">
+                <Loader2 className="size-3.5 animate-spin" />
+                <span>{t("common.loading")}</span>
               </div>
             ) : mergedLists.length === 0 ? (
               <div className="px-3 py-4 text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -699,7 +714,7 @@ function Library() {
                     className="h-8 pl-7 text-[12px]"
                   />
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {(["all", "avatar", "world", "user"] as const).map((type) => (
                     <Button
                       key={type}
@@ -714,6 +729,11 @@ function Library() {
                       )}
                     </Button>
                   ))}
+                  <LayoutModeSwitcher
+                    value={layoutMode}
+                    onChange={setLayoutMode}
+                    className="ml-auto"
+                  />
                 </div>
               </div>
               {tagCounts.length > 0 ? (
@@ -747,8 +767,9 @@ function Library() {
 
           {itemsLoading ? (
             <Card>
-              <CardContent className="py-8 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
-                {t("common.loading")}
+              <CardContent className="flex items-center justify-center gap-2 py-8 text-[12px] text-[hsl(var(--muted-foreground))]">
+                <Loader2 className="size-4 animate-spin" />
+                <span>{t("common.loading")}</span>
               </CardContent>
             </Card>
           ) : visibleItems.length === 0 ? (
@@ -764,7 +785,7 @@ function Library() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            <div className={LIBRARY_LAYOUT_CLASS[layoutMode]}>
               {visibleItems.map((item) => (
                 <LibraryItemCard
                   key={`${item.list_name}:${item.type}:${item.target_id}`}
