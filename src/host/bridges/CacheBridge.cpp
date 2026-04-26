@@ -34,6 +34,7 @@ nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<
                 vrcsm::core::Database::AvatarSeenInsert a;
                 a.avatar_id = "name:" + ev.avatar_name;
                 a.avatar_name = ev.avatar_name;
+                if (ev.author_name.has_value()) a.author_name = *ev.author_name;
                 if (!ev.actor.empty()) a.first_seen_on = ev.actor;
                 if (ev.actor_user_id.has_value()) a.first_seen_user_id = *ev.actor_user_id;
                 // Never write empty timestamp — schema sorts by it and an empty

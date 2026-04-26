@@ -1012,8 +1012,9 @@ Result<nlohmann::json> Database::RecentAvatarHistory(int limit, int offset)
         return MakeError("db_not_open");
     }
 
-    const char* sql =
-        "SELECT avatar_id, avatar_name, author_name, first_seen_on, first_seen_at, release_status, first_seen_user_id "
+const char* sql =
+        "SELECT avatar_id, avatar_name, author_name, first_seen_on, first_seen_at, release_status, first_seen_user_id, "
+        "resolved_avatar_id, resolved_thumbnail_url, resolved_image_url, resolution_source, resolution_status, resolved_at "
         "FROM avatar_history "
         "ORDER BY first_seen_at DESC "
         "LIMIT ? OFFSET ?;";
@@ -1042,6 +1043,12 @@ Result<nlohmann::json> Database::RecentAvatarHistory(int limit, int offset)
         row["first_seen_at"] = ColumnTextOrNull(rawStmt, 4);
         row["release_status"] = ColumnTextOrNull(rawStmt, 5);
         row["first_seen_user_id"] = ColumnTextOrNull(rawStmt, 6);
+        row["resolved_avatar_id"] = ColumnTextOrNull(rawStmt, 7);
+        row["resolved_thumbnail_url"] = ColumnTextOrNull(rawStmt, 8);
+        row["resolved_image_url"] = ColumnTextOrNull(rawStmt, 9);
+        row["resolution_source"] = ColumnTextOrNull(rawStmt, 10);
+        row["resolution_status"] = ColumnTextOrNull(rawStmt, 11);
+        row["resolved_at"] = ColumnTextOrNull(rawStmt, 12);
         rows.push_back(std::move(row));
     }
 
@@ -1051,6 +1058,45 @@ Result<nlohmann::json> Database::RecentAvatarHistory(int limit, int offset)
     }
 
     return rows;
+}
+
+Result<std::monostate> Database::UpdateAvatarResolution(const AvatarResolveUpdate& u)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (u.avatar_id.empty())
+    {
+        return MakeError("db_invalid_argument", "avatar_id is empty");
+    }
+    if (u.resolution_status.empty())
+    {
+        return MakeError("db_invalid_argument", "resolution_status is empty");
+    }
+
+    const char* sql =
+        "UPDATE avatar_history SET "
+        "resolved_avatar_id = ?, "
+        "resolved_thumbnail_url = ?, "
+        "resolved_image_url = ?, "
+        "resolution_source = ?, "
+        "resolution_status = ?, "
+        "resolved_at = ? "
+        "WHERE avatar_id = ?;";
+
+    return RunOnce(sql, [this, &u](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindOptionalText(stmt, 1, u.resolved_avatar_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 2, u.resolved_thumbnail_url) != SQLITE_OK ||
+            BindOptionalText(stmt, 3, u.resolved_image_url) != SQLITE_OK ||
+            BindOptionalText(stmt, 4, u.resolution_source) != SQLITE_OK ||
+            BindText(stmt, 5, u.resolution_status) != SQLITE_OK ||
+            BindText(stmt, 6, u.resolved_at) != SQLITE_OK ||
+            BindText(stmt, 7, u.avatar_id) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
 }
 
 Result<std::int64_t> Database::AvatarHistoryCount()
@@ -2021,7 +2067,13 @@ CREATE TABLE IF NOT EXISTS avatar_history (
     avatar_name TEXT,
     author_name TEXT,
     first_seen_on TEXT,
-    first_seen_at TEXT NOT NULL
+    first_seen_at TEXT NOT NULL,
+    resolved_avatar_id TEXT,
+    resolved_thumbnail_url TEXT,
+    resolved_image_url TEXT,
+    resolution_source TEXT,
+    resolution_status TEXT,
+    resolved_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS friend_log (
@@ -2280,7 +2332,23 @@ ALTER TABLE friend_log ADD COLUMN display_name TEXT;
                      nullptr, nullptr, nullptr);
     }
 
-    if (const auto r = ExecSimple("PRAGMA user_version = 10;"); std::holds_alternative<Error>(r))
+    // ── Schema v11: persisted thumbnail resolution for log-only avatars
+    {
+        sqlite3_exec(m_db, "ALTER TABLE avatar_history ADD COLUMN resolved_avatar_id TEXT;",
+                     nullptr, nullptr, nullptr);
+        sqlite3_exec(m_db, "ALTER TABLE avatar_history ADD COLUMN resolved_thumbnail_url TEXT;",
+                     nullptr, nullptr, nullptr);
+        sqlite3_exec(m_db, "ALTER TABLE avatar_history ADD COLUMN resolved_image_url TEXT;",
+                     nullptr, nullptr, nullptr);
+        sqlite3_exec(m_db, "ALTER TABLE avatar_history ADD COLUMN resolution_source TEXT;",
+                     nullptr, nullptr, nullptr);
+        sqlite3_exec(m_db, "ALTER TABLE avatar_history ADD COLUMN resolution_status TEXT;",
+                     nullptr, nullptr, nullptr);
+        sqlite3_exec(m_db, "ALTER TABLE avatar_history ADD COLUMN resolved_at TEXT;",
+                     nullptr, nullptr, nullptr);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 11;"); std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
         return std::get<Error>(r);

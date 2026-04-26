@@ -168,6 +168,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "db.playerEncounters",
         "db.avatarHistory.list",
         "db.avatarHistory.count",
+        "db.avatarHistory.resolve",
         "db.stats.heatmap",
         "db.stats.overview",
         "db.history.clear",
@@ -676,6 +677,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("db.avatarHistory.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistory(p, id); });
     m_handlers.emplace("db.avatarHistory.count", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistoryCount(p, id); });
     m_handlers.emplace("db.avatarHistory.record", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistoryRecord(p, id); });
+    m_handlers.emplace("db.avatarHistory.resolve", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistoryResolve(p, id); });
     m_handlers.emplace("db.stats.heatmap", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsHeatmap(p, id); });
     m_handlers.emplace("db.stats.overview", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsOverview(p, id); });
     m_handlers.emplace("db.history.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbHistoryClear(p, id); });

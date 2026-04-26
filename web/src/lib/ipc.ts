@@ -1336,6 +1336,18 @@ class IpcClient {
     return this.call<undefined, { count: number }>("db.avatarHistory.count");
   }
 
+  async dbAvatarHistoryResolve(params: {
+    avatar_id: string;
+    resolved_avatar_id?: string | null;
+    resolved_thumbnail_url?: string | null;
+    resolved_image_url?: string | null;
+    resolution_source?: string | null;
+    resolution_status: "resolved" | "miss";
+    resolved_at?: string;
+  }) {
+    return this.call<typeof params, { ok: boolean }>("db.avatarHistory.resolve", params);
+  }
+
   async dbStatsHeatmap(days = 30) {
     return this.call<{ days: number }, any>("db.stats.heatmap", { days });
   }

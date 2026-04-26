@@ -27,7 +27,7 @@ import {
   useFavoriteActions,
   useFavoriteItems,
 } from "@/lib/library";
-import type { AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
+import type { AvatarHistoryItem, AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
 import { Eye, Sliders, Search, User, Info, Lock, Box, Heart, Globe2, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { ImageZoom } from "@/components/ImageZoom";
@@ -44,6 +44,7 @@ type AugmentedAvatar = LocalAvatarItem & {
   wearer_names?: string[];
   resolved_avatar_id?: string;
   resolved_thumbnail_url?: string;
+  resolution_source?: string | null;
   thumbnail_status?: "idle" | "loading" | "resolved" | "miss";
 };
 
@@ -142,6 +143,10 @@ function compareIsoish(a?: string | null, b?: string | null): number {
 
 function normalizeAvatarName(name: string): string {
   return name.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeAuthorName(name: string | undefined | null): string {
+  return normalizeAvatarName(name ?? "");
 }
 
 /**
@@ -861,6 +866,18 @@ function Avatars() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
   const { toggleFavorite } = useFavoriteActions();
+  const avatarHistoryQuery = useIpcQuery<{ limit: number; offset: number }, { items: AvatarHistoryItem[] }>(
+    "db.avatarHistory.list",
+    { limit: 500, offset: 0 },
+    { staleTime: 60_000 },
+  );
+  const avatarHistoryById = useMemo(() => {
+    const map = new Map<string, AvatarHistoryItem>();
+    for (const row of avatarHistoryQuery.data?.items ?? []) {
+      if (row.avatar_id) map.set(row.avatar_id, row);
+    }
+    return map;
+  }, [avatarHistoryQuery.data?.items]);
   // Canonical name cache: `avatarId → API-fetched display name`. Populated
   // by the inspector each time it resolves a new avatar, read back by the
   // left-list rows so a single avatar never shows two different names
@@ -946,6 +963,7 @@ function Avatars() {
           source: "encounter-log",
           wearer_name: actor,
           wearer_user_id: ev.actor_user_id,
+          author: ev.author_name ?? undefined,
           last_seen_at: ev.iso_time,
           seen_count: 1,
           wearer_count: 1,
@@ -964,17 +982,34 @@ function Avatars() {
         current.wearer_name = actor;
         current.wearer_user_id = ev.actor_user_id;
         current.user_id = ev.actor_user_id ?? current.user_id;
+        current.author = ev.author_name ?? current.author;
       }
     }
 
+    const withDbResolution = [...encounters.values()].map((item) => {
+      const db = avatarHistoryById.get(item.avatar_id);
+      if (!db) return item;
+      return {
+        ...item,
+        author: item.author ?? db.author_name ?? undefined,
+        wearer_user_id: item.wearer_user_id ?? db.first_seen_user_id ?? undefined,
+        resolved_avatar_id: db.resolved_avatar_id ?? undefined,
+        resolved_thumbnail_url: db.resolved_thumbnail_url ?? db.resolved_image_url ?? undefined,
+        resolution_source: db.resolution_source,
+        thumbnail_status: db.resolution_status === "resolved" || db.resolution_status === "miss"
+          ? db.resolution_status
+          : item.thumbnail_status,
+      };
+    });
+
     out.push(
-      ...[...encounters.values()].sort((a, b) =>
+      ...withDbResolution.sort((a, b) =>
         compareIsoish(b.last_seen_at, a.last_seen_at),
       ),
     );
 
     return out;
-  }, [report]);
+  }, [avatarHistoryById, report]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -1053,6 +1088,7 @@ function Avatars() {
       .filter((item) => item.source === "encounter-log" && item.display_name)
       .slice(0, SEEN_PAGE_SIZE);
     const missing = candidates.filter((item) => {
+      if (item.thumbnail_status === "resolved" || item.thumbnail_status === "miss") return false;
       const key = normalizeAvatarName(item.display_name ?? "");
       return key && !nameThumbs[key];
     });
@@ -1075,6 +1111,29 @@ function Avatars() {
         if (!name) continue;
         const key = normalizeAvatarName(name);
         try {
+          const persist = async (params: {
+            status: "resolved" | "miss";
+            source?: string;
+            avatarId?: string;
+            thumbnailUrl?: string;
+            imageUrl?: string;
+          }) => {
+            try {
+              await ipc.dbAvatarHistoryResolve({
+                avatar_id: item.avatar_id,
+                resolved_avatar_id: params.avatarId ?? null,
+                resolved_thumbnail_url: params.thumbnailUrl ?? null,
+                resolved_image_url: params.imageUrl ?? null,
+                resolution_source: params.source ?? null,
+                resolution_status: params.status,
+                resolved_at: new Date().toISOString(),
+              });
+            } catch {
+              // Resolution is still useful for the current page even if the
+              // persistence write fails; the next scan can retry.
+            }
+          };
+
           if (item.wearer_user_id?.startsWith("usr_")) {
             const profileResp = await ipc.call<
               { userId: string },
@@ -1087,6 +1146,13 @@ function Avatars() {
               profile?.currentAvatarImageUrl ||
               undefined;
             if (profileUrl && profileName === key) {
+              await persist({
+                status: "resolved",
+                source: "wearer_profile",
+                avatarId: profile?.currentAvatarId,
+                thumbnailUrl: profile?.currentAvatarThumbnailImageUrl,
+                imageUrl: profile?.currentAvatarImageUrl,
+              });
               setNameThumbs((prev) => ({
                 ...prev,
                 [key]: {
@@ -1102,9 +1168,23 @@ function Avatars() {
 
           const res = await ipc.searchAvatars(name, 5);
           const avatars = res?.avatars ?? [];
-          const exact = avatars.find((a) => normalizeAvatarName(a.name) === key);
+          const authorKey = normalizeAuthorName(item.author);
+          const nameMatches = avatars.filter((a) => normalizeAvatarName(a.name) === key);
+          const exact = authorKey ? nameMatches.find((a) => {
+            if (normalizeAvatarName(a.name) !== key) return false;
+            return normalizeAuthorName(a.authorName) === authorKey;
+          }) : (nameMatches.length === 1 ? nameMatches[0] : undefined);
           const chosen = exact;
           const url = chosen?.thumbnailImageUrl || chosen?.imageUrl || undefined;
+          await persist(url
+            ? {
+              status: "resolved",
+              source: authorKey ? "public_search_name_author" : "public_search_name",
+              avatarId: chosen?.id,
+              thumbnailUrl: chosen?.thumbnailImageUrl,
+              imageUrl: chosen?.imageUrl,
+            }
+            : { status: "miss", source: authorKey ? "public_search_name_author" : "public_search_name" });
           setNameThumbs((prev) => ({
             ...prev,
             [key]: url
@@ -1112,6 +1192,16 @@ function Avatars() {
               : { status: "miss" },
           }));
         } catch {
+          try {
+            await ipc.dbAvatarHistoryResolve({
+              avatar_id: item.avatar_id,
+              resolution_status: "miss",
+              resolution_source: "resolver_error",
+              resolved_at: new Date().toISOString(),
+            });
+          } catch {
+            // Best-effort cache update.
+          }
           setNameThumbs((prev) => ({ ...prev, [key]: { status: "miss" } }));
         }
         await new Promise((resolve) => window.setTimeout(resolve, 80));
