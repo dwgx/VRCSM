@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useReport } from "@/lib/report-context";
+import { useAuth } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
 import { vrcApiThrottle } from "@/lib/api-throttle";
-import { useThumbnail } from "@/lib/thumbnails";
+import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,12 @@ interface SeenAvatar {
   first_seen_at?: string | null;
   release_status?: string | null;
   first_seen_user_id?: string | null;
+  resolved_avatar_id?: string | null;
+  resolved_thumbnail_url?: string | null;
+  resolved_image_url?: string | null;
+  resolution_source?: string | null;
+  resolution_status?: string | null;
+  resolved_at?: string | null;
 }
 
 interface SeenAvatarWearer {
@@ -45,12 +52,20 @@ interface SeenAvatarWearer {
 
 interface SeenLogAvatar {
   local_id: string;
+  avatar_history_id: string;
+  avatar_id?: string | null;
   avatar_name: string;
+  author_name?: string | null;
   first_seen_at?: string | null;
   last_seen_at?: string | null;
   seen_count: number;
   wearer_count: number;
   wearers: SeenAvatarWearer[];
+  resolved_avatar_id?: string | null;
+  resolved_thumbnail_url?: string | null;
+  resolved_image_url?: string | null;
+  resolution_source?: string | null;
+  resolution_status?: string | null;
 }
 
 interface AvatarDetails {
@@ -64,6 +79,14 @@ interface AvatarDetails {
   tags?: string[];
   version?: number;
   [key: string]: unknown;
+}
+
+interface AvatarSearchResult {
+  id: string;
+  name: string;
+  authorName: string;
+  thumbnailImageUrl?: string | null;
+  imageUrl?: string | null;
 }
 
 interface PerfRank {
@@ -95,6 +118,53 @@ function stableSeenKey(name: string): string {
   return `seen:${h.toString(16).padStart(8, "0")}`;
 }
 
+function normalizeAvatarName(name?: string | null): string {
+  return (name ?? "")
+    .normalize("NFKC")
+    .replace(/[._\-‐‑‒–—―\s]+/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function isSameAvatarName(a?: string | null, b?: string | null): boolean {
+  const left = normalizeAvatarName(a);
+  const right = normalizeAvatarName(b);
+  return Boolean(left && right && left === right);
+}
+
+function logOnlyAvatarKey(name: string, author?: string | null): string {
+  const cleanName = name.trim();
+  const cleanAuthor = author?.trim();
+  return cleanAuthor ? `name:${cleanName}|author:${cleanAuthor}` : `name:${cleanName}`;
+}
+
+function historyNameKey(name?: string | null, author?: string | null): string | null {
+  const normalizedName = normalizeAvatarName(name);
+  if (!normalizedName) return null;
+  const normalizedAuthor = normalizeAvatarName(author);
+  return normalizedAuthor ? `${normalizedName}|${normalizedAuthor}` : normalizedName;
+}
+
+function pickHistoryForLogAvatar(
+  item: SeenLogAvatar,
+  byId: Map<string, SeenAvatar>,
+  byName: Map<string, SeenAvatar | null>,
+): SeenAvatar | null {
+  const exactId = logOnlyAvatarKey(item.avatar_name, item.author_name);
+  const legacyId = logOnlyAvatarKey(item.avatar_name);
+  return (
+    byId.get(exactId) ??
+    byId.get(legacyId) ??
+    (historyNameKey(item.avatar_name, item.author_name)
+      ? byName.get(historyNameKey(item.avatar_name, item.author_name)!) ?? undefined
+      : undefined) ??
+    (historyNameKey(item.avatar_name)
+      ? byName.get(historyNameKey(item.avatar_name)!) ?? undefined
+      : undefined) ??
+    null
+  );
+}
+
 function compareIsoish(a?: string | null, b?: string | null): number {
   if (!a && !b) return 0;
   if (!a) return -1;
@@ -102,26 +172,47 @@ function compareIsoish(a?: string | null, b?: string | null): number {
   return a.localeCompare(b);
 }
 
-function buildSeenLogAvatars(events: AvatarSwitchEvent[]): SeenLogAvatar[] {
+function buildSeenLogAvatars(events: AvatarSwitchEvent[], historyRows: SeenAvatar[]): SeenLogAvatar[] {
   const byName = new Map<string, SeenLogAvatar>();
+  const historyById = new Map<string, SeenAvatar>();
+  const historyByName = new Map<string, SeenAvatar | null>();
+
+  for (const row of historyRows) {
+    historyById.set(row.avatar_id, row);
+    for (const key of [
+      historyNameKey(row.avatar_name, row.author_name),
+      historyNameKey(row.avatar_name),
+    ]) {
+      if (!key) continue;
+      if (!historyByName.has(key)) {
+        historyByName.set(key, row);
+      } else if (historyByName.get(key)?.avatar_id !== row.avatar_id) {
+        historyByName.set(key, null);
+      }
+    }
+  }
 
   for (const ev of events) {
     const name = ev.avatar_name?.trim();
     const actor = ev.actor?.trim();
     if (!name || !actor) continue;
+    const author = ev.author_name?.trim() || null;
 
-    let item = byName.get(name);
+    const itemKey = logOnlyAvatarKey(name, author);
+    let item = byName.get(itemKey);
     if (!item) {
       item = {
-        local_id: stableSeenKey(name),
+        local_id: stableSeenKey(itemKey),
+        avatar_history_id: itemKey,
         avatar_name: name,
+        author_name: author,
         first_seen_at: ev.iso_time,
         last_seen_at: ev.iso_time,
         seen_count: 0,
         wearer_count: 0,
         wearers: [],
       };
-      byName.set(name, item);
+      byName.set(itemKey, item);
     }
 
     item.seen_count += 1;
@@ -152,11 +243,27 @@ function buildSeenLogAvatars(events: AvatarSwitchEvent[]): SeenLogAvatar[] {
   }
 
   return [...byName.values()]
-    .map((item) => ({
-      ...item,
-      wearer_count: item.wearers.length,
-      wearers: item.wearers.sort((a, b) => compareIsoish(b.lastSeenAt, a.lastSeenAt)),
-    }))
+    .map((item) => {
+      const history = pickHistoryForLogAvatar(item, historyById, historyByName);
+      const resolvedAvatarId = history?.resolved_avatar_id?.startsWith("avtr_")
+        ? history.resolved_avatar_id
+        : history?.avatar_id?.startsWith("avtr_")
+          ? history.avatar_id
+          : null;
+      return {
+        ...item,
+        avatar_id: resolvedAvatarId,
+        avatar_history_id: history?.avatar_id ?? item.avatar_history_id,
+        author_name: item.author_name ?? history?.author_name ?? null,
+        resolved_avatar_id: resolvedAvatarId,
+        resolved_thumbnail_url: history?.resolved_thumbnail_url ?? null,
+        resolved_image_url: history?.resolved_image_url ?? null,
+        resolution_source: history?.resolution_source ?? null,
+        resolution_status: history?.resolution_status ?? null,
+        wearer_count: item.wearers.length,
+        wearers: item.wearers.sort((a, b) => compareIsoish(b.lastSeenAt, a.lastSeenAt)),
+      };
+    })
     .sort((a, b) => compareIsoish(b.last_seen_at, a.last_seen_at));
 }
 
@@ -203,12 +310,27 @@ export default function AvatarBenchmark() {
     refetchOnMount: "always",
     placeholderData: (prev) => prev,
   });
-  const seenAvatars = (seenQuery.data?.items ?? []) as SeenAvatar[];
+  const seenAvatars = useMemo(
+    () => (seenQuery.data?.items ?? []) as SeenAvatar[],
+    [seenQuery.data?.items],
+  );
   const seenLogAvatars = useMemo(
-    () => buildSeenLogAvatars(report?.logs?.avatar_switches ?? []),
-    [report],
+    () => buildSeenLogAvatars(report?.logs?.avatar_switches ?? [], seenAvatars),
+    [report, seenAvatars],
   );
   const effectiveSeenTotal = seenLogAvatars.length || totalSeen;
+
+  useEffect(() => {
+    const ids = [
+      ...seenLogAvatars
+        .map((a) => a.resolved_avatar_id ?? a.avatar_id)
+        .filter((id): id is string => Boolean(id?.startsWith("avtr_"))),
+      ...seenAvatars
+        .map((a) => a.resolved_avatar_id ?? a.avatar_id)
+        .filter((id): id is string => Boolean(id?.startsWith("avtr_"))),
+    ];
+    if (ids.length > 0) prefetchThumbnails([...new Set(ids)]);
+  }, [seenLogAvatars, seenAvatars]);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
@@ -311,7 +433,7 @@ export default function AvatarBenchmark() {
             {seenLogAvatars.length > 0 && (
               <div className="mb-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-[11px] text-[hsl(var(--muted-foreground))]">
                 {t("benchmark.localEncounterIndexHint", {
-                  defaultValue: "Built from local VRChat logs. Log-only rows may not include an avatar ID or official thumbnail, but they preserve who wore the avatar and when you saw it.",
+                  defaultValue: "Built from local VRChat logs. VRCSM now resolves thumbnails from saved matches, exact public search, and real avatar ids when available; ambiguous private rows keep the stable placeholder.",
                 })}
               </div>
             )}
@@ -544,14 +666,68 @@ function SeenAvatarRow({ a }: { a: SeenAvatar }) {
 
 function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
   const { t } = useTranslation();
+  const { status: authStatus } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const primaryWearer = a.wearers[0];
+  const rowAvatarId = a.resolved_avatar_id?.startsWith("avtr_")
+    ? a.resolved_avatar_id
+    : a.avatar_id?.startsWith("avtr_")
+      ? a.avatar_id
+      : null;
+  const { url: cachedThumb } = useThumbnail(rowAvatarId);
+  const resolveQuery = useQuery({
+    queryKey: ["benchmark.seen.resolveThumb", a.avatar_history_id, a.avatar_name, a.author_name],
+    queryFn: async () => {
+      const res = await vrcApiThrottle(() => ipc.searchAvatars(a.avatar_name, 12));
+      const candidates = (res.avatars ?? []).filter((avatar: AvatarSearchResult) =>
+        isSameAvatarName(avatar.name, a.avatar_name),
+      );
+      const authorMatched = a.author_name
+        ? candidates.find((avatar) => isSameAvatarName(avatar.authorName, a.author_name))
+        : undefined;
+      const uniqueNameMatched = !a.author_name && candidates.length === 1 ? candidates[0] : undefined;
+      const match = authorMatched ?? uniqueNameMatched;
+      const url = match?.thumbnailImageUrl || match?.imageUrl || null;
+      if (!match?.id?.startsWith("avtr_") || !url) {
+        return null;
+      }
+      await ipc.dbAvatarHistoryResolve({
+        avatar_id: a.avatar_history_id,
+        resolved_avatar_id: match.id,
+        resolved_thumbnail_url: match.thumbnailImageUrl || url,
+        resolved_image_url: match.imageUrl || url,
+        resolution_source: a.author_name ? "benchmark_public_search_exact" : "benchmark_public_search_name_unique",
+        resolution_status: "resolved",
+      }).catch(() => {});
+      prefetchThumbnails([match.id]);
+      return {
+        avatarId: match.id,
+        url,
+      };
+    },
+    enabled:
+      authStatus.authed &&
+      !rowAvatarId &&
+      !a.resolved_thumbnail_url &&
+      a.resolution_status !== "miss",
+    staleTime: 60 * 60_000,
+    retry: 0,
+  });
+  const searchAvatarId = resolveQuery.data?.avatarId ?? null;
+  const { url: searchCachedThumb } = useThumbnail(searchAvatarId);
+  const thumbUrl =
+    cachedThumb ??
+    a.resolved_thumbnail_url ??
+    a.resolved_image_url ??
+    searchCachedThumb ??
+    resolveQuery.data?.url ??
+    null;
 
   return (
     <div className="flex flex-col gap-2 border-b border-[hsl(var(--border)/0.35)] py-2">
       <div className="flex items-center gap-2.5 text-[11px]">
         <ThumbImage
-          src={undefined}
+          src={thumbUrl}
           seedKey={a.local_id}
           label={a.avatar_name}
           className="size-10 shrink-0"
@@ -561,7 +737,9 @@ function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
           <div className="flex items-center gap-1.5">
             <span className="font-medium truncate">{a.avatar_name}</span>
             <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">
-              {t("benchmark.logOnly", { defaultValue: "Log only" })}
+              {thumbUrl
+                ? t("benchmark.thumbnailResolved", { defaultValue: "Thumbnail" })
+                : t("benchmark.logOnly", { defaultValue: "Log only" })}
             </Badge>
             <Badge variant="secondary" className="h-4 text-[9px]">
               {t("benchmark.wearerCount", {

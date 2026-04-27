@@ -14,9 +14,10 @@ import { trustRank, trustColorClass, trustLabelKey } from "@/lib/vrcFriends";
 interface UserPopupBadgeProps {
   userId: string;
   displayName?: string;
+  compact?: boolean;
 }
 
-export function UserPopupBadge({ userId, displayName }: UserPopupBadgeProps) {
+export function UserPopupBadge({ userId, displayName, compact = false }: UserPopupBadgeProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { data } = useIpcQuery<{ userId: string }, { profile: VrcUserProfile | null }>(
@@ -38,9 +39,13 @@ export function UserPopupBadge({ userId, displayName }: UserPopupBadgeProps) {
           e.stopPropagation();
           setOpen(true);
         }}
-        className="flex w-fit items-center gap-1.5 rounded bg-[hsl(var(--surface-raised))] hover:bg-[hsl(var(--muted))] px-2 py-0.5 border border-[hsl(var(--border))] transition-colors"
+        className={compact
+          ? "flex min-w-0 max-w-full items-center gap-1 rounded bg-[hsl(var(--surface-raised))] hover:bg-[hsl(var(--muted))] px-1.5 py-0.5 border border-[hsl(var(--border))] transition-colors"
+          : "flex w-fit items-center gap-1.5 rounded bg-[hsl(var(--surface-raised))] hover:bg-[hsl(var(--muted))] px-2 py-0.5 border border-[hsl(var(--border))] transition-colors"}
       >
-        <div className="relative size-5 shrink-0 overflow-hidden rounded-[calc(var(--radius-sm)-2px)] bg-[hsl(var(--canvas))]">
+        <div className={compact
+          ? "relative size-4 shrink-0 overflow-hidden rounded-[calc(var(--radius-sm)-2px)] bg-[hsl(var(--canvas))]"
+          : "relative size-5 shrink-0 overflow-hidden rounded-[calc(var(--radius-sm)-2px)] bg-[hsl(var(--canvas))]"}>
           {thumb ? (
             <ThumbImage
               src={thumb}
@@ -52,13 +57,15 @@ export function UserPopupBadge({ userId, displayName }: UserPopupBadgeProps) {
               rounded=""
             />
           ) : (
-            <User className="size-3 m-auto text-[hsl(var(--muted-foreground))]" />
+            <User className={compact ? "size-2.5 m-auto text-[hsl(var(--muted-foreground))]" : "size-3 m-auto text-[hsl(var(--muted-foreground))]"} />
           )}
         </div>
-        <span className="text-[11.5px] font-medium text-[hsl(var(--foreground))]">
+        <span className={compact
+          ? "min-w-0 truncate text-[10.5px] font-medium text-[hsl(var(--foreground))]"
+          : "text-[11.5px] font-medium text-[hsl(var(--foreground))]"}>
           {name}
         </span>
-        {rank && (
+        {rank && !compact && (
           <span className={`text-[10px] font-bold tracking-tight uppercase ${trustColorClass(rank)}`}>
             {t(trustLabelKey(rank))}
           </span>

@@ -24,11 +24,13 @@ Installs automatically via the VRCSM plugin store (feed entry `dev.vrcsm.autoupl
 4. Click **Start upload batch**. The panel writes a task manifest; you launch the Python runner once from PowerShell:
    ```
    cd "%LocalAppData%\VRCSM\plugins\dev.vrcsm.autouploader\bin\python"
-   python main.py --base-dir "C:\path\to\your\avatars"
+   python main.py batch --dir "C:\path\to\your\avatars" --plan "C:\path\to\your\avatars\.vrcsm-upload-plan.json" -y
    ```
-   The v0.9.0 `AutoUploader.cs` (inside `UnityScripts/`) drives Unity Editor headlessly, uploads each avatar, and writes `upload_results.json` alongside your tasks.
+   The v0.9.4 `AutoUploader.cs` (inside `UnityScripts/`) drives Unity Editor headlessly, uploads each avatar, and writes `upload_results.json` alongside your tasks.
+   On first run the Python runner auto-detects Unity 2022.3.x and downloads `vrc-get` into its local `tools/` folder if it is not already installed.
 
 ## Roadmap
 
 - **v0.9.1**: `plugin.exec` permission so the panel spawns the Python runner directly (no shell round-trip). Requires the `PluginProcess` C++ runtime landed.
-- **v0.9.2**: PyInstaller-packaged `bin/service.exe` so the user no longer needs a local Python 3.11+ install.
+- **v0.9.3**: packaged-path fixes for UnityScripts, Unity registry detection, and clearer first-run vrc-get setup messaging.
+- **v0.9.4**: thumbnail selection rejects tiny/thumb/WebP candidates and re-encodes the chosen cover as a valid PNG before upload.

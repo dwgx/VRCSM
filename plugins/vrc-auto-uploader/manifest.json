@@ -1,14 +1,18 @@
 {
   "id": "dev.vrcsm.autouploader",
   "name": "VRChat Auto-Uploader",
-  "version": "0.9.2",
+  "version": "0.9.6",
   "hostMin": "0.9.2",
   "shape": "panel",
   "entry": {
     "panel": "index.html"
   },
   "permissions": [
-    "ipc:shell"
+    "ipc:shell:pickFolder",
+    "ipc:shell:openUrl",
+    "ipc:fs:listDir",
+    "ipc:fs:writePlan",
+    "ipc:fs:appDataDir"
   ],
   "author": {
     "name": "dwgx",
@@ -16,5 +20,19 @@
   },
   "homepage": "https://github.com/dwgx/VRCSM/tree/main/plugins/vrc-auto-uploader",
   "autoInstall": false,
-  "description": "Batch-upload .unitypackage avatars to VRChat. Requires Unity 2022.3.x + Python."
+  "description": "Batch-upload .unitypackage avatars to VRChat. Requires Unity 2022.3.x + Python.",
+  "i18n": {
+    "zh-CN": {
+      "name": "VRChat 自动上传器",
+      "description": "批量上传 .unitypackage 模型到 VRChat。需要 Unity 2022.3.x 和 Python。"
+    },
+    "ja": {
+      "name": "VRChat 自動アップローダー",
+      "description": ".unitypackage アバターを VRChat に一括アップロードします。Unity 2022.3.x と Python が必要です。"
+    },
+    "ko": {
+      "name": "VRChat 자동 업로더",
+      "description": ".unitypackage 아바타를 VRChat에 일괄 업로드합니다. Unity 2022.3.x와 Python이 필요합니다."
+    }
+  }
 }

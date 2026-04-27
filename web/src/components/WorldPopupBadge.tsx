@@ -13,14 +13,24 @@ import {
 import { ThumbImage } from "@/components/ThumbImage";
 import { Users, Globe2, Play } from "lucide-react";
 
-export const WorldPopupBadge = memo(function WorldPopupBadge({ worldId }: { worldId: string }) {
+export const WorldPopupBadge = memo(function WorldPopupBadge({
+  worldId,
+  prefetch = false,
+}: {
+  worldId: string;
+  prefetch?: boolean;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   // Defer world.details fetch until the dialog opens. See AvatarPopupBadge.
   const { data, isLoading } = useIpcQuery<{ id: string }, { details: WorldDetails | null }>(
     "world.details",
     { id: worldId },
-    { staleTime: 120_000, enabled: open && !!worldId && worldId.startsWith("wrld_") },
+    {
+      staleTime: 10 * 60_000,
+      gcTime: 30 * 60_000,
+      enabled: (open || prefetch) && !!worldId && worldId.startsWith("wrld_"),
+    },
   );
   const details = data?.details ?? null;
 

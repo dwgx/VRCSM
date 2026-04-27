@@ -260,6 +260,112 @@ export interface SteamVrConfig {
   steamvr_running?: boolean;
 }
 
+export interface SteamVrLinkLogMatch {
+  file: string;
+  line: number;
+  kind: string;
+  text: string;
+}
+
+export interface SteamVrLinkIssue {
+  id: string;
+  severity: "ok" | "info" | "warning" | "critical" | string;
+  title: string;
+  detail: string;
+  repairPlan?: string;
+}
+
+export interface SteamVrLinkRepairPlan {
+  id: string;
+  title: string;
+  risk: "low" | "medium" | "high" | string;
+  recommended?: boolean;
+  description?: string;
+  actions?: string[];
+}
+
+export interface SteamVrLinkSettingsProfile {
+  id: string;
+  title: string;
+  recommended?: boolean;
+  bandwidth: number;
+  supersampleScale: number;
+  refreshRate: number;
+  note?: string;
+  updates: {
+    driver_vrlink?: Record<string, unknown>;
+    steamvr?: Record<string, unknown>;
+  };
+}
+
+export interface SteamVrLinkDiagnostic {
+  ok: boolean;
+  summary: string;
+  steamPath: string;
+  steamVrInstalled: boolean;
+  steamVrInstallPath?: string;
+  manifest?: {
+    path?: string;
+    exists?: boolean;
+    isBeta?: boolean;
+    pendingDownload?: boolean;
+    fields?: Record<string, string>;
+    markers?: string[];
+  };
+  openvr?: Record<string, unknown>;
+  localconfigs?: Array<{
+    path?: string;
+    exists?: boolean;
+    questDeviceCount?: number;
+    betaMarkers?: number;
+    markers?: string[];
+  }>;
+  logs?: {
+    counts?: Record<string, number>;
+    matches?: SteamVrLinkLogMatch[];
+  };
+  diagnostics?: Record<string, unknown>;
+  issues?: SteamVrLinkIssue[];
+  repairPlans?: SteamVrLinkRepairPlan[];
+  suggestedSettings?: SteamVrLinkSettingsProfile[];
+  recommendations?: string[];
+}
+
+export interface SteamVrLinkRepairResult {
+  ok: boolean;
+  dryRun: boolean;
+  planId?: string;
+  backupDir: string;
+  actions?: string[];
+  backups?: Array<{ from: string; to: string; moved?: boolean; removedEntries?: number }>;
+  stopped?: Array<{ pid: number; name: string }>;
+  failures?: Array<{ pid?: number; name?: string; error: string }>;
+  settingsApplied?: boolean;
+  manifestBetaLinesRemoved?: number;
+  localconfigDeviceBlocksRemoved?: number;
+  localconfigBetaBlocksRemoved?: number;
+  currentBackupDir?: string;
+  currentBackups?: Array<{ from: string; to: string; moved?: boolean; removedEntries?: number }>;
+  restored?: number;
+}
+
+export interface SteamVrLinkBackupItem {
+  name: string;
+  path: string;
+  hasMetadata: boolean;
+  restorable: boolean;
+  backupCount: number;
+  planId?: string;
+  created?: string;
+  lastWriteTime?: string;
+}
+
+export interface SteamVrLinkBackupList {
+  ok: boolean;
+  steamPath: string;
+  items: SteamVrLinkBackupItem[];
+}
+
 export interface MemoryStatus {
   attached: boolean;
   vrcBase: number;
@@ -526,6 +632,15 @@ export interface AvatarSearchResult {
   tags: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface UserSearchResult {
+  id: string;
+  displayName: string;
+  profilePicOverride?: string | null;
+  currentAvatarImageUrl?: string | null;
+  currentAvatarThumbnailImageUrl?: string | null;
+  status?: string | null;
 }
 
 // ─── World Details (v0.5.0) ───────────────────────────────────────────

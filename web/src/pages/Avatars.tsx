@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,24 +12,35 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AvatarPreview3D } from "@/components/AvatarPreview3D";
 import { IdBadge } from "@/components/IdBadge";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
+import { ProfileCard, type VrcUserProfile } from "@/components/ProfileCard";
+import { ThumbImage } from "@/components/ThumbImage";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useReport } from "@/lib/report-context";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
 import { cn, formatDate } from "@/lib/utils";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
+import { vrcApiThrottle } from "@/lib/api-throttle";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import {
   LIBRARY_LIST_NAME,
   useFavoriteActions,
   useFavoriteItems,
 } from "@/lib/library";
-import type { AvatarHistoryItem, AvatarSearchResult, LocalAvatarItem } from "@/lib/types";
+import type { AvatarHistoryItem, AvatarSearchResult, LocalAvatarItem, UserSearchResult } from "@/lib/types";
 import { Eye, Sliders, Search, User, Info, Lock, Box, Heart, Globe2, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { ImageZoom } from "@/components/ImageZoom";
+
+const AvatarPreview3D = lazy(() =>
+  import("@/components/AvatarPreview3D").then((mod) => ({ default: mod.AvatarPreview3D })),
+);
 
 type AugmentedAvatar = LocalAvatarItem & {
   display_name?: string;
@@ -43,12 +54,15 @@ type AugmentedAvatar = LocalAvatarItem & {
   wearer_names?: string[];
   resolved_avatar_id?: string;
   resolved_thumbnail_url?: string;
+  author_user_id?: string;
   resolution_source?: string | null;
   thumbnail_status?: "idle" | "loading" | "resolved" | "miss";
   reference_thumbnail_url?: string;
-  reference_source?: "wearer_current_profile_verified";
+  reference_source?: "public_search_name_unique_reference" | "wearer_current_profile" | "wearer_current_profile_verified";
   reference_status?: "loading" | "resolved" | "miss";
   wearer_reference_url?: string;
+  wearer_reference_user_id?: string;
+  wearer_reference_display_name?: string;
   wearer_reference_avatar_name?: string;
   wearer_reference_status?: "loading" | "resolved" | "miss";
 };
@@ -56,24 +70,24 @@ type AugmentedAvatar = LocalAvatarItem & {
 type AvatarListFilter = "local" | "encounters" | "all";
 
 const SEEN_PAGE_SIZE = 40;
+const WEARER_REFERENCE_LOOKAHEAD = 10;
+const AVATAR_PUBLIC_SEARCH_TIMEOUT_MS = 6000;
 const WEARER_REFERENCE_TIMEOUT_MS = 5000;
 const AVATAR_LIST_FILTER_KEY = "vrcsm.avatars.listFilter.v2";
-const WEARER_REFERENCE_CACHE_KEY = "vrcsm.avatars.wearerReferences.v1";
+const WEARER_REFERENCE_CACHE_KEY = "vrcsm.avatars.wearerReferences.v2";
 
 type WearerReference = {
   status: "loading" | "resolved" | "miss";
+  userId?: string;
+  displayName?: string;
+  avatarId?: string;
   url?: string;
   avatarName?: string;
   verifiedForAvatarName?: string;
 };
 
 type WearerProfileResponse = {
-  profile: {
-    currentAvatarName?: string | null;
-    currentAvatarThumbnailImageUrl?: string | null;
-    currentAvatarImageUrl?: string | null;
-    profilePicOverride?: string | null;
-  } | null;
+  profile: VrcUserProfile | null;
 };
 
 // Raw JSON from /api/1/avatars/{id}. VRChat's payload shape is loose and
@@ -174,6 +188,87 @@ function isSameAvatarName(a?: string | null, b?: string | null): boolean {
   return Boolean(left && right && left === right);
 }
 
+function isFuzzyAvatarNameMatch(a?: string | null, b?: string | null): boolean {
+  const left = normalizeAvatarName(a);
+  const right = normalizeAvatarName(b);
+  return Boolean(left && right && Math.min(left.length, right.length) >= 2 && (left.includes(right) || right.includes(left)));
+}
+
+function trustedVrchatImageUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return undefined;
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === "api.vrchat.cloud" ||
+      host.endsWith(".vrchat.cloud") ||
+      host === "assets.vrchat.com" ||
+      host.endsWith(".assets.vrchat.com")
+    ) {
+      return url;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function trustedAvatarSearchImage(avatar?: AvatarSearchResult | null): string | undefined {
+  return trustedVrchatImageUrl(avatar?.thumbnailImageUrl) ?? trustedVrchatImageUrl(avatar?.imageUrl);
+}
+
+function trustedProfileImage(user?: Pick<
+  VrcUserProfile | UserSearchResult,
+  "profilePicOverride" | "currentAvatarImageUrl" | "currentAvatarThumbnailImageUrl"
+> | null): string | undefined {
+  return (
+    trustedVrchatImageUrl(user?.profilePicOverride) ??
+    trustedVrchatImageUrl(user?.currentAvatarImageUrl) ??
+    trustedVrchatImageUrl(user?.currentAvatarThumbnailImageUrl)
+  );
+}
+
+function pickUserSearchCandidate(
+  users: UserSearchResult[],
+  displayName?: string | null,
+): { user: UserSearchResult; exact: boolean; ambiguous: boolean } | null {
+  const valid = users.filter((user) => user.id?.startsWith("usr_"));
+  if (valid.length === 0) return null;
+  const exact = valid.filter((user) => isSameAvatarName(user.displayName, displayName));
+  if (exact.length > 0) {
+    return { user: exact[0], exact: true, ambiguous: exact.length > 1 };
+  }
+  return { user: valid[0], exact: false, ambiguous: true };
+}
+
+function pickAvatarSearchCandidate(
+  avatars: AvatarSearchResult[],
+  lookup: { displayName?: string; authorName?: string | null },
+): { avatar: AvatarSearchResult; verified: boolean } | null {
+  const trusted = avatars.filter((avatar) => avatar.id?.startsWith("avtr_") && trustedAvatarSearchImage(avatar));
+  if (trusted.length === 0) return null;
+
+  const exactName = trusted.filter((avatar) => isSameAvatarName(avatar.name, lookup.displayName));
+  const authorExact = lookup.authorName
+    ? exactName.find((avatar) => isSameAvatarName(avatar.authorName, lookup.authorName))
+    : undefined;
+  if (authorExact) return { avatar: authorExact, verified: true };
+  if (!lookup.authorName && exactName.length === 1) return { avatar: exactName[0], verified: true };
+  if (exactName.length > 0) return { avatar: exactName[0], verified: false };
+
+  const sameAuthor = lookup.authorName
+    ? trusted.filter((avatar) => isSameAvatarName(avatar.authorName, lookup.authorName))
+    : [];
+  const sameAuthorFuzzyName = sameAuthor.find((avatar) => isFuzzyAvatarNameMatch(avatar.name, lookup.displayName));
+  if (sameAuthorFuzzyName) return { avatar: sameAuthorFuzzyName, verified: false };
+  if (sameAuthor.length > 0) return { avatar: sameAuthor[0], verified: false };
+
+  const fuzzyName = trusted.find((avatar) => isFuzzyAvatarNameMatch(avatar.name, lookup.displayName));
+  if (fuzzyName) return { avatar: fuzzyName, verified: false };
+  return { avatar: trusted[0], verified: false };
+}
+
 function readWearerReferenceCache(): Record<string, WearerReference> {
   if (typeof window === "undefined") return {};
   try {
@@ -188,6 +283,9 @@ function readWearerReferenceCache(): Record<string, WearerReference> {
       if (item.status !== "resolved" && item.status !== "miss") continue;
       out[key] = {
         status: item.status,
+        userId: typeof item.userId === "string" ? item.userId : undefined,
+        displayName: typeof item.displayName === "string" ? item.displayName : undefined,
+        avatarId: typeof item.avatarId === "string" ? item.avatarId : undefined,
         url: typeof item.url === "string" ? item.url : undefined,
         avatarName: typeof item.avatarName === "string" ? item.avatarName : undefined,
         verifiedForAvatarName: typeof item.verifiedForAvatarName === "string" ? item.verifiedForAvatarName : undefined,
@@ -249,7 +347,7 @@ function AvatarRowThumb({
   const { url } = useThumbnail(avatarId);
   const resolvedUrl = url || fallbackUrl || null;
   return (
-    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
+    <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
       {resolvedUrl ? (
         <img
           src={resolvedUrl}
@@ -264,7 +362,7 @@ function AvatarRowThumb({
       ) : placeholder === "image" ? (
         <ImageIconPlaceholder size="sm" />
       ) : (
-        <Avatar3DPreview seed={avatarId} size={22} />
+        <Avatar3DPreview seed={avatarId} size={20} />
       )}
       {onToggleFavorite ? (
         <button
@@ -285,8 +383,11 @@ function AvatarRowThumb({
         </button>
       ) : null}
       {resolvedUrl && isReference ? (
-        <span className="absolute left-0.5 top-0.5 rounded bg-black/65 px-0.5 py-px text-[7px] font-bold leading-none text-white/90">
-          参考
+        <span
+          className="absolute left-0.5 top-0.5 size-1.5 rounded-full bg-amber-400 shadow-[0_0_0_1px_rgba(0,0,0,0.45)]"
+          title="参考图"
+        >
+          <span className="sr-only">参考图</span>
         </span>
       ) : null}
     </div>
@@ -308,12 +409,12 @@ function ImageIconPlaceholder({ size = "lg" }: { size?: "sm" | "lg" }) {
 function Avatar3DPreview({ seed, size = 96 }: { seed: string; size?: number }) {
   const hues = useMemo(() => hueSet(seed), [seed]);
   const half = size / 2;
-  const style: React.CSSProperties & { "--half": string } = {
+  const style: CSSProperties & { "--half": string } = {
     width: size,
     height: size,
     "--half": `${half}px`,
   };
-  const face = (index: number): React.CSSProperties => ({
+  const face = (index: number): CSSProperties => ({
     // Two-stop gradient gives each face a lit/shaded falloff.
     background: `linear-gradient(135deg, hsl(${hues[index]} 72% 56%), hsl(${
       (hues[index] + 40) % 360
@@ -353,6 +454,172 @@ function Avatar3DPreview({ seed, size = 96 }: { seed: string; size?: number }) {
   );
 }
 
+function WearerProfileFallbackCard({
+  wearerUserId,
+  wearerName,
+  avatarName,
+  thumbnailStatus,
+  onResolvedReference,
+}: {
+  wearerUserId?: string | null;
+  wearerName?: string | null;
+  avatarName?: string | null;
+  thumbnailStatus?: AugmentedAvatar["thumbnail_status"] | AugmentedAvatar["reference_status"];
+  onResolvedReference?: (reference: WearerReference) => void;
+}) {
+  const { t } = useTranslation();
+  const { status: authStatus } = useAuth();
+  const [open, setOpen] = useState(false);
+  const reportedReferenceKey = useRef<string | null>(null);
+  const directUserId = wearerUserId?.startsWith("usr_") ? wearerUserId : null;
+  const query = wearerName?.trim() ?? "";
+  const shouldSearchByName = authStatus.authed && !directUserId && query.length > 0;
+
+  const { data: searchData, isLoading: searchLoading } = useIpcQuery<
+    { query: string; count: number; offset: number },
+    { users: UserSearchResult[] }
+  >(
+    "user.search",
+    { query, count: 8, offset: 0 },
+    {
+      enabled: shouldSearchByName,
+      staleTime: 10 * 60_000,
+      gcTime: 30 * 60_000,
+      retry: false,
+    },
+  );
+
+  const searchPick = useMemo(
+    () => pickUserSearchCandidate(searchData?.users ?? [], wearerName),
+    [searchData?.users, wearerName],
+  );
+  const profileUserId = directUserId ?? searchPick?.user.id ?? null;
+
+  const { data: profileData, isLoading: profileLoading } = useIpcQuery<
+    { userId: string },
+    WearerProfileResponse
+  >(
+    "user.getProfile",
+    { userId: profileUserId ?? "" },
+    {
+      enabled: authStatus.authed && !!profileUserId,
+      staleTime: 10 * 60_000,
+      gcTime: 30 * 60_000,
+      retry: false,
+    },
+  );
+
+  const profile = profileData?.profile ?? null;
+  const fallbackUser = profile ?? searchPick?.user ?? null;
+  const imageUrl = trustedProfileImage(fallbackUser);
+  const name = profile?.displayName ?? searchPick?.user.displayName ?? wearerName ?? t("common.unknown", { defaultValue: "Unknown" });
+  const loading = thumbnailStatus === "loading" || searchLoading || profileLoading;
+  const matchLabel = searchPick && !directUserId
+    ? searchPick.exact && !searchPick.ambiguous
+      ? t("avatars.profileFallbackNameMatch", { defaultValue: "Name match" })
+      : t("avatars.profileFallbackAmbiguous", { defaultValue: "Name guess" })
+    : t("avatars.profileFallbackKnownUser", { defaultValue: "Wearer profile" });
+
+  useEffect(() => {
+    if (!imageUrl || !onResolvedReference) return;
+    const currentAvatarName = profile?.currentAvatarName || undefined;
+    const currentAvatarId = profile?.currentAvatarId?.startsWith("avtr_")
+      ? profile.currentAvatarId
+      : undefined;
+    const verifiedForAvatarName =
+      currentAvatarName && isSameAvatarName(currentAvatarName, avatarName)
+        ? avatarName ?? undefined
+        : undefined;
+    const key = [
+      profileUserId ?? query,
+      imageUrl,
+      currentAvatarId ?? "",
+      currentAvatarName ?? "",
+      verifiedForAvatarName ?? "",
+    ].join("|");
+    if (reportedReferenceKey.current === key) return;
+    reportedReferenceKey.current = key;
+    onResolvedReference({
+      status: "resolved",
+      userId: profileUserId?.startsWith("usr_") ? profileUserId : undefined,
+      displayName: name,
+      avatarId: currentAvatarId,
+      url: imageUrl,
+      avatarName: currentAvatarName,
+      verifiedForAvatarName,
+    });
+  }, [
+    avatarName,
+    imageUrl,
+    onResolvedReference,
+    profile?.currentAvatarId,
+    profile?.currentAvatarName,
+    profileUserId,
+    query,
+  ]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group relative flex h-full w-full flex-col justify-end overflow-hidden bg-[hsl(var(--canvas))] text-left"
+      >
+        {imageUrl ? (
+          <ThumbImage
+            src={imageUrl}
+            seedKey={profileUserId ?? query}
+            label={name}
+            alt=""
+            className="absolute inset-0 h-full w-full border-0"
+            aspect=""
+            rounded=""
+            priority="eager"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-[hsl(var(--canvas))]">
+            {loading ? (
+              <Loader2 className="size-9 animate-spin text-[hsl(var(--muted-foreground))]" />
+            ) : (
+              <User className="size-12 text-[hsl(var(--muted-foreground))]" />
+            )}
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        <div className="relative z-10 flex w-full flex-col gap-1 p-3 text-white">
+          <div className="w-fit rounded bg-black/55 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+            {matchLabel}
+          </div>
+          <div className="truncate text-[14px] font-bold drop-shadow-sm">
+            {name}
+          </div>
+          <div className="line-clamp-2 text-[10.5px] leading-snug text-white/75">
+            {imageUrl
+              ? t("avatars.profileFallbackNote", {
+                  name: avatarName ?? t("common.unknown", { defaultValue: "Unknown" }),
+                  defaultValue: "No verified avatar thumbnail. Showing this wearer's current profile image as a reference for {{name}}.",
+                })
+              : t("avatars.thumbnailMiss", { defaultValue: "No verified thumbnail match" })}
+          </div>
+        </div>
+      </button>
+
+      <DialogContent className="max-w-[420px] p-0 gap-0 overflow-hidden">
+        <DialogTitle className="sr-only">{name}</DialogTitle>
+        {profile ? (
+          <ProfileCard user={profile} />
+        ) : (
+          <div className="p-8 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
+            {loading
+              ? t("common.loading", { defaultValue: "Loading…" })
+              : t("avatars.profileFallbackUnavailable", { defaultValue: "Could not load the wearer profile." })}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /**
  * Inspector pane — merges local cache data with /api/1/avatars/{id} when
  * the user is signed in. Local-only fields (eye_height, parameter_count,
@@ -365,9 +632,11 @@ function Avatar3DPreview({ seed, size = 96 }: { seed: string; size?: number }) {
 function AvatarInspector({
   selected,
   onCanonicalName,
+  onWearerReferenceResolved,
 }: {
   selected: AugmentedAvatar;
   onCanonicalName?: (avatarId: string, name: string) => void;
+  onWearerReferenceResolved?: (avatarId: string, reference: WearerReference) => void;
 }) {
   const { t } = useTranslation();
   const { status: authStatus } = useAuth();
@@ -415,6 +684,14 @@ function AvatarInspector({
   const referenceUrl = !fallbackUrl && isEncounterLog ? selected.reference_thumbnail_url : undefined;
   const previewUrl = fallbackUrl || referenceUrl;
   const wearerReferenceUrl = isEncounterLog && !referenceUrl ? selected.wearer_reference_url : undefined;
+  const wearerProfileUserId =
+    selected.wearer_reference_user_id ??
+    (selected.wearer_user_id?.startsWith("usr_") ? selected.wearer_user_id : undefined);
+  const wearerProfileDisplayName =
+    selected.wearer_reference_display_name ??
+    selected.wearer_name ??
+    t("common.unknown", { defaultValue: "Unknown" });
+  const previewSize = isEncounterLog ? 200 : 220;
   const can3D = !isEncounterLog && Boolean(windowsAssetUrl);
   const show3D = can3D && preview3DFor === selected.avatar_id;
 
@@ -432,15 +709,24 @@ function AvatarInspector({
           {(() => {
             if (show3D) {
               return (
-                <div className="relative" style={{ width: 220 }}>
-                  <AvatarPreview3D
-                    avatarId={selected.avatar_id}
-                    assetUrl={windowsAssetUrl}
-                    bundlePath={selected.path || undefined}
-                    fallbackImageUrl={previewUrl}
-                    size={220}
-                    expandedSize={720}
-                  />
+                <div className="relative" style={{ width: previewSize }}>
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] text-[11px] text-[hsl(var(--muted-foreground))]" style={{ width: previewSize, height: previewSize }}>
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                        {t("common.loading", { defaultValue: "Loading…" })}
+                      </div>
+                    }
+                  >
+                    <AvatarPreview3D
+                      avatarId={selected.avatar_id}
+                      assetUrl={windowsAssetUrl}
+                      bundlePath={selected.path || undefined}
+                      fallbackImageUrl={previewUrl}
+                      size={previewSize}
+                      expandedSize={720}
+                    />
+                  </Suspense>
                   <button
                     type="button"
                     className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-0.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm hover:bg-black/80 transition-colors"
@@ -453,7 +739,7 @@ function AvatarInspector({
               );
             }
             return (
-              <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]" style={{ width: 220, height: 220 }}>
+              <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))]" style={{ width: previewSize, height: previewSize }}>
                 {previewUrl ? (
                   <>
                     <ImageZoom src={previewUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
@@ -463,13 +749,25 @@ function AvatarInspector({
                       </div>
                     ) : null}
                   </>
+                ) : isEncounterLog && (selected.wearer_user_id?.startsWith("usr_") || selected.wearer_name) ? (
+                  <WearerProfileFallbackCard
+                    wearerUserId={selected.wearer_user_id}
+                    wearerName={selected.wearer_name}
+                    avatarName={displayName}
+                    thumbnailStatus={selected.thumbnail_status ?? selected.reference_status}
+                    onResolvedReference={(reference) => onWearerReferenceResolved?.(selected.avatar_id, reference)}
+                  />
                 ) : isEncounterLog ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[hsl(var(--canvas))] text-[11px] text-[hsl(var(--muted-foreground))]">
                     <User className="size-12 opacity-60" />
                     <span>
-                      {selected.reference_status === "loading"
-                        ? t("avatars.referenceImageLoading", { defaultValue: "Loading wearer reference image…" })
-                        : t("avatars.noThumbnail", { defaultValue: "No thumbnail" })}
+                      {selected.thumbnail_status === "loading"
+                        ? t("avatars.thumbnailResolving", { defaultValue: "Resolving thumbnail…" })
+                        : selected.reference_status === "loading"
+                          ? t("avatars.referenceImageLoading", { defaultValue: "Loading wearer reference image…" })
+                          : selected.thumbnail_status === "miss" || selected.reference_status === "miss"
+                            ? t("avatars.thumbnailMiss", { defaultValue: "No verified thumbnail match" })
+                            : t("avatars.noThumbnail", { defaultValue: "No thumbnail" })}
                     </span>
                   </div>
                 ) : (
@@ -670,25 +968,28 @@ function AvatarInspector({
             <div className="flex gap-2 min-w-0">
                <IdBadge id={selected.avatar_id} size="sm" />
             </div>
-            {details?.authorId || (selected.user_id && selected.user_id.startsWith("usr_")) ? (
+            {details?.authorId || selected.author_user_id || (selected.user_id && selected.user_id.startsWith("usr_")) ? (
               <div className="flex gap-2 min-w-0">
-                 <UserPopupBadge userId={(details?.authorId ?? selected.user_id) as string} />
+                 <UserPopupBadge
+                   userId={(details?.authorId ?? selected.author_user_id ?? selected.user_id) as string}
+                   displayName={authorName}
+                 />
               </div>
             ) : null}
             {isEncounterLog && selected.wearer_name ? (
               <div className="flex flex-col gap-1 text-[10.5px]">
-                <div>
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-[hsl(var(--muted-foreground))]">
                     {t("avatars.wornBy", { defaultValue: "worn by" })}:{" "}
                   </span>
-                  {selected.wearer_user_id?.startsWith("usr_") ? (
+                  {wearerProfileUserId ? (
                     <UserPopupBadge
-                      userId={selected.wearer_user_id}
-                      displayName={selected.wearer_name}
+                      userId={wearerProfileUserId}
+                      displayName={wearerProfileDisplayName}
                     />
                   ) : (
                     <span className="font-medium text-[hsl(var(--foreground))]">
-                      {selected.wearer_name}
+                      {wearerProfileDisplayName}
                     </span>
                   )}
                 </div>
@@ -748,9 +1049,7 @@ function AvatarInspector({
               <span>
                 {t("avatars.encounterLogNote", {
                   defaultValue:
-                    referenceUrl
-                      ? "This row is indexed from local VRChat logs. VRChat logs do not include avtr_* or the historical thumbnail URL, so the image shown is the wearer's current public avatar/profile image and may not be the avatar seen at that time."
-                      : "This row is indexed from local VRChat logs. VRChat logs expose avatar name and wearer, but not avtr_* or the official thumbnail URL. No verified thumbnail was found for this encounter.",
+                    "This row is indexed from local VRChat logs. VRChat logs expose avatar name and wearer, but not avtr_* or the official thumbnail URL. VRCSM shows a thumbnail only when it can verify an exact public avatar match or the wearer's current profile still matches this logged avatar name.",
                 })}
               </span>
             </div>
@@ -799,6 +1098,11 @@ function AvatarRow({
     canonicalName &&
     item.display_name &&
     canonicalName.trim() !== item.display_name.trim();
+  const wearerUserId =
+    item.wearer_reference_user_id ??
+    (item.wearer_user_id?.startsWith("usr_") ? item.wearer_user_id : undefined);
+  const wearerDisplayName =
+    item.wearer_reference_display_name ?? item.wearer_name ?? t("common.unknown", { defaultValue: "Unknown" });
   return (
     <button
       type="button"
@@ -819,8 +1123,8 @@ function AvatarRow({
       ) : null}
       <AvatarRowThumb
         avatarId={item.avatar_id}
-        fallbackUrl={item.resolved_thumbnail_url ?? item.reference_thumbnail_url}
-        isReference={!item.resolved_thumbnail_url && Boolean(item.reference_thumbnail_url)}
+        fallbackUrl={item.resolved_thumbnail_url ?? item.reference_thumbnail_url ?? item.wearer_reference_url}
+        isReference={!item.resolved_thumbnail_url && Boolean(item.reference_thumbnail_url ?? item.wearer_reference_url)}
         placeholder={item.source === "encounter-log" ? "image" : "cube"}
         isFavorited={isFavorited}
         onToggleFavorite={item.avatar_id.startsWith("avtr_") ? onToggleFavorite : undefined}
@@ -835,7 +1139,7 @@ function AvatarRow({
               {t("avatars.encounterLog", { defaultValue: "Seen" })}
             </span>
           ) : null}
-          {item.source === "encounter-log" && !item.resolved_thumbnail_url && item.reference_thumbnail_url ? (
+          {item.source === "encounter-log" && !item.resolved_thumbnail_url && (item.reference_thumbnail_url || item.wearer_reference_url) ? (
             <span className="shrink-0 rounded-[var(--radius-sm)] border border-amber-500/40 bg-amber-500/12 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-600">
               {t("avatars.referenceImageBadgeShort", { defaultValue: "Reference" })}
             </span>
@@ -861,9 +1165,13 @@ function AvatarRow({
           {item.source === "encounter-log" ? (
             <>
               <span>{t("avatars.wornBy", { defaultValue: "worn by" })}</span>
-              <span className="truncate text-[hsl(var(--foreground))]">
-                {item.wearer_name ?? t("common.unknown", { defaultValue: "Unknown" })}
-              </span>
+              {wearerUserId ? (
+                <UserPopupBadge userId={wearerUserId} displayName={wearerDisplayName} compact />
+              ) : (
+                <span className="truncate text-[hsl(var(--foreground))]">
+                  {wearerDisplayName}
+                </span>
+              )}
               <span>·</span>
               <span>{t("avatars.seenTimes", { count: item.seen_count ?? 1, defaultValue: "seen {{count}} times" })}</span>
             </>
@@ -977,6 +1285,7 @@ function Avatars() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const { report, loading, error } = useReport();
+  const { status: authStatus } = useAuth();
   const [filter, setFilter] = useState("");
   const [listFilter, setListFilter] = useState<AvatarListFilter>(
     () => (localStorage.getItem(AVATAR_LIST_FILTER_KEY) as AvatarListFilter | null) ?? "local",
@@ -984,12 +1293,15 @@ function Avatars() {
   const [seenPage, setSeenPage] = useState(1);
   const [resolvedThumbs, setResolvedThumbs] = useState<Record<string, {
     avatarId?: string;
+    authorId?: string;
     url?: string;
+    verified?: boolean;
     status: "loading" | "resolved" | "miss";
   }>>({});
   const [wearerReferences, setWearerReferences] = useState<Record<string, WearerReference>>(
     () => readWearerReferenceCache(),
   );
+  const resolvedThumbsRef = useRef(resolvedThumbs);
   const wearerReferencesRef = useRef<Record<string, WearerReference>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { byType: favoriteIds } = useFavoriteItems(LIBRARY_LIST_NAME);
@@ -1013,6 +1325,26 @@ function Avatars() {
   const [canonicalNames, setCanonicalNames] = useState<Record<string, string>>({});
   const registerCanonicalName = useCallback((avatarId: string, name: string) => {
     setCanonicalNames((prev) => (prev[avatarId] === name ? prev : { ...prev, [avatarId]: name }));
+  }, []);
+  const registerWearerReference = useCallback((avatarId: string, reference: WearerReference) => {
+    if (!avatarId) return;
+    setWearerReferences((prev) => {
+      const current = prev[avatarId];
+      if (
+        current?.status === reference.status &&
+        current?.userId === reference.userId &&
+        current?.displayName === reference.displayName &&
+        current?.url === reference.url &&
+        current?.avatarId === reference.avatarId &&
+        current?.avatarName === reference.avatarName &&
+        current?.verifiedForAvatarName === reference.verifiedForAvatarName
+      ) {
+        return prev;
+      }
+      const next = { ...prev, [avatarId]: reference };
+      wearerReferencesRef.current = next;
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -1122,18 +1454,31 @@ function Avatars() {
         db.avatar_id !== item.avatar_id &&
         (db.resolution_source === "wearer_profile" || db.resolution_source === "wearer_profile_verified") &&
         !db.resolved_avatar_id;
+      const trustedDbThumbnail = unsafeLegacyProfileMatch
+        ? undefined
+        : trustedVrchatImageUrl(db.resolved_thumbnail_url) ?? trustedVrchatImageUrl(db.resolved_image_url);
+      const trustedResolvedAvatarId =
+        !unsafeLegacyProfileMatch && db.resolved_avatar_id?.startsWith("avtr_")
+          ? db.resolved_avatar_id
+          : undefined;
+      const trustedDbStatus =
+        unsafeLegacyProfileMatch
+          ? item.thumbnail_status
+          : db.resolution_status === "resolved"
+            ? trustedDbThumbnail
+              ? "resolved"
+              : item.thumbnail_status
+            : db.resolution_status === "miss"
+              ? "miss"
+              : item.thumbnail_status;
       return {
         ...item,
         author: item.author ?? db.author_name ?? undefined,
         wearer_user_id: item.wearer_user_id ?? db.first_seen_user_id ?? undefined,
-        resolved_avatar_id: unsafeLegacyProfileMatch ? undefined : db.resolved_avatar_id ?? undefined,
-        resolved_thumbnail_url: unsafeLegacyProfileMatch ? undefined : db.resolved_thumbnail_url ?? db.resolved_image_url ?? undefined,
+        resolved_avatar_id: trustedResolvedAvatarId,
+        resolved_thumbnail_url: trustedDbThumbnail,
         resolution_source: db.resolution_source,
-        thumbnail_status: unsafeLegacyProfileMatch
-          ? item.thumbnail_status
-          : db.resolution_status === "resolved" || db.resolution_status === "miss"
-          ? db.resolution_status
-          : item.thumbnail_status,
+        thumbnail_status: trustedDbStatus,
       };
     });
 
@@ -1169,6 +1514,10 @@ function Avatars() {
     setSeenPage(1);
     setSelectedId(null);
   }, [filter, listFilter]);
+
+  useEffect(() => {
+    resolvedThumbsRef.current = resolvedThumbs;
+  }, [resolvedThumbs]);
 
   useEffect(() => {
     wearerReferencesRef.current = wearerReferences;
@@ -1210,43 +1559,6 @@ function Avatars() {
     return counts;
   }, [items, canonicalNames]);
 
-  // Warm the thumbnail cache as soon as the avatar list lands so the
-  // row icons + inspector preview don't each trigger individual fetches
-  // as the user scrolls. One batched IPC → WinHTTP → CDN.
-  useEffect(() => {
-    const lookupIds = items
-      .map((it) => it.avatar_id)
-      .filter((id) => id.startsWith("avtr_"));
-    if (lookupIds.length > 0) {
-      prefetchThumbnails(lookupIds);
-    }
-  }, [items]);
-
-  useEffect(() => {
-    if (listFilter !== "encounters") return;
-    const candidates = pagedFiltered
-      .filter((item) => item.source === "encounter-log" && item.display_name)
-      .slice(0, SEEN_PAGE_SIZE);
-    const missing = candidates.filter((item) => {
-      if (item.thumbnail_status === "resolved" || item.thumbnail_status === "miss") return false;
-      return !resolvedThumbs[item.avatar_id];
-    });
-    if (missing.length === 0) return;
-
-    // VRChat output logs do not contain remote avtr_* ids or thumbnail URLs.
-    // The authenticated /avatars search endpoint does not search arbitrary
-    // public avatars either, so trying to "resolve" these rows just leaves the
-    // UI spinning and burns API calls. Only show thumbnails we already have
-    // from a verified source; otherwise mark the page rows as a fast miss.
-    setResolvedThumbs((prev) => {
-      const next = { ...prev };
-      for (const item of missing) {
-        next[item.avatar_id] = { status: "miss" };
-      }
-      return next;
-    });
-  }, [listFilter, resolvedThumbs, pagedFiltered]);
-
   const displayRows = useMemo<AugmentedAvatar[]>(
     () =>
       pagedFiltered.map((item) => {
@@ -1254,25 +1566,158 @@ function Avatars() {
         const hit = resolvedThumbs[item.avatar_id];
         const ref = wearerReferences[item.avatar_id];
         if (!hit && !ref) return item;
+        const hitUrl = trustedVrchatImageUrl(hit?.url);
+        const verifiedHitUrl = hitUrl && hit?.verified !== false ? hitUrl : undefined;
+        const referenceHitUrl = hitUrl && hit?.verified === false ? hitUrl : undefined;
+        const trustedReferenceUrl = trustedVrchatImageUrl(ref?.url);
         const verifiedReferenceUrl =
-          ref?.url && ref.verifiedForAvatarName && isSameAvatarName(ref.verifiedForAvatarName, item.display_name)
-            ? ref.url
+          trustedReferenceUrl && ref?.verifiedForAvatarName && isSameAvatarName(ref.verifiedForAvatarName, item.display_name)
+            ? trustedReferenceUrl
             : undefined;
+        const unverifiedReferenceUrl =
+          !verifiedReferenceUrl && trustedReferenceUrl && ref?.status === "resolved"
+            ? trustedReferenceUrl
+            : undefined;
+        const referenceFallbackUrl = verifiedReferenceUrl ?? unverifiedReferenceUrl;
+        const hasPrimaryThumbnail = Boolean(verifiedHitUrl ?? item.resolved_thumbnail_url);
         return {
           ...item,
-          resolved_avatar_id: hit?.avatarId ?? item.resolved_avatar_id,
-          resolved_thumbnail_url: hit?.url ?? item.resolved_thumbnail_url,
+          resolved_avatar_id: (verifiedHitUrl ? hit?.avatarId : undefined) ?? (verifiedReferenceUrl ? ref?.avatarId : undefined) ?? item.resolved_avatar_id,
+          resolved_thumbnail_url: verifiedHitUrl ?? item.resolved_thumbnail_url,
+          author_user_id: hit?.authorId?.startsWith("usr_") ? hit.authorId : item.author_user_id,
           thumbnail_status: hit?.status ?? item.thumbnail_status,
-          reference_thumbnail_url: !(hit?.url ?? item.resolved_thumbnail_url) ? verifiedReferenceUrl : undefined,
-          reference_source: verifiedReferenceUrl ? "wearer_current_profile_verified" as const : undefined,
-          reference_status: !(hit?.url ?? item.resolved_thumbnail_url) ? ref?.status : undefined,
-          wearer_reference_url: !(hit?.url ?? item.resolved_thumbnail_url) && !verifiedReferenceUrl ? ref?.url : undefined,
+          reference_thumbnail_url: !hasPrimaryThumbnail ? referenceHitUrl ?? referenceFallbackUrl : undefined,
+          reference_source: referenceHitUrl
+            ? "public_search_name_unique_reference"
+            : verifiedReferenceUrl
+            ? "wearer_current_profile_verified"
+            : referenceFallbackUrl
+              ? "wearer_current_profile"
+              : undefined,
+          reference_status: !hasPrimaryThumbnail ? ref?.status : undefined,
+          wearer_reference_url: unverifiedReferenceUrl,
+          wearer_reference_user_id: ref?.userId?.startsWith("usr_") ? ref.userId : undefined,
+          wearer_reference_display_name: ref?.displayName,
           wearer_reference_avatar_name: ref?.avatarName,
           wearer_reference_status: ref?.status,
         };
       }),
     [resolvedThumbs, wearerReferences, pagedFiltered],
   );
+
+  useEffect(() => {
+    const lookupIds = displayRows
+      .slice(0, 80)
+      .map((it) => it.resolved_avatar_id || it.avatar_id)
+      .filter((id) => id.startsWith("avtr_"));
+    if (lookupIds.length > 0) {
+      prefetchThumbnails([...new Set(lookupIds)]);
+    }
+  }, [displayRows]);
+
+  useEffect(() => {
+    if (!authStatus.authed || listFilter !== "encounters") return;
+    const targets = displayRows
+      .filter((item) => {
+        if (item.source !== "encounter-log") return false;
+        if (item.resolved_thumbnail_url || item.reference_thumbnail_url || item.wearer_reference_url) return false;
+        if (!item.wearer_user_id?.startsWith("usr_") && !item.wearer_name?.trim()) return false;
+        const existing = wearerReferencesRef.current[item.avatar_id];
+        return existing?.status !== "resolved" && existing?.status !== "loading" && existing?.status !== "miss";
+      })
+      .slice(0, WEARER_REFERENCE_LOOKAHEAD);
+    if (targets.length === 0) return;
+
+    let cancelled = false;
+    setWearerReferences((prev) => {
+      let next = prev;
+      for (const item of targets) {
+        const current = next[item.avatar_id];
+        if (current?.status === "resolved" || current?.status === "loading" || current?.status === "miss") continue;
+        next = { ...next, [item.avatar_id]: { status: "loading" as const } };
+      }
+      if (next !== prev) {
+        wearerReferencesRef.current = next;
+      }
+      return next;
+    });
+
+    async function resolveVisibleWearerReferences() {
+      for (const item of targets) {
+        if (cancelled) return;
+        try {
+          if (item.wearer_user_id?.startsWith("usr_")) {
+            const res = await withTimeout(
+              vrcApiThrottle(() =>
+                ipc.call<{ userId: string }, WearerProfileResponse>("user.getProfile", {
+                  userId: item.wearer_user_id as string,
+                }),
+              ),
+              WEARER_REFERENCE_TIMEOUT_MS,
+            );
+            if (cancelled) return;
+            const profile = res.profile;
+            const url = trustedProfileImage(profile);
+            const currentAvatarName = profile?.currentAvatarName || undefined;
+            const currentAvatarId = profile?.currentAvatarId?.startsWith("avtr_")
+              ? profile.currentAvatarId
+              : undefined;
+            registerWearerReference(
+              item.avatar_id,
+              url
+                ? {
+                    status: "resolved",
+                    userId: item.wearer_user_id,
+                    displayName: profile?.displayName ?? item.wearer_name,
+                    avatarId: currentAvatarId,
+                    url,
+                    avatarName: currentAvatarName,
+                    verifiedForAvatarName: isSameAvatarName(currentAvatarName, item.display_name)
+                      ? item.display_name ?? undefined
+                      : undefined,
+                  }
+                : { status: "miss" },
+            );
+            continue;
+          }
+
+          const wearerName = item.wearer_name?.trim();
+          if (!wearerName) {
+            registerWearerReference(item.avatar_id, { status: "miss" });
+            continue;
+          }
+          const res = await withTimeout(
+            vrcApiThrottle(() => ipc.searchUsers(wearerName, 8)),
+            WEARER_REFERENCE_TIMEOUT_MS,
+          );
+          if (cancelled) return;
+          const picked = pickUserSearchCandidate(res.users ?? [], wearerName);
+          const url = picked?.exact && !picked.ambiguous ? trustedProfileImage(picked.user) : undefined;
+          registerWearerReference(
+            item.avatar_id,
+            url
+              ? {
+                  status: "resolved",
+                  userId: picked?.user.id,
+                  displayName: picked?.user.displayName,
+                  url,
+                  avatarName: picked?.user.displayName,
+                }
+              : { status: "miss" },
+          );
+        } catch {
+          if (cancelled) return;
+          registerWearerReference(item.avatar_id, { status: "miss" });
+        }
+      }
+    }
+
+    void resolveVisibleWearerReferences();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authStatus.authed, displayRows, listFilter, registerWearerReference]);
 
   async function handleToggleFavorite(
     item: AugmentedAvatar,
@@ -1315,22 +1760,125 @@ function Avatars() {
         ? {
             avatarId: selected.avatar_id,
             displayName: selected.display_name,
+            authorName: selected.author,
             wearerUserId: selected.wearer_user_id,
+            resolvedThumbnailUrl: selected.resolved_thumbnail_url,
+            thumbnailStatus: selected.thumbnail_status,
           }
         : null,
-    [selected?.source, selected?.avatar_id, selected?.display_name, selected?.wearer_user_id],
+    [
+      selected?.source,
+      selected?.avatar_id,
+      selected?.display_name,
+      selected?.author,
+      selected?.wearer_user_id,
+      selected?.resolved_thumbnail_url,
+      selected?.thumbnail_status,
+    ],
   );
 
   useEffect(() => {
-    if (listFilter !== "encounters" || !selectedEncounterLookup) return;
+    if (!authStatus.authed) return;
+    const lookup = selectedEncounterLookup;
+    if (!lookup?.displayName || lookup.resolvedThumbnailUrl) return;
+    if (lookup.thumbnailStatus === "resolved") return;
+    const existing = resolvedThumbsRef.current[lookup.avatarId];
+    if (existing?.status === "resolved" || existing?.status === "loading" || existing?.status === "miss") return;
+
+    const request: NonNullable<typeof selectedEncounterLookup> = lookup;
+    let cancelled = false;
+
+    async function resolveByPublicSearch() {
+      try {
+        setResolvedThumbs((prev) => ({
+          ...prev,
+          [request.avatarId]: { status: "loading" },
+        }));
+        const searchQueries = [request.displayName ?? ""];
+        if (request.authorName) {
+          searchQueries.push(`${request.displayName ?? ""} ${request.authorName}`, request.authorName);
+        }
+        const uniqueQueries = [...new Set(searchQueries.map((query) => query.trim()).filter(Boolean))];
+        let picked: { avatar: AvatarSearchResult; verified: boolean } | null = null;
+        for (const query of uniqueQueries) {
+          const res = await withTimeout(
+            vrcApiThrottle(() => ipc.searchAvatars(query, 40)),
+            AVATAR_PUBLIC_SEARCH_TIMEOUT_MS,
+          );
+          if (cancelled) return;
+          const candidate = pickAvatarSearchCandidate(res.avatars ?? [], request);
+          if (!candidate) continue;
+          picked = candidate;
+          if (candidate.verified) break;
+        }
+        if (cancelled) return;
+        const match = picked?.avatar;
+        const verified = Boolean(picked?.verified);
+        const thumbUrl = trustedVrchatImageUrl(match?.thumbnailImageUrl);
+        const imageUrl = trustedVrchatImageUrl(match?.imageUrl);
+        const url = thumbUrl || imageUrl;
+        if (match?.id?.startsWith("avtr_") && url) {
+          setResolvedThumbs((prev) => ({
+            ...prev,
+            [request.avatarId]: {
+              status: "resolved",
+              avatarId: match.id,
+              authorId: match.authorId?.startsWith("usr_") ? match.authorId : undefined,
+              url,
+              verified,
+            },
+          }));
+          if (verified) {
+            await ipc.dbAvatarHistoryResolve({
+              avatar_id: request.avatarId,
+              resolved_avatar_id: match.id,
+              resolved_thumbnail_url: thumbUrl || url,
+              resolved_image_url: imageUrl || url,
+              resolution_source: request.authorName ? "public_search_exact" : "public_search_name_unique",
+              resolution_status: "resolved",
+            }).catch(() => {});
+          }
+          prefetchThumbnails([match.id]);
+          return;
+        }
+        setResolvedThumbs((prev) => ({
+          ...prev,
+          [request.avatarId]: { status: "miss" },
+        }));
+      } catch {
+        if (cancelled) return;
+        setResolvedThumbs((prev) => ({
+          ...prev,
+          [request.avatarId]: { status: "miss" },
+        }));
+      }
+    }
+
+    void resolveByPublicSearch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    authStatus.authed,
+    selectedEncounterLookup?.avatarId,
+    selectedEncounterLookup?.displayName,
+    selectedEncounterLookup?.authorName,
+    selectedEncounterLookup?.resolvedThumbnailUrl,
+    selectedEncounterLookup?.thumbnailStatus,
+  ]);
+
+  useEffect(() => {
+    if (!selectedEncounterLookup) return;
     const lookup = selectedEncounterLookup;
     if (!lookup.wearerUserId?.startsWith("usr_")) return;
     const existing = wearerReferencesRef.current[lookup.avatarId];
-    if (existing) return;
+    if (existing?.status === "resolved" || existing?.status === "miss") return;
 
     let cancelled = false;
     setWearerReferences((prev) => {
-      if (prev[lookup.avatarId]) return prev;
+      const current = prev[lookup.avatarId];
+      if (current?.status === "resolved" || current?.status === "miss") return prev;
       const next = { ...prev, [lookup.avatarId]: { status: "loading" as const } };
       wearerReferencesRef.current = next;
       return next;
@@ -1346,12 +1894,13 @@ function Avatars() {
         );
         if (cancelled) return;
         const profile = res.profile;
-        const url =
-          profile?.currentAvatarThumbnailImageUrl ||
-          profile?.currentAvatarImageUrl ||
-          profile?.profilePicOverride ||
-          undefined;
+        const thumbUrl = trustedVrchatImageUrl(profile?.currentAvatarThumbnailImageUrl);
+        const imageUrl = trustedVrchatImageUrl(profile?.currentAvatarImageUrl);
+        const url = thumbUrl || imageUrl;
         const avatarName = profile?.currentAvatarName || undefined;
+        const avatarId = profile?.currentAvatarId?.startsWith("avtr_")
+          ? profile.currentAvatarId
+          : undefined;
         const verifiedForAvatarName =
           url && isSameAvatarName(avatarName, lookup.displayName)
             ? lookup.displayName
@@ -1359,9 +1908,30 @@ function Avatars() {
         setWearerReferences((prev) => ({
           ...prev,
           [lookup.avatarId]: url
-            ? { status: "resolved", url, avatarName, verifiedForAvatarName }
+            ? {
+                status: "resolved",
+                userId,
+                displayName: profile?.displayName ?? lookup.displayName,
+                avatarId,
+                url,
+                avatarName,
+                verifiedForAvatarName,
+              }
             : { status: "miss" },
         }));
+        if (verifiedForAvatarName) {
+          await ipc.dbAvatarHistoryResolve({
+            avatar_id: lookup.avatarId,
+            resolved_avatar_id: avatarId ?? null,
+            resolved_thumbnail_url: thumbUrl || url,
+            resolved_image_url: imageUrl || url,
+            resolution_source: "wearer_profile_verified",
+            resolution_status: "resolved",
+          }).catch(() => {});
+          if (avatarId) {
+            prefetchThumbnails([avatarId]);
+          }
+        }
       } catch {
         if (cancelled) return;
         setWearerReferences((prev) => ({
@@ -1376,7 +1946,11 @@ function Avatars() {
     return () => {
       cancelled = true;
     };
-  }, [listFilter, selectedEncounterLookup]);
+  }, [
+    selectedEncounterLookup?.avatarId,
+    selectedEncounterLookup?.displayName,
+    selectedEncounterLookup?.wearerUserId,
+  ]);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
@@ -1466,6 +2040,14 @@ function Avatars() {
                   </button>
                 ))}
               </div>
+              {listFilter === "encounters" ? (
+                <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-2 py-1.5 text-[10.5px] leading-snug text-[hsl(var(--muted-foreground))]">
+                  {t("avatars.seenThumbnailHow", {
+                    defaultValue:
+                      "Seen-avatar thumbnails appear when the log has a real avtr_* id, when public search finds one exact name/author match, or when the wearer's current public avatar still matches the logged name. Otherwise VRCSM keeps it blank instead of guessing.",
+                  })}
+                </div>
+              ) : null}
             </div>
             <div className="scrollbar-thin flex-1 overflow-y-auto px-1 py-1">
               {filtered.length === 0 ? (
@@ -1530,7 +2112,11 @@ function Avatars() {
           {/* Inspector pane — 3D preview + metadata */}
           <div className="sticky top-4 h-[calc(100vh-140px)] min-w-0 overflow-y-auto overflow-x-hidden scrollbar-none rounded-[var(--radius-lg)]">
             {selected ? (
-              <AvatarInspector selected={selected} onCanonicalName={registerCanonicalName} />
+              <AvatarInspector
+                selected={selected}
+                onCanonicalName={registerCanonicalName}
+                onWearerReferenceResolved={registerWearerReference}
+              />
             ) : (
               <Card elevation="flat" className="flex items-center justify-center p-0">
                 <div className="flex flex-col items-center gap-2 py-10 text-[12px] text-[hsl(var(--muted-foreground))]">

@@ -109,6 +109,7 @@ if(MSVC)
         Shell32
         Version
         Winhttp
+        Ws2_32
     )
 endif()
 

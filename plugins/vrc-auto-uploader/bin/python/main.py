@@ -49,7 +49,13 @@ def _resolve_plan(args, base_dir: str) -> dict:
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-UNITY_SCRIPTS_DIR = os.path.join(SCRIPT_DIR, "UnityScripts")
+PLUGIN_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
+UNITY_SCRIPTS_DIR = os.path.join(PLUGIN_ROOT, "UnityScripts")
+
+# Back-compat for locally unpacked/dev copies that place UnityScripts next
+# to main.py. Packaged VRCSM plugins use <pluginRoot>/UnityScripts.
+if not os.path.isdir(UNITY_SCRIPTS_DIR):
+    UNITY_SCRIPTS_DIR = os.path.join(SCRIPT_DIR, "UnityScripts")
 
 # Required VPM packages to install in every temp project
 VPM_PACKAGES = [

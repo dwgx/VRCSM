@@ -19,7 +19,10 @@ struct ThumbnailResult
 {
     std::string id;
     std::optional<std::string> url;
+    std::optional<std::string> localUrl;
     bool cached{false};
+    bool imageCached{false};
+    std::string source{"network"};
     std::optional<std::string> error;
 };
 
@@ -84,12 +87,14 @@ class VrcApi
 {
 public:
     // Single id lookup. Prefix is auto-detected (`wrld_*` or `avtr_*`).
-    static ThumbnailResult fetchThumbnail(const std::string& id);
+    static ThumbnailResult fetchThumbnail(const std::string& id, bool downloadImage = false);
 
     // Batch variant — returns results in the same order the caller asked
     // for. Used by the IPC batch handler so the frontend can request
     // everything visible on screen in one round-trip.
-    static std::vector<ThumbnailResult> fetchThumbnails(const std::vector<std::string>& ids);
+    static std::vector<ThumbnailResult> fetchThumbnails(
+        const std::vector<std::string>& ids,
+        bool downloadImages = false);
 
     // Auth-gated VRChat endpoints. They require a real VRChat browser
     // session cookie in the `AuthStore`, which is populated by the
@@ -113,6 +118,10 @@ public:
     // Downloads the resource at the specified VRChat Cloudflare URL directly to
     // the filesystem using the active WinHTTP authentication session.
     static bool downloadFile(const std::string& url, const std::filesystem::path& destPath);
+
+    static bool isTrustedBundleFile(
+        const std::string& url,
+        const std::filesystem::path& path);
 
     /// Native VRChat login — /api/1/auth/user with HTTP Basic auth.
     /// Captures the `auth` cookie into AuthStore on success, or returns
@@ -158,6 +167,12 @@ public:
     /// Search public avatars via `GET /api/1/avatars?releaseStatus=public&search=...`.
     static Result<nlohmann::json> searchAvatars(
         const std::string& query, int count = 20, int offset = 0);
+
+    /// Search users by display name via `GET /api/1/users?search=...`.
+    /// Use only as an ambiguous fallback when logs have a display name
+    /// but no stable usr_* id.
+    static Result<nlohmann::json> searchUsers(
+        const std::string& query, int count = 10, int offset = 0);
 
     /// Patch the authenticated user's profile via
     /// `PUT /api/1/users/{id}`. Only fields present in `patch` are sent;

@@ -5,11 +5,16 @@
 #include "RateLimiter.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <cctype>
+#include <cstdlib>
+#include <cstdio>
 #include <fstream>
 #include <functional>
 #include <future>
 #include <mutex>
+#include <sstream>
 #include <system_error>
 #include <thread>
 #include <unordered_map>
@@ -52,7 +57,10 @@ void to_json(nlohmann::json& j, const ThumbnailResult& r)
     j = nlohmann::json{
         {"id", r.id},
         {"url", r.url.has_value() ? nlohmann::json(*r.url) : nlohmann::json(nullptr)},
+        {"localUrl", r.localUrl.has_value() ? nlohmann::json(*r.localUrl) : nlohmann::json(nullptr)},
         {"cached", r.cached},
+        {"imageCached", r.imageCached},
+        {"source", r.source},
     };
     if (r.error.has_value())
     {
@@ -119,6 +127,123 @@ std::int64_t unixNow()
 std::filesystem::path resolveCacheFile()
 {
     return getAppDataRoot() / L"thumb-cache.json";
+}
+
+std::filesystem::path thumbCacheDir()
+{
+    const auto dir = getAppDataRoot() / L"thumb-cache-files";
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    return dir;
+}
+
+std::string stableHashHex(std::string_view input)
+{
+    std::uint64_t h = 1469598103934665603ULL;
+    for (unsigned char ch : input)
+    {
+        h ^= ch;
+        h *= 1099511628211ULL;
+    }
+
+    std::string out;
+    out.reserve(16);
+    for (int round = 0; round < 2; ++round)
+    {
+        char buf[9]{};
+        std::snprintf(buf, sizeof(buf), "%08x", static_cast<std::uint32_t>(h >> 32));
+        out.append(buf, 8);
+        h = h * 1099511628211ULL + 0x9E3779B97F4A7C15ULL;
+    }
+    return out;
+}
+
+std::wstring thumbnailExtensionFromUrl(const std::string& url)
+{
+    const auto q = url.find_first_of("?#");
+    const auto pathOnly = q == std::string::npos ? url : url.substr(0, q);
+    const auto slash = pathOnly.find_last_of('/');
+    const auto dot = pathOnly.find_last_of('.');
+    if (dot != std::string::npos && (slash == std::string::npos || dot > slash))
+    {
+        std::string ext = pathOnly.substr(dot);
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp")
+        {
+            return toWide(ext);
+        }
+    }
+    return L".jpg";
+}
+
+std::filesystem::path thumbnailFileFor(const std::string& id, const std::string& url)
+{
+    const std::string key = stableHashHex(id + "|" + url);
+    return thumbCacheDir() / toWide(key + std::string(toUtf8(thumbnailExtensionFromUrl(url))));
+}
+
+std::string readTextFile(const std::filesystem::path& path)
+{
+    std::ifstream in(path, std::ios::binary);
+    if (!in) return {};
+    std::stringstream buf;
+    buf << in.rdbuf();
+    return buf.str();
+}
+
+bool looksLikeImageFile(const std::filesystem::path& path);
+
+bool trustedDownloadMetadataMatches(
+    const std::filesystem::path& path,
+    const std::string& url,
+    std::uintmax_t bytes);
+
+std::optional<std::string> localThumbnailUrlFor(
+    const std::filesystem::path& path,
+    const std::string& sourceUrl)
+{
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec) || ec)
+    {
+        return std::nullopt;
+    }
+    if (std::filesystem::file_size(path, ec) == 0 || ec)
+    {
+        return std::nullopt;
+    }
+    const auto bytes = std::filesystem::file_size(path, ec);
+    if (ec || !looksLikeImageFile(path) || !trustedDownloadMetadataMatches(path, sourceUrl, bytes))
+    {
+        return std::nullopt;
+    }
+    return fmt::format("https://thumb.local/{}", toUtf8(path.filename().wstring()));
+}
+
+bool looksLikeImageFile(const std::filesystem::path& path)
+{
+    std::ifstream in(path, std::ios::binary);
+    if (!in) return false;
+    std::array<unsigned char, 12> header{};
+    in.read(reinterpret_cast<char*>(header.data()), static_cast<std::streamsize>(header.size()));
+    const auto n = static_cast<std::size_t>(in.gcount());
+    if (n >= 8
+        && header[0] == 0x89 && header[1] == 'P' && header[2] == 'N' && header[3] == 'G'
+        && header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A)
+    {
+        return true;
+    }
+    if (n >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF)
+    {
+        return true;
+    }
+    if (n >= 12
+        && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+        && header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P')
+    {
+        return true;
+    }
+    return false;
 }
 
 void loadCacheUnlocked(CacheState& state)
@@ -744,15 +869,389 @@ std::wstring buildPath(IdKind kind, const std::string& id)
     return toWide(fmt::format("{}{}?apiKey={}", prefix, id, kApiKey));
 }
 
-ThumbnailResult performLookup(const std::string& id)
+struct CrackedUrl
+{
+    std::wstring host;
+    std::wstring pathAndQuery;
+    INTERNET_PORT port{INTERNET_DEFAULT_HTTPS_PORT};
+    DWORD flags{WINHTTP_FLAG_SECURE};
+};
+
+std::optional<CrackedUrl> crackHttpUrl(const std::string& url)
+{
+    std::wstring wUrl = toWide(url);
+    std::wstring scheme;
+    std::wstring host;
+    std::wstring path;
+    std::wstring extra;
+    scheme.resize(16);
+    host.resize(512);
+    path.resize(4096);
+    extra.resize(4096);
+
+    URL_COMPONENTS urlComp = {0};
+    urlComp.dwStructSize = sizeof(urlComp);
+    urlComp.lpszScheme = scheme.data();
+    urlComp.dwSchemeLength = static_cast<DWORD>(scheme.size());
+    urlComp.lpszHostName = host.data();
+    urlComp.dwHostNameLength = static_cast<DWORD>(host.size());
+    urlComp.lpszUrlPath = path.data();
+    urlComp.dwUrlPathLength = static_cast<DWORD>(path.size());
+    urlComp.lpszExtraInfo = extra.data();
+    urlComp.dwExtraInfoLength = static_cast<DWORD>(extra.size());
+
+    if (!WinHttpCrackUrl(wUrl.c_str(), 0, 0, &urlComp))
+    {
+        return std::nullopt;
+    }
+
+    scheme.resize(urlComp.dwSchemeLength);
+    host.resize(urlComp.dwHostNameLength);
+    path.resize(urlComp.dwUrlPathLength);
+    extra.resize(urlComp.dwExtraInfoLength);
+
+    CrackedUrl out;
+    out.host = std::move(host);
+    out.pathAndQuery = path + extra;
+    out.port = urlComp.nPort;
+    out.flags = _wcsicmp(scheme.c_str(), L"https") == 0 ? WINHTTP_FLAG_SECURE : 0;
+    if (out.pathAndQuery.empty())
+    {
+        out.pathAndQuery = L"/";
+    }
+    return out;
+}
+
+bool fileStartsWithAny(const std::filesystem::path& path, const std::vector<std::string>& magic)
+{
+    std::ifstream in(path, std::ios::binary);
+    if (!in) return false;
+    std::array<char, 16> header{};
+    in.read(header.data(), static_cast<std::streamsize>(header.size()));
+    const auto n = static_cast<std::size_t>(in.gcount());
+    for (std::string_view m : magic)
+    {
+        if (n >= m.size() && std::equal(m.begin(), m.end(), header.begin()))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::filesystem::path downloadMetadataPath(const std::filesystem::path& path)
+{
+    std::filesystem::path meta = path;
+    meta += L".download.json";
+    return meta;
+}
+
+std::optional<std::uint64_t> queryContentLength(HINTERNET request)
+{
+    wchar_t buffer[64]{};
+    DWORD size = sizeof(buffer);
+    if (!WinHttpQueryHeaders(
+            request,
+            WINHTTP_QUERY_CONTENT_LENGTH,
+            WINHTTP_HEADER_NAME_BY_INDEX,
+            buffer,
+            &size,
+            WINHTTP_NO_HEADER_INDEX))
+    {
+        return std::nullopt;
+    }
+
+    wchar_t* end = nullptr;
+    const auto value = std::wcstoull(buffer, &end, 10);
+    if (end == buffer)
+    {
+        return std::nullopt;
+    }
+    return static_cast<std::uint64_t>(value);
+}
+
+bool trustedDownloadMetadataMatches(
+    const std::filesystem::path& path,
+    const std::string& url,
+    std::uintmax_t bytes)
+{
+    const auto meta = nlohmann::json::parse(readTextFile(downloadMetadataPath(path)), nullptr, false);
+    if (!meta.is_object())
+    {
+        return false;
+    }
+    return meta.value("url", std::string{}) == url
+        && meta.value("bytes", std::uintmax_t{0}) == bytes
+        && meta.value("complete", false);
+}
+
+void writeDownloadMetadataBestEffort(
+    const std::filesystem::path& path,
+    const std::string& url,
+    std::uintmax_t bytes)
+{
+    const nlohmann::json meta{
+        {"schema", 1},
+        {"url", url},
+        {"bytes", bytes},
+        {"complete", true},
+        {"writtenAt", nowIso()},
+    };
+    std::ofstream out(downloadMetadataPath(path), std::ios::binary | std::ios::trunc);
+    if (out)
+    {
+        out << meta.dump(2);
+    }
+}
+
+bool downloadUrlToFileAtomic(
+    const std::string& url,
+    const std::filesystem::path& destPath,
+    const std::function<bool(const std::filesystem::path&)>& validate,
+    bool allowExisting)
+{
+    std::error_code ec;
+    if (allowExisting && std::filesystem::is_regular_file(destPath, ec) && !ec)
+    {
+        const auto existingBytes = std::filesystem::file_size(destPath, ec);
+        if (!ec
+            && existingBytes > 0
+            && (!validate || validate(destPath))
+            && trustedDownloadMetadataMatches(destPath, url, existingBytes))
+        {
+            return true;
+        }
+        ec.clear();
+    }
+
+    std::filesystem::create_directories(destPath.parent_path(), ec);
+    if (ec)
+    {
+        spdlog::warn("VrcApi: failed to create download directory: {}", ec.message());
+        return false;
+    }
+
+    const auto cracked = crackHttpUrl(url);
+    if (!cracked)
+    {
+        spdlog::warn("VrcApi: download failed to crack URL: {}", url);
+        return false;
+    }
+
+    std::filesystem::path partPath = destPath;
+    partPath += L".part";
+    std::filesystem::remove(partPath, ec);
+
+    UniqueWinHttpHandle hSession(WinHttpOpen(
+        kUserAgentW,
+        WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+        WINHTTP_NO_PROXY_NAME,
+        WINHTTP_NO_PROXY_BYPASS,
+        0));
+    if (!hSession) return false;
+    WinHttpSetTimeouts(hSession.get(), 60000, 60000, 60000, 300000);
+
+    UniqueWinHttpHandle hConnect(WinHttpConnect(hSession.get(), cracked->host.c_str(), cracked->port, 0));
+    if (!hConnect) return false;
+    UniqueWinHttpHandle hRequest(WinHttpOpenRequest(
+        hConnect.get(),
+        L"GET",
+        cracked->pathAndQuery.c_str(),
+        nullptr,
+        WINHTTP_NO_REFERER,
+        WINHTTP_DEFAULT_ACCEPT_TYPES,
+        cracked->flags));
+    if (!hRequest) return false;
+
+    std::wstring headerBlock = L"Accept: */*\r\n";
+    const auto cookie = getLoadedCookieHeader();
+    if (!cookie.empty())
+    {
+        headerBlock += L"Cookie: " + toWide(cookie) + L"\r\n";
+    }
+
+    BOOL ok = WinHttpSendRequest(
+        hRequest.get(),
+        headerBlock.c_str(),
+        static_cast<DWORD>(headerBlock.size()),
+        WINHTTP_NO_REQUEST_DATA,
+        0,
+        0,
+        0);
+    if (ok) ok = WinHttpReceiveResponse(hRequest.get(), nullptr);
+    if (!ok) return false;
+
+    DWORD status = 0;
+    DWORD statusSize = sizeof(status);
+    WinHttpQueryHeaders(
+        hRequest.get(),
+        WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+        WINHTTP_HEADER_NAME_BY_INDEX,
+        &status,
+        &statusSize,
+        WINHTTP_NO_HEADER_INDEX);
+    if (status < 200 || status >= 300)
+    {
+        spdlog::warn("VrcApi: download failed with HTTP status {}", status);
+        return false;
+    }
+    const auto expectedBytes = queryContentLength(hRequest.get());
+
+    std::ofstream out(partPath, std::ios::binary | std::ios::trunc);
+    if (!out)
+    {
+        spdlog::warn("VrcApi: download failed to open temp file for write");
+        return false;
+    }
+
+    DWORD available = 0;
+    bool readOk = true;
+    std::uint64_t totalRead = 0;
+    std::vector<char> chunk(128 * 1024);
+    while (true)
+    {
+        if (!WinHttpQueryDataAvailable(hRequest.get(), &available))
+        {
+            readOk = false;
+            break;
+        }
+        if (available == 0)
+        {
+            break;
+        }
+        if (available > chunk.size()) chunk.resize(available);
+        DWORD read = 0;
+        if (!WinHttpReadData(hRequest.get(), chunk.data(), available, &read))
+        {
+            readOk = false;
+            break;
+        }
+        if (read == 0)
+        {
+            break;
+        }
+        out.write(chunk.data(), read);
+        if (!out)
+        {
+            readOk = false;
+            break;
+        }
+        totalRead += read;
+    }
+    out.flush();
+    if (!out)
+    {
+        readOk = false;
+    }
+    out.close();
+
+    const auto partBytes = std::filesystem::is_regular_file(partPath, ec)
+        ? std::filesystem::file_size(partPath, ec)
+        : 0;
+    if (!readOk
+        || ec
+        || partBytes == 0
+        || (expectedBytes && partBytes != *expectedBytes)
+        || (expectedBytes && totalRead != *expectedBytes)
+        || !std::filesystem::is_regular_file(partPath, ec)
+        || ec
+        || (validate && !validate(partPath)))
+    {
+        std::filesystem::remove(partPath, ec);
+        return false;
+    }
+
+    std::filesystem::remove(destPath, ec);
+    ec.clear();
+    std::filesystem::rename(partPath, destPath, ec);
+    if (ec)
+    {
+        std::filesystem::remove(partPath, ec);
+        return false;
+    }
+    writeDownloadMetadataBestEffort(destPath, url, partBytes);
+    return true;
+}
+
+void trimCacheDirectory(const std::filesystem::path& dir, std::uintmax_t maxBytes)
+{
+    std::error_code ec;
+    if (!std::filesystem::exists(dir, ec) || ec) return;
+
+    struct Entry
+    {
+        std::filesystem::path path;
+        std::uintmax_t bytes{0};
+        std::filesystem::file_time_type atime{};
+    };
+
+    std::vector<Entry> entries;
+    std::uintmax_t total = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(dir, ec))
+    {
+        if (ec) break;
+        if (!entry.is_regular_file(ec) || ec) continue;
+        const auto path = entry.path();
+        if (path.extension() == L".part") continue;
+        const auto bytes = std::filesystem::file_size(path, ec);
+        if (ec) continue;
+        total += bytes;
+        entries.push_back({path, bytes, std::filesystem::last_write_time(path, ec)});
+        ec.clear();
+    }
+    if (total <= maxBytes) return;
+
+    std::sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) {
+        return a.atime < b.atime;
+    });
+    for (const auto& entry : entries)
+    {
+        if (total <= maxBytes) break;
+        std::filesystem::remove(entry.path, ec);
+        if (!ec && total >= entry.bytes)
+        {
+            total -= entry.bytes;
+        }
+        ec.clear();
+    }
+}
+
+void ensureLocalThumbnail(ThumbnailResult& out)
+{
+    if (!out.url.has_value() || out.url->empty())
+    {
+        return;
+    }
+
+    const auto path = thumbnailFileFor(out.id, *out.url);
+    if (auto localUrl = localThumbnailUrlFor(path, *out.url))
+    {
+        out.localUrl = localUrl;
+        out.imageCached = true;
+        std::error_code ec;
+        (void)std::filesystem::last_write_time(path, std::filesystem::file_time_type::clock::now(), ec);
+        return;
+    }
+
+    if (downloadUrlToFileAtomic(*out.url, path, looksLikeImageFile, false))
+    {
+        out.localUrl = localThumbnailUrlFor(path, *out.url);
+        out.imageCached = out.localUrl.has_value();
+        trimCacheDirectory(thumbCacheDir(), 512ull * 1024ull * 1024ull);
+    }
+}
+
+ThumbnailResult performLookup(const std::string& id, bool downloadImage)
 {
     ThumbnailResult out;
     out.id = id;
+    out.source = "network";
 
     const IdKind kind = classify(id);
     if (kind == IdKind::Unknown)
     {
         out.error = "unknown-id-prefix";
+        out.source = "negative";
         return out;
     }
 
@@ -779,11 +1278,14 @@ ThumbnailResult performLookup(const std::string& id)
             {
                 out.url = e.url;
                 out.cached = true;
+                out.source = "disk";
+                if (downloadImage) ensureLocalThumbnail(out);
                 return out;
             }
             if (e.notFound && age < kNotFoundTtlSeconds)
             {
                 out.cached = true; // negative cache hit
+                out.source = "negative";
                 return out;
             }
             // Fall through — not-found TTL expired, re-try network.
@@ -803,6 +1305,7 @@ ThumbnailResult performLookup(const std::string& id)
     if (resp.error.has_value())
     {
         out.error = *resp.error;
+        out.source = "network";
         return out;
     }
     if (resp.status == 200)
@@ -823,12 +1326,14 @@ ThumbnailResult performLookup(const std::string& id)
         // negative-cache it or a stale anonymous miss will keep hiding a
         // perfectly valid avatar after login.
         out.error = "unauthorized";
+        out.source = "network";
         return out;
     }
     else
     {
         // 429, 500, 503 — treat as transient, report error but don't cache
         out.error = fmt::format("HTTP {}", resp.status);
+        out.source = "network";
         return out;
     }
 
@@ -844,16 +1349,34 @@ ThumbnailResult performLookup(const std::string& id)
     }
 
     out.url = url;
+    out.source = notFound ? "negative" : "network";
+    if (downloadImage) ensureLocalThumbnail(out);
     return out;
 }
 } // namespace
 
-ThumbnailResult VrcApi::fetchThumbnail(const std::string& id)
+bool VrcApi::isTrustedBundleFile(
+    const std::string& url,
+    const std::filesystem::path& path)
 {
-    return performLookup(id);
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec) || ec)
+    {
+        return false;
+    }
+    const auto bytes = std::filesystem::file_size(path, ec);
+    return !ec
+        && bytes > 0
+        && fileStartsWithAny(path, {"UnityFS", "UnityWeb", "UnityRaw", "UnityArchive"})
+        && trustedDownloadMetadataMatches(path, url, bytes);
 }
 
-std::vector<ThumbnailResult> VrcApi::fetchThumbnails(const std::vector<std::string>& ids)
+ThumbnailResult VrcApi::fetchThumbnail(const std::string& id, bool downloadImage)
+{
+    return performLookup(id, downloadImage);
+}
+
+std::vector<ThumbnailResult> VrcApi::fetchThumbnails(const std::vector<std::string>& ids, bool downloadImages)
 {
     // Fire performLookup() in parallel up to a small fan-out so a 40-row
     // avatar list resolves in roughly one HTTP RTT instead of N. The on-disk
@@ -888,7 +1411,7 @@ std::vector<ThumbnailResult> VrcApi::fetchThumbnails(const std::vector<std::stri
         {
             const std::size_t idx = uniqueIndices[i];
             futures.push_back(std::async(std::launch::async,
-                [id = ids[idx]]() { return performLookup(id); }));
+                [id = ids[idx], downloadImages]() { return performLookup(id, downloadImages); }));
         }
         for (std::size_t i = cursor; i < batchEnd; ++i)
         {
@@ -1421,77 +1944,14 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchFavoritedWorlds()
 
 bool VrcApi::downloadFile(const std::string& url, const std::filesystem::path& destPath)
 {
-    std::wstring wUrl = toWide(url);
-    URL_COMPONENTS urlComp = {0};
-    urlComp.dwStructSize = sizeof(urlComp);
-    
-    std::wstring hostName; hostName.resize(256);
-    std::wstring urlPath; urlPath.resize(2048);
-    
-    urlComp.lpszHostName = hostName.data();
-    urlComp.dwHostNameLength = 256;
-    urlComp.lpszUrlPath = urlPath.data();
-    urlComp.dwUrlPathLength = 2048;
-
-    if (!WinHttpCrackUrl(wUrl.c_str(), 0, 0, &urlComp))
-    {
-        spdlog::warn("VrcApi: downloadFile failed to crack URL: {}", url);
-        return false;
-    }
-    
-    hostName.resize(urlComp.dwHostNameLength);
-    urlPath.resize(urlComp.dwUrlPathLength);
-
-    std::vector<std::pair<std::wstring, std::wstring>> headers;
-    const auto cookie = getLoadedCookieHeader();
-    if (!cookie.empty())
-    {
-        headers.emplace_back(L"Cookie", toWide(cookie));
-    }
-    
-    UniqueWinHttpHandle hSession(WinHttpOpen(kUserAgentW, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0));
-    if (!hSession) return false;
-    WinHttpSetTimeouts(hSession.get(), 60000, 60000, 60000, 300000);
-    UniqueWinHttpHandle hConnect(WinHttpConnect(hSession.get(), hostName.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0));
-    if (!hConnect) { return false; }
-    UniqueWinHttpHandle hRequest(WinHttpOpenRequest(hConnect.get(), L"GET", urlPath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE));
-    if (!hRequest) { return false; }
-
-    std::wstring headerBlock = L"Accept: */*\r\n";
-    for (const auto& [name, value] : headers) {
-        headerBlock += name + L": " + value + L"\r\n";
-    }
-
-    BOOL ok = WinHttpSendRequest(hRequest.get(), headerBlock.c_str(), static_cast<DWORD>(headerBlock.size()), WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
-    if (ok) ok = WinHttpReceiveResponse(hRequest.get(), nullptr);
-    if (!ok) { return false; }
-
-    DWORD status = 0;
-    DWORD statusSize = sizeof(status);
-    WinHttpQueryHeaders(hRequest.get(), WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX);
-    if (status < 200 || status >= 300) {
-        spdlog::warn("VrcApi: downloadFile failed with HTTP status {}", status);
-        return false;
-    }
-
-    std::ofstream out(destPath, std::ios::binary | std::ios::trunc);
-    if (!out) {
-        spdlog::warn("VrcApi: downloadFile failed to open destPath for write.");
-        return false;
-    }
-
-    DWORD available = 0;
-    std::vector<char> chunk(64 * 1024);
-    while (WinHttpQueryDataAvailable(hRequest.get(), &available) && available > 0)
-    {
-        if (available > chunk.size()) chunk.resize(available);
-        DWORD read = 0;
-        if (!WinHttpReadData(hRequest.get(), chunk.data(), available, &read)) break;
-        out.write(chunk.data(), read);
-    }
-
-    out.flush();
-    return out.good();
+    return downloadUrlToFileAtomic(
+        url,
+        destPath,
+        [](const std::filesystem::path& path)
+        {
+            return fileStartsWithAny(path, {"UnityFS", "UnityWeb", "UnityRaw", "UnityArchive"});
+        },
+        true);
 }
 
 Result<nlohmann::json> VrcApi::fetchUser(const std::string& userId)
@@ -1612,6 +2072,49 @@ Result<nlohmann::json> VrcApi::searchAvatars(
         });
     }
     return nlohmann::json{{"avatars", results}};
+}
+
+Result<nlohmann::json> VrcApi::searchUsers(
+    const std::string& query, int count, int offset)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    const auto path = toWide(fmt::format(
+        "/api/1/users?apiKey={}&n={}&offset={}&search={}",
+        kApiKey, std::clamp(count, 1, 50), std::max(offset, 0), percentEncode(query)));
+
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status != 200)
+    {
+        return Error{"api_error",
+            fmt::format("/users search returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+    }
+
+    const auto arr = parseJsonBody(response, "/users?search=");
+    if (!arr.is_array())
+    {
+        return Error{"api_error", "/users search returned a non-array payload", 0};
+    }
+
+    nlohmann::json results = nlohmann::json::array();
+    for (const auto& item : arr)
+    {
+        results.push_back({
+            {"id", item.value("id", "")},
+            {"displayName", item.value("displayName", "")},
+            {"profilePicOverride", item.value("profilePicOverride", "")},
+            {"currentAvatarImageUrl", item.value("currentAvatarImageUrl", "")},
+            {"currentAvatarThumbnailImageUrl", item.value("currentAvatarThumbnailImageUrl", "")},
+            {"status", item.value("status", "")},
+        });
+    }
+    return nlohmann::json{{"users", results}};
 }
 
 Result<nlohmann::json> VrcApi::updateAuthUser(const nlohmann::json& patch)

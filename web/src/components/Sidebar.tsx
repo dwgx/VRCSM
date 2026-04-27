@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { SUPPORTED_LANGUAGES, changeLanguage } from "@/i18n";
 import { ipc } from "@/lib/ipc";
 import { useInstalledPanelPlugins } from "@/lib/plugin-context";
+import { pluginDisplayName } from "@/lib/plugin-i18n";
 import type { AppVersion } from "@/lib/types";
 
 interface NavItem {
@@ -196,18 +197,18 @@ function LabSection({ items }: { items: NavItem[] }) {
 }
 
 export function Sidebar() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const panelPlugins = useInstalledPanelPlugins();
   const pluginItems = useMemo(
     () =>
       panelPlugins.map((p) => ({
         to: `/p/${encodeURIComponent(p.id)}`,
-        label: p.name,
+        label: pluginDisplayName(p, i18n.resolvedLanguage ?? i18n.language),
         iconUrl: p.icon
           ? `https://${p.virtualHost}/${p.icon}`
           : null,
       })),
-    [panelPlugins],
+    [i18n.language, i18n.resolvedLanguage, panelPlugins],
   );
   return (
     <aside

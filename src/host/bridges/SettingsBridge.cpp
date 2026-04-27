@@ -4,6 +4,7 @@
 #include "../../core/VrcSettings.h"
 #include "../../core/VrcConfig.h"
 #include "../../core/SteamVrConfig.h"
+#include "../../core/VrDiagnostics.h"
 
 nlohmann::json IpcBridge::HandleSettingsReadAll(const nlohmann::json& params, const std::optional<std::string>&)
 {
@@ -70,4 +71,42 @@ nlohmann::json IpcBridge::HandleSteamVrWrite(const nlohmann::json& params, const
         {"ok", true},
         {"message", "SteamVR settings written successfully."}
     };
+}
+
+nlohmann::json IpcBridge::HandleSteamVrLinkDiagnose(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    (void)params;
+    (void)id;
+    auto res = vrcsm::core::VrDiagnostics::DiagnoseSteamLink();
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+        throw IpcException(std::get<vrcsm::core::Error>(res));
+    return std::get<nlohmann::json>(res);
+}
+
+nlohmann::json IpcBridge::HandleSteamVrLinkRepair(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    (void)id;
+    auto res = vrcsm::core::VrDiagnostics::RepairSteamLink(params);
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+        throw IpcException(std::get<vrcsm::core::Error>(res));
+    return std::get<nlohmann::json>(res);
+}
+
+nlohmann::json IpcBridge::HandleSteamVrLinkBackups(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    (void)params;
+    (void)id;
+    auto res = vrcsm::core::VrDiagnostics::ListSteamLinkBackups();
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+        throw IpcException(std::get<vrcsm::core::Error>(res));
+    return std::get<nlohmann::json>(res);
+}
+
+nlohmann::json IpcBridge::HandleSteamVrLinkRestore(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    (void)id;
+    auto res = vrcsm::core::VrDiagnostics::RestoreSteamLinkBackup(params);
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+        throw IpcException(std::get<vrcsm::core::Error>(res));
+    return std::get<nlohmann::json>(res);
 }

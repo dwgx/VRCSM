@@ -221,6 +221,12 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
         return 0;
     }
+    case WM_APP_REFRESH_PLUGIN_MAPPINGS:
+        if (m_webViewHost != nullptr)
+        {
+            m_webViewHost->RefreshPluginMappings();
+        }
+        return 0;
     default:
         return DefWindowProcW(m_hwnd, message, wParam, lParam);
     }

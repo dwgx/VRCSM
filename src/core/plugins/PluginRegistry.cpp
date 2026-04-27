@@ -39,16 +39,14 @@ const std::unordered_map<std::string, std::unordered_set<std::string>>& Permissi
         {"ipc:logs", {"logs.stream.start", "logs.stream.stop"}},
         {"ipc:screenshots", {"screenshots.list", "screenshots.folder", "screenshots.open"}},
         {"ipc:settings", {"settings.readAll", "settings.writeOne"}},
-        // v0.9.0: ipc:shell grants folder-pick + URL-launch, required by the
-        // AutoUploader panel to let the user choose a project dir and hand
-        // off CLI commands to the default shell. No write/exec surface here.
-        // v0.9.1: fs.listDir added so plugins can render an in-panel folder
-        // picker (read-only directory listing). No write surface here either.
-        // v0.9.2: fs.writePlan — a narrow write surface that only emits a
-        // single `.vrcsm-upload-plan.json` inside an *existing* directory
-        // the plugin already had read access to. Enables the AutoUploader
-        // panel to persist its rename map for the Python runner.
-        {"ipc:shell", {"shell.pickFolder", "shell.openUrl", "fs.listDir", "fs.writePlan"}},
+        {"ipc:shell:pickFolder", {"shell.pickFolder"}},
+        {"ipc:shell:openUrl", {"shell.openUrl"}},
+        {"ipc:fs:listDir", {"fs.listDir"}},
+        {"ipc:fs:writePlan", {"fs.writePlan"}},
+        {"ipc:fs:appDataDir", {"fs.appDataDir"}},
+        // Compatibility only: old broad ipc:shell manifests keep URL/picker
+        // access, but no longer inherit filesystem read/write surfaces.
+        {"ipc:shell", {"shell.pickFolder", "shell.openUrl"}},
     };
     return s;
 }

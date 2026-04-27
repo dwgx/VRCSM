@@ -6,6 +6,92 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [Unreleased] — 2026-04-27
+
+After v0.14.3, the branch centered on making the Avatars page useful for
+models seen on other players, without pretending VRChat logs contain data
+they do not.
+
+- **Seen-on-others avatars now have their own path.** `LogParser`
+  indexes avatar switch events from local output logs, keeps wearer
+  display names, attaches `usr_*` IDs when join lines make them
+  available, and the Avatars page exposes these as a separate Seen
+  filter with pagination.
+- **Thumbnail resolution is intentionally conservative.** Log-only rows
+  no longer spin forever or fire unreliable API searches. Verified
+  thumbnails come from persisted cache/detail matches; wearer profile
+  images are shown only as reference images, and only promoted when the
+  current wearer avatar name matches the log name.
+- **Resolution state is persisted.** `avatar_history` schema v11 stores
+  resolved avatar/image URLs, source, status, and timestamp so the UI
+  does not rediscover misses or stale profile thumbnails every mount.
+- **Local bundle preview moved forward.** Cache candidates can surface a
+  local 3D preview path, while the list still defaults to on-disk local
+  avatars for a quiet first load.
+- **Steam Link / Quest repair became a real workflow.** SteamVR settings
+  now diagnose VRLink invalid-session bursts, WirelessHmdNotConnected,
+  stale Quest pairing cache, beta markers, pending SteamVR updates,
+  virtual-adapter risks, and overly aggressive streaming parameters.
+  Settings exposes multiple backup-first repair plans instead of a
+  single blunt reset: pairing reset, full VRLink reset, stable-branch
+  validation, and conservative Quest-safe streaming profiles.
+- **Small hardening pass.** IPC shutdown drain, release build behavior,
+  lazy thumbnail loading, and Jam image field fallbacks were tightened
+  while this branch was in motion.
+
+## [0.14.3] — 2026-04-27
+
+Factory reset finally became a real reset instead of a white-screen
+machine. `ShellBridge` now skips the whole install-artifact set during
+deletion, snapshots directory entries before mutating them, and the main
+window starts a detached relaunch command before quitting so the user
+comes back to a clean app without manually hunting for the executable.
+
+Calendar now opens on Jams first, adds an "Open jam page" button, and
+recognizes the field-name variants VRChat uses for Jam images. Avatars
+defaults to on-disk rows only, moves log-only entries behind a persisted
+toggle, and removes the misleading dimming for `parameter_count === 0`
+rows. The remaining beta badges were removed where the feature logic is
+solid, Radar's limitation badge was renamed to "Log analysis only", and
+an empty-catch sweep replaced silent failures with debug logs or toasts.
+
+i18n got a broad extraction pass across Settings, Dashboard, Logs,
+AvatarBenchmark, Friends, Worlds, EventRecorder, FbtMonitor, Migrate,
+ImageZoom, Calendar, and Avatars. The v0.14.3 release was verified with
+frontend build, C++ release build, and MSI rebuild.
+
+## [0.14.2] — 2026-04-27
+
+Attempted to fix the factory-reset white screen by writing a
+`.factory-reset-pending` marker and removing the WebView2 user-data
+folder on the next launch. This was useful context but incomplete: the
+following v0.14.3 fix widened the preserved install-artifact set and
+added the missing relaunch.
+
+## [0.14.1] — 2026-04-27
+
+Project-wide UX and performance pass. Raw image slots across the app
+were moved toward deterministic `ThumbImage` placeholders, Avatar
+Benchmark and inspector previews got better thumbnail reuse, Seen
+Avatars gained server-side pagination and clickable wearers when
+`first_seen_user_id` is known, and the splash/loading states were made
+quieter.
+
+Under the hood, `VrcApi::fetchThumbnails` now parallelizes thumbnail
+lookups with in-batch deduping, popup badges defer detail fetches until
+open, Logs split historical and live timelines, Radar enrichment uses a
+concurrency-limited queue, and `LogParser` hoists hot regexes out of the
+loop. Shutdown and log streaming also got sturdier: pipeline stop closes
+the active WebSocket, log tailing handles rotation correctly,
+`logs.stream.start` became async/refcounted, and avatar history schema
+v8-v10 added release status, wearer user IDs, and the `first_seen_at`
+index.
+
+Factory reset started stopping long-lived services, closing SQLite, and
+deferring cookie clearing to the UI thread before posting the reset quit
+message. That laid the groundwork for the later v0.14.2/v0.14.3 reset
+fixes.
+
 ## [0.13.1] — 2026-04-24
 
 Hotfix for a startup crash introduced by v0.13.0 — `RPC_E_CHANGED_MODE`

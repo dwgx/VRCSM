@@ -75,6 +75,15 @@ void WebViewHost::PostMessageToWeb(const std::string& json, const std::string& t
     }
 }
 
+void WebViewHost::RequestPluginMappingsRefresh() const
+{
+    if (m_parent == nullptr)
+    {
+        return;
+    }
+    (void)SendMessageW(m_parent, WM_APP_REFRESH_PLUGIN_MAPPINGS, 0, 0);
+}
+
 void WebViewHost::DeliverWebMessage(WebPostPayload* owned) const
 {
     std::unique_ptr<WebPostPayload> guard(owned);
@@ -266,7 +275,21 @@ void WebViewHost::ConfigureWebView()
         previewDir.c_str(),
         COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW));
 
-    // Third virtual host: `screenshots.local` → VRChat's Pictures folder.
+    // Third virtual host: `thumb.local` → VRCSM's downloaded VRChat image
+    // cache. The thumbnail resolver stores validated PNG/JPEG/WebP bytes
+    // here and returns https://thumb.local/<hash> so WebView can load repeat
+    // avatar/world cards from disk instead of refetching remote CDN images.
+    const auto thumbDir = vrcsm::core::getAppDataRoot() / L"thumb-cache-files";
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(thumbDir, ec);
+    }
+    THROW_IF_FAILED(webview3->SetVirtualHostNameToFolderMapping(
+        L"thumb.local",
+        thumbDir.c_str(),
+        COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW));
+
+    // Fourth virtual host: `screenshots.local` → VRChat's Pictures folder.
     // Used by the Screenshots page to render thumbnails via plain
     // `<img src="https://screenshots.local/<relative>">` without shuttling
     // base64 blobs over IPC. The folder is read-only from the web side —
@@ -282,7 +305,7 @@ void WebViewHost::ConfigureWebView()
             COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW));
     }
 
-    // Fourth virtual host: `screenshot-thumbs.local` → generated JPEG
+    // Fifth virtual host: `screenshot-thumbs.local` → generated JPEG
     // thumbnails on disk. Populated by ScreenshotThumbs::EnqueueBatch(),
     // which the Screenshots page triggers via the `screenshots.list` IPC
     // whenever it re-fetches the photo list. The frontend pulls tiny
@@ -516,6 +539,29 @@ void WebViewHost::RefreshPluginMappings() const
     // app.vrcsm is blocked — plugins speak to the host only through
     // postMessage, which IpcBridge::DispatchFromOrigin gates.
     const auto mappings = vrcsm::core::plugins::PluginRegistry::Instance().EnabledPanelMappings();
+    std::unordered_set<std::string> nextHosts;
+    nextHosts.reserve(mappings.size());
+    for (const auto& m : mappings)
+    {
+        nextHosts.insert(m.virtualHost);
+    }
+
+    for (const auto& host : m_mappedPluginHosts)
+    {
+        if (nextHosts.count(host) != 0)
+        {
+            continue;
+        }
+        const auto wideHost = Utf8ToWide(host);
+        const HRESULT hr = webview3->ClearVirtualHostNameToFolderMapping(wideHost.c_str());
+        if (FAILED(hr))
+        {
+            spdlog::warn("[plugins] ClearVirtualHostNameToFolderMapping({}) hr=0x{:08x}",
+                         host, static_cast<unsigned>(hr));
+        }
+    }
+
+    std::unordered_set<std::string> successfullyMapped;
     for (const auto& m : mappings)
     {
         const auto host = Utf8ToWide(m.virtualHost);
@@ -534,8 +580,11 @@ void WebViewHost::RefreshPluginMappings() const
         {
             spdlog::warn("[plugins] SetVirtualHostNameToFolderMapping({}) hr=0x{:08x}",
                          m.virtualHost, static_cast<unsigned>(hr));
+            continue;
         }
+        successfullyMapped.insert(m.virtualHost);
     }
+    m_mappedPluginHosts = std::move(successfullyMapped);
 }
 
 void WebViewHost::QuitForUpdate() const

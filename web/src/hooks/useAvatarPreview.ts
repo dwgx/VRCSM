@@ -11,6 +11,23 @@ interface PreviewResponse {
   cached?: boolean;
   code?: string;
   message?: string;
+  sourceSig?: string;
+  cacheSource?: string;
+  downloaded?: boolean;
+  decodeMs?: number;
+  downloadMs?: number;
+}
+
+interface PreviewStatusResponse {
+  avatarId?: string;
+  cached: boolean;
+  glbUrl?: string;
+  glbPath?: string;
+  bundleIndexed?: boolean;
+  sourceSig?: string | null;
+  cacheSource?: string | null;
+  code?: string;
+  message?: string;
 }
 
 interface PreviewProgressEvent {
@@ -94,12 +111,16 @@ export function useAvatarPreview(
       return cleanup;
     }
 
-    ipc
-      .call<{ avatarId: string; assetUrl?: string; bundlePath?: string }, PreviewResponse>(
-        "avatar.preview",
-        { avatarId, assetUrl, bundlePath },
-      )
-      .then((resp) => {
+    const request = { avatarId, assetUrl, bundlePath };
+
+    const requestFullPreview = () =>
+      ipc
+        .call<{ avatarId: string; assetUrl?: string; bundlePath?: string }, PreviewResponse>(
+          "avatar.preview",
+          request,
+        );
+
+    const handleResponse = (resp: PreviewResponse) => {
         if (cancelled) return;
         if (resp.ok && resp.glbUrl) {
           setState({
@@ -140,14 +161,36 @@ export function useAvatarPreview(
             message: resp.message,
           });
         }
-      })
-      .catch((e: unknown) => {
+      };
+
+    const handleFailure = (e: unknown) => {
         if (cancelled) return;
         setState({
           kind: "error",
           code: "preview_failed",
           message: e instanceof Error ? e.message : String(e),
         });
+      };
+
+    ipc
+      .call<{ avatarId: string; assetUrl?: string; bundlePath?: string }, PreviewStatusResponse>(
+        "avatar.preview.status",
+        request,
+      )
+      .then((status) => {
+        if (cancelled) return;
+        if (status.cached && status.glbUrl) {
+          setState({
+            kind: "ready",
+            url: status.glbUrl,
+            cached: true,
+          });
+          return;
+        }
+        requestFullPreview().then(handleResponse).catch(handleFailure);
+      })
+      .catch(() => {
+        requestFullPreview().then(handleResponse).catch(handleFailure);
       });
 
     return cleanup;

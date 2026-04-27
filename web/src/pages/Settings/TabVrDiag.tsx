@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ipc } from "@/lib/ipc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Wifi, Volume2, AlertTriangle, CheckCircle2, RefreshCcw, Cpu } from "lucide-react";
+import { Activity, Wifi, Volume2, AlertTriangle, CheckCircle2, RefreshCcw, Cpu, Wrench } from "lucide-react";
 
 interface DiagResult {
   adapters: Array<{ name: string; description: string; ipAddress: string; isVirtual: boolean; isUp: boolean }>;
@@ -41,8 +42,10 @@ function formatVram(bytes: number): string {
 
 export function TabVrDiag() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [result, setResult] = useState<DiagResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [linkChecking, setLinkChecking] = useState(false);
 
   const run = useCallback(async () => {
     setRunning(true);
@@ -65,6 +68,38 @@ export function TabVrDiag() {
       toast.error(e instanceof Error ? e.message : String(e));
     }
   }, [run, t]);
+
+  const openSteamLinkRepair = useCallback(async () => {
+    setLinkChecking(true);
+    try {
+      const diag = await ipc.diagnoseSteamVrLink();
+      const invalid = diag.logs?.counts?.invalid_session ?? 0;
+      const questPairs = (diag.localconfigs ?? []).reduce((sum, item) => sum + (item.questDeviceCount ?? 0), 0);
+      toast.info(t("settings.vrDiag.linkRepairReady", {
+        invalid,
+        questPairs,
+        defaultValue: "Steam Link repair panel is ready. Invalid sessions: {{invalid}}, Quest pairing records: {{questPairs}}.",
+      }));
+      navigate("/settings?tab=steamvr");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLinkChecking(false);
+    }
+  }, [navigate, t]);
+
+  const translateNetworkWarning = (line: string) => {
+    const match = line.match(/^Virtual adapter '(.+)' \((.+)\) is UP with IP (.+) — may interfere with VR streaming$/);
+    if (match) {
+      return t("settings.vrDiag.virtualAdapterWarning", {
+        name: match[1],
+        description: match[2],
+        ip: match[3],
+        defaultValue: line,
+      });
+    }
+    return line;
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -191,7 +226,7 @@ export function TabVrDiag() {
               {result.networkWarnings.map((w, i) => (
                 <div key={i} className="flex items-start gap-2 text-[hsl(var(--destructive))]">
                   <AlertTriangle className="size-3 shrink-0 mt-0.5" />
-                  <span>{w}</span>
+                  <span>{translateNetworkWarning(w)}</span>
                 </div>
               ))}
               {result.adapters.filter(a => a.isUp).map((a, i) => (
@@ -289,11 +324,17 @@ export function TabVrDiag() {
           {result.vrlinkErrors.length > 0 && (
             <Card className="unity-panel">
               <CardHeader className="pb-2">
-                <CardTitle className="text-[12px] font-mono uppercase tracking-wider flex items-center gap-2">
-                  <AlertTriangle className="size-3" />
-                  {t("settings.vrDiag.vrlinkIssues", { defaultValue: "vrlink Issues" })}
-                  <Badge variant="destructive">{result.vrlinkErrors.length}</Badge>
-                </CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <CardTitle className="text-[12px] font-mono uppercase tracking-wider flex items-center gap-2">
+                    <AlertTriangle className="size-3" />
+                    {t("settings.vrDiag.vrlinkIssues", { defaultValue: "vrlink Issues" })}
+                    <Badge variant="destructive">{result.vrlinkErrors.length}</Badge>
+                  </CardTitle>
+                  <Button variant="secondary" size="sm" onClick={() => void openSteamLinkRepair()} disabled={linkChecking}>
+                    <Wrench className={linkChecking ? "size-3 animate-spin" : "size-3"} />
+                    {t("settings.vrDiag.openSteamLinkRepair", { defaultValue: "Open Steam Link repair" })}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-1 text-[10px] font-mono max-h-[200px] overflow-y-auto">
                 {result.vrlinkErrors.map((e, i) => (

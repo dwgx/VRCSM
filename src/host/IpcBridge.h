@@ -81,6 +81,7 @@ private:
     nlohmann::json HandleShellOpenUrl(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFsListDir(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFsWritePlan(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFsAppDataDir(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleThumbnailsFetch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAuthStatus(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAuthLogin(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -88,6 +89,8 @@ private:
     nlohmann::json HandleAuthLogout(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAuthUser(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarPreviewRequest(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarPreviewStatus(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarPreviewPrefetch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleGroupsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleGroupsSetRepresented(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -116,6 +119,7 @@ private:
     nlohmann::json HandleUserBlock(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserUnblock(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserMe(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserSearch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserGetProfile(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserUpdateProfile(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUpdateCheck(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -170,6 +174,10 @@ private:
     nlohmann::json HandleAppFactoryReset(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleSteamVrRead(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleSteamVrWrite(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSteamVrLinkDiagnose(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSteamVrLinkRepair(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSteamVrLinkBackups(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSteamVrLinkRestore(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleMemoryStatus(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleRadarPoll(const nlohmann::json& params, const std::optional<std::string>& id);
 

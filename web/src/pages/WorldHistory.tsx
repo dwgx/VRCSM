@@ -109,7 +109,8 @@ export default function WorldHistory() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["db.worldVisits.list", { limit, offset: 0 }],
     queryFn: () => ipc.dbWorldVisits(limit, 0),
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
+    gcTime: 30 * 60_000,
   });
 
   const items = ((data?.items ?? []) as WorldVisit[]).slice();
@@ -155,13 +156,13 @@ export default function WorldHistory() {
       )}
 
       <div className="flex flex-col gap-2">
-        {items.map((v) => (
+        {items.map((v, index) => (
           <Card key={v.id} className="unity-panel">
             <CardContent className="p-3 flex items-center gap-3 text-[11px]">
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   {v.world_id ? (
-                    <WorldPopupBadge worldId={v.world_id} />
+                    <WorldPopupBadge worldId={v.world_id} prefetch={index < 16} />
                   ) : (
                     <span className="text-[12px] font-medium font-mono truncate">
                       {t("worldHistory.unknownWorld")}

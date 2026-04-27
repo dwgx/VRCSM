@@ -15,7 +15,7 @@
         <p class="subtitle" data-t="subtitle">Batch-upload <code>.unitypackage</code> avatars without the 25% failure rate.</p>
       </div>
     </div>
-    <div class="brand-version" id="version-pill">v0.9.2</div>
+    <div class="brand-version" id="version-pill">v0.9.6</div>
   </header>
 
   <section class="panel">
@@ -23,9 +23,15 @@
       <h2 data-t="step1">1 · Pick model root folder</h2>
       <span class="hint" data-t="step1Hint">Drop the folder that contains every avatar's .unitypackage (recursion supported).</span>
     </div>
-    <div class="row">
+    <div class="row wrap">
       <button id="pick-folder" class="btn primary" data-t="chooseFolder">Choose folder…</button>
+      <button id="native-folder" class="btn" data-t="chooseSystemFolder">System window…</button>
+      <button id="default-folder" class="btn ghost" data-t="useDefaultFolder">Use VRCSM workspace</button>
       <code id="folder-display" class="folder" data-t="notSelected">(not selected)</code>
+    </div>
+    <div class="row path-entry">
+      <input id="folder-input" class="path-input" type="text" spellcheck="false" data-t-placeholder="pathPlaceholder" placeholder="Paste a folder path or file:/// link…" />
+      <button id="use-path" class="btn" data-t="usePath">Use path</button>
     </div>
   </section>
 

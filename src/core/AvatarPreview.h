@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <string>
@@ -52,6 +53,34 @@ struct AvatarPreviewResult
     // primary empty-state text (we prefer i18n'd strings keyed off
     // `code`).
     std::string message;
+
+    // Source signature used by preview-v5. It includes avatarId at the
+    // cache-key layer plus source identity (assetUrl/bundle path), file size,
+    // and mtime when a local bundle is known.
+    std::string sourceSig;
+
+    // Where the GLB came from: "glb-cache", "local-bundle",
+    // "bundle-index", "bundle-cache", or "network".
+    std::string cacheSource;
+
+    // True only when Request had to download a .vrca before decoding.
+    bool downloaded{false};
+
+    // Timing telemetry for UI/logging. Cache hits report 0.
+    std::int64_t decodeMs{0};
+    std::int64_t downloadMs{0};
+};
+
+struct AvatarPreviewStatusResult
+{
+    bool cached{false};
+    std::string glbPath;
+    std::string glbUrl;
+    bool bundleIndexed{false};
+    std::string sourceSig;
+    std::string cacheSource;
+    std::string code;
+    std::string message;
 };
 
 class AvatarPreview
@@ -64,9 +93,29 @@ public:
     /// version changes.
     static std::string CacheKeyForAvatarId(std::string_view avatarId);
 
+    /// Deterministic cache key for a specific avatar/source pair. The
+    /// source signature should include bundle identity + size + mtime so
+    /// updated avatar bundles naturally invalidate old GLBs.
+    static std::string CacheKeyForAvatarSource(
+        std::string_view avatarId,
+        std::string_view sourceSig);
+
     /// Absolute path to the cached GLB for a given avatar id under
     /// `%LocalAppData%\VRCSM\preview-cache`.
     static std::filesystem::path CachedGlbPathForAvatarId(std::string_view avatarId);
+
+    static std::filesystem::path CachedGlbPathForSource(
+        std::string_view avatarId,
+        std::string_view sourceSig);
+
+    /// Fast cache probe used by visible-item prewarming. It resolves the
+    /// source signature and checks for an existing GLB, but never downloads
+    /// or decodes.
+    static AvatarPreviewStatusResult Status(
+        const std::string& avatarId,
+        const std::filesystem::path& vrchatBaseDir,
+        const std::string& assetUrl = "",
+        const std::string& bundlePath = "");
 
     /// Best-effort preview pipeline for a single avatar. `avatarId`
     /// is the `avtr_*` UUID string; `vrchatBaseDir` is the VRChat

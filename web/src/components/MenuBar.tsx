@@ -187,7 +187,7 @@ export function MenuBar({
         { id: "tools-migrate", label: t("menu.toolsMigrate"), action: () => navigate("/migrate") },
         { id: "tools-settings", label: t("menu.toolsSettings"), action: () => navigate("/settings") },
         { id: "tools-config", label: t("menu.toolsConfig"), action: () => navigate("/settings") },
-        { id: "tools-steamvr", label: t("menu.toolsSteamVR"), action: () => navigate("/settings") },
+        { id: "tools-steamvr", label: t("menu.toolsSteamVR"), action: () => navigate("/settings?tab=steamvr") },
         { kind: "separator", id: "tools-sep-plugins" },
         {
           id: "tools-plugins-market",
@@ -205,6 +205,28 @@ export function MenuBar({
       id: "help",
       label: t("menu.help"),
       items: [
+        {
+          id: "help-steamvr-repair",
+          label: t("menu.helpSteamVrRepair", { defaultValue: "SteamVR / Quest Repair" }),
+          action: () => navigate("/settings?tab=steamvr"),
+        },
+        {
+          id: "help-vr-diagnostics",
+          label: t("menu.helpVrDiagnostics", { defaultValue: "VR Diagnostics" }),
+          action: () => navigate("/settings?tab=vrdiag"),
+        },
+        { kind: "separator", id: "help-sep-plugins" },
+        {
+          id: "help-plugins-market",
+          label: t("menu.helpPluginsMarket", { defaultValue: "Plugin Market" }),
+          action: () => navigate("/plugins"),
+        },
+        {
+          id: "help-installed-plugins",
+          label: t("menu.helpInstalledPlugins", { defaultValue: "Installed Plugins" }),
+          action: () => navigate("/plugins/installed"),
+        },
+        { kind: "separator", id: "help-sep-docs" },
         {
           id: "help-docs",
           label: t("menu.helpDocs"),

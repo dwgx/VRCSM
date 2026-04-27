@@ -96,6 +96,7 @@ Result<std::monostate> PluginStore::Reload()
     MirrorBundledLocked();
     RescanLocked();
     (void)LoadState();
+    (void)SaveStateLocked();
     return std::monostate{};
 }
 
@@ -151,6 +152,14 @@ Result<std::monostate> PluginStore::Uninstall(std::string_view id)
     }
 
     std::error_code ec;
+    const auto pluginsRoot = PluginsRoot();
+    const auto dataRoot = PluginDataRoot();
+    if (!ensureWithinBase(pluginsRoot, it->second.installDir)
+        || !ensureWithinBase(dataRoot, it->second.dataDir))
+    {
+        return Error{"plugin_path_unsafe", "plugin uninstall path escaped the VRCSM plugin roots", 400};
+    }
+
     std::filesystem::remove_all(it->second.installDir, ec);
     if (ec)
     {
@@ -271,7 +280,15 @@ void PluginStore::RescanLocked()
         p.installDir = ent.path();
         p.dataDir = PluginDataRoot() / toWide(p.manifest.id);
         p.enabled = true;
-        p.bundled = false;  // overwritten below if mirrored
+        p.bundled = false;
+
+        // MirrorBundledLocked may have already registered this id as a
+        // bundled first-party plugin. Preserve that flag when the canonical
+        // LocalAppData copy is scanned immediately afterwards.
+        if (const auto existing = m_plugins.find(p.manifest.id); existing != m_plugins.end())
+        {
+            p.bundled = existing->second.bundled;
+        }
         std::filesystem::create_directories(p.dataDir, ec);
         m_plugins[p.manifest.id] = std::move(p);
     }
@@ -305,12 +322,17 @@ void PluginStore::MirrorBundledLocked()
 
         const auto dirName = SanitizePluginId(m.id);
         if (dirName != m.id) continue;  // skip malformed
-        if (!m.autoInstall) continue;   // user must install manually
-
         const auto targetDir = dst / toWide(m.id);
-        bool needCopy = true;
+        bool targetExists = std::filesystem::is_directory(targetDir, ec);
+        bool needCopy = m.autoInstall || targetExists;
 
-        if (std::filesystem::is_directory(targetDir, ec))
+        // Manual-install bundled plugins (autoInstall=false) still ship next
+        // to the executable. If the user already installed an older copy from
+        // the marketplace, upgrade that canonical id-named directory from the
+        // bundled source; otherwise leave it uninstalled.
+        if (!needCopy) continue;
+
+        if (targetExists)
         {
             // Compare versions — only replace if bundled is newer.
             const auto existingDoc = ReadJsonFile(targetDir / L"manifest.json");
@@ -324,6 +346,25 @@ void PluginStore::MirrorBundledLocked()
 
         if (needCopy)
         {
+            std::error_code eqEc;
+            if (std::filesystem::equivalent(ent.path(), targetDir, eqEc) && !eqEc)
+            {
+                needCopy = false;
+            }
+        }
+
+        if (needCopy)
+        {
+            spdlog::info("[plugins] mirror bundled '{}' {} -> {}",
+                         m.id,
+                         toUtf8(ent.path().wstring()),
+                         toUtf8(targetDir.wstring()));
+            if (!ensureWithinBase(dst, targetDir))
+            {
+                spdlog::warn("[plugins] refusing to refresh bundled plugin outside plugins root: {}",
+                             toUtf8(targetDir.wstring()));
+                continue;
+            }
             std::filesystem::remove_all(targetDir, ec);
             std::filesystem::create_directories(targetDir.parent_path(), ec);
             std::filesystem::copy(ent.path(), targetDir,
@@ -335,12 +376,14 @@ void PluginStore::MirrorBundledLocked()
             }
         }
 
-        // Mark as bundled so Uninstall() refuses.
+        // Auto-installed bundled plugins cannot be uninstalled because they
+        // rehydrate on every launch. Manual-install bundled plugins keep
+        // bundled=false: the shipped copy only serves as an update source.
         InstalledPlugin p;
         p.manifest = m;
         p.installDir = targetDir;
         p.dataDir = PluginDataRoot() / toWide(m.id);
-        p.bundled = true;
+        p.bundled = m.autoInstall;
         p.enabled = true;
         std::filesystem::create_directories(p.dataDir, ec);
         m_plugins[m.id] = std::move(p);

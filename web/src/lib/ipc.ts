@@ -24,9 +24,13 @@ import type {
   VrcSettingsWriteResult,
   VrcSettingsExportResult,
   SteamVrConfig,
+  SteamVrLinkBackupList,
+  SteamVrLinkDiagnostic,
+  SteamVrLinkRepairResult,
   VrcSettingValueSnapshot,
   MemoryStatus,
   RadarSnapshot,
+  UserSearchResult,
 } from "./types";
 
 const FAVORITES_COMPAT_STORAGE_KEY = "vrcsm:favorites-compat";
@@ -86,6 +90,7 @@ const LONG_RUNNING_METHODS = new Set<string>([
   "scan",
   "avatar.bundle.download",
   "avatar.preview",
+  "avatar.preview.prefetch",
   "favorites.syncOfficial",
   "favorites.export",
   "favorites.import",
@@ -399,14 +404,20 @@ class IpcClient {
             return {
               id,
               url: `https://picsum.photos/seed/${seed}/256/144`,
+              localUrl: null,
               cached: false,
+              imageCached: false,
+              source: "network",
               error: null,
             };
           }
           return {
             id,
             url: null,
+            localUrl: null,
             cached: false,
+            imageCached: false,
+            source: "negative",
             error: "avatar-api-requires-auth",
           };
         });
@@ -464,6 +475,20 @@ class IpcClient {
           message: "browser dev mode has no extractor",
         } as unknown as TResult;
       }
+      case "avatar.preview.status":
+        return {
+          cached: false,
+          bundleIndexed: false,
+          sourceSig: null,
+          cacheSource: null,
+        } as unknown as TResult;
+      case "avatar.preview.prefetch":
+        return {
+          ok: false,
+          cached: false,
+          queued: false,
+          skipped: "browser-dev-mode",
+        } as unknown as TResult;
       case "auth.user":
         return {
           authed: true,
@@ -495,6 +520,126 @@ class IpcClient {
           ok: true,
           path: "C:/Users/dev/AppData/Local/Temp/vrcsm-vrc-settings-mock.reg",
         } satisfies VrcSettingsExportResult as unknown as TResult;
+      case "steamvr.link.diagnose":
+        return {
+          ok: true,
+          summary: "Mock VRLink diagnosis: invalid session ID + wireless HMD not connected signature found.",
+          steamPath: "D:/Steam",
+          steamVrInstalled: true,
+          steamVrInstallPath: "D:/Steam/steamapps/common/SteamVR",
+          manifest: {
+            path: "D:/Steam/steamapps/appmanifest_250820.acf",
+            exists: true,
+            isBeta: true,
+            pendingDownload: false,
+            fields: { buildid: "22769751", TargetBuildID: "0" },
+            markers: ['"BetaKey"        "beta"'],
+          },
+          localconfigs: [
+            {
+              path: "D:/Steam/userdata/123/config/localconfig.vdf",
+              exists: true,
+              questDeviceCount: 2,
+              betaMarkers: 1,
+              markers: ['"DeviceName"        "Oculus Quest 3"', '"250820-beta"'],
+            },
+          ],
+          logs: {
+            counts: { invalid_session: 64, wireless_not_connected: 1, lost_master: 1, ready: 0 },
+            matches: [
+              { file: "driver_vrlink.txt", line: 120, kind: "invalid_session", text: "Warning: received packet with invalid session ID" },
+              { file: "vrmonitor.txt", line: 24, kind: "wireless_hmd_215", text: "VR_Init failed with A wireless HMD driver is present, but the wireless HMD has not connected yet (215)" },
+            ],
+          },
+          issues: [
+            {
+              id: "vrlink_session_mismatch",
+              severity: "critical",
+              title: "VRLink session ID mismatch",
+              detail: "Quest packets reached the PC, but SteamVR rejected the wireless HMD session.",
+              repairPlan: "full-vrlink-reset",
+            },
+            {
+              id: "quest_pairing_cache",
+              severity: "warning",
+              title: "Quest / Steam Link pairing cache is present",
+              detail: "Two Quest pairing markers were found in localconfig.vdf.",
+              repairPlan: "pairing-reset",
+            },
+          ],
+          repairPlans: [
+            {
+              id: "pairing-reset",
+              title: "Pairing reset",
+              risk: "low",
+              recommended: true,
+              description: "Backs up localconfig.vdf, clears Quest streaming device blocks, and clears SteamVR htmlcache.",
+              actions: ["Stop SteamVR/Steam", "Back up localconfig.vdf", "Remove Quest streaming device blocks"],
+            },
+            {
+              id: "full-vrlink-reset",
+              title: "Full VRLink reset",
+              risk: "medium",
+              recommended: true,
+              description: "Clears pairing, VRLink runtime cache, SteamVR beta markers, and archives old logs.",
+              actions: ["Stop Steam/SteamVR", "Move config/vrlink", "Open steam://validate/250820"],
+            },
+            {
+              id: "safe-streaming",
+              title: "Safe streaming parameters",
+              risk: "low",
+              recommended: false,
+              description: "Writes conservative Quest-safe streaming settings.",
+              actions: ["80 Mbps auto bandwidth", "1.0x supersampling", "72 Hz"],
+            },
+          ],
+          suggestedSettings: [
+            {
+              id: "low-stability",
+              title: "Low performance stability",
+              recommended: false,
+              bandwidth: 60,
+              supersampleScale: 0.8,
+              refreshRate: 72,
+              note: "Use when the link connects but jitters or black-screens.",
+              updates: {
+                driver_vrlink: { targetBandwidth: 60, automaticBandwidth: true },
+                steamvr: {
+                  supersampleScale: 0.8,
+                  supersampleManualOverride: true,
+                  preferredRefreshRate: 72,
+                  motionSmoothing: false,
+                  allowSupersampleFiltering: true,
+                },
+              },
+            },
+          ],
+          recommendations: [
+            "Reset Steam Link / Quest pairing cache and re-pair from the headset.",
+            "Remove SteamVR BetaKey and validate AppID 250820 to return to the stable branch.",
+          ],
+        } satisfies SteamVrLinkDiagnostic as unknown as TResult;
+      case "steamvr.link.repair": {
+        const p = (params ?? {}) as { dryRun?: boolean };
+        return {
+          ok: true,
+          dryRun: p.dryRun ?? true,
+          planId: (params as { planId?: string } | undefined)?.planId ?? "full-vrlink-reset",
+          backupDir: "D:/Steam/config/vrcsm-vrlink-reset-mock",
+          actions: [
+            "Stop process vrserver.exe (1234)",
+            "Remove BetaKey lines from D:/Steam/steamapps/appmanifest_250820.acf",
+            "Remove Quest / Steam Link streaming device blocks from localconfig.vdf",
+            "Open steam://validate/250820 after repair",
+          ],
+          backups: [],
+          stopped: [],
+          failures: [],
+          manifestBetaLinesRemoved: p.dryRun ? 0 : 2,
+          localconfigDeviceBlocksRemoved: p.dryRun ? 0 : 2,
+          localconfigBetaBlocksRemoved: p.dryRun ? 0 : 1,
+        } satisfies SteamVrLinkRepairResult as unknown as TResult;
+      }
       case "favorites.lists":
         return { lists: buildMockFavoriteLists() } as unknown as TResult;
       case "favorites.items": {
@@ -805,6 +950,22 @@ class IpcClient {
           },
         } as unknown as TResult;
       }
+      case "user.search": {
+        const p = (params ?? {}) as { query?: string };
+        const id = `usr_mock_${encodeURIComponent(p.query ?? "user")}`;
+        return {
+          users: [
+            {
+              id,
+              displayName: p.query || "Mock User",
+              profilePicOverride: "",
+              currentAvatarImageUrl: null,
+              currentAvatarThumbnailImageUrl: null,
+              status: "offline",
+            },
+          ],
+        } as unknown as TResult;
+      }
       case "user.updateProfile":
         return { profile: null } as unknown as TResult;
       case "screenshots.list": {
@@ -1077,6 +1238,40 @@ class IpcClient {
     return this.call<any, { ok: boolean }>("steamvr.write", updates);
   }
 
+  async diagnoseSteamVrLink(): Promise<SteamVrLinkDiagnostic> {
+    return this.call<undefined, SteamVrLinkDiagnostic>("steamvr.link.diagnose");
+  }
+
+  async repairSteamVrLink(params: {
+    planId?: string;
+    dryRun?: boolean;
+    clearRuntimeConfig?: boolean;
+    clearHtmlCache?: boolean;
+    clearPairing?: boolean;
+    removeBeta?: boolean;
+    stopSteam?: boolean;
+    launchValidate?: boolean;
+    clearVrlinkConfig?: boolean;
+    clearRemoteClients?: boolean;
+    archiveLogs?: boolean;
+    applySafeStreamingSettings?: boolean;
+    backupOnly?: boolean;
+  }): Promise<SteamVrLinkRepairResult> {
+    return this.call<typeof params, SteamVrLinkRepairResult>("steamvr.link.repair", params);
+  }
+
+  async listSteamVrLinkBackups(): Promise<SteamVrLinkBackupList> {
+    return this.call<undefined, SteamVrLinkBackupList>("steamvr.link.backups");
+  }
+
+  async restoreSteamVrLinkBackup(params: {
+    backupDir: string;
+    dryRun?: boolean;
+    stopSteam?: boolean;
+  }): Promise<SteamVrLinkRepairResult> {
+    return this.call<typeof params, SteamVrLinkRepairResult>("steamvr.link.restore", params);
+  }
+
   async readMemoryStatus(): Promise<MemoryStatus> {
     return this.call<{}, MemoryStatus>("memory.status", {});
   }
@@ -1280,6 +1475,13 @@ class IpcClient {
       { query: string; count: number; offset: number },
       { avatars: AvatarSearchResult[] }
     >("avatar.search", { query, count, offset });
+  }
+
+  async searchUsers(query: string, count = 10, offset = 0) {
+    return this.call<
+      { query: string; count: number; offset: number },
+      { users: UserSearchResult[] }
+    >("user.search", { query, count, offset });
   }
 
   // ── Database / History ──────────────────────────────────────────────
