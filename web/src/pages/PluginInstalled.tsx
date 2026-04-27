@@ -4,10 +4,11 @@ import { useTranslation } from "react-i18next";
 import { Package, Trash2, Power, PowerOff, ExternalLink, AlertTriangle } from "lucide-react";
 import { ipc, IpcError } from "@/lib/ipc";
 import { usePluginRegistry } from "@/lib/plugin-context";
+import { pluginDisplayName } from "@/lib/plugin-i18n";
 import { cn } from "@/lib/utils";
 
 export default function PluginInstalled() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { plugins, loading, refresh } = usePluginRegistry();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export default function PluginInstalled() {
                 return (
                   <tr key={p.id} className="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--surface-raised)/0.5)]">
                     <td className="px-3 py-2">
-                      <div className="font-medium">{p.name}</div>
+                      <div className="font-medium">{pluginDisplayName(p, i18n.resolvedLanguage ?? i18n.language)}</div>
                       <div className="font-mono text-[10px] text-[hsl(var(--muted-foreground))]">{p.id}</div>
                     </td>
                     <td className="px-3 py-2 font-mono">{p.version}</td>

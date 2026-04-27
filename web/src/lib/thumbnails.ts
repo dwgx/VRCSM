@@ -20,7 +20,10 @@ import { ipc } from "./ipc";
 export interface ThumbnailResult {
   id: string;
   url: string | null;
+  localUrl?: string | null;
   cached: boolean;
+  imageCached?: boolean;
+  source?: "memory" | "disk" | "network" | "negative";
   error: string | null;
 }
 
@@ -95,11 +98,14 @@ function fetchOne(id: string): Promise<string | null> {
     return Promise.resolve(null);
   }
   const promise = ipc
-    .call<{ ids: string[] }, IpcResponse>("thumbnails.fetch", { ids: [id] })
+    .call<{ ids: string[]; downloadImages?: boolean }, IpcResponse>("thumbnails.fetch", {
+      ids: [id],
+      downloadImages: true,
+    })
     .then((resp) => {
       const row = resp.results.find((r) => r.id === id) ?? resp.results[0];
       const hadError = !!row?.error;
-      const url = row?.url ?? null;
+      const url = row?.localUrl ?? row?.url ?? null;
       if (hadError) {
         // Backend reported a transient failure (network, 5xx). Don't poison
         // the cache — drop the entry so the next useThumbnail tries again.
@@ -174,7 +180,7 @@ export function useThumbnail(id: string | null): {
 
 /** Warm the cache for a list of ids — used on page mount to batch-prefetch
  * everything visible in one IPC round-trip. Safe to call repeatedly; ids
- * already cached or in-flight are skipped. Unsupported prefixes (avatars)
+ * already cached or in-flight are skipped. Unsupported prefixes
  * resolve synchronously to `null` without any IPC traffic. */
 export function prefetchThumbnails(ids: string[]): void {
   const now = Date.now();
@@ -197,7 +203,10 @@ export function prefetchThumbnails(ids: string[]): void {
   if (need.length === 0) return;
 
   const batchPromise = ipc
-    .call<{ ids: string[] }, IpcResponse>("thumbnails.fetch", { ids: need })
+    .call<{ ids: string[]; downloadImages?: boolean }, IpcResponse>("thumbnails.fetch", {
+      ids: need,
+      downloadImages: true,
+    })
     .then((resp) => {
       const seen = new Set<string>();
       for (const row of resp.results) {
@@ -206,7 +215,7 @@ export function prefetchThumbnails(ids: string[]): void {
           memo.delete(row.id);
           continue;
         }
-        const url = row.url ?? null;
+        const url = row.localUrl ?? row.url ?? null;
         memo.set(row.id, {
           state: "resolved",
           url,

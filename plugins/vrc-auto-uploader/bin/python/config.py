@@ -43,6 +43,9 @@ def _registry_unity_paths() -> list[str]:
                     while True:
                         try:
                             name = winreg.EnumKey(key, i)
+                        except OSError:
+                            break
+                        try:
                             with winreg.OpenKey(key, name) as vk:
                                 loc, _ = winreg.QueryValueEx(vk, "Location x64")
                                 if loc and os.path.isdir(loc):

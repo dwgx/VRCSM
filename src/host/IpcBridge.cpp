@@ -105,10 +105,15 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "settings.exportReg",
         "config.read",
         "config.write",
+        "steamvr.link.diagnose",
+        "steamvr.link.repair",
+        "steamvr.link.backups",
+        "steamvr.link.restore",
         "migrate.preflight",
         "junction.repair",
         "fs.listDir",
         "fs.writePlan",
+        "fs.appDataDir",
         "thumbnails.fetch",
         "auth.status",
         "auth.user",
@@ -128,6 +133,8 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "avatar.details",
         "world.details",
         "avatar.preview",
+        "avatar.preview.status",
+        "avatar.preview.prefetch",
         "avatar.preview.abort",
         "avatar.select",
         "avatar.search",
@@ -156,6 +163,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "user.block",
         "user.unblock",
         "user.me",
+        "user.search",
         "user.getProfile",
         "user.updateProfile",
         "screenshots.list",
@@ -556,6 +564,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("shell.openUrl", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellOpenUrl(p, id); });
     m_handlers.emplace("fs.listDir", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsListDir(p, id); });
     m_handlers.emplace("fs.writePlan", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsWritePlan(p, id); });
+    m_handlers.emplace("fs.appDataDir", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsAppDataDir(p, id); });
     m_handlers.emplace("app.factoryReset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAppFactoryReset(p, id); });
     m_handlers.emplace("update.check", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUpdateCheck(p, id); });
     m_handlers.emplace("update.download", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUpdateDownload(p, id); });
@@ -578,6 +587,10 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("config.write", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleConfigWrite(p, id); });
     m_handlers.emplace("steamvr.read", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSteamVrRead(p, id); });
     m_handlers.emplace("steamvr.write", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSteamVrWrite(p, id); });
+    m_handlers.emplace("steamvr.link.diagnose", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSteamVrLinkDiagnose(p, id); });
+    m_handlers.emplace("steamvr.link.repair", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSteamVrLinkRepair(p, id); });
+    m_handlers.emplace("steamvr.link.backups", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSteamVrLinkBackups(p, id); });
+    m_handlers.emplace("steamvr.link.restore", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSteamVrLinkRestore(p, id); });
 
     // Migration
     m_handlers.emplace("migrate.preflight", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleMigratePreflight(p, id); });
@@ -594,6 +607,8 @@ void IpcBridge::RegisterHandlers()
 
     // VRChat API
     m_handlers.emplace("avatar.preview", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarPreviewRequest(p, id); });
+    m_handlers.emplace("avatar.preview.status", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarPreviewStatus(p, id); });
+    m_handlers.emplace("avatar.preview.prefetch", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarPreviewPrefetch(p, id); });
     m_handlers.emplace("avatar.preview.abort", [this](const nlohmann::json& p, const std::optional<std::string>&) -> nlohmann::json
     {
         const auto avatarId = JsonStringField(p, "avatarId").value_or("");
@@ -631,6 +646,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("user.block", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserBlock(p, id); });
     m_handlers.emplace("user.unblock", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserUnblock(p, id); });
     m_handlers.emplace("user.me", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserMe(p, id); });
+    m_handlers.emplace("user.search", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserSearch(p, id); });
     m_handlers.emplace("user.getProfile", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserGetProfile(p, id); });
     m_handlers.emplace("user.updateProfile", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserUpdateProfile(p, id); });
 

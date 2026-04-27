@@ -183,16 +183,27 @@ nlohmann::json IpcBridge::HandlePluginInstall(const nlohmann::json& params,
     if (!isOk(result)) throw IpcException(std::get<Error>(std::move(result)));
     const auto& report = std::get<InstallReport>(result);
 
+    // Re-scan after install so a shipped newer copy of the same plugin
+    // can immediately upgrade an older marketplace payload. This keeps
+    // bundled manual-install plugins such as AutoUploader from getting
+    // stuck on the remote feed's stale version until the next app launch.
+    (void)vrcsm::core::plugins::GetPluginStore().Reload();
+    const auto installed = vrcsm::core::plugins::GetPluginStore().Find(report.id);
+    const std::string version = installed ? installed->manifest.version.toString() : report.version.toString();
+    const std::string installDir = installed
+        ? vrcsm::core::toUtf8(installed->installDir.wstring())
+        : report.installDir;
+
     // Make the newly-installed plugin reachable from the SPA without a
-    // host restart — refresh virtual-host mappings, which walks the
-    // enabled-panels list and calls SetVirtualHostNameToFolderMapping
-    // for each entry (idempotent; existing mappings are overwritten).
-    m_host.RefreshPluginMappings();
+    // host restart. The mapping call itself must run on the WebView2 UI
+    // thread; RequestPluginMappingsRefresh posts it before the IPC
+    // result is delivered, so the frontend sees a mapped host.
+    m_host.RequestPluginMappingsRefresh();
 
     return nlohmann::json{
         {"id", report.id},
-        {"version", report.version.toString()},
-        {"installDir", report.installDir},
+        {"version", version},
+        {"installDir", installDir},
     };
 }
 
@@ -213,7 +224,7 @@ nlohmann::json IpcBridge::HandlePluginUninstall(const nlohmann::json& params,
     auto r = PluginRegistry::Instance().Uninstall(id);
     if (!isOk(r)) throw IpcException(std::get<Error>(std::move(r)));
 
-    m_host.RefreshPluginMappings();
+    m_host.RequestPluginMappingsRefresh();
     return nlohmann::json{{"ok", true}, {"id", id}};
 }
 
@@ -232,7 +243,7 @@ nlohmann::json IpcBridge::HandlePluginEnable(const nlohmann::json& params,
     }
     auto r = PluginRegistry::Instance().SetEnabled(id, true);
     if (!isOk(r)) throw IpcException(std::get<Error>(std::move(r)));
-    m_host.RefreshPluginMappings();
+    m_host.RequestPluginMappingsRefresh();
     return nlohmann::json{{"ok", true}, {"id", id}, {"enabled", true}};
 }
 
@@ -249,7 +260,7 @@ nlohmann::json IpcBridge::HandlePluginDisable(const nlohmann::json& params,
     }
     auto r = PluginRegistry::Instance().SetEnabled(id, false);
     if (!isOk(r)) throw IpcException(std::get<Error>(std::move(r)));
-    m_host.RefreshPluginMappings();
+    m_host.RequestPluginMappingsRefresh();
     return nlohmann::json{{"ok", true}, {"id", id}, {"enabled", false}};
 }
 

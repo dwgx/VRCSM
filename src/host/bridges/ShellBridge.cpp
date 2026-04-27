@@ -16,6 +16,44 @@
 #include <wil/com.h>
 #include <wil/resource.h>
 
+namespace
+{
+
+std::optional<std::filesystem::path> SafeRelativeSubdir(const std::string& raw)
+{
+    namespace fs = std::filesystem;
+
+    if (raw.empty())
+    {
+        return fs::path{};
+    }
+
+    fs::path input(Utf8ToWide(raw));
+    if (input.is_absolute() || input.has_root_name() || input.has_root_directory())
+    {
+        return std::nullopt;
+    }
+
+    fs::path out;
+    for (const auto& part : input)
+    {
+        const auto w = part.wstring();
+        if (w.empty() || w == L"." || w == L"..")
+        {
+            return std::nullopt;
+        }
+        if (w.find_first_of(L"<>:\"|?*") != std::wstring::npos)
+        {
+            return std::nullopt;
+        }
+        out /= part;
+    }
+
+    return out.lexically_normal();
+}
+
+} // namespace
+
 nlohmann::json IpcBridge::HandleAppVersion(const nlohmann::json&, const std::optional<std::string>&)
 {
     return nlohmann::json{
@@ -317,6 +355,59 @@ nlohmann::json IpcBridge::HandleFsWritePlan(const nlohmann::json& params, const 
         {"ok", true},
         {"path", WideToUtf8(planPath.wstring())},
         {"bytes", content.size()},
+    };
+}
+
+nlohmann::json IpcBridge::HandleFsAppDataDir(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    namespace fs = std::filesystem;
+
+    const std::string subdir = (params.is_object() && params.contains("subdir") && params["subdir"].is_string())
+        ? params["subdir"].get<std::string>()
+        : std::string{};
+    const bool create = !params.is_object()
+        || !params.contains("create")
+        || !params["create"].is_boolean()
+        || params["create"].get<bool>();
+
+    const auto rel = SafeRelativeSubdir(subdir);
+    if (!rel.has_value())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_params",
+            "fs.appDataDir: subdir must be a safe relative path",
+            0});
+    }
+
+    const fs::path root = vrcsm::core::getAppDataRoot();
+    const fs::path target = (root / *rel).lexically_normal();
+    if (!vrcsm::core::ensureWithinBase(root, target))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_params",
+            "fs.appDataDir: subdir escapes app data root",
+            0});
+    }
+
+    std::error_code ec;
+    bool created = false;
+    if (create)
+    {
+        created = fs::create_directories(target, ec);
+        if (ec)
+        {
+            throw IpcException(vrcsm::core::Error{
+                "fs.appDataDir.io",
+                fmt::format("failed to create directory: {}", ec.message()),
+                0});
+        }
+    }
+
+    return nlohmann::json{
+        {"ok", true},
+        {"root", WideToUtf8(root.wstring())},
+        {"path", WideToUtf8(target.wstring())},
+        {"created", created},
     };
 }
 

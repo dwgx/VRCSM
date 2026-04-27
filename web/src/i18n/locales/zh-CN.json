@@ -159,7 +159,13 @@
     "mute": "静音",
     "inviteMe": "邀请我加入",
     "joinInstance": "加入房间",
-    "notSignedIn": "登录 VRChat 才能查看好友详情。"
+    "notSignedIn": "登录 VRChat 才能查看好友详情。",
+    "unfriendConfirm1": "确定要解除 {{name}} 的好友关系吗？",
+    "unfriendConfirm2Title": "最后确认一下！",
+    "unfriendConfirm2": "如果你点击红色按钮，{{name}} 可能就再也看不到他了哦 QvQ",
+    "unfriendFinal": "是的，红色按钮",
+    "unfriendNevermind": "算啦！！",
+    "unfriendCancelled": "取消啦，关系先放回小窝。"
   },
   "osc": {
     "title": "OSC 工具",
@@ -445,7 +451,11 @@
     "helpCheckUpdates": "检查更新",
     "helpCheckUpdatesFallback": "检查更新…",
     "helpReportIssue": "反馈问题",
-    "helpKeyboard": "键盘快捷键"
+    "helpKeyboard": "键盘快捷键",
+    "helpSteamVrRepair": "SteamVR / Quest 修复",
+    "helpVrDiagnostics": "VR 诊断",
+    "helpPluginsMarket": "插件商店",
+    "helpInstalledPlugins": "已安装插件"
   },
   "update": {
     "title": "VRCSM 更新",
@@ -846,12 +856,24 @@
     "seenTimes": "看到 {{count}} 次",
     "wearerCount": "{{count}} 位穿戴者",
     "encounterSummary": "见于 {{wearer}} · {{count}} 条日志事件",
-    "encounterLogNote": "此条目来自本地 VRChat 日志索引。日志只暴露模型名和穿戴者，不包含 avtr_* 或官方缩略图 URL。缩略图会优先从穿戴者当前模型资料或公开同名搜索中解析。",
+    "encounterLogNote": "此条目来自本地 VRChat 日志索引。日志只暴露模型名和穿戴者，不包含 avtr_* 或官方缩略图 URL。VRCSM 会先找可验证的公开模型图；找不到时会显示穿戴者当前模型图作为参考图，它可能不是当时那件模型。",
     "filterSeen": "见过",
     "filterLocal": "本地",
     "thumbnailResolved": "已解析缩略图",
     "thumbnailResolving": "正在解析缩略图…",
+    "thumbnailMiss": "没有可验证的缩略图匹配",
+    "referenceImageLoading": "正在确认穿戴者当前模型图…",
+    "referenceImageBadge": "参考图",
+    "referenceImageBadgeShort": "参考图",
+    "profileFallbackKnownUser": "穿戴者资料",
+    "profileFallbackNameMatch": "按名字匹配",
+    "profileFallbackAmbiguous": "按名字猜的",
+    "profileFallbackNote": "没找到可信缩略图，先显示穿戴者当前资料图给 {{name}} 作参考。",
+    "profileFallbackUnavailable": "穿戴者资料加载失败，可能是未登录、同名太多，或者 VRChat API 没给。",
+    "localNameWas": "缓存里原名：{{name}}",
+    "renamedHint": "已改名",
     "noThumbnail": "无缩略图",
+    "seenThumbnailHow": "见过模型想显示缩略图，需要满足其一：日志里本身带 avtr_*；公开搜索能按模型名和作者精确命中；或者穿戴者当前公开模型还能拿到图。带“参考图”的缩略图只是穿戴者当前模型，不保证就是当时那件。",
     "previewWorkbench": "默认检视器改为更紧凑的尺寸，可点右上角放大查看。当前解包链路仍未把贴图嵌入 GLB，所以“原始”模式暂时只能显示原始材质结果；滚轮缩放，Shift+拖拽平移，右键也可平移。",
     "hiddenCount": "另有 {{count}} 条被隐藏，使用搜索可进一步筛选。",
     "unityPackages": "{{count}} 个平台包"
@@ -3112,6 +3134,216 @@
         "gpuScheduling": "GPU 调度",
         "guide": "VRCSM 指南"
       },
+      "linkRepair": {
+        "title": "Steam Link / Quest 连接修复",
+        "body": "诊断 VRLink 会话 ID 不匹配、WirelessHmdNotConnected、旧 Quest 配对缓存、SteamVR Beta 标记和 SteamVR 未完成更新。修复前会先备份，默认先做 dry-run 预览。",
+        "diagnose": "诊断",
+        "dryRun": "预览修复",
+        "dryRunShort": "预览",
+        "apply": "备份并修复",
+        "applyShort": "执行",
+        "confirm": "将关闭 Steam/SteamVR，备份 SteamVR 设置、appmanifest 和 localconfig.vdf，清理 Steam Link 配对缓存，移除 SteamVR Beta 标记，并打开 Steam 校验。继续吗？",
+        "confirmPlan": "执行“{{name}}”？VRCSM 会先备份，并报告任何写入失败。",
+        "invalidSessionToast": "发现 VRLink 无效会话包：{{count}}",
+        "diagnoseDone": "Steam Link 诊断完成。",
+        "diagnoseFailed": "Steam Link 诊断失败：{{msg}}",
+        "dryRunDone": "预览完成。请检查计划执行的修复步骤。",
+        "repairDone": "修复已应用，并已打开 Steam 校验。",
+        "backupDone": "已创建 Quest Link/SteamVR 设置备份。",
+        "repairFailed": "Steam Link 修复失败：{{msg}}",
+        "previewFailed": "生成预览失败：{{msg}}",
+        "restoreDone": "已恢复 {{count}} 个备份项。",
+        "restoreFailed": "恢复备份失败：{{msg}}",
+        "confirmDialogTitle": "确认执行“{{name}}”",
+        "confirmDialogDesc": "请先检查下面列出的具体文件和动作。只有点击“执行”后才会真正修改。",
+        "restoreDialogTitle": "恢复 Steam Link 备份",
+        "restoreDialogDesc": "VRCSM 会关闭 Steam/SteamVR，先备份当前文件，再恢复你选择的备份。",
+        "previewing": "正在生成预览…",
+        "executing": "执行中…",
+        "noPlannedActions": "预览中没有动作。",
+        "confirmDialogCancel": "算啦，先不动",
+        "confirmDialogApply": "确认备份并修复",
+        "restoreConfirm": "恢复这个备份",
+        "steamPath": "Steam 路径",
+        "build": "版本构建",
+        "beta": "Beta",
+        "stable": "稳定版",
+        "invalidSessions": "无效会话包",
+        "questPairs": "Quest 配对缓存",
+        "pendingDownload": "待更新",
+        "lostMaster": "主进程丢失",
+        "issues": "检测到的问题",
+        "evidence": "日志证据",
+        "noEvidence": "扫描的日志尾部没有匹配行。",
+        "recommended": "推荐",
+        "best": "推荐",
+        "settingProfiles": "稳定参数档案",
+        "actions": "计划执行",
+        "result": "结果",
+        "applied": "已应用",
+        "partial": "部分完成",
+        "resultBetaKey": "移除 BetaKey 行",
+        "resultQuestBlocks": "移除 Quest 设备块",
+        "resultBetaBlocks": "移除 250820-beta 块",
+        "resultStopped": "停止进程数",
+        "resultBackups": "备份数量",
+        "resultSettingsApplied": "已写入参数",
+        "resultRestored": "已恢复项目",
+        "currentBackupDir": "恢复前当前文件备份",
+        "backupsTitle": "备份与恢复",
+        "backupsHint": "这里列出 VRCSM 创建的可恢复备份。恢复时会先备份当前文件。",
+        "refreshBackups": "刷新",
+        "restorable": "可恢复",
+        "metadataMissing": "缺少清单",
+        "restore": "恢复",
+        "severity": {
+          "critical": "严重",
+          "warning": "警告",
+          "info": "提示",
+          "ok": "正常"
+        },
+        "risk": {
+          "low": "低风险",
+          "medium": "中风险",
+          "high": "高风险"
+        },
+        "summary": {
+          "vrlinkSessionMismatch": "VRLink 会话不匹配：Quest 的数据包已经到达电脑，但 SteamVR 拒绝了无线头显会话。",
+          "betaMarkers": "检测到 SteamVR Beta 或用户级 Beta 标记；这可能把 SteamVR 固定在有问题的 VRLink 构建上。",
+          "readyNoInvalid": "最近日志里出现 SteamVR Ready，且扫描范围内没有无效会话爆发。",
+          "lostMaster": "SteamVR 因主进程丢失而关闭；需要检查 VRLink 配对和运行时进程稳定性。",
+          "pairingRecords": "检测到 Steam Link / Quest 配对记录；旧记录可以在备份后安全重置。",
+          "noSignature": "扫描到的 SteamVR 日志里没有明确的 VRLink 失败特征。"
+        },
+        "recommendations": {
+          "resetPairing": "重置 Steam Link / Quest 配对缓存，然后从头显重新配对。",
+          "removeManifestBeta": "移除 SteamVR BetaKey，并校验 AppID 250820 以回到稳定分支。",
+          "removeUserBeta": "从 Steam localconfig.vdf 移除用户级 250820-beta / BetaKey 标记。",
+          "removeQuestDevices": "先备份 localconfig.vdf，再移除旧的 Oculus Quest / Steam Link 串流设备记录。",
+          "finishUpdate": "先让 Steam 完成 SteamVR 更新/校验，再重试 Steam Link。",
+          "retryThenDryRun": "先从头显重试；如果失败，再运行预览修复并对比新的日志尾部。"
+        },
+        "issuesMap": {
+          "steamvr_missing": {
+            "title": "未找到 SteamVR 或运行时目录",
+            "detail": "Steam Link VR 需要 AppID 250820。请先安装 SteamVR，再运行校验。"
+          },
+          "steamvr_pending_update": {
+            "title": "SteamVR 有待更新或未完成下载",
+            "detail": "SteamVR 处在 manifest 切换/下载过程中时，Steam Link 可能连接失败。先让 Steam 完成更新，再重新配对。"
+          },
+          "vrlink_session_mismatch": {
+            "title": "VRLink 会话 ID 不匹配",
+            "detail": "发现 {{count}} 个无效会话包，同时 SteamVR 报告无线头显未连接。"
+          },
+          "vrlink_invalid_session": {
+            "title": "发现 VRLink 无效会话包",
+            "detail": "扫描到的 SteamVR 日志尾部包含 {{count}} 个 invalid-session 包。"
+          },
+          "steamvr_unknown_shutdown": {
+            "title": "SteamVR 因未知主进程原因关闭",
+            "detail": "这通常跟 VRLink 握手失败连在一起。先重置配对，再从头显重试。"
+          },
+          "quest_pairing_cache": {
+            "title": "检测到 Quest / Steam Link 配对缓存",
+            "detail": "在 Steam localconfig.vdf 中发现 {{count}} 个 Quest 配对标记。"
+          },
+          "steamvr_beta_marker": {
+            "title": "检测到 SteamVR Beta 标记",
+            "detail": "BetaKey、250820-beta 或编码过的 Beta 标记可能把 SteamVR 固定在配对状态异常的 VRLink 构建上。"
+          },
+          "no_physical_ipv4_adapter": {
+            "title": "未检测到活动的物理 IPv4 网卡",
+            "detail": "Steam Link 最推荐电脑走有线以太网，头显连接同一路由器。"
+          },
+          "virtual_network_adapter": {
+            "title": "虚拟网卡处于启用状态",
+            "detail": "检测到 {{count}} 个活动虚拟网卡。VRCSM 不会自动改它们；如果配对持续失败，请临时关闭 VPN / Hyper-V。"
+          },
+          "high_bandwidth": {
+            "title": "Steam Link 带宽设置偏高",
+            "detail": "{{bandwidth}} Mbps 对共享 Wi-Fi 可能过于激进。排障时建议先用 80-120 Mbps。"
+          },
+          "overscaled_low_vram": {
+            "title": "低显存 GPU 上超采样偏高",
+            "detail": "验证链路时先把超采样降到 0.8-1.0；连接稳定后再提高。"
+          },
+          "no_blocker_found": {
+            "title": "未发现明确阻断 Steam Link 的特征",
+            "detail": "扫描尾部没有看到 Beta、待更新或 invalid-session 爆发。请从头显重试，失败后马上再跑一次诊断。"
+          }
+        },
+        "plans": {
+          "quest-link-backup": {
+            "title": "备份当前 Quest Link 设置",
+            "description": "只创建 SteamVR、VRLink、Quest 配对和 SteamVR manifest 的可恢复快照，不修改任何设置。"
+          },
+          "pairing-reset": {
+            "title": "重置配对",
+            "description": "清理 Steam 账号级 Quest / Steam Link 配对记录和 SteamVR Web 缓存，然后让头显重新干净配对。"
+          },
+          "full-vrlink-reset": {
+            "title": "完整 VRLink 重置",
+            "description": "使用之前修好 Quest 3 会话的完整路径：配对缓存、SteamVR 本地运行时状态、VRLink 配置文件夹、旧日志、Beta 标记和 Steam 校验。"
+          },
+          "stable-validate": {
+            "title": "稳定分支校验",
+            "description": "只移除 SteamVR Beta 标记，并打开 AppID 250820 的 Steam 校验。"
+          },
+          "safe-streaming": {
+            "title": "安全串流参数",
+            "description": "写入保守的 Quest 安全 Steam Link 参数，不清理配对数据。"
+          }
+        },
+        "planActions": {
+          "stopSteamVrSteam": "停止 SteamVR/Steam",
+          "backupLocalconfig": "备份 localconfig.vdf",
+          "removeQuestBlocks": "移除 Quest 串流设备块",
+          "clearHtmlcache": "清理 SteamVR htmlcache",
+          "stopSteamSteamVr": "停止 Steam/SteamVR",
+          "backupAll": "备份 appmanifest/localconfig/SteamVR 设置",
+          "moveRuntimeState": "移走 steamvr.vrsettings 和 vrstats",
+          "moveVrlinkConfig": "移走 config/vrlink 和 remoteclients.vdf",
+          "archiveLogs": "归档旧 VRLink 日志",
+          "openValidate": "打开 steam://validate/250820",
+          "backupVrlinkConfig": "备份 config/vrlink 和 remoteclients.vdf",
+          "backupHtmlcache": "备份 SteamVR htmlcache",
+          "backupManifestLocalconfig": "备份 appmanifest/localconfig",
+          "removeBetaMarkers": "移除 BetaKey / 250820-beta 标记",
+          "backupVrsettings": "备份 steamvr.vrsettings",
+          "set80Auto": "设置 80 Mbps 自动带宽",
+          "set1x": "设置 1.0x 超采样",
+          "set72hz": "设置 72 Hz",
+          "disableMotionSmoothing": "关闭运动平滑"
+        },
+        "profiles": {
+          "low-stability": {
+            "title": "低性能稳定",
+            "note": "连接能成功但抖动、发糊或黑屏时使用。"
+          },
+          "balanced-stable": {
+            "title": "均衡稳定",
+            "note": "Quest 2/3 在普通 Wi-Fi 5/6 路由器上的默认推荐。"
+          },
+          "quest3-clarity": {
+            "title": "Quest 3 清晰度",
+            "note": "配对/会话稳定后再提高画质。"
+          }
+        },
+        "repairActions": {
+          "stopProcess": "停止进程 {{name}} ({{pid}})",
+          "moveIntoBackup": "移入备份：{{path}}",
+          "archiveLog": "归档旧 SteamVR 日志：{{path}}",
+          "backupPath": "备份：{{path}}",
+          "restorePath": "从备份恢复：{{path}} ← {{backup}}",
+          "backupRemove": "备份并移除：{{path}}",
+          "removeManifestBeta": "从文件移除 BetaKey 行：{{path}}",
+          "removeUserBeta": "从文件移除 250820-beta / BetaKey 标记：{{path}}",
+          "removeQuestBlocks": "从文件移除 Quest / Steam Link 串流设备块：{{path}}",
+          "applySafeStreaming": "应用安全 Quest 串流参数：80 Mbps 自动带宽、1.0x 超采样、72 Hz、关闭运动平滑",
+          "openValidateAfter": "修复后打开 steam://validate/250820 校验"
+        }
+      },
       "targetBandwidth": {
         "label": "目标带宽 (Mbps)",
         "hint": "Steam Link 的码率上限，好路由可设 150-200。"
@@ -3216,7 +3448,10 @@
       "found": "已找到",
       "missing": "缺失",
       "steamStreamingMicrophone": "Steam Streaming 麦克风",
-      "vrlinkIssues": "vrlink 问题"
+      "vrlinkIssues": "vrlink 问题",
+      "openSteamLinkRepair": "打开 Steam Link 修复",
+      "linkRepairReady": "已准备好 Steam Link 修复面板。无效会话：{{invalid}}，Quest 配对记录：{{questPairs}}。",
+      "virtualAdapterWarning": "虚拟网卡“{{name}}”（{{description}}）正在启用，IP 为 {{ip}}，可能干扰 VR 串流。"
     },
     "autoStart": {
       "label": "随 Windows 启动",
@@ -3380,7 +3615,8 @@
     "private": "私有",
     "logOnly": "仅日志",
     "byAuthor": "作者：{{author}}",
-    "localEncounterIndexHint": "基于本地 VRChat 日志生成。仅日志条目可能没有模型 ID 或官方缩略图，但会保留是谁穿过、什么时候看到。",
+    "localEncounterIndexHint": "基于本地 VRChat 日志生成。VRCSM 会优先使用已保存缩略图和真实模型 ID；没有 ID 的条目会在已登录时做精确公开搜索，重名或私有模型不会乱配图。",
+    "thumbnailResolved": "已配图",
     "wearerCount": "{{count}} 位穿戴者",
     "seenTimes": "看到 {{count}} 次",
     "showWearers": "穿戴者"

@@ -64,6 +64,24 @@ class VrDiagnostics
 public:
     static Result<VrDiagResult> RunDiagnostics();
 
+    static Result<nlohmann::json> DiagnoseSteamLink();
+
+    static Result<nlohmann::json> RepairSteamLink(const nlohmann::json& params);
+
+    static Result<nlohmann::json> ListSteamLinkBackups();
+
+    static Result<nlohmann::json> RestoreSteamLinkBackup(const nlohmann::json& params);
+
+    static bool IsSteamLinkRestoreTargetAllowed(
+        const std::filesystem::path& steamPath,
+        const std::optional<std::filesystem::path>& localAppData,
+        const std::filesystem::path& target);
+
+    static bool IsSteamLinkBackupSourceAllowed(
+        const std::filesystem::path& backupDir,
+        const std::filesystem::path& source,
+        bool requireCanonical);
+
     static Result<nlohmann::json> SwitchAudioDevice(
         const std::string& deviceId, const std::string& role);
 

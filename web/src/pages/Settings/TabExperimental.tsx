@@ -107,16 +107,17 @@ function VisualSearchPanel() {
         }),
       );
       const thumbs = await ipc.call<
-        { ids: string[] },
-        { results: { id: string; url: string | null; error: string | null }[] }
-      >("thumbnails.fetch", { ids: avatar_ids });
+        { ids: string[]; downloadImages?: boolean },
+        { results: { id: string; url: string | null; localUrl?: string | null; error: string | null }[] }
+      >("thumbnails.fetch", { ids: avatar_ids, downloadImages: true });
 
       let done = 0;
       let failed = 0;
       for (const item of thumbs.results) {
         try {
-          if (!item.url) throw new Error(item.error ?? "no thumbnail");
-          const vec = await embedImage(item.url);
+          const imageUrl = item.localUrl ?? item.url;
+          if (!imageUrl) throw new Error(item.error ?? "no thumbnail");
+          const vec = await embedImage(imageUrl);
           await ipc.vectorUpsertEmbedding({
             avatar_id: item.id,
             embedding: Array.from(vec),

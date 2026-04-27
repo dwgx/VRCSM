@@ -1,18 +1,14 @@
 // VRCSM plugin SDK — tiny UMD bundle every plugin imports.
 //
-// The iframe loaded by PluginHost can only reach the host through
-// postMessage. This file shims ipc() into a promise that the host
-// resolves via window.postMessage with a matching id.
+// Plugin iframes talk to the native host directly through
+// chrome.webview.postMessage. WebViewHost identifies the originating
+// plugin frame from its virtual-host origin, then IpcBridge forwards
+// the request through plugin.rpc so permissions are checked against the
+// real plugin id.
 //
 // Public API:
-//   window.vrcsm.call(method, params)  → Promise<result>
-//   window.vrcsm.on(event, handler)    → unsubscribe (reserved for v0.9.0)
-//
-// Under the hood we send `{__vrcsm: "ipc", id, method, params}` to
-// window.parent and wait for an `{__vrcsm: "ipc-response", id, result|error}`
-// from the same origin the iframe was loaded from. Only the main SPA
-// can reach here because DENY_CORS prevents every other origin from
-// posting into the iframe.
+//   window.vrcsm.call(method, params)  -> Promise<result>
+//   window.vrcsm.on(event, handler)    -> unsubscribe
 
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
@@ -22,45 +18,102 @@
   }
 }(typeof window !== "undefined" ? window : this, function () {
   var pending = new Map();
+  var listeners = new Map();
   var nextId = 0;
 
-  function onMessage(ev) {
+  function getWebview() {
+    return (
+      typeof window !== "undefined" &&
+      window.chrome &&
+      window.chrome.webview
+    ) || null;
+  }
+
+  function handleMessage(ev) {
     var data = ev.data;
-    if (!data || data.__vrcsm !== "ipc-response") return;
-    var slot = pending.get(data.id);
-    if (!slot) return;
-    pending.delete(data.id);
-    if (data.error) {
-      var err = new Error(data.error.message || data.error.code || "ipc_error");
-      err.code = data.error.code || "ipc_error";
-      slot.reject(err);
-    } else {
-      slot.resolve(data.result);
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+      } catch (_e) {
+        return;
+      }
+    }
+    if (!data || typeof data !== "object") return;
+
+    if (typeof data.id === "string") {
+      var slot = pending.get(data.id);
+      if (!slot) return;
+      pending.delete(data.id);
+      clearTimeout(slot.timer);
+      if (data.error) {
+        var err = new Error(data.error.message || data.error.code || "ipc_error");
+        err.code = data.error.code || "ipc_error";
+        slot.reject(err);
+      } else {
+        slot.resolve(data.result);
+      }
+      return;
+    }
+
+    if (typeof data.event === "string") {
+      var set = listeners.get(data.event);
+      if (!set) return;
+      set.forEach(function (handler) {
+        try {
+          handler(data.data);
+        } catch (_e) {
+          // Plugin event handlers are isolated from the SDK pump.
+        }
+      });
     }
   }
-  if (typeof window !== "undefined") {
-    window.addEventListener("message", onMessage);
+
+  var webview = getWebview();
+  if (webview && typeof webview.addEventListener === "function") {
+    webview.addEventListener("message", handleMessage);
   }
 
   function call(method, params) {
     return new Promise(function (resolve, reject) {
+      var wv = getWebview();
+      if (!wv || typeof wv.postMessage !== "function") {
+        reject(new Error("chrome.webview unavailable — plugin IPC must run inside VRCSM"));
+        return;
+      }
+
       var id = "p" + (nextId++);
-      pending.set(id, { resolve: resolve, reject: reject });
-      var payload = { __vrcsm: "ipc", id: id, method: method, params: params };
+      var timer = setTimeout(function () {
+        if (!pending.has(id)) return;
+        pending.delete(id);
+        reject(new Error("ipc timeout: " + method));
+      }, 60000);
+
+      pending.set(id, { resolve: resolve, reject: reject, timer: timer });
       try {
-        window.parent.postMessage(payload, "*");
+        wv.postMessage(JSON.stringify({
+          id: id,
+          method: "plugin.rpc",
+          params: { method: method, params: params || {} },
+        }));
       } catch (e) {
+        clearTimeout(timer);
         pending.delete(id);
         reject(e);
       }
     });
   }
 
-  function on(_event, _handler) {
-    // Reserved for v0.9.0 — plugins subscribe to host events like
-    // "process.vrcStatusChanged" through this stream. Returns a
-    // no-op unsubscribe for forward compat.
-    return function () {};
+  function on(event, handler) {
+    var set = listeners.get(event);
+    if (!set) {
+      set = new Set();
+      listeners.set(event, set);
+    }
+    set.add(handler);
+    return function () {
+      set.delete(handler);
+      if (set.size === 0) listeners.delete(event);
+    };
   }
 
   return { call: call, on: on };

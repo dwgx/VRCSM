@@ -244,7 +244,11 @@ nlohmann::json IpcBridge::HandleThumbnailsFetch(const nlohmann::json& params, co
         ids.push_back(params["id"].get<std::string>());
     }
 
-    const auto results = vrcsm::core::VrcApi::fetchThumbnails(ids);
+    const bool downloadImages = params.contains("downloadImages") && params["downloadImages"].is_boolean()
+        ? params["downloadImages"].get<bool>()
+        : false;
+
+    const auto results = vrcsm::core::VrcApi::fetchThumbnails(ids, downloadImages);
     nlohmann::json out = nlohmann::json::array();
     for (const auto& r : results)
     {
@@ -537,6 +541,24 @@ nlohmann::json IpcBridge::HandleUserMe(const nlohmann::json&, const std::optiona
     return nlohmann::json{{"profile", FilterUserProfile(user)}};
 }
 
+nlohmann::json IpcBridge::HandleUserSearch(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto query = JsonStringField(params, "query");
+    if (!query.has_value() || query->empty())
+    {
+        return nlohmann::json{{"users", nlohmann::json::array()}};
+    }
+
+    int count = 10;
+    int offset = 0;
+    if (params.contains("count") && params["count"].is_number_integer())
+        count = params["count"].get<int>();
+    if (params.contains("offset") && params["offset"].is_number_integer())
+        offset = params["offset"].get<int>();
+
+    return unwrapResult(vrcsm::core::VrcApi::searchUsers(*query, count, offset));
+}
+
 nlohmann::json IpcBridge::HandleUserGetProfile(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto userId = JsonStringField(params, "userId");
@@ -617,6 +639,77 @@ nlohmann::json IpcBridge::HandleUserUpdateProfile(const nlohmann::json& params, 
 
     auto updated = unwrapResult(vrcsm::core::VrcApi::updateAuthUser(patch));
     return nlohmann::json{{"profile", FilterUserProfile(updated)}};
+}
+
+nlohmann::json IpcBridge::HandleAvatarPreviewStatus(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto avatarId = JsonStringField(params, "avatarId").value_or("");
+    const auto assetUrl = JsonStringField(params, "assetUrl").value_or("");
+    const auto bundlePath = JsonStringField(params, "bundlePath").value_or("");
+    if (avatarId.empty())
+    {
+        return nlohmann::json{
+            {"avatarId", avatarId},
+            {"cached", false},
+            {"bundleIndexed", false},
+            {"code", "missing_avatar_id"},
+            {"message", "avatarId is required"},
+        };
+    }
+
+    const auto probe = vrcsm::core::PathProbe::Probe();
+    const auto status = vrcsm::core::AvatarPreview::Status(
+        avatarId,
+        probe.baseDir,
+        assetUrl,
+        bundlePath);
+
+    nlohmann::json out{
+        {"avatarId", avatarId},
+        {"cached", status.cached},
+        {"bundleIndexed", status.bundleIndexed},
+        {"sourceSig", status.sourceSig.empty() ? nlohmann::json(nullptr) : nlohmann::json(status.sourceSig)},
+        {"cacheSource", status.cacheSource.empty() ? nlohmann::json(nullptr) : nlohmann::json(status.cacheSource)},
+    };
+    if (status.cached)
+    {
+        out["glbUrl"] = status.glbUrl;
+        if (!status.glbPath.empty()) out["glbPath"] = status.glbPath;
+    }
+    if (!status.code.empty())
+    {
+        out["code"] = status.code;
+        out["message"] = status.message;
+    }
+    return out;
+}
+
+nlohmann::json IpcBridge::HandleAvatarPreviewPrefetch(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    auto status = HandleAvatarPreviewStatus(params, id);
+    if (status.value("cached", false))
+    {
+        status["ok"] = true;
+        status["queued"] = false;
+        return status;
+    }
+    if (status.contains("code") && status["code"].is_string())
+    {
+        status["ok"] = false;
+        status["queued"] = false;
+        return status;
+    }
+    if (m_previewQueue.PendingCount() > 0)
+    {
+        status["ok"] = false;
+        status["queued"] = false;
+        status["skipped"] = "preview_queue_busy";
+        return status;
+    }
+
+    auto result = HandleAvatarPreviewRequest(params, id);
+    result["prefetch"] = true;
+    return result;
 }
 
 nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& params, const std::optional<std::string>&)
@@ -706,6 +799,11 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
             out["glbUrl"] = result.glbUrl;
             if (!result.glbPath.empty()) out["glbPath"] = result.glbPath;
             out["cached"] = result.cached;
+            out["sourceSig"] = result.sourceSig;
+            out["cacheSource"] = result.cacheSource;
+            out["downloaded"] = result.downloaded;
+            out["decodeMs"] = result.decodeMs;
+            out["downloadMs"] = result.downloadMs;
         }
         else
         {

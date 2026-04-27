@@ -159,7 +159,13 @@
     "mute": "Mute",
     "inviteMe": "Invite Me",
     "joinInstance": "Join Instance",
-    "notSignedIn": "Sign in to VRChat to view friend details."
+    "notSignedIn": "Sign in to VRChat to view friend details.",
+    "unfriendConfirm1": "Unfriend {{name}}?",
+    "unfriendConfirm2Title": "Are you really, really sure?",
+    "unfriendConfirm2": "If you click the red button, {{name}} might be gone from here for good. QvQ",
+    "unfriendFinal": "Yes, red button",
+    "unfriendNevermind": "Never mind!!",
+    "unfriendCancelled": "Cancelled. Friendship stays tucked in safely."
   },
   "osc": {
     "title": "OSC Tools",
@@ -435,7 +441,11 @@
     "helpCheckUpdates": "Check for Updates",
     "helpCheckUpdatesFallback": "Check for updates…",
     "helpReportIssue": "Report an Issue",
-    "helpKeyboard": "Keyboard Shortcuts"
+    "helpKeyboard": "Keyboard Shortcuts",
+    "helpSteamVrRepair": "SteamVR / Quest Repair",
+    "helpVrDiagnostics": "VR Diagnostics",
+    "helpPluginsMarket": "Plugin Market",
+    "helpInstalledPlugins": "Installed Plugins"
   },
   "update": {
     "title": "VRCSM Update",
@@ -836,12 +846,24 @@
     "seenTimes": "seen {{count}} times",
     "wearerCount": "{{count}} wearer",
     "encounterSummary": "Seen on {{wearer}} · {{count}} log events",
-    "encounterLogNote": "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL. Thumbnails are resolved from the wearer's current avatar profile or an exact public-name search when possible.",
+    "encounterLogNote": "This row is indexed from local VRChat logs. The log exposes avatar name and wearer, but not avtr_* or the official thumbnail URL. VRCSM first tries verified public avatar matches; if that fails, it may show the wearer's current avatar image as a reference, which may not be the avatar seen at that time.",
     "filterSeen": "Seen",
     "filterLocal": "Local",
     "thumbnailResolved": "thumbnail resolved",
     "thumbnailResolving": "Resolving thumbnail…",
+    "thumbnailMiss": "No verified thumbnail match",
+    "referenceImageLoading": "Checking wearer's current avatar image…",
+    "referenceImageBadge": "Reference",
+    "referenceImageBadgeShort": "Reference",
+    "profileFallbackKnownUser": "Wearer profile",
+    "profileFallbackNameMatch": "Name match",
+    "profileFallbackAmbiguous": "Name guess",
+    "profileFallbackNote": "No trusted thumbnail was found, so VRCSM is showing the wearer's current profile image as a reference for {{name}}.",
+    "profileFallbackUnavailable": "Could not load the wearer profile. The user may be ambiguous, unavailable, or the VRChat API did not return it.",
+    "localNameWas": "Cached as: {{name}}",
+    "renamedHint": "Renamed",
     "noThumbnail": "No thumbnail",
+    "seenThumbnailHow": "Seen-avatar thumbnails appear when the log has a real avtr_* id, public search finds an exact name/author match, or the wearer's current public avatar image is available. Items marked Reference are current wearer images and may not be the exact avatar seen then.",
     "previewWorkbench": "The inspector preview is now intentionally compact, and the top-right expand button opens a larger centered viewer. The current extractor still does not embed textures into the GLB, so Original mode can only show the raw exported material state for now; scroll to zoom, hold Shift and drag to pan, and right drag also pans.",
     "unityPackages": "{{count}} platform variants",
     "hiddenCount": "+{{count}} more. Use search to filter."
@@ -1576,7 +1598,8 @@
     "private": "Private",
     "logOnly": "Log only",
     "byAuthor": "by {{author}}",
-    "localEncounterIndexHint": "Built from local VRChat logs. Log-only rows may not include an avatar ID or official thumbnail, but they preserve who wore the avatar and when you saw it.",
+    "localEncounterIndexHint": "Built from local VRChat logs. VRCSM now prefers saved thumbnails and real avatar ids; rows without ids resolve through exact public search when signed in, and ambiguous/private rows keep a stable placeholder.",
+    "thumbnailResolved": "Thumbnail",
     "wearerCount": "{{count}} wearer",
     "seenTimes": "seen {{count}} times",
     "showWearers": "Wearers"

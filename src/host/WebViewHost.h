@@ -3,6 +3,7 @@
 #include "../pch.h"
 
 #include <unordered_map>
+#include <unordered_set>
 
 class IpcBridge;
 
@@ -17,6 +18,12 @@ inline constexpr UINT WM_APP_POST_WEB_MESSAGE = WM_APP + 1;
 // that must execute on the WebView2 apartment) and then posts WM_QUIT so
 // the next launch starts from a clean slate. WParam/LParam unused.
 inline constexpr UINT WM_APP_FACTORY_RESET_QUIT = WM_APP + 2;
+
+// Posted from IPC worker threads after plugin install/uninstall/enable/
+// disable. WebView2 virtual-host mappings are COM calls and must run on
+// the UI thread, so MainWindow handles this by calling
+// WebViewHost::RefreshPluginMappings().
+inline constexpr UINT WM_APP_REFRESH_PLUGIN_MAPPINGS = WM_APP + 3;
 
 // Marshalled payload for WM_APP_POST_WEB_MESSAGE. `targetPluginId`
 // is non-empty only when the message should go to a specific plugin
@@ -76,6 +83,10 @@ public:
     // re-applying an existing mapping simply overwrites it.
     void RefreshPluginMappings() const;
 
+    // Thread-safe request wrapper for RefreshPluginMappings(). Posts a
+    // WM_APP_REFRESH_PLUGIN_MAPPINGS message to the main window.
+    void RequestPluginMappingsRefresh() const;
+
     // Shutdown path for an in-place MSI handoff. Destroys the host
     // window and posts WM_QUIT so the process exits once the updater
     // child has been spawned successfully.
@@ -97,4 +108,9 @@ private:
     // navigation lands on a `plugin.<id>.vrcsm` virtual host; cleared
     // on `add_Destroyed`. All access must happen on the UI thread.
     std::unordered_map<std::string, Microsoft::WRL::ComPtr<ICoreWebView2Frame>> m_pluginFrames;
+
+    // Hosts currently mapped through SetVirtualHostNameToFolderMapping.
+    // Used so RefreshPluginMappings can clear disabled/uninstalled
+    // plugin hosts instead of leaving stale iframe URLs reachable.
+    mutable std::unordered_set<std::string> m_mappedPluginHosts;
 };

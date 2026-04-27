@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { ipc } from "@/lib/ipc";
 import type { AppVersion } from "@/lib/types";
 import { useVrcProcess } from "@/lib/vrc-context";
@@ -16,10 +17,17 @@ type SettingsTab = "general" | "config" | "steamvr" | "registry" | "experimental
 
 export default function SettingsLayout() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { status } = useVrcProcess();
   const vrcRunning = status.running;
   const [version, setVersion] = useState<AppVersion | null>(null);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const initialTab = normalizeTab(searchParams.get("tab")) ?? "general";
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+
+  function selectTab(tab: SettingsTab) {
+    setActiveTab(tab);
+    setSearchParams(tab === "general" ? {} : { tab }, { replace: true });
+  }
 
   useEffect(() => {
     let alive = true;
@@ -35,6 +43,13 @@ export default function SettingsLayout() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    const requested = normalizeTab(searchParams.get("tab"));
+    if (requested && requested !== activeTab) {
+      setActiveTab(requested);
+    }
+  }, [activeTab, searchParams]);
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in relative max-w-5xl mx-auto w-full">
@@ -55,37 +70,37 @@ export default function SettingsLayout() {
         {/* Custom Tab Bar */}
         <div className="flex flex-wrap items-end gap-0.5 border-b border-[hsl(var(--border))] pb-0">
           <button
-            onClick={() => setActiveTab("general")}
+            onClick={() => selectTab("general")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "general" && "unity-tab-active")}
           >
             {t("settings.tabs.general", { defaultValue: "General" })}
           </button>
           <button
-            onClick={() => setActiveTab("config")}
+            onClick={() => selectTab("config")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "config" && "unity-tab-active")}
           >
             {t("settings.tabs.config", { defaultValue: "App Config (config.json)" })}
           </button>
           <button
-            onClick={() => setActiveTab("steamvr")}
+            onClick={() => selectTab("steamvr")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "steamvr" && "unity-tab-active")}
           >
             {t("settings.tabs.steamvr", { defaultValue: "SteamVR" })}
           </button>
           <button
-            onClick={() => setActiveTab("registry")}
+            onClick={() => selectTab("registry")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "registry" && "unity-tab-active")}
           >
             {t("settings.tabs.registry", { defaultValue: "VRChat Registry" })}
           </button>
           <button
-            onClick={() => setActiveTab("experimental")}
+            onClick={() => selectTab("experimental")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "experimental" && "unity-tab-active")}
           >
             {t("settings.tabs.experimental", { defaultValue: "Experimental" })}
           </button>
           <button
-            onClick={() => setActiveTab("vrdiag")}
+            onClick={() => selectTab("vrdiag")}
             className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "vrdiag" && "unity-tab-active")}
           >
             {t("settings.tabs.vrDiag", { defaultValue: "VR Diagnostics" })}
@@ -104,4 +119,18 @@ export default function SettingsLayout() {
       </div>
     </div>
   );
+}
+
+function normalizeTab(raw: string | null): SettingsTab | null {
+  switch (raw) {
+    case "general":
+    case "config":
+    case "steamvr":
+    case "registry":
+    case "experimental":
+    case "vrdiag":
+      return raw;
+    default:
+      return null;
+  }
 }

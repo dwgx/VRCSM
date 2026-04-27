@@ -260,6 +260,56 @@ std::vector<std::uint8_t> decompressBlock(
     }
 }
 
+bool decompressBlockInto(
+    const std::uint8_t* src,
+    std::size_t compressedSize,
+    std::size_t uncompressedSize,
+    Compression kind,
+    std::uint8_t* dst)
+{
+    switch (kind)
+    {
+    case Compression::None:
+        if (compressedSize != uncompressedSize)
+        {
+            spdlog::error("UnityBundle: uncompressed block size mismatch ({} vs {})",
+                compressedSize, uncompressedSize);
+            return false;
+        }
+        std::memcpy(dst, src, compressedSize);
+        return true;
+    case Compression::Lz4:
+    case Compression::Lz4Hc:
+    {
+        const int produced = LZ4_decompress_safe(
+            reinterpret_cast<const char*>(src),
+            reinterpret_cast<char*>(dst),
+            static_cast<int>(compressedSize),
+            static_cast<int>(uncompressedSize));
+        if (produced < 0 || static_cast<std::size_t>(produced) != uncompressedSize)
+        {
+            spdlog::error("UnityBundle: LZ4_decompress_safe failed (returned {}, expected {})",
+                produced, uncompressedSize);
+            return false;
+        }
+        return true;
+    }
+    default:
+    {
+        auto out = decompressBlock(src, compressedSize, uncompressedSize, kind);
+        if (out.empty() && uncompressedSize > 0)
+        {
+            return false;
+        }
+        if (!out.empty())
+        {
+            std::memcpy(dst, out.data(), out.size());
+        }
+        return true;
+    }
+    }
+}
+
 } // namespace
 
 std::pair<const std::uint8_t*, std::size_t> UnityBundle::view(const UnityBundleNode& node) const
@@ -470,27 +520,36 @@ Result<UnityBundle> parseUnityBundle(const std::filesystem::path& path)
         return Error{"bundle_invalid", "Block data offset past EOF after alignment"};
     }
 
-    bundle.data.reserve(static_cast<std::size_t>(totalUncompressed));
+    bundle.data.resize(static_cast<std::size_t>(totalUncompressed));
     std::size_t cursor = blockDataFileOffset;
+    std::size_t writeCursor = 0;
     for (const auto& bi : blocks)
     {
         if (cursor + bi.c > raw.size())
         {
             return Error{"bundle_invalid", "Block payload extends past EOF"};
         }
-        auto chunk = decompressBlock(raw.data() + cursor, bi.c, bi.u, bi.k);
-        if (chunk.empty() && bi.u > 0)
+        if (writeCursor + bi.u > bundle.data.size())
+        {
+            return Error{"bundle_invalid", "Decompressed block cursor exceeded output size"};
+        }
+        if (!decompressBlockInto(
+                raw.data() + cursor,
+                bi.c,
+                bi.u,
+                bi.k,
+                bundle.data.data() + writeCursor))
         {
             return Error{"bundle_invalid", fmt::format("Block decompression failed ({})", static_cast<int>(bi.k))};
         }
-        bundle.data.insert(bundle.data.end(), chunk.begin(), chunk.end());
+        writeCursor += bi.u;
         cursor += bi.c;
     }
 
-    if (bundle.data.size() != totalUncompressed)
+    if (writeCursor != totalUncompressed)
     {
         return Error{"bundle_invalid", fmt::format(
-            "Concatenated block size {} != expected {}", bundle.data.size(), totalUncompressed)};
+            "Concatenated block size {} != expected {}", writeCursor, totalUncompressed)};
     }
 
     // Sanity-check nodes fit within the decompressed stream.

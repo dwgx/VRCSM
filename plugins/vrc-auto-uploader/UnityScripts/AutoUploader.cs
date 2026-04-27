@@ -53,6 +53,18 @@ namespace VRCAutoUploader
         private static readonly string TaskFilePath = Path.Combine(ProjectRoot, "upload_tasks.json");
         private static readonly string ResultFilePath = Path.Combine(ProjectRoot, "upload_results.json");
         private static readonly string LockFilePath = Path.Combine(ProjectRoot, "autouploader.lock");
+        private const int ThumbnailWidth = 1200;
+        private const int ThumbnailHeight = 900;
+
+        private sealed class ThumbnailCandidate
+        {
+            public string FilePath;
+            public int Width;
+            public int Height;
+            public long Bytes;
+            public int Score;
+            public bool WeakName;
+        }
 
         private static UploadTaskList _taskList;
         private static UploadResultList _resultList;
@@ -300,28 +312,9 @@ namespace VRCAutoUploader
                     string thumbPath = Path.Combine(Application.temporaryCachePath, "vrc_thumb.png");
                     bool useCameraFallback = true;
                     
-                    if (!string.IsNullOrEmpty(task.originalDir) && Directory.Exists(task.originalDir))
+                    if (TryPrepareFolderThumbnail(task.originalDir, thumbPath))
                     {
-                        var imageFiles = Directory.GetFiles(task.originalDir, "*.*", SearchOption.TopDirectoryOnly)
-                            .Where(f => f.ToLower().EndsWith(".png") || f.ToLower().EndsWith(".jpg") || f.ToLower().EndsWith(".jpeg") || f.ToLower().EndsWith(".webp"))
-                            .ToList();
-                            
-                        if (imageFiles.Count > 0)
-                        {
-                            string bestImage = imageFiles.FirstOrDefault(f => f.ToLower().Contains("cover") || f.ToLower().Contains("thumb") || f.ToLower().Contains("main") || f.ToLower().Contains("preview"));
-                            if (bestImage == null) bestImage = imageFiles[0];
-                            
-                            try 
-                            {
-                                File.Copy(bestImage, thumbPath, true);
-                                Log($"Using existing cover image from folder: {Path.GetFileName(bestImage)}");
-                                useCameraFallback = false;
-                            }
-                            catch (Exception ex)
-                            {
-                                LogError($"Failed to copy image {bestImage}: {ex.Message}");
-                            }
-                        }
+                        useCameraFallback = false;
                     }
 
                     if (useCameraFallback)
@@ -331,42 +324,59 @@ namespace VRCAutoUploader
                             Camera cam = new GameObject("ThumbnailCamera").AddComponent<Camera>();
                             cam.backgroundColor = new Color(0.2f, 0.2f, 0.2f);
                             cam.clearFlags = CameraClearFlags.Color;
+                            cam.fieldOfView = 32f;
+                            cam.nearClipPlane = 0.01f;
+                            cam.farClipPlane = 1000f;
                             
                             Animator animator = avatarInstance.GetComponentInChildren<Animator>();
-                            Vector3 targetPos = avatarInstance.transform.position + Vector3.up * 1.2f;
+                            Bounds bounds = CalculateAvatarBounds(avatarInstance);
+                            float avatarHeight = Mathf.Max(bounds.size.y, 1.2f);
+                            Vector3 targetPos = bounds.center;
+                            targetPos.y = bounds.min.y + avatarHeight * 0.58f;
                             
                             if (animator != null && animator.isHuman)
                             {
                                 Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
-                                if (head != null) targetPos = head.position;
+                                if (head != null) targetPos = Vector3.Lerp(targetPos, head.position, 0.7f);
                             }
                             
-                            cam.transform.position = targetPos + avatarInstance.transform.forward * 0.8f;
+                            Vector3 forward = avatarInstance.transform.forward;
+                            if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+                            float distance = Mathf.Max(bounds.extents.magnitude * 1.6f, 2.2f);
+                            cam.transform.position = targetPos + forward.normalized * distance + Vector3.up * (avatarHeight * 0.03f);
                             cam.transform.LookAt(targetPos);
                             
-                            RenderTexture rt = new RenderTexture(800, 600, 24);
-                            cam.targetTexture = rt;
-                            Texture2D screenShot = new Texture2D(800, 600, TextureFormat.RGB24, false);
-                            
-                            cam.Render();
-                            RenderTexture.active = rt;
-                            screenShot.ReadPixels(new Rect(0, 0, 800, 600), 0, 0);
-                            screenShot.Apply();
-                            
-                            File.WriteAllBytes(thumbPath, screenShot.EncodeToPNG());
-                            
-                            cam.targetTexture = null;
-                            RenderTexture.active = null;
-                            UnityEngine.Object.DestroyImmediate(rt);
-                            UnityEngine.Object.DestroyImmediate(screenShot);
-                            UnityEngine.Object.DestroyImmediate(cam.gameObject);
+                            RenderTexture previous = RenderTexture.active;
+                            RenderTexture rt = null;
+                            Texture2D screenShot = null;
+                            try
+                            {
+                                rt = new RenderTexture(ThumbnailWidth, ThumbnailHeight, 24);
+                                cam.targetTexture = rt;
+                                screenShot = new Texture2D(ThumbnailWidth, ThumbnailHeight, TextureFormat.RGB24, false);
+
+                                cam.Render();
+                                RenderTexture.active = rt;
+                                screenShot.ReadPixels(new Rect(0, 0, ThumbnailWidth, ThumbnailHeight), 0, 0);
+                                screenShot.Apply();
+
+                                File.WriteAllBytes(thumbPath, screenShot.EncodeToPNG());
+                            }
+                            finally
+                            {
+                                cam.targetTexture = null;
+                                RenderTexture.active = previous;
+                                if (rt != null) UnityEngine.Object.DestroyImmediate(rt);
+                                if (screenShot != null) UnityEngine.Object.DestroyImmediate(screenShot);
+                                UnityEngine.Object.DestroyImmediate(cam.gameObject);
+                            }
                             Log("Successfully captured auto-thumbnail fallback.");
                         } 
                         catch (Exception ex) // Fixed duplicate variable issue by hiding behind block scope
                         {
                             LogError($"Failed to capture thumbnail: {ex.Message}");
-                            var tex = new Texture2D(800, 600, TextureFormat.RGB24, false);
-                            var colors = new Color[800 * 600];
+                            var tex = new Texture2D(ThumbnailWidth, ThumbnailHeight, TextureFormat.RGB24, false);
+                            var colors = new Color[ThumbnailWidth * ThumbnailHeight];
                             for (int i = 0; i < colors.Length; i++) colors[i] = Color.grey;
                             tex.SetPixels(colors);
                             tex.Apply();
@@ -408,6 +418,190 @@ namespace VRCAutoUploader
             CleanupImportedAssets();
             await Task.Delay(2000);
             StartNextTask();
+        }
+
+        private static bool TryPrepareFolderThumbnail(string originalDir, string thumbPath)
+        {
+            if (string.IsNullOrEmpty(originalDir) || !Directory.Exists(originalDir)) return false;
+
+            List<ThumbnailCandidate> candidates = new List<ThumbnailCandidate>();
+            foreach (var file in Directory.GetFiles(originalDir, "*.*", SearchOption.TopDirectoryOnly))
+            {
+                string ext = Path.GetExtension(file).ToLowerInvariant();
+                if (ext == ".webp")
+                {
+                    Log($"Skipping WebP thumbnail candidate (cannot safely upload as PNG): {Path.GetFileName(file)}");
+                    continue;
+                }
+                if (ext != ".png" && ext != ".jpg" && ext != ".jpeg") continue;
+
+                if (!TryReadImageInfo(file, out int width, out int height, out long bytes, out string readError))
+                {
+                    Log($"Skipping unreadable thumbnail candidate: {Path.GetFileName(file)} ({readError})");
+                    continue;
+                }
+
+                int minSide = Math.Min(width, height);
+                if (minSide < 512)
+                {
+                    Log($"Skipping small thumbnail candidate: {Path.GetFileName(file)} ({width}x{height})");
+                    continue;
+                }
+
+                bool weakName = IsWeakThumbnailName(file);
+                candidates.Add(new ThumbnailCandidate
+                {
+                    FilePath = file,
+                    Width = width,
+                    Height = height,
+                    Bytes = bytes,
+                    WeakName = weakName,
+                    Score = ScoreThumbnailCandidate(file, width, height, bytes, weakName)
+                });
+            }
+
+            ThumbnailCandidate best = candidates
+                .Where(candidate => !candidate.WeakName)
+                .OrderByDescending(candidate => candidate.Score)
+                .FirstOrDefault()
+                ?? candidates
+                    .OrderByDescending(candidate => candidate.Score)
+                    .FirstOrDefault();
+
+            if (best == null)
+            {
+                Log("No usable folder cover image found; capturing Unity camera thumbnail.");
+                return false;
+            }
+
+            if (!TryReencodeThumbnailAsPng(best.FilePath, thumbPath, out string encodeError))
+            {
+                LogError($"Failed to sanitize thumbnail {Path.GetFileName(best.FilePath)}: {encodeError}");
+                return false;
+            }
+
+            Log($"Using sanitized cover image: {Path.GetFileName(best.FilePath)} ({best.Width}x{best.Height})");
+            return true;
+        }
+
+        private static bool TryReadImageInfo(string filePath, out int width, out int height, out long bytes, out string error)
+        {
+            width = 0;
+            height = 0;
+            bytes = 0;
+            error = "";
+            Texture2D texture = null;
+
+            try
+            {
+                byte[] data = File.ReadAllBytes(filePath);
+                bytes = data.LongLength;
+                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (!ImageConversion.LoadImage(texture, data, false))
+                {
+                    error = "decode failed";
+                    return false;
+                }
+                width = texture.width;
+                height = texture.height;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+            finally
+            {
+                if (texture != null) UnityEngine.Object.DestroyImmediate(texture);
+            }
+        }
+
+        private static bool TryReencodeThumbnailAsPng(string filePath, string thumbPath, out string error)
+        {
+            error = "";
+            Texture2D texture = null;
+
+            try
+            {
+                byte[] data = File.ReadAllBytes(filePath);
+                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (!ImageConversion.LoadImage(texture, data, false))
+                {
+                    error = "decode failed";
+                    return false;
+                }
+
+                byte[] png = ImageConversion.EncodeToPNG(texture);
+                if (png == null || png.Length == 0)
+                {
+                    error = "PNG encode failed";
+                    return false;
+                }
+
+                File.WriteAllBytes(thumbPath, png);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+            finally
+            {
+                if (texture != null) UnityEngine.Object.DestroyImmediate(texture);
+            }
+        }
+
+        private static bool IsWeakThumbnailName(string filePath)
+        {
+            string name = Path.GetFileNameWithoutExtension(filePath).ToLowerInvariant();
+            return name.Contains("thumb") ||
+                name.Contains("thumbnail") ||
+                name.Contains("icon") ||
+                name.Contains("small") ||
+                name.Contains("mini") ||
+                name.Contains("blur");
+        }
+
+        private static int ScoreThumbnailCandidate(string filePath, int width, int height, long bytes, bool weakName)
+        {
+            string name = Path.GetFileNameWithoutExtension(filePath).ToLowerInvariant();
+            int minSide = Math.Min(width, height);
+            int score = Math.Min(minSide, 1600);
+            score += (int)Math.Min(bytes / 1024, 500);
+
+            if (name.Contains("cover")) score += 700;
+            if (name.Contains("main")) score += 500;
+            if (name.Contains("hero")) score += 450;
+            if (name.Contains("avatar")) score += 350;
+            if (name.Contains("preview")) score += 250;
+
+            float aspect = height > 0 ? width / (float)height : 0f;
+            if (aspect >= 1.2f && aspect <= 1.9f) score += 120;
+            else if (aspect >= 0.8f && aspect <= 1.2f) score += 60;
+
+            if (weakName) score -= 900;
+            return score;
+        }
+
+        private static Bounds CalculateAvatarBounds(GameObject root)
+        {
+            var renderers = root.GetComponentsInChildren<Renderer>(true)
+                .Where(renderer => renderer != null)
+                .ToArray();
+
+            if (renderers.Length == 0)
+            {
+                return new Bounds(root.transform.position + Vector3.up, Vector3.one);
+            }
+
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                bounds.Encapsulate(renderers[i].bounds);
+            }
+            return bounds;
         }
 
         private static GameObject FindAndInstantiateAvatar()

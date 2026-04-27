@@ -115,12 +115,38 @@ code {
   gap: 10px;
   flex-wrap: wrap;
 }
+.row.wrap {
+  align-items: stretch;
+}
+.path-entry {
+  margin-top: 9px;
+  align-items: stretch;
+}
 .folder {
   flex: 1;
   min-width: 0;
   word-break: break-all;
   font-size: 11px;
   padding: 5px 8px;
+}
+.path-input {
+  flex: 1;
+  min-width: 260px;
+  height: 31px;
+  border: 1px solid var(--border);
+  background: #101216;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 0 9px;
+  font: 11.5px var(--mono);
+  outline: none;
+}
+.path-input:focus {
+  border-color: rgba(96, 165, 250, 0.5);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.12);
+}
+.path-input::placeholder {
+  color: var(--text-muted);
 }
 
 .btn {

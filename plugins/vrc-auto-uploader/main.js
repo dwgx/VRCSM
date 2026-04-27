@@ -1,4 +1,4 @@
-/* VRCSM plugin panel — AutoUploader v0.9.2
+/* VRCSM plugin panel — AutoUploader v0.9.6
  *
  * Runs inside a WebView2 iframe at `plugin.dev-vrcsm-autouploader.vrcsm`.
  * Calls host handlers through `chrome.webview.postMessage` directly —
@@ -19,6 +19,19 @@
  * `fs.writePlan` IPC; the Python runner picks it up and applies the
  * rename map before dispatching tasks to Unity.
  *
+ * v0.9.3: runner path/probe fixes — UnityScripts resolves from the
+ * plugin root, Unity registry enumeration terminates correctly, and
+ * the panel states that vrc-get is auto-downloaded on first CLI run.
+ *
+ * v0.9.4: Unity thumbnail upload now rejects tiny/thumb/WebP candidates,
+ * decodes the selected cover, and re-encodes a real PNG before upload.
+ *
+ * v0.9.5: panel locale now follows the VRCSM app language via `?lang=`.
+ *
+ * v0.9.6: folder selection now supports manual path/file-link input,
+ * a visible native Windows folder dialog fallback, and a safe VRCSM
+ * AppData workspace folder for users who do not want to choose one.
+ *
  * We deliberately do NOT use `window.parent.postMessage` relays — the
  * relay path goes through the host SPA origin (app.vrcsm), which the
  * plugin.rpc handler rejects with `invalid_caller` because it cannot
@@ -36,6 +49,10 @@
       step1: "1 · Pick model root folder",
       step1Hint: "Drop the folder that contains every avatar's .unitypackage (recursion supported).",
       chooseFolder: "Choose folder…",
+      chooseSystemFolder: "Windows folder window…",
+      useDefaultFolder: "Use VRCSM workspace",
+      pathPlaceholder: "Paste a folder path or file:/// link…",
+      usePath: "Use path",
       notSelected: "(not selected)",
       step2: "2 · Scan + rename",
       step2Hint: "Reads the subfolders of the chosen root; each one will be uploaded as an avatar.",
@@ -60,6 +77,22 @@
       pickerHome: "This PC",
       pickerHint: "Double-click a folder to descend.",
       pickerChoose: "Choose this folder",
+      scanning: "Scanning…",
+      noAvatarSubfolders: "No avatar subfolders found.",
+      scanFailed: "Scan failed.",
+      runScanFirst: "Run Scan first to populate the avatar list.",
+      writingPlan: "writing plan…",
+      planWriteFailed: "plan write failed",
+      planReady: "plan ready — run the CLI",
+      cancelled: "cancelled",
+      loaded: "VRCSM AutoUploader panel loaded — v0.9.6.",
+      readyPickFolder: "Ready. Pick a folder to begin.",
+      webviewMissing: "chrome.webview not available — panel must run inside VRCSM, not a standalone browser.",
+      invalidWebUrl: "This field needs a local folder path, not a web URL.",
+      invalidPath: "That path is not a readable folder.",
+      pathApplied: "Folder set: {{path}}",
+      defaultFolderReady: "VRCSM workspace ready: {{path}}",
+      nativePickFailed: "Windows folder window failed: {{msg}}",
     },
     "zh-CN": {
       title: "VRChat 自动上传器",
@@ -67,6 +100,10 @@
       step1: "1 · 选择模型根目录",
       step1Hint: "选择包含所有模型 .unitypackage 的文件夹（支持递归扫描）。",
       chooseFolder: "选择文件夹…",
+      chooseSystemFolder: "系统窗口选择…",
+      useDefaultFolder: "使用 VRCSM 默认工作区",
+      pathPlaceholder: "粘贴文件夹路径，或 file:/// 这种本地链接…",
+      usePath: "使用这个路径",
       notSelected: "（未选择）",
       step2: "2 · 扫描 + 重命名",
       step2Hint: "读取根目录下的子文件夹，每个子文件夹将作为一个模型上传。",
@@ -91,6 +128,22 @@
       pickerHome: "此电脑",
       pickerHint: "双击文件夹进入。",
       pickerChoose: "选择此文件夹",
+      scanning: "正在扫描…",
+      noAvatarSubfolders: "没有找到模型子文件夹。",
+      scanFailed: "扫描失败。",
+      runScanFirst: "请先扫描以生成模型列表。",
+      writingPlan: "正在写入计划…",
+      planWriteFailed: "计划写入失败",
+      planReady: "计划已准备好 — 运行 CLI",
+      cancelled: "已取消",
+      loaded: "VRCSM 自动上传器面板已加载 — v0.9.6。",
+      readyPickFolder: "已就绪。请选择文件夹开始。",
+      webviewMissing: "chrome.webview 不可用 — 该面板必须在 VRCSM 内运行，不能在独立浏览器中运行。",
+      invalidWebUrl: "这里要填本地文件夹路径，不是网页链接哦。",
+      invalidPath: "这个路径读不到文件夹，先检查一下盘符/权限。",
+      pathApplied: "文件夹已设置：{{path}}",
+      defaultFolderReady: "VRCSM 默认工作区已准备好：{{path}}",
+      nativePickFailed: "系统文件夹窗口打开失败：{{msg}}",
     },
     ja: {
       title: "VRChat 自動アップローダー",
@@ -250,25 +303,38 @@
   };
 
   function detectLocale() {
-    const nav = (navigator.language || "en").toLowerCase();
-    if (nav.startsWith("zh")) return "zh-CN";
-    if (nav.startsWith("ja")) return "ja";
-    if (nav.startsWith("ko")) return "ko";
-    if (nav.startsWith("ru")) return "ru";
-    if (nav.startsWith("th")) return "th";
-    if (nav.startsWith("hi")) return "hi";
+    const requested = new URLSearchParams(window.location.search).get("lang");
+    const raw = (requested || navigator.language || "en").toLowerCase();
+    if (raw.startsWith("zh")) return "zh-CN";
+    if (raw.startsWith("ja")) return "ja";
+    if (raw.startsWith("ko")) return "ko";
+    if (raw.startsWith("ru")) return "ru";
+    if (raw.startsWith("th")) return "th";
+    if (raw.startsWith("hi")) return "hi";
     return "en";
   }
 
   const locale = detectLocale();
   const strings = { ...I18N.en, ...(I18N[locale] || {}) };
 
-  function t(key) { return strings[key] || key; }
+  function t(key, vars) {
+    let s = strings[key] || key;
+    if (vars) {
+      for (const [name, value] of Object.entries(vars)) {
+        s = s.replaceAll(`{{${name}}}`, String(value));
+      }
+    }
+    return s;
+  }
 
   function applyI18n() {
     for (const el of document.querySelectorAll("[data-t]")) {
       const key = el.getAttribute("data-t");
       if (strings[key]) el.textContent = strings[key];
+    }
+    for (const el of document.querySelectorAll("[data-t-placeholder]")) {
+      const key = el.getAttribute("data-t-placeholder");
+      if (strings[key]) el.setAttribute("placeholder", strings[key]);
     }
     document.documentElement.lang = locale === "zh-CN" ? "zh-CN" : locale;
   }
@@ -343,11 +409,25 @@
   // v0.9.1: `shell.pickFolder` opened a native IFileOpenDialog that
   // was frequently invisible behind the WebView2 frame. Replaced with
   // an in-panel modal backed by `fs.listDir` — read-only directory
-  // listing through the same `ipc:shell` permission.
+  // listing through the dedicated `ipc:fs:listDir` permission.
   function pickFolder(title) {
     return openInlinePicker({
       title: title || "Choose avatar root folder",
       initialDir: state.folder || "",
+    });
+  }
+
+  function pickFolderNative(title) {
+    return ipcCall("shell.pickFolder", {
+      title: title || t("pickerTitle"),
+      initialDir: state.folder || "",
+    });
+  }
+
+  function defaultWorkspaceFolder() {
+    return ipcCall("fs.appDataDir", {
+      subdir: "plugin-data/dev.vrcsm.autouploader/avatar-roots",
+      create: true,
     });
   }
 
@@ -509,6 +589,50 @@
     return ipcCall("shell.openUrl", { url });
   }
 
+  function normalizePathInput(raw) {
+    let value = String(raw || "").trim();
+    if (!value) return "";
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1).trim();
+    }
+    if (/^https?:\/\//i.test(value)) {
+      throw new Error(t("invalidWebUrl"));
+    }
+    if (/^file:/i.test(value)) {
+      const url = new URL(value);
+      let path = decodeURIComponent(url.pathname || "");
+      if (url.host) {
+        path = `\\\\${url.host}${path.replace(/\//g, "\\")}`;
+      } else {
+        path = path.replace(/\//g, "\\");
+        path = path.replace(/^\\([A-Za-z]:\\)/, "$1");
+      }
+      return path;
+    }
+    return value;
+  }
+
+  async function setFolderPath(path, source) {
+    const data = await ipcCall("fs.listDir", { path });
+    const resolved = data.path || path;
+    state.folder = resolved;
+    $folderDisplay.textContent = resolved;
+    $folderInput.value = resolved;
+    $scanBtn.disabled = false;
+    $uploadBtn.disabled = true;
+    $renameWrap.hidden = true;
+    state.avatars = [];
+    log(
+      source === "default"
+        ? t("defaultFolderReady", { path: resolved })
+        : t("pathApplied", { path: resolved }),
+      "ok",
+    );
+  }
+
   // ─── State ────────────────────────────────────────────────────────────
   const state = {
     folder: null,
@@ -525,6 +649,10 @@
 
   // ─── DOM refs ─────────────────────────────────────────────────────────
   const $folderBtn = document.getElementById("pick-folder");
+  const $nativeFolderBtn = document.getElementById("native-folder");
+  const $defaultFolderBtn = document.getElementById("default-folder");
+  const $folderInput = document.getElementById("folder-input");
+  const $usePathBtn = document.getElementById("use-path");
   const $folderDisplay = document.getElementById("folder-display");
   const $scanBtn = document.getElementById("scan");
   const $resetNamesBtn = document.getElementById("reset-names");
@@ -595,22 +723,68 @@
     try {
       const res = await pickFolder();
       if (res?.cancelled) {
-        log("Folder selection cancelled.");
+        log(t("cancelled"));
         return;
       }
       if (!res?.path) {
-        log("No path returned from picker.", "warn");
+        log(t("invalidPath"), "warn");
         return;
       }
-      state.folder = res.path;
-      $folderDisplay.textContent = res.path;
-      $scanBtn.disabled = false;
-      $uploadBtn.disabled = true;
-      $renameWrap.hidden = true;
-      state.avatars = [];
-      log(`Folder set: ${res.path}`, "ok");
+      await setFolderPath(res.path, "inline");
     } catch (e) {
-      log(`Folder pick failed: ${e.message}`, "err");
+      log(`${t("invalidPath")} ${e.message || ""}`, "err");
+    }
+  });
+
+  $nativeFolderBtn.addEventListener("click", async () => {
+    try {
+      const res = await pickFolderNative();
+      if (res?.cancelled) {
+        log(t("cancelled"));
+        return;
+      }
+      if (!res?.path) {
+        log(t("invalidPath"), "warn");
+        return;
+      }
+      await setFolderPath(res.path, "native");
+    } catch (e) {
+      log(t("nativePickFailed", { msg: e.message || String(e) }), "err");
+    }
+  });
+
+  $defaultFolderBtn.addEventListener("click", async () => {
+    try {
+      const res = await defaultWorkspaceFolder();
+      if (!res?.path) {
+        log(t("invalidPath"), "warn");
+        return;
+      }
+      await setFolderPath(res.path, "default");
+    } catch (e) {
+      log(`${t("invalidPath")} ${e.message || ""}`, "err");
+    }
+  });
+
+  async function applyTypedFolder() {
+    try {
+      const path = normalizePathInput($folderInput.value);
+      if (!path) {
+        log(t("invalidPath"), "warn");
+        return;
+      }
+      await setFolderPath(path, "typed");
+    } catch (e) {
+      log(e.message || String(e), "err");
+    }
+  }
+
+  $usePathBtn.addEventListener("click", () => {
+    void applyTypedFolder();
+  });
+  $folderInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      void applyTypedFolder();
     }
   });
 
@@ -634,7 +808,7 @@
     if (!state.folder) return;
     $scanBtn.disabled = true;
     $resetNamesBtn.disabled = true;
-    $scanResult.textContent = "Scanning…";
+    $scanResult.textContent = t("scanning");
     state.avatars = [];
     $renameBody.innerHTML = "";
     $renameWrap.hidden = false;
@@ -648,8 +822,8 @@
         .sort((a, b) => a.localeCompare(b));
 
       if (dirs.length === 0) {
-        $scanResult.textContent = "No avatar subfolders found.";
-        log("No avatar subfolders found in that root.", "warn");
+        $scanResult.textContent = t("noAvatarSubfolders");
+        log(t("noAvatarSubfolders"), "warn");
         $renameWrap.hidden = true;
         $scanBtn.disabled = false;
         return;
@@ -677,7 +851,7 @@
       $resetNamesBtn.disabled = false;
       $uploadBtn.disabled = false;
     } catch (e) {
-      $scanResult.textContent = "Scan failed.";
+      $scanResult.textContent = t("scanFailed");
       log(`Scan failed: ${e.message}`, "err");
     } finally {
       $scanBtn.disabled = false;
@@ -866,7 +1040,7 @@
   $uploadBtn.addEventListener("click", async () => {
     if (!state.folder || state.uploading) return;
     if (state.avatars.length === 0) {
-      log("Run Scan first to populate the avatar list.", "warn");
+      log(t("runScanFirst"), "warn");
       return;
     }
     const collided = state.avatars.filter((a) => a.collision && !a.skip);
@@ -882,7 +1056,7 @@
     $uploadBtn.disabled = true;
     $cancelBtn.disabled = false;
     $progress.value = 0;
-    $progressLabel.textContent = "writing plan…";
+    $progressLabel.textContent = t("writingPlan");
 
     const includes = state.avatars.filter((a) => !a.skip);
     const renameMap = {};
@@ -899,7 +1073,7 @@
       schema: 1,
       generatedAt: new Date().toISOString(),
       tool: "vrcsm-autouploader-panel",
-      version: "0.9.2",
+      version: "0.9.6",
       rootPath: state.folder,
       avatars: includes.map((a) => ({ origDir: a.origDir, uploadName: a.uploadName })),
       renameMap,
@@ -916,7 +1090,7 @@
       log(`Plan written: ${planPath} (${wr.bytes} bytes)`, "ok");
     } catch (e) {
       log(`Failed to write plan file: ${e.message}`, "err");
-      $progressLabel.textContent = "plan write failed";
+      $progressLabel.textContent = t("planWriteFailed");
       state.uploading = false;
       $uploadBtn.disabled = false;
       $cancelBtn.disabled = true;
@@ -938,8 +1112,9 @@
       "ok",
     );
     log("The runner reads the plan and applies renames before Unity dispatch.");
+    log("First run auto-detects Unity 2022.3.x and downloads vrc-get if it is missing.", "warn");
 
-    $progressLabel.textContent = "plan ready — run the CLI";
+    $progressLabel.textContent = t("planReady");
     $progress.value = 1;
     state.uploading = false;
     $cancelBtn.disabled = true;
@@ -950,7 +1125,7 @@
     state.uploading = false;
     $cancelBtn.disabled = true;
     $uploadBtn.disabled = false;
-    $progressLabel.textContent = "cancelled";
+    $progressLabel.textContent = t("cancelled");
     log("Cancel requested.", "warn");
   });
 
@@ -959,13 +1134,10 @@
   });
 
   // ─── Boot ─────────────────────────────────────────────────────────────
-  log("VRCSM AutoUploader panel loaded — v0.9.2.", "ok");
+  log(t("loaded"), "ok");
   if (wv) {
-    log("Ready. Pick a folder to begin.", "ok");
+    log(t("readyPickFolder"), "ok");
   } else {
-    log(
-      "chrome.webview not available — panel must run inside VRCSM, not a standalone browser.",
-      "err",
-    );
+    log(t("webviewMissing"), "err");
   }
 })();

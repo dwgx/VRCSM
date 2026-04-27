@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ipc } from "@/lib/ipc";
+import type { SteamVrLinkBackupItem, SteamVrLinkDiagnostic, SteamVrLinkRepairPlan, SteamVrLinkRepairResult, SteamVrLinkSettingsProfile } from "@/lib/types";
 import { toast } from "sonner";
-import { Lock, RefreshCw, Unlock } from "lucide-react";
+import { AlertTriangle, FileSearch, Lock, RefreshCw, ShieldCheck, Unlock, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SettingRow } from "./components/SettingRow";
 
 // HMD native per-eye render-target resolution lookup. Steam Link's
@@ -43,12 +52,68 @@ function lookupHmdNative(model: string | undefined | null): { w: number; h: numb
   return null;
 }
 
+const SUMMARY_KEY_BY_TEXT: Record<string, string> = {
+  "VRLink session mismatch: Quest packets reached the PC, but SteamVR rejected the wireless HMD session.": "vrlinkSessionMismatch",
+  "SteamVR beta or user-level beta markers are present; this can keep SteamVR on a VRLink build with broken pairing state.": "betaMarkers",
+  "Recent logs include SteamVR Ready and no invalid-session burst in the scanned tail.": "readyNoInvalid",
+  "SteamVR shut down after losing its master process; check VRLink pairing and runtime process stability.": "lostMaster",
+  "Steam Link / Quest pairing records are present; stale entries can be reset safely after backup.": "pairingRecords",
+  "No decisive VRLink failure signature found in the scanned SteamVR logs.": "noSignature",
+};
+
+const RECOMMENDATION_KEY_BY_TEXT: Record<string, string> = {
+  "Reset Steam Link / Quest pairing cache and re-pair from the headset.": "resetPairing",
+  "Remove SteamVR BetaKey and validate AppID 250820 to return to the stable branch.": "removeManifestBeta",
+  "Remove user-level 250820-beta / BetaKey markers from Steam localconfig.vdf.": "removeUserBeta",
+  "Back up localconfig.vdf, then remove stale Oculus Quest / Steam Link streaming devices.": "removeQuestDevices",
+  "Let Steam finish SteamVR update/validation before retrying Steam Link.": "finishUpdate",
+  "Retry from the headset first; if it fails, run dry-run repair and compare the new log tail.": "retryThenDryRun",
+};
+
+const PLAN_ACTION_KEY_BY_TEXT: Record<string, string> = {
+  "Stop SteamVR/Steam": "stopSteamVrSteam",
+  "Back up localconfig.vdf": "backupLocalconfig",
+  "Remove Quest streaming device blocks": "removeQuestBlocks",
+  "Clear SteamVR htmlcache": "clearHtmlcache",
+  "Stop Steam/SteamVR": "stopSteamSteamVr",
+  "Back up appmanifest/localconfig/SteamVR settings": "backupAll",
+  "Move steamvr.vrsettings and vrstats": "moveRuntimeState",
+  "Move config/vrlink and remoteclients.vdf": "moveVrlinkConfig",
+  "Archive old VRLink logs": "archiveLogs",
+  "Open steam://validate/250820": "openValidate",
+  "Back up config/vrlink and remoteclients.vdf": "backupVrlinkConfig",
+  "Back up SteamVR htmlcache": "backupHtmlcache",
+  "Back up appmanifest/localconfig": "backupManifestLocalconfig",
+  "Remove BetaKey / 250820-beta markers": "removeBetaMarkers",
+  "Back up steamvr.vrsettings": "backupVrsettings",
+  "Set 80 Mbps automatic bandwidth": "set80Auto",
+  "Set 1.0x supersampling": "set1x",
+  "Set 72 Hz": "set72hz",
+  "Disable motion smoothing": "disableMotionSmoothing",
+};
+
+function firstNumber(text: string | undefined): number | undefined {
+  const match = text?.match(/\d+/);
+  return match ? Number(match[0]) : undefined;
+}
+
 export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
   const { t } = useTranslation();
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [linkDiag, setLinkDiag] = useState<SteamVrLinkDiagnostic | null>(null);
+  const [linkRepair, setLinkRepair] = useState<SteamVrLinkRepairResult | null>(null);
+  const [linkBusy, setLinkBusy] = useState<"diagnose" | "dryRun" | "repair" | null>(null);
+  const [linkBackups, setLinkBackups] = useState<SteamVrLinkBackupItem[]>([]);
+  const [confirmRequest, setConfirmRequest] = useState<
+    | { kind: "repair"; planId: string }
+    | { kind: "restore"; backup: SteamVrLinkBackupItem }
+    | null
+  >(null);
+  const [confirmPreview, setConfirmPreview] = useState<SteamVrLinkRepairResult | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
   const pendingRefresh = useRef<number | null>(null);
 
   const fetchConfig = useCallback((preserveDirty = false) => {
@@ -75,6 +140,19 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
+
+  const loadBackups = useCallback(async () => {
+    try {
+      const res = await ipc.listSteamVrLinkBackups();
+      setLinkBackups(res.items ?? []);
+    } catch {
+      setLinkBackups([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadBackups();
+  }, [loadBackups]);
 
   // Cleanup the deferred-refetch timeout on unmount. Must be declared
   // unconditionally ABOVE any early-return or React's hook-counting
@@ -134,6 +212,224 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
     toast.success(t("settings.steamvr.presetApplied", { defaultValue: "Applied preset — click Save Settings to persist." }));
   };
 
+  const applySettingsProfile = (profile: SteamVrLinkSettingsProfile) => {
+    setDirty(true);
+    setConfig((prev: any) => ({
+      ...prev,
+      driver_vrlink: {
+        ...(prev.driver_vrlink ?? {}),
+        ...(profile.updates.driver_vrlink ?? {}),
+      },
+      steamvr: {
+        ...(prev.steamvr ?? {}),
+        ...(profile.updates.steamvr ?? {}),
+      },
+    }));
+    toast.success(t("settings.steamvr.profileApplied", {
+      name: profile.title,
+      defaultValue: "Applied {{name}} — click Save Settings to persist.",
+    }));
+  };
+
+  const issueBadgeVariant = (severity: string | undefined) => {
+    if (severity === "critical") return "destructive" as const;
+    if (severity === "warning") return "warning" as const;
+    if (severity === "ok") return "success" as const;
+    return "secondary" as const;
+  };
+
+  const severityLabel = (severity: string | undefined) =>
+    t(`settings.steamvr.linkRepair.severity.${severity ?? "info"}`, {
+      defaultValue: severity ?? "info",
+    });
+
+  const riskLabel = (risk: string | undefined) =>
+    t(`settings.steamvr.linkRepair.risk.${risk ?? "low"}`, {
+      defaultValue: risk ?? "low",
+    });
+
+  const translateSummary = (summary: string | undefined) => {
+    if (!summary) return "";
+    const key = SUMMARY_KEY_BY_TEXT[summary];
+    return key
+      ? t(`settings.steamvr.linkRepair.summary.${key}`, { defaultValue: summary })
+      : summary;
+  };
+
+  const translateRecommendation = (line: string) => {
+    const key = RECOMMENDATION_KEY_BY_TEXT[line];
+    return key
+      ? t(`settings.steamvr.linkRepair.recommendations.${key}`, { defaultValue: line })
+      : line;
+  };
+
+  const translateIssueTitle = (issue: { id: string; title: string }) =>
+    t(`settings.steamvr.linkRepair.issuesMap.${issue.id}.title`, {
+      defaultValue: issue.title,
+    });
+
+  const translateIssueDetail = (issue: { id: string; detail: string }) =>
+    t(`settings.steamvr.linkRepair.issuesMap.${issue.id}.detail`, {
+      count: firstNumber(issue.detail),
+      bandwidth: firstNumber(issue.detail),
+      defaultValue: issue.detail,
+    });
+
+  const translatePlanTitle = (planId: string | undefined, fallback?: string) =>
+    t(`settings.steamvr.linkRepair.plans.${planId ?? "unknown"}.title`, {
+      defaultValue: fallback ?? planId ?? "",
+    });
+
+  const translatePlanDescription = (plan: SteamVrLinkRepairPlan) =>
+    t(`settings.steamvr.linkRepair.plans.${plan.id}.description`, {
+      defaultValue: plan.description,
+    });
+
+  const translatePlanAction = (action: string) => {
+    const key = PLAN_ACTION_KEY_BY_TEXT[action];
+    return key
+      ? t(`settings.steamvr.linkRepair.planActions.${key}`, { defaultValue: action })
+      : action;
+  };
+
+  const translateProfileTitle = (profile: SteamVrLinkSettingsProfile) =>
+    t(`settings.steamvr.linkRepair.profiles.${profile.id}.title`, {
+      defaultValue: profile.title,
+    });
+
+  const translateProfileNote = (profile: SteamVrLinkSettingsProfile) =>
+    profile.note
+      ? t(`settings.steamvr.linkRepair.profiles.${profile.id}.note`, {
+          defaultValue: profile.note,
+        })
+      : "";
+
+  const translateRepairAction = (action: string) => {
+    let match = action.match(/^Stop process (.+) \((\d+)\)$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.stopProcess", {
+        name: match[1],
+        pid: match[2],
+        defaultValue: action,
+      });
+    }
+    match = action.match(/^Move (.+) into backup$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.moveIntoBackup", {
+        path: match[1],
+        defaultValue: action,
+      });
+    }
+    match = action.match(/^Archive old SteamVR log (.+)$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.archiveLog", {
+        path: match[1],
+        defaultValue: action,
+      });
+    }
+    match = action.match(/^Back up and remove (.+)$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.backupRemove", {
+        path: match[1],
+        defaultValue: action,
+      });
+    }
+    match = action.match(/^Back up (.+)$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.backupPath", {
+        path: match[1],
+        defaultValue: action,
+      });
+    }
+    match = action.match(/^Restore (.+) from (.+)$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.restorePath", {
+        path: match[1],
+        backup: match[2],
+        defaultValue: action,
+      });
+    }
+    match = action.match(/^Remove BetaKey lines from (.+)$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.removeManifestBeta", {
+        path: match[1],
+        defaultValue: action,
+      });
+    }
+    match = action.match(/^Remove 250820-beta \/ BetaKey markers from (.+)$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.removeUserBeta", {
+        path: match[1],
+        defaultValue: action,
+      });
+    }
+    match = action.match(/^Remove Quest \/ Steam Link streaming device blocks from (.+)$/);
+    if (match) {
+      return t("settings.steamvr.linkRepair.repairActions.removeQuestBlocks", {
+        path: match[1],
+        defaultValue: action,
+      });
+    }
+    if (action === "Apply safe Quest streaming settings: 80 Mbps auto bandwidth, 1.0x supersampling, 72 Hz, motion smoothing off") {
+      return t("settings.steamvr.linkRepair.repairActions.applySafeStreaming", { defaultValue: action });
+    }
+    if (action === "Open steam://validate/250820 after repair") {
+      return t("settings.steamvr.linkRepair.repairActions.openValidateAfter", { defaultValue: action });
+    }
+    return action;
+  };
+
+  const repairParamsForPlan = (planId: string, dryRun: boolean) => ({
+    planId,
+    dryRun,
+    clearRuntimeConfig: planId === "full-vrlink-reset",
+    clearHtmlCache: planId === "pairing-reset" || planId === "full-vrlink-reset",
+    clearPairing: planId === "pairing-reset" || planId === "full-vrlink-reset",
+    removeBeta: planId === "stable-validate" || planId === "full-vrlink-reset",
+    stopSteam: planId !== "safe-streaming" && planId !== "quest-link-backup",
+    launchValidate: !dryRun && (planId === "stable-validate" || planId === "full-vrlink-reset"),
+    clearVrlinkConfig: planId === "full-vrlink-reset",
+    clearRemoteClients: planId === "full-vrlink-reset",
+    archiveLogs: planId === "full-vrlink-reset",
+    applySafeStreamingSettings: planId === "safe-streaming",
+    backupOnly: planId === "quest-link-backup",
+  });
+
+  const previewRepairRequest = async (request: typeof confirmRequest) => {
+    if (!request) return;
+    setConfirmBusy(true);
+    setConfirmPreview(null);
+    try {
+      const res =
+        request.kind === "repair"
+          ? await ipc.repairSteamVrLink(repairParamsForPlan(request.planId, true))
+          : await ipc.restoreSteamVrLinkBackup({
+              backupDir: request.backup.path,
+              dryRun: true,
+              stopSteam: true,
+            });
+      setConfirmPreview(res);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(t("settings.steamvr.linkRepair.previewFailed", { msg, defaultValue: "Preview failed: {{msg}}" }));
+      setConfirmRequest(null);
+    } finally {
+      setConfirmBusy(false);
+    }
+  };
+
+  const openRepairDialog = (planId: string) => {
+    const request = { kind: "repair" as const, planId };
+    setConfirmRequest(request);
+    void previewRepairRequest(request);
+  };
+
+  const openRestoreDialog = (backup: SteamVrLinkBackupItem) => {
+    const request = { kind: "restore" as const, backup };
+    setConfirmRequest(request);
+    void previewRepairRequest(request);
+  };
+
   const saveConfig = async () => {
     setSaving(true);
     try {
@@ -162,6 +458,90 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       toast.error(t("settings.steamvr.errorSave", { defaultValue: "Failed to save steamvr.vrsettings: {{msg}}", msg }));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const diagnoseSteamLink = async () => {
+    setLinkBusy("diagnose");
+    try {
+      const res = await ipc.diagnoseSteamVrLink();
+      setLinkDiag(res);
+      setLinkRepair(null);
+      const invalid = res.logs?.counts?.invalid_session ?? 0;
+      if (invalid > 0) {
+        toast.warning(t("settings.steamvr.linkRepair.invalidSessionToast", {
+          count: invalid,
+          defaultValue: "VRLink invalid-session packets found: {{count}}",
+        }));
+      } else {
+        toast.success(t("settings.steamvr.linkRepair.diagnoseDone", { defaultValue: "Steam Link diagnostics complete." }));
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(t("settings.steamvr.linkRepair.diagnoseFailed", { msg, defaultValue: "Steam Link diagnostics failed: {{msg}}" }));
+    } finally {
+      setLinkBusy(null);
+    }
+  };
+
+  const repairSteamLink = async (dryRun: boolean, planId = "full-vrlink-reset") => {
+    setLinkBusy(dryRun ? "dryRun" : "repair");
+    try {
+      const res = await ipc.repairSteamVrLink(repairParamsForPlan(planId, dryRun));
+      setLinkRepair(res);
+      void loadBackups();
+      if (dryRun) {
+        toast.info(t("settings.steamvr.linkRepair.dryRunDone", { defaultValue: "Dry-run complete. Review the planned repair steps." }));
+      } else if (planId === "quest-link-backup") {
+        toast.success(t("settings.steamvr.linkRepair.backupDone", { defaultValue: "Quest Link settings backup created." }));
+      } else {
+        toast.success(t("settings.steamvr.linkRepair.repairDone", { defaultValue: "Repair applied. Steam validation has been opened." }));
+        void diagnoseSteamLink();
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(t("settings.steamvr.linkRepair.repairFailed", { msg, defaultValue: "Steam Link repair failed: {{msg}}" }));
+    } finally {
+      setLinkBusy(null);
+    }
+  };
+
+  const restoreSteamLinkBackup = async (backupDir: string) => {
+    setLinkBusy("repair");
+    try {
+      const res = await ipc.restoreSteamVrLinkBackup({
+        backupDir,
+        dryRun: false,
+        stopSteam: true,
+      });
+      setLinkRepair(res);
+      void loadBackups();
+      toast.success(t("settings.steamvr.linkRepair.restoreDone", {
+        count: res.restored ?? 0,
+        defaultValue: "Restored {{count}} backed-up item(s).",
+      }));
+      void diagnoseSteamLink();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(t("settings.steamvr.linkRepair.restoreFailed", { msg, defaultValue: "Restore failed: {{msg}}" }));
+    } finally {
+      setLinkBusy(null);
+    }
+  };
+
+  const confirmCurrentRequest = async () => {
+    if (!confirmRequest) return;
+    setConfirmBusy(true);
+    try {
+      if (confirmRequest.kind === "repair") {
+        await repairSteamLink(false, confirmRequest.planId);
+      } else {
+        await restoreSteamLinkBackup(confirmRequest.backup.path);
+      }
+      setConfirmRequest(null);
+      setConfirmPreview(null);
+    } finally {
+      setConfirmBusy(false);
     }
   };
 
@@ -217,10 +597,10 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
         )}
         <div className="flex flex-wrap items-center gap-2 mb-2 p-2 rounded bg-[hsl(var(--surface-raised))] border border-[hsl(var(--border))]">
           <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-2">{t("settings.steamvr.quickPresets", { defaultValue: "Quick Presets:" })}</span>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(50, 0.8, 90, true, true, true)} disabled={locked}>{t("settings.steamvr.presetPerformance", { defaultValue: "Performance (50Mbps)" })}</Button>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(100, 1.0, 72, false, true, true)} disabled={locked}>{t("settings.steamvr.presetBalanced", { defaultValue: "Balanced (100Mbps)" })}</Button>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(150, 1.5, 72, false, false, true)} disabled={locked}>{t("settings.steamvr.presetQuality", { defaultValue: "Quality (150Mbps)" })}</Button>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(150, 1.2, 90, false, true, true)} disabled={locked} title={t("settings.steamvr.presetQuest3Hint", { defaultValue: "Tuned for Quest 3 via Steam Link" })}>{t("settings.steamvr.presetQuest3", { defaultValue: "Quest 3 Optimized" })}</Button>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(50, 0.8, 72, false, true, true)} disabled={locked}>{t("settings.steamvr.presetPerformance", { defaultValue: "Performance (50Mbps)" })}</Button>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(90, 1.0, 72, false, true, true)} disabled={locked}>{t("settings.steamvr.presetBalanced", { defaultValue: "Balanced (90Mbps)" })}</Button>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(130, 1.2, 90, false, true, true)} disabled={locked}>{t("settings.steamvr.presetQuality", { defaultValue: "Quality (130Mbps)" })}</Button>
+          <Button size="sm" variant="secondary" onClick={() => applyPreset(90, 1.0, 72, false, true, true)} disabled={locked} title={t("settings.steamvr.presetQuest3Hint", { defaultValue: "Tuned for Quest 3 via Steam Link" })}>{t("settings.steamvr.presetQuest3", { defaultValue: "Quest 3 Stable" })}</Button>
         </div>
 
         {/* Quest 3 troubleshooting hint — shown when hardware looks like Quest */}
@@ -248,6 +628,328 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
             </div>
           </div>
         )}
+
+        <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[12px] font-semibold">
+                <AlertTriangle className="size-4 text-[hsl(var(--warning))]" />
+                <span>{t("settings.steamvr.linkRepair.title", { defaultValue: "Steam Link / Quest connection repair" })}</span>
+              </div>
+              <p className="mt-1 max-w-[72ch] text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+                {t("settings.steamvr.linkRepair.body", {
+                  defaultValue:
+                    "Diagnoses VRLink invalid session ID, WirelessHmdNotConnected, stale Quest pairing cache, SteamVR beta markers, and incomplete SteamVR updates. Repair mode backs up first and defaults to a dry-run preview.",
+                })}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={diagnoseSteamLink} disabled={linkBusy !== null}>
+                <FileSearch className={linkBusy === "diagnose" ? "mr-2 size-3 animate-spin" : "mr-2 size-3"} />
+                {t("settings.steamvr.linkRepair.diagnose", { defaultValue: "Diagnose" })}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void repairSteamLink(true)} disabled={linkBusy !== null}>
+                <ShieldCheck className={linkBusy === "dryRun" ? "mr-2 size-3 animate-spin" : "mr-2 size-3"} />
+                {t("settings.steamvr.linkRepair.dryRun", { defaultValue: "Dry-run repair" })}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => openRepairDialog("full-vrlink-reset")}
+                disabled={linkBusy !== null}
+              >
+                <Wrench className={linkBusy === "repair" ? "mr-2 size-3 animate-spin" : "mr-2 size-3"} />
+                {t("settings.steamvr.linkRepair.apply", { defaultValue: "Backup & repair" })}
+              </Button>
+            </div>
+          </div>
+
+          {linkDiag ? (
+            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-3">
+                <div className="text-[12px] font-medium">{translateSummary(linkDiag.summary)}</div>
+                <div className="mt-2 grid gap-2 text-[11px] text-[hsl(var(--muted-foreground))] sm:grid-cols-2">
+                  <div>
+                    <span className="font-medium text-[hsl(var(--foreground))]">
+                      {t("settings.steamvr.linkRepair.steamPath", { defaultValue: "Steam" })}:{" "}
+                    </span>
+                    <span className="break-all font-mono">{linkDiag.steamPath}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-[hsl(var(--foreground))]">
+                      {t("settings.steamvr.linkRepair.build", { defaultValue: "Build" })}:{" "}
+                    </span>
+                    <span className="font-mono">{linkDiag.manifest?.fields?.buildid ?? "-"}</span>
+                    {linkDiag.manifest?.isBeta ? (
+                      <Badge variant="warning" className="ml-2 text-[10px]">
+                        {t("settings.steamvr.linkRepair.beta", { defaultValue: "Beta" })}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="ml-2 text-[10px]">
+                        {t("settings.steamvr.linkRepair.stable", { defaultValue: "Stable" })}
+                      </Badge>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium text-[hsl(var(--foreground))]">
+                      {t("settings.steamvr.linkRepair.invalidSessions", { defaultValue: "Invalid sessions" })}:{" "}
+                    </span>
+                    <span className="font-mono">{linkDiag.logs?.counts?.invalid_session ?? 0}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-[hsl(var(--foreground))]">
+                      {t("settings.steamvr.linkRepair.questPairs", { defaultValue: "Quest pairs" })}:{" "}
+                    </span>
+                    <span className="font-mono">
+                      {(linkDiag.localconfigs ?? []).reduce((sum, item) => sum + (item.questDeviceCount ?? 0), 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-[hsl(var(--foreground))]">
+                      {t("settings.steamvr.linkRepair.pendingDownload", { defaultValue: "Pending update" })}:{" "}
+                    </span>
+                    {linkDiag.manifest?.pendingDownload ? t("common.yes", { defaultValue: "Yes" }) : t("common.no", { defaultValue: "No" })}
+                  </div>
+                  <div>
+                    <span className="font-medium text-[hsl(var(--foreground))]">
+                      {t("settings.steamvr.linkRepair.lostMaster", { defaultValue: "Lost master" })}:{" "}
+                    </span>
+                    <span className="font-mono">{linkDiag.logs?.counts?.lost_master ?? 0}</span>
+                  </div>
+                </div>
+                {(linkDiag.recommendations?.length ?? 0) > 0 && (
+                  <div className="mt-3 flex flex-col gap-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+                    {linkDiag.recommendations?.map((line) => (
+                      <div key={line} className="flex gap-2">
+                        <span className="mt-[7px] size-1 rounded-full bg-[hsl(var(--primary))]" />
+                        <span>{translateRecommendation(line)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(linkDiag.issues?.length ?? 0) > 0 && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                      {t("settings.steamvr.linkRepair.issues", { defaultValue: "Detected issues" })}
+                    </div>
+                    {linkDiag.issues?.slice(0, 6).map((issue) => (
+                      <div key={issue.id} className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-2 text-[11px]">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={issueBadgeVariant(issue.severity)} className="text-[10px]">
+                            {severityLabel(issue.severity)}
+                          </Badge>
+                          <span className="font-medium text-[hsl(var(--foreground))]">{translateIssueTitle(issue)}</span>
+                        </div>
+                        <div className="mt-1 leading-relaxed text-[hsl(var(--muted-foreground))]">{translateIssueDetail(issue)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-3">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                  {t("settings.steamvr.linkRepair.evidence", { defaultValue: "Log evidence" })}
+                </div>
+                <div className="max-h-44 overflow-y-auto font-mono text-[10px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+                  {(linkDiag.logs?.matches ?? []).slice(-8).map((match) => (
+                    <div key={`${match.file}:${match.line}:${match.text}`} className="mb-1 break-words">
+                      <span className="text-[hsl(var(--foreground))]">{match.file}:{match.line}</span>{" "}
+                      {match.text}
+                    </div>
+                  ))}
+                  {(linkDiag.logs?.matches?.length ?? 0) === 0 && (
+                    <div>{t("settings.steamvr.linkRepair.noEvidence", { defaultValue: "No matching log lines in the scanned tail." })}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {linkDiag?.repairPlans?.length ? (
+            <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              {linkDiag.repairPlans.map((plan: SteamVrLinkRepairPlan) => (
+                <div key={plan.id} className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-3 text-[11px]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{translatePlanTitle(plan.id, plan.title)}</span>
+                      <Badge variant={plan.recommended ? "warning" : "secondary"} className="text-[10px]">
+                        {plan.recommended ? t("settings.steamvr.linkRepair.recommended", { defaultValue: "Recommended" }) : riskLabel(plan.risk)}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" onClick={() => void repairSteamLink(true, plan.id)} disabled={linkBusy !== null}>
+                        {t("settings.steamvr.linkRepair.dryRunShort", { defaultValue: "Dry-run" })}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={plan.recommended ? "secondary" : "outline"}
+                        onClick={() => openRepairDialog(plan.id)}
+                        disabled={linkBusy !== null}
+                      >
+                        {t("settings.steamvr.linkRepair.applyShort", { defaultValue: "Apply" })}
+                      </Button>
+                    </div>
+                  </div>
+                  {plan.description && (
+                    <div className="mt-1 leading-relaxed text-[hsl(var(--muted-foreground))]">{translatePlanDescription(plan)}</div>
+                  )}
+                  {(plan.actions?.length ?? 0) > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {plan.actions?.slice(0, 5).map((action) => (
+                        <Badge key={action} variant="secondary" className="text-[10px]">{translatePlanAction(action)}</Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {linkDiag?.suggestedSettings?.length ? (
+            <div className="mt-3 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-3 text-[11px]">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
+                {t("settings.steamvr.linkRepair.settingProfiles", { defaultValue: "Stable parameter profiles" })}
+              </div>
+              <div className="grid gap-2 md:grid-cols-3">
+                {linkDiag.suggestedSettings.map((profile: SteamVrLinkSettingsProfile) => (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => applySettingsProfile(profile)}
+                    className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-2 text-left transition hover:border-[hsl(var(--primary)/0.45)] disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-[hsl(var(--foreground))]">{translateProfileTitle(profile)}</span>
+                      {profile.recommended && (
+                        <Badge variant="warning" className="text-[10px]">
+                          {t("settings.steamvr.linkRepair.best", { defaultValue: "Best" })}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-1 font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {profile.bandwidth} Mbps · {profile.supersampleScale.toFixed(1)}× · {profile.refreshRate} Hz
+                    </div>
+                    {profile.note && <div className="mt-1 leading-relaxed text-[hsl(var(--muted-foreground))]">{translateProfileNote(profile)}</div>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {linkRepair ? (
+            <div className="mt-3 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-3 text-[11px]">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={linkRepair.dryRun ? "secondary" : linkRepair.ok ? "success" : "warning"} className="text-[10px]">
+                  {linkRepair.dryRun
+                    ? t("settings.steamvr.linkRepair.dryRunShort", { defaultValue: "Dry-run" })
+                    : linkRepair.ok
+                      ? t("settings.steamvr.linkRepair.applied", { defaultValue: "Applied" })
+                      : t("settings.steamvr.linkRepair.partial", { defaultValue: "Partial" })}
+                </Badge>
+                {linkRepair.planId && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {translatePlanTitle(linkRepair.planId, linkRepair.planId)}
+                  </Badge>
+                )}
+                <span className="break-all font-mono text-[hsl(var(--muted-foreground))]">{linkRepair.backupDir}</span>
+              </div>
+              <div className="mt-2 grid gap-3 lg:grid-cols-2">
+                <div>
+                  <div className="mb-1 font-medium">{t("settings.steamvr.linkRepair.actions", { defaultValue: "Planned actions" })}</div>
+                  <div className="max-h-36 overflow-y-auto font-mono text-[10px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+                    {(linkRepair.actions ?? []).map((action) => (
+                      <div key={action}>{translateRepairAction(action)}</div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-1 font-medium">{t("settings.steamvr.linkRepair.result", { defaultValue: "Result" })}</div>
+                  <div className="font-mono text-[10px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+                    <div>{t("settings.steamvr.linkRepair.resultBetaKey", { defaultValue: "BetaKey lines" })}: {linkRepair.manifestBetaLinesRemoved ?? 0}</div>
+                    <div>{t("settings.steamvr.linkRepair.resultQuestBlocks", { defaultValue: "Quest device blocks" })}: {linkRepair.localconfigDeviceBlocksRemoved ?? 0}</div>
+                    <div>{t("settings.steamvr.linkRepair.resultBetaBlocks", { defaultValue: "250820-beta blocks" })}: {linkRepair.localconfigBetaBlocksRemoved ?? 0}</div>
+                    <div>{t("settings.steamvr.linkRepair.resultStopped", { defaultValue: "Stopped processes" })}: {linkRepair.stopped?.length ?? 0}</div>
+                    <div>{t("settings.steamvr.linkRepair.resultBackups", { defaultValue: "Backups" })}: {linkRepair.backups?.length ?? 0}</div>
+                    <div>
+                      {t("settings.steamvr.linkRepair.resultSettingsApplied", { defaultValue: "Settings applied" })}:{" "}
+                      {linkRepair.settingsApplied
+                        ? t("common.yes", { defaultValue: "yes" })
+                        : t("common.no", { defaultValue: "no" })}
+                    </div>
+                    {typeof linkRepair.restored === "number" && (
+                      <div>{t("settings.steamvr.linkRepair.resultRestored", { defaultValue: "Restored" })}: {linkRepair.restored}</div>
+                    )}
+                    {linkRepair.currentBackupDir && (
+                      <div className="break-all">
+                        {t("settings.steamvr.linkRepair.currentBackupDir", { defaultValue: "Current files backup" })}: {linkRepair.currentBackupDir}
+                      </div>
+                    )}
+                    {(linkRepair.failures?.length ?? 0) > 0 && (
+                      <div className="mt-1 text-[hsl(var(--destructive))]">
+                        {linkRepair.failures?.map((failure) => failure.error).join("; ")}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {linkBackups.length > 0 ? (
+            <div className="mt-3 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-3 text-[11px]">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="font-medium">
+                    {t("settings.steamvr.linkRepair.backupsTitle", { defaultValue: "Backups & restore" })}
+                  </div>
+                  <div className="text-[hsl(var(--muted-foreground))]">
+                    {t("settings.steamvr.linkRepair.backupsHint", {
+                      defaultValue: "Restore-capable VRCSM backups. Restoring also backs up the current files first.",
+                    })}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => void loadBackups()}>
+                  <RefreshCw className="mr-2 size-3" />
+                  {t("settings.steamvr.linkRepair.refreshBackups", { defaultValue: "Refresh" })}
+                </Button>
+              </div>
+              <div className="grid gap-2">
+                {linkBackups.slice(0, 5).map((backup) => (
+                  <div key={backup.path} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-[10px]">{backup.name}</span>
+                        <Badge variant={backup.restorable ? "success" : "secondary"} className="text-[10px]">
+                          {backup.restorable
+                            ? t("settings.steamvr.linkRepair.restorable", { defaultValue: "Restorable" })
+                            : t("settings.steamvr.linkRepair.metadataMissing", { defaultValue: "No metadata" })}
+                        </Badge>
+                        {backup.planId ? (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {translatePlanTitle(backup.planId, backup.planId)}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="mt-1 break-all font-mono text-[10px] text-[hsl(var(--muted-foreground))]">{backup.path}</div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!backup.restorable || linkBusy !== null}
+                        onClick={() => openRestoreDialog(backup)}
+                      >
+                        {t("settings.steamvr.linkRepair.restore", { defaultValue: "Restore" })}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <SettingRow label={t("settings.steamvr.targetBandwidth.label", { defaultValue: "Target Bandwidth (Mbps)" })} hint={t("settings.steamvr.targetBandwidth.hint", { defaultValue: "Bitrate limit for Steam Link. Up to 150-200 for good routers." })}>
             <div className="w-[200px]">
@@ -357,6 +1059,82 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
             );
           })()}
         </div>
+        <Dialog
+          open={confirmRequest !== null}
+          onOpenChange={(open) => {
+            if (confirmBusy || linkBusy !== null) return;
+            if (!open) {
+              setConfirmRequest(null);
+              setConfirmPreview(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {confirmRequest?.kind === "restore"
+                  ? t("settings.steamvr.linkRepair.restoreDialogTitle", { defaultValue: "Restore Steam Link backup" })
+                  : t("settings.steamvr.linkRepair.confirmDialogTitle", {
+                      name: translatePlanTitle(confirmRequest?.kind === "repair" ? confirmRequest.planId : "full-vrlink-reset"),
+                      defaultValue: "Confirm {{name}}",
+                    })}
+              </DialogTitle>
+              <DialogDescription className="leading-relaxed">
+                {confirmRequest?.kind === "restore"
+                  ? t("settings.steamvr.linkRepair.restoreDialogDesc", {
+                      defaultValue: "VRCSM will close Steam/SteamVR, back up the current files, then restore the selected backup.",
+                    })
+                  : t("settings.steamvr.linkRepair.confirmDialogDesc", {
+                      defaultValue: "Review the exact files and actions below. Nothing is changed until you press Execute.",
+                    })}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-3">
+              {confirmBusy && !confirmPreview ? (
+                <div className="flex items-center gap-2 text-[12px] text-[hsl(var(--muted-foreground))]">
+                  <RefreshCw className="size-3 animate-spin" />
+                  {t("settings.steamvr.linkRepair.previewing", { defaultValue: "Generating preview..." })}
+                </div>
+              ) : (
+                <>
+                  <div className="mb-2 break-all font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                    {confirmPreview?.backupDir ?? (confirmRequest?.kind === "restore" ? confirmRequest.backup.path : "")}
+                  </div>
+                  <div className="max-h-64 overflow-y-auto font-mono text-[10px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+                    {(confirmPreview?.actions ?? []).map((action) => (
+                      <div key={action}>{translateRepairAction(action)}</div>
+                    ))}
+                    {(confirmPreview?.actions?.length ?? 0) === 0 && (
+                      <div>{t("settings.steamvr.linkRepair.noPlannedActions", { defaultValue: "No actions in preview." })}</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                disabled={confirmBusy || linkBusy !== null}
+                onClick={() => {
+                  setConfirmRequest(null);
+                  setConfirmPreview(null);
+                }}
+              >
+                {t("settings.steamvr.linkRepair.confirmDialogCancel", { defaultValue: "Cancel" })}
+              </Button>
+              <Button
+                disabled={confirmBusy || linkBusy !== null || !confirmPreview}
+                onClick={() => void confirmCurrentRequest()}
+              >
+                {confirmBusy || linkBusy === "repair"
+                  ? t("settings.steamvr.linkRepair.executing", { defaultValue: "Executing..." })
+                  : confirmRequest?.kind === "restore"
+                    ? t("settings.steamvr.linkRepair.restoreConfirm", { defaultValue: "Restore" })
+                    : t("settings.steamvr.linkRepair.confirmDialogApply", { defaultValue: "Backup & repair" })}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
