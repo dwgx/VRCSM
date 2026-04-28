@@ -575,4 +575,195 @@ Result<UnityBundle> parseUnityBundle(const std::filesystem::path& path)
     return bundle;
 }
 
+Result<std::monostate> validateUnityBundleStructure(const std::filesystem::path& path)
+{
+    std::error_code ec;
+    const auto fileSize = std::filesystem::file_size(path, ec);
+    if (ec || fileSize == 0)
+    {
+        return Error{"bundle_invalid", fmt::format("Bundle is empty or unreadable: {}", toUtf8(path.wstring()))};
+    }
+    if (fileSize > (std::uint64_t(2) << 30))
+    {
+        return Error{"bundle_invalid", "Bundle file exceeds 2 GiB sanity cap"};
+    }
+
+    std::vector<std::uint8_t> raw(static_cast<std::size_t>(fileSize));
+    {
+        std::ifstream in(path, std::ios::binary);
+        if (!in)
+        {
+            return Error{"bundle_invalid", "Could not open bundle for reading"};
+        }
+        in.read(reinterpret_cast<char*>(raw.data()), static_cast<std::streamsize>(fileSize));
+        if (!in || static_cast<std::uint64_t>(in.gcount()) != fileSize)
+        {
+            return Error{"bundle_invalid", "Short read on bundle"};
+        }
+    }
+
+    ByteReader reader(raw.data(), raw.size());
+    const auto signature = reader.cstr();
+    if (signature != "UnityFS")
+    {
+        return Error{"bundle_invalid", fmt::format("Unsupported signature '{}' (only UnityFS accepted)", signature)};
+    }
+
+    const std::uint32_t formatVersion = reader.u32be();
+    if (formatVersion < 6 || formatVersion > 8)
+    {
+        return Error{"bundle_invalid", fmt::format("Unsupported UnityFS version {}", formatVersion)};
+    }
+
+    (void)reader.cstr();
+    (void)reader.cstr();
+    const std::uint64_t totalSize = reader.u64be();
+    const std::uint32_t compressedInfoSize = reader.u32be();
+    const std::uint32_t uncompressedInfoSize = reader.u32be();
+    const std::uint32_t flags = reader.u32be();
+    if (!reader.ok())
+    {
+        return Error{"bundle_invalid", "Truncated UnityFS header"};
+    }
+    if (totalSize != 0 && totalSize > raw.size())
+    {
+        return Error{"bundle_invalid", "Bundle header total size exceeds downloaded file size"};
+    }
+    if (compressedInfoSize == 0 || uncompressedInfoSize == 0)
+    {
+        return Error{"bundle_invalid", "BlocksInfo sizes are empty"};
+    }
+
+    constexpr std::uint32_t kBlocksInfoAtEnd = 0x80;
+    constexpr std::uint32_t kBlockDataNeedsPadding = 0x200;
+    constexpr std::uint32_t kCustomEncryption = 0x400;
+    constexpr std::uint32_t kCompressionMask = 0x3F;
+
+    if (flags & kCustomEncryption)
+    {
+        return Error{"encrypted", "Bundle is marked with Unity's custom-encryption flag"};
+    }
+
+    const auto blocksInfoCompression = static_cast<Compression>(flags & kCompressionMask);
+
+    std::size_t blocksInfoFileOffset = 0;
+    if (flags & kBlocksInfoAtEnd)
+    {
+        if (compressedInfoSize > raw.size())
+        {
+            return Error{"bundle_invalid", "BlocksInfo end offset underflows file size"};
+        }
+        blocksInfoFileOffset = raw.size() - compressedInfoSize;
+    }
+    else
+    {
+        if (formatVersion >= 7)
+        {
+            reader.alignTo(16);
+        }
+        blocksInfoFileOffset = reader.tell();
+    }
+
+    if (!reader.ok()
+        || blocksInfoFileOffset > raw.size()
+        || blocksInfoFileOffset + compressedInfoSize > raw.size())
+    {
+        return Error{"bundle_invalid", "BlocksInfo offset out of range"};
+    }
+
+    auto blocksInfoBytes = decompressBlock(
+        raw.data() + blocksInfoFileOffset,
+        compressedInfoSize,
+        uncompressedInfoSize,
+        blocksInfoCompression);
+    if (blocksInfoBytes.empty())
+    {
+        return Error{"bundle_invalid", "Failed to decompress blocksInfo"};
+    }
+
+    ByteReader info(blocksInfoBytes.data(), blocksInfoBytes.size());
+    info.skip(16);
+    const std::uint32_t blockCount = info.u32be();
+    if (!info.ok() || blockCount == 0 || blockCount > 0x10000)
+    {
+        return Error{"bundle_invalid", "Unreasonable block count"};
+    }
+
+    std::uint64_t totalUncompressed = 0;
+    std::uint64_t totalCompressed = 0;
+    for (std::uint32_t i = 0; i < blockCount; ++i)
+    {
+        const std::uint32_t uncompressed = info.u32be();
+        const std::uint32_t compressed = info.u32be();
+        (void)info.u16be();
+        if (uncompressed == 0 || compressed == 0)
+        {
+            return Error{"bundle_invalid", "Block table contains an empty block"};
+        }
+        totalUncompressed += uncompressed;
+        totalCompressed += compressed;
+    }
+    if (!info.ok())
+    {
+        return Error{"bundle_invalid", "Truncated block table"};
+    }
+    if (totalUncompressed > (std::uint64_t(1) << 31))
+    {
+        return Error{"bundle_invalid", "Decompressed data would exceed 2 GiB"};
+    }
+
+    const std::uint32_t nodeCount = info.u32be();
+    if (!info.ok() || nodeCount == 0 || nodeCount > 0x10000)
+    {
+        return Error{"bundle_invalid", "Unreasonable node count"};
+    }
+    for (std::uint32_t i = 0; i < nodeCount; ++i)
+    {
+        const auto nodeOffset = info.i64be();
+        const auto nodeSize = info.i64be();
+        (void)info.u32be();
+        const auto nodePath = info.cstr();
+        if (!info.ok())
+        {
+            return Error{"bundle_invalid", "Truncated node table"};
+        }
+        if (nodeOffset < 0 || nodeSize < 0)
+        {
+            return Error{"bundle_invalid", "Node table contains a negative range"};
+        }
+        const auto start = static_cast<std::uint64_t>(nodeOffset);
+        const auto length = static_cast<std::uint64_t>(nodeSize);
+        if (start > totalUncompressed || length > totalUncompressed - start)
+        {
+            return Error{"bundle_invalid", fmt::format(
+                "Node '{}' range exceeds decompressed stream size", nodePath)};
+        }
+    }
+
+    std::size_t blockDataFileOffset = 0;
+    if (flags & kBlocksInfoAtEnd)
+    {
+        blockDataFileOffset = reader.tell();
+    }
+    else
+    {
+        blockDataFileOffset = blocksInfoFileOffset + compressedInfoSize;
+    }
+    if (flags & kBlockDataNeedsPadding)
+    {
+        const std::size_t mod = blockDataFileOffset % 16;
+        if (mod != 0)
+        {
+            blockDataFileOffset += (16 - mod);
+        }
+    }
+    if (blockDataFileOffset > raw.size()
+        || totalCompressed > raw.size() - blockDataFileOffset)
+    {
+        return Error{"bundle_invalid", "Block payload extends past EOF"};
+    }
+
+    return std::monostate{};
+}
+
 } // namespace vrcsm::core

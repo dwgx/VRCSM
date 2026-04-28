@@ -41,7 +41,7 @@ interface PreviewProgressEvent {
 
 export type PreviewState =
   | { kind: "loading"; phase?: string; message?: string; queuePosition?: number }
-  | { kind: "ready"; url: string; cached: boolean }
+  | { kind: "ready"; url: string; path?: string; cached: boolean }
   | { kind: "error"; code: string; message?: string };
 
 /**
@@ -126,6 +126,7 @@ export function useAvatarPreview(
           setState({
             kind: "ready",
             url: resp.glbUrl,
+            path: resp.glbPath,
             cached: resp.cached ?? false,
           });
         } else if (resp.code === "cancelled") {
@@ -183,6 +184,7 @@ export function useAvatarPreview(
           setState({
             kind: "ready",
             url: status.glbUrl,
+            path: status.glbPath,
             cached: true,
           });
           return;
@@ -195,6 +197,15 @@ export function useAvatarPreview(
 
     return cleanup;
   }, [avatarId, assetUrl, bundlePath, retryKey]);
+
+  const retainedPath = state.kind === "ready" ? state.path : undefined;
+  useEffect(() => {
+    if (!retainedPath) return;
+    ipc.call("avatar.preview.retain", { glbPath: retainedPath }).catch(() => {});
+    return () => {
+      ipc.call("avatar.preview.release", { glbPath: retainedPath }).catch(() => {});
+    };
+  }, [retainedPath]);
 
   return {
     state,

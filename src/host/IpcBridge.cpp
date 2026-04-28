@@ -6,6 +6,7 @@
 #include "WebViewHost.h"
 
 #include "../core/AuthStore.h"
+#include "../core/AvatarPreview.h"
 #include "../core/CacheIndex.h"
 #include "../core/Database.h"
 #include "../core/PathProbe.h"
@@ -617,6 +618,24 @@ void IpcBridge::RegisterHandlers()
         if (!avatarId.empty())
         {
             m_previewQueue.Cancel(avatarId);
+        }
+        return nlohmann::json{{"ok", true}};
+    });
+    m_handlers.emplace("avatar.preview.retain", [](const nlohmann::json& p, const std::optional<std::string>&) -> nlohmann::json
+    {
+        const auto glbPath = JsonStringField(p, "glbPath").value_or("");
+        if (!glbPath.empty())
+        {
+            vrcsm::core::AvatarPreview::RetainPreviewPath(vrcsm::core::utf8Path(glbPath));
+        }
+        return nlohmann::json{{"ok", true}};
+    });
+    m_handlers.emplace("avatar.preview.release", [](const nlohmann::json& p, const std::optional<std::string>&) -> nlohmann::json
+    {
+        const auto glbPath = JsonStringField(p, "glbPath").value_or("");
+        if (!glbPath.empty())
+        {
+            vrcsm::core::AvatarPreview::ReleasePreviewPath(vrcsm::core::utf8Path(glbPath));
         }
         return nlohmann::json{{"ok", true}};
     });

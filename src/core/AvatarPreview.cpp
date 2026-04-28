@@ -117,16 +117,34 @@ std::wstring previewLeaseKey(const std::filesystem::path& path)
     return key;
 }
 
+void retainPreviewPath(const std::filesystem::path& path)
+{
+    const auto key = previewLeaseKey(path);
+    if (key.empty()) return;
+    std::lock_guard<std::mutex> lock(previewPathLeaseMutex());
+    auto& state = previewPathLeases()[key];
+    state.refs += 1;
+}
+
+void releasePreviewPath(const std::filesystem::path& path)
+{
+    const auto key = previewLeaseKey(path);
+    if (key.empty()) return;
+    std::lock_guard<std::mutex> lock(previewPathLeaseMutex());
+    auto& leases = previewPathLeases();
+    const auto it = leases.find(key);
+    if (it == leases.end()) return;
+    it->second.refs = std::max(0, it->second.refs - 1);
+    it->second.leaseUntil = std::chrono::steady_clock::now() + std::chrono::minutes(2);
+}
+
 class PreviewPathLease
 {
 public:
     explicit PreviewPathLease(const std::filesystem::path& path)
-        : m_key(previewLeaseKey(path))
+        : m_path(path)
     {
-        if (m_key.empty()) return;
-        std::lock_guard<std::mutex> lock(previewPathLeaseMutex());
-        auto& state = previewPathLeases()[m_key];
-        state.refs += 1;
+        retainPreviewPath(m_path);
     }
 
     PreviewPathLease(const PreviewPathLease&) = delete;
@@ -134,17 +152,11 @@ public:
 
     ~PreviewPathLease()
     {
-        if (m_key.empty()) return;
-        std::lock_guard<std::mutex> lock(previewPathLeaseMutex());
-        auto& leases = previewPathLeases();
-        auto it = leases.find(m_key);
-        if (it == leases.end()) return;
-        it->second.refs = std::max(0, it->second.refs - 1);
-        it->second.leaseUntil = std::chrono::steady_clock::now() + std::chrono::minutes(2);
+        releasePreviewPath(m_path);
     }
 
 private:
-    std::wstring m_key;
+    std::filesystem::path m_path;
 };
 
 bool isPreviewPathLeased(const std::filesystem::path& path)
@@ -1048,6 +1060,30 @@ std::filesystem::path AvatarPreview::PreviewCacheDir()
     std::error_code ec;
     std::filesystem::create_directories(dir, ec);
     return dir;
+}
+
+void AvatarPreview::RetainPreviewPath(const std::filesystem::path& path)
+{
+    retainPreviewPath(path);
+}
+
+void AvatarPreview::ReleasePreviewPath(const std::filesystem::path& path)
+{
+    releasePreviewPath(path);
+}
+
+bool AvatarPreview::IsPreviewPathRetained(const std::filesystem::path& path)
+{
+    return isPreviewPathLeased(path);
+}
+
+void AvatarPreview::TrimPreviewCacheDirectoryForTests(
+    const std::filesystem::path& dir,
+    std::uintmax_t maxBytes,
+    std::wstring_view extension,
+    bool removeGlbSidecar)
+{
+    trimRegularFilesLru(dir, maxBytes, extension, removeGlbSidecar);
 }
 
 std::string AvatarPreview::CacheKeyForAvatarId(std::string_view avatarId)

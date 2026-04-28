@@ -22,8 +22,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useReport } from "@/lib/report-context";
-import { prefetchThumbnails, prefetchThumbnailsLowPriority, useThumbnail } from "@/lib/thumbnails";
-import { cacheImageUrl, cacheImageUrls, useCachedImageUrl } from "@/lib/image-cache";
+import {
+  invalidateThumbnail,
+  prefetchThumbnails,
+  prefetchThumbnailsLowPriority,
+  resetLowPriorityThumbnailQueue,
+  useThumbnail,
+} from "@/lib/thumbnails";
+import {
+  cacheImageUrl,
+  cacheImageUrls,
+  invalidateCachedImageUrl,
+  useCachedImageUrl,
+} from "@/lib/image-cache";
 import { cn, formatDate } from "@/lib/utils";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
@@ -221,6 +232,15 @@ function trustedVrchatImageUrl(url?: string | null): string | undefined {
   return undefined;
 }
 
+function isLocalThumbUrl(url?: string | null): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url).hostname.toLowerCase() === "thumb.local";
+  } catch {
+    return false;
+  }
+}
+
 function trustedAvatarSearchImage(avatar?: AvatarSearchResult | null): string | undefined {
   return trustedVrchatImageUrl(avatar?.thumbnailImageUrl) ?? trustedVrchatImageUrl(avatar?.imageUrl);
 }
@@ -356,19 +376,60 @@ function AvatarRowThumb({
   isReference,
   placeholder = "cube",
   isFavorited,
+  loadPriority = false,
   onToggleFavorite,
+  onImageError,
 }: {
   avatarId: string;
   fallbackUrl?: string;
   isReference?: boolean;
   placeholder?: "cube" | "image";
   isFavorited: boolean;
+  loadPriority?: boolean;
   onToggleFavorite?: (thumbnailUrl: string | null) => void;
+  onImageError?: (src: string) => void;
 }) {
-  const { url } = useThumbnail(avatarId);
-  const resolvedUrl = url || fallbackUrl || null;
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [visible, setVisible] = useState(loadPriority);
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (loadPriority) {
+      setVisible(true);
+      return;
+    }
+    if (visible) return;
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "800px 0px" },
+    );
+    const node = rootRef.current;
+    if (node) observer.observe(node);
+    return () => observer.disconnect();
+  }, [loadPriority, visible]);
+
+  const thumbnailId = avatarId.startsWith("avtr_") ? avatarId : null;
+  const { url } = useThumbnail(thumbnailId, visible);
+  const resolvedUrl = [url, fallbackUrl].find((candidate) => candidate && candidate !== brokenUrl) ?? null;
+
+  useEffect(() => {
+    setBrokenUrl(null);
+  }, [avatarId, fallbackUrl, url]);
+
   return (
-    <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]">
+    <div
+      ref={rootRef}
+      className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))]"
+    >
       {resolvedUrl ? (
         <img
           src={resolvedUrl}
@@ -376,8 +437,12 @@ function AvatarRowThumb({
           loading="lazy"
           decoding="async"
           className="h-full w-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
+          onError={() => {
+            setBrokenUrl(resolvedUrl);
+            if (thumbnailId && isLocalThumbUrl(resolvedUrl)) {
+              invalidateThumbnail(thumbnailId);
+            }
+            onImageError?.(resolvedUrl);
           }}
         />
       ) : placeholder === "image" ? (
@@ -617,6 +682,25 @@ function WearerProfileFallbackCard({
             aspect=""
             rounded=""
             priority="eager"
+            onImageError={(failedUrl) => {
+              if (sourceImageUrl) {
+                invalidateCachedImageUrl(imageCacheKey, sourceImageUrl);
+              }
+              if (onResolvedReference && isLocalThumbUrl(failedUrl)) {
+                onResolvedReference({
+                  status: "resolved",
+                  userId: profileUserId?.startsWith("usr_") ? profileUserId : undefined,
+                  displayName: name,
+                  avatarId: profile?.currentAvatarId?.startsWith("avtr_") ? profile.currentAvatarId : undefined,
+                  url: sourceImageUrl,
+                  avatarName: profile?.currentAvatarName || undefined,
+                  verifiedForAvatarName:
+                    profile?.currentAvatarName && isSameAvatarName(profile.currentAvatarName, avatarName)
+                      ? avatarName ?? undefined
+                      : undefined,
+                });
+              }
+            }}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-[hsl(var(--canvas))]">
@@ -1115,6 +1199,7 @@ function AvatarRow({
   canonicalName,
   onSelect,
   onToggleFavorite,
+  onBrokenReference,
 }: {
   item: AugmentedAvatar;
   isSelected: boolean;
@@ -1123,6 +1208,7 @@ function AvatarRow({
   canonicalName?: string | null;
   onSelect: () => void;
   onToggleFavorite: (thumbnailUrl: string | null) => void;
+  onBrokenReference?: (avatarId: string, failedUrl: string) => void;
 }) {
   const { t } = useTranslation();
   // Prefer the VRChat API's canonical name when it has been fetched for
@@ -1169,7 +1255,9 @@ function AvatarRow({
         isReference={!item.resolved_thumbnail_url && Boolean(item.reference_thumbnail_url ?? item.wearer_reference_url)}
         placeholder={item.source === "encounter-log" ? "image" : "cube"}
         isFavorited={isFavorited}
+        loadPriority={isSelected}
         onToggleFavorite={item.avatar_id.startsWith("avtr_") ? onToggleFavorite : undefined}
+        onImageError={(failedUrl) => onBrokenReference?.(item.avatar_id, failedUrl)}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-center gap-1.5">
@@ -1385,6 +1473,20 @@ function Avatars() {
         return prev;
       }
       const next = { ...prev, [avatarId]: reference };
+      wearerReferencesRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const handleBrokenReferenceImage = useCallback((avatarId: string, failedUrl: string) => {
+    if (!isLocalThumbUrl(failedUrl)) return;
+    setWearerReferences((prev) => {
+      const current = prev[avatarId];
+      if (current?.status !== "resolved" || current.localUrl !== failedUrl) return prev;
+      if (current.url) {
+        invalidateCachedImageUrl(`wearer:${avatarId}`, current.url);
+      }
+      const next = { ...prev, [avatarId]: { ...current, localUrl: undefined } };
       wearerReferencesRef.current = next;
       return next;
     });
@@ -1649,6 +1751,7 @@ function Avatars() {
   );
 
   useEffect(() => {
+    resetLowPriorityThumbnailQueue();
     const visibleIds = displayRows
       .slice(0, THUMBNAIL_VISIBLE_PREFETCH_LIMIT)
       .map((it) => it.resolved_avatar_id || it.avatar_id)
@@ -2180,6 +2283,7 @@ function Avatars() {
                       onToggleFavorite={(thumbnailUrl) =>
                         handleToggleFavorite(item, thumbnailUrl)
                       }
+                      onBrokenReference={handleBrokenReferenceImage}
                     />
                   ))}
                   {listFilter === "encounters" && seenTotalPages > 1 && (

@@ -142,6 +142,18 @@ PermissionDecision PluginRegistry::CanInvoke(std::string_view pluginId,
         return {false, fmt::format("plugin '{}' is disabled", pluginId)};
     }
 
+    auto decision = CanPermissionsInvoke(plugin->manifest.permissions, method);
+    if (!decision.allowed && decision.reason.empty())
+    {
+        decision.reason = fmt::format("plugin '{}' lacks permission for '{}'", pluginId, method);
+    }
+    return decision;
+}
+
+PermissionDecision PluginRegistry::CanPermissionsInvoke(
+    const std::vector<std::string>& permissions,
+    std::string_view method)
+{
     if (FreeMethods().count(std::string(method)) > 0) return {true, {}};
 
     // Any explicit plugin.* call is blocked — plugins cannot manage
@@ -153,13 +165,13 @@ PermissionDecision PluginRegistry::CanInvoke(std::string_view pluginId,
     }
 
     const auto& table = PermissionTable();
-    for (const auto& token : plugin->manifest.permissions)
+    for (const auto& token : permissions)
     {
         const auto it = table.find(token);
         if (it == table.end()) continue;
         if (it->second.count(std::string(method)) > 0) return {true, {}};
     }
-    return {false, fmt::format("plugin '{}' lacks permission for '{}'", pluginId, method)};
+    return {false, {}};
 }
 
 } // namespace vrcsm::core::plugins

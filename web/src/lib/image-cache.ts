@@ -81,6 +81,12 @@ export async function cacheImageUrl(id: string, url: string): Promise<string | n
   return promise;
 }
 
+export function invalidateCachedImageUrl(id: string, url: string): void {
+  if (!id || !url) return;
+  memo.delete(keyFor(id, url));
+  notify();
+}
+
 export async function cacheImageUrls(
   items: Array<{ id: string; url: string }>,
 ): Promise<CachedImageResult[]> {
