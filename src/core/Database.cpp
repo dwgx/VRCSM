@@ -1007,8 +1007,32 @@ Result<nlohmann::json> Database::RecentWorldVisits(int limit, int offset)
     }
 
     const char* sql =
-        "SELECT id, world_id, instance_id, access_type, owner_id, region, joined_at, left_at "
-        "FROM world_visits "
+        "SELECT w.id, w.world_id, w.instance_id, w.access_type, w.owner_id, w.region, w.joined_at, w.left_at, "
+        "       ("
+        "           SELECT COUNT(DISTINCT COALESCE(NULLIF(pe.user_id, ''), pe.display_name)) "
+        "           FROM player_events pe "
+        "           WHERE pe.world_id = w.world_id "
+        "             AND pe.instance_id = w.instance_id "
+        "             AND pe.occurred_at >= w.joined_at "
+        "             AND (w.left_at IS NULL OR pe.occurred_at <= w.left_at)"
+        "       ) AS player_count, "
+        "       ("
+        "           SELECT COUNT(*) "
+        "           FROM player_events pe "
+        "           WHERE pe.world_id = w.world_id "
+        "             AND pe.instance_id = w.instance_id "
+        "             AND pe.occurred_at >= w.joined_at "
+        "             AND (w.left_at IS NULL OR pe.occurred_at <= w.left_at)"
+        "       ) AS player_event_count, "
+        "       ("
+        "           SELECT MAX(pe.occurred_at) "
+        "           FROM player_events pe "
+        "           WHERE pe.world_id = w.world_id "
+        "             AND pe.instance_id = w.instance_id "
+        "             AND pe.occurred_at >= w.joined_at "
+        "             AND (w.left_at IS NULL OR pe.occurred_at <= w.left_at)"
+        "       ) AS last_player_seen_at "
+        "FROM world_visits w "
         "ORDER BY joined_at DESC "
         "LIMIT ? OFFSET ?;";
 
@@ -1037,6 +1061,9 @@ Result<nlohmann::json> Database::RecentWorldVisits(int limit, int offset)
         row["region"] = ColumnTextOrNull(rawStmt, 5);
         row["joined_at"] = ColumnTextOrNull(rawStmt, 6);
         row["left_at"] = ColumnTextOrNull(rawStmt, 7);
+        row["player_count"] = static_cast<std::int64_t>(sqlite3_column_int64(rawStmt, 8));
+        row["player_event_count"] = static_cast<std::int64_t>(sqlite3_column_int64(rawStmt, 9));
+        row["last_player_seen_at"] = ColumnTextOrNull(rawStmt, 10);
         rows.push_back(std::move(row));
     }
 
@@ -2836,6 +2863,7 @@ CREATE TABLE IF NOT EXISTS player_events (
 );
 CREATE INDEX IF NOT EXISTS idx_player_events_time ON player_events(occurred_at);
 CREATE INDEX IF NOT EXISTS idx_player_events_user ON player_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_player_events_instance_time ON player_events(world_id, instance_id, occurred_at);
 
 CREATE TABLE IF NOT EXISTS player_encounters (
     user_id TEXT NOT NULL,

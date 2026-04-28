@@ -16,6 +16,21 @@ Last updated: 2026-04-29
 
 ## What Was Just Stabilized
 
+### World History Row Limit / Logged Players
+
+- World history now defaults to 250 rows instead of an implicit 100 and exposes visible 100/250/500/1000/2000 presets plus a custom limit capped at 5000.
+- `db.worldVisits.list` is clamped to 5000 rows server-side to avoid accidental unbounded SQLite reads.
+- `Database::RecentWorldVisits()` returns `player_count`, `player_event_count`, and `last_player_seen_at` per visit by aggregating local `player_events` in the same `world_id + instance_id + visit time window`.
+- UI wording is intentionally `logged players`, not live occupancy. These counts are local VRChat log evidence, not a remote VRChat API room population.
+
+Important files:
+
+- `src/core/Database.cpp`
+- `src/host/bridges/DatabaseBridge.cpp`
+- `web/src/pages/WorldHistory.tsx`
+- `web/src/lib/ipc.ts`
+- `tests/CommonTests.cpp`
+
 ### Global Quick Search v1
 
 - `search.global` is now a local-only async IPC method backed by `Database::GlobalSearch()`.
@@ -115,7 +130,7 @@ Observed results:
 - Web tests: 78/78 passed.
 - Web smoke: 22/22 passed.
 - C++ release build: passed.
-- CTest: 38/38 passed.
+- CTest: 39 total; 38 passed and `DeleteExecuteRejectsPreservedCwpRootTargets` skipped because VRChat was running.
 - Release metadata gate: passed, `version=0.14.3`.
 - MSI and release-exe launch were not rerun for the global-search feature cut.
 
@@ -127,6 +142,7 @@ Observed results:
 - Do not commit generated `web/dist`, `build/`, or MSI artifacts unless the user explicitly asks.
 - Some docs are historical; prefer `MEMORY.md`, this handoff, `AGENTS.md`, and `CHANGELOG.md` for current behavior.
 - Global search v1 is local-only by design. Do not add live remote fanout to keystroke search without a debounce/cache/rate-limit plan and tests.
+- World history `player_count` is local-log evidence only. Keep the UI copy distinct from remote `occupants` / capacity fields.
 
 ## If The User Says "Continue"
 

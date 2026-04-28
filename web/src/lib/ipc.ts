@@ -1291,6 +1291,34 @@ class IpcClient {
           },
           include_friend_notes: false,
         } as unknown as TResult;
+      case "db.worldVisits.list": {
+        const p = (params ?? {}) as { limit?: number; offset?: number };
+        const limit = Math.max(0, Math.min(p.limit ?? 250, 5000));
+        const offset = Math.max(0, p.offset ?? 0);
+        const base = Date.now();
+        const items = Array.from({ length: 18 }).map((_, i) => {
+          const joined = new Date(base - (i + 1) * 3_600_000).toISOString();
+          const left = new Date(base - i * 3_600_000 - 12 * 60_000).toISOString();
+          return {
+            id: i + 1,
+            world_id: i % 2 === 0
+              ? "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+              : "wrld_11111111-2222-3333-4444-555555555555",
+            instance_id: i % 2 === 0
+              ? "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345~hidden(usr_mock)~region(jp)"
+              : "wrld_11111111-2222-3333-4444-555555555555:98765~friends(usr_mock)~region(us)",
+            access_type: i % 2 === 0 ? "hidden" : "friends",
+            owner_id: "usr_mock",
+            region: i % 2 === 0 ? "jp" : "us",
+            joined_at: joined,
+            left_at: left,
+            player_count: 3 + (i % 8),
+            player_event_count: 6 + (i % 12),
+            last_player_seen_at: left,
+          };
+        });
+        return { items: items.slice(offset, offset + limit) } as unknown as TResult;
+      }
       case "logs.files.clear":
         return {
           ok: true,
@@ -1774,7 +1802,7 @@ class IpcClient {
 
   // ── Database / History ──────────────────────────────────────────────
 
-  async dbWorldVisits(limit = 100, offset = 0) {
+  async dbWorldVisits(limit = 250, offset = 0) {
     return this.call<{ limit: number; offset: number }, { items: any[] }>(
       "db.worldVisits.list", { limit, offset },
     );

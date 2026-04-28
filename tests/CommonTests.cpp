@@ -366,6 +366,76 @@ TEST(CommonTests, GlobalSearchKeepsHistoricalAvatarReferenceThumbnailUnverified)
     std::filesystem::remove_all(dir, ec);
 }
 
+TEST(CommonTests, RecentWorldVisitsIncludesLoggedPlayerCounts)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-world-visits-player-count");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    auto& db = vrcsm::core::Database::Instance();
+    const std::string worldId = "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const std::string instanceId = worldId + ":12345~hidden(usr_owner)~region(jp)";
+
+    ASSERT_TRUE(vrcsm::core::isOk(db.InsertWorldVisit({
+        worldId,
+        instanceId,
+        std::optional<std::string>{"hidden"},
+        std::optional<std::string>{"usr_owner"},
+        std::optional<std::string>{"jp"},
+        "2026-04-27T10:00:00Z",
+    })));
+    ASSERT_TRUE(vrcsm::core::isOk(db.MarkVisitLeft(worldId, instanceId, "2026-04-27T11:00:00Z")));
+
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordPlayerEvent({
+        "joined",
+        std::optional<std::string>{"usr_alice"},
+        "Alice",
+        std::optional<std::string>{worldId},
+        std::optional<std::string>{instanceId},
+        "2026-04-27T10:05:00Z",
+    })));
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordPlayerEvent({
+        "joined",
+        std::optional<std::string>{"usr_bob"},
+        "Bob",
+        std::optional<std::string>{worldId},
+        std::optional<std::string>{instanceId},
+        "2026-04-27T10:10:00Z",
+    })));
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordPlayerEvent({
+        "left",
+        std::optional<std::string>{"usr_alice"},
+        "Alice",
+        std::optional<std::string>{worldId},
+        std::optional<std::string>{instanceId},
+        "2026-04-27T10:40:00Z",
+    })));
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordPlayerEvent({
+        "joined",
+        std::optional<std::string>{"usr_late"},
+        "Late Player",
+        std::optional<std::string>{worldId},
+        std::optional<std::string>{instanceId},
+        "2026-04-27T11:30:00Z",
+    })));
+
+    auto result = db.RecentWorldVisits(10, 0);
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    const auto& rows = vrcsm::core::value(result);
+    ASSERT_EQ(rows.size(), 1u);
+    EXPECT_EQ(rows[0].at("player_count"), 2);
+    EXPECT_EQ(rows[0].at("player_event_count"), 3);
+    EXPECT_EQ(rows[0].at("last_player_seen_at"), "2026-04-27T10:40:00Z");
+
+    auto limited = db.RecentWorldVisits(0, 0);
+    ASSERT_TRUE(vrcsm::core::isOk(limited)) << vrcsm::core::error(limited).message;
+    EXPECT_TRUE(vrcsm::core::value(limited).empty());
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
 TEST(CommonTests, SteamLinkRestoreTargetAllowsOnlySteamVrRepairRoots)
 {
     const std::filesystem::path steam = L"C:\\Steam";

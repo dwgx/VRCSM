@@ -41,7 +41,7 @@ std::optional<std::string> FirstStringField(
 
 nlohmann::json IpcBridge::HandleDbWorldVisits(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int limit = ParamInt(params, "limit", 100);
+    const int limit = std::clamp(ParamInt(params, "limit", 250), 0, 5000);
     const int offset = ParamInt(params, "offset", 0);
     auto res = vrcsm::core::Database::Instance().RecentWorldVisits(limit, offset);
     return nlohmann::json{{"items", unwrapResult(std::move(res))}};
