@@ -34,6 +34,8 @@ export interface ThumbImageProps {
   fallbackClassName?: string;
   /** Inline style passthrough (aspect-ratio override, fixed size, etc). */
   style?: CSSProperties;
+  /** Called with the failed src before the component falls back. */
+  onImageError?: (src: string) => void;
 }
 
 /**
@@ -60,6 +62,7 @@ export function ThumbImage({
   alt = "",
   fallbackClassName,
   style,
+  onImageError,
 }: ThumbImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
@@ -109,7 +112,10 @@ export function ThumbImage({
             loaded ? "opacity-100" : "opacity-0",
           )}
           onLoad={() => setLoaded(true)}
-          onError={() => setErrored(true)}
+          onError={() => {
+            setErrored(true);
+            if (src) onImageError?.(src);
+          }}
         />
       )}
     </div>

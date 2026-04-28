@@ -67,11 +67,30 @@ function needsFetch(id: string, now: number): boolean {
 let memoGeneration = 0;
 const invalidationListeners = new Set<() => void>();
 
-export function invalidateThumbnails(): void {
-  memo.clear();
+function notifyInvalidation(): void {
   memoGeneration += 1;
   for (const listener of invalidationListeners) {
     listener();
+  }
+}
+
+export function invalidateThumbnails(): void {
+  memo.clear();
+  resetLowPriorityThumbnailQueue();
+  notifyInvalidation();
+}
+
+export function invalidateThumbnail(id: string): void {
+  memo.delete(id);
+  lowPriorityQueue.delete(id);
+  notifyInvalidation();
+}
+
+export function resetLowPriorityThumbnailQueue(): void {
+  lowPriorityQueue.clear();
+  if (lowPriorityTimer !== null) {
+    window.clearTimeout(lowPriorityTimer);
+    lowPriorityTimer = null;
   }
 }
 
@@ -139,7 +158,7 @@ function fetchOne(id: string): Promise<string | null> {
   return promise;
 }
 
-export function useThumbnail(id: string | null): {
+export function useThumbnail(id: string | null, enabled = true): {
   url: string | null;
   loading: boolean;
 } {
@@ -150,7 +169,7 @@ export function useThumbnail(id: string | null): {
       if (hit && isResolvedFresh(hit, Date.now())) {
         return { url: hit.url, loading: false };
       }
-      return { url: null, loading: true };
+      return { url: null, loading: enabled };
     },
   );
   // Track memo generation so login / logout triggers an automatic
@@ -175,6 +194,10 @@ export function useThumbnail(id: string | null): {
       setState({ url: hit.url, loading: false });
       return;
     }
+    if (!enabled) {
+      setState({ url: null, loading: false });
+      return;
+    }
     let cancelled = false;
     setState((prev) => ({ url: prev.url, loading: true }));
     fetchOne(id).then((url) => {
@@ -183,7 +206,7 @@ export function useThumbnail(id: string | null): {
     return () => {
       cancelled = true;
     };
-  }, [id, generation]);
+  }, [id, enabled, generation]);
 
   return state;
 }
@@ -234,18 +257,12 @@ export function prefetchThumbnails(ids: string[]): void {
       }
       // Notify mounted useThumbnail hooks so they immediately render the
       // newly-cached URLs instead of waiting for individual promise chains.
-      memoGeneration += 1;
-      for (const listener of invalidationListeners) {
-        listener();
-      }
+      notifyInvalidation();
     })
     .catch(() => {
       // Transient batch failure — drop pending entries so retries go through.
       for (const id of need) memo.delete(id);
-      memoGeneration += 1;
-      for (const listener of invalidationListeners) {
-        listener();
-      }
+      notifyInvalidation();
     });
 
   // Mark each id as pending so individual useThumbnail calls don't

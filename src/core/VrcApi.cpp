@@ -2,6 +2,7 @@
 
 #include "AuthStore.h"
 #include "Common.h"
+#include "UnityBundle.h"
 #include "RateLimiter.h"
 
 #include <algorithm>
@@ -1455,9 +1456,10 @@ bool VrcApi::isTrustedBundleFile(
         return false;
     }
     const auto bytes = std::filesystem::file_size(path, ec);
+    const auto structural = validateUnityBundleStructure(path);
     return !ec
         && bytes > 0
-        && fileStartsWithAny(path, {"UnityFS", "UnityWeb", "UnityRaw", "UnityArchive"})
+        && isOk(structural)
         && trustedDownloadMetadataMatches(path, url, bytes);
 }
 
@@ -2073,7 +2075,7 @@ bool VrcApi::downloadFile(const std::string& url, const std::filesystem::path& d
         destPath,
         [](const std::filesystem::path& path)
         {
-            return fileStartsWithAny(path, {"UnityFS", "UnityWeb", "UnityRaw", "UnityArchive"});
+            return isOk(validateUnityBundleStructure(path));
         },
         true);
 }

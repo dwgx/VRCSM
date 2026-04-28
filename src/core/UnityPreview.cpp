@@ -14,6 +14,7 @@
 #include <regex>
 #include <set>
 #include <string_view>
+#include <system_error>
 #include <unordered_map>
 
 #include <fmt/format.h>
@@ -588,10 +589,23 @@ bool writeGlb(const std::vector<MeshMetrics>& picks,
     const std::uint32_t binLen = static_cast<std::uint32_t>(bin.size());
     const std::uint32_t totalLen = 12 + 8 + jsonLen + 8 + binLen;
 
-    std::ofstream out(glbPath, std::ios::binary | std::ios::trunc);
+    std::error_code ec;
+    std::filesystem::create_directories(glbPath.parent_path(), ec);
+    if (ec)
+    {
+        spdlog::error("UnityPreview: cannot create GLB parent '{}': {}", glbPath.parent_path().string(), ec.message());
+        return false;
+    }
+
+    std::filesystem::path partPath = glbPath;
+    partPath += L".part";
+    std::filesystem::remove(partPath, ec);
+    ec.clear();
+
+    std::ofstream out(partPath, std::ios::binary | std::ios::trunc);
     if (!out)
     {
-        spdlog::error("UnityPreview: cannot open '{}' for writing", glbPath.string());
+        spdlog::error("UnityPreview: cannot open '{}' for writing", partPath.string());
         return false;
     }
 
@@ -609,7 +623,26 @@ bool writeGlb(const std::vector<MeshMetrics>& picks,
     writeU32(binLen);
     writeU32(kChunkBin);
     out.write(reinterpret_cast<const char*>(bin.data()), bin.size());
+    out.flush();
+    if (!out)
+    {
+        spdlog::error("UnityPreview: failed while writing '{}'", partPath.string());
+        out.close();
+        std::filesystem::remove(partPath, ec);
+        return false;
+    }
     out.close();
+
+    std::filesystem::remove(glbPath, ec);
+    ec.clear();
+    std::filesystem::rename(partPath, glbPath, ec);
+    if (ec)
+    {
+        spdlog::error("UnityPreview: failed to publish GLB '{}' -> '{}': {}",
+            partPath.string(), glbPath.string(), ec.message());
+        std::filesystem::remove(partPath, ec);
+        return false;
+    }
 
     summary.keptMeshes = static_cast<int>(meshes.size());
     return true;

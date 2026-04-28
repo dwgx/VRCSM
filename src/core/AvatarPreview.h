@@ -147,6 +147,20 @@ public:
     /// Directory where converted glbs land.
     /// `%LocalAppData%\VRCSM\preview-cache`. Created on first access.
     static std::filesystem::path PreviewCacheDir();
+
+    /// Retain/release a preview cache path while WebView is actively
+    /// displaying it. LRU cleanup skips retained paths and keeps a short
+    /// grace period after release so stale object URLs do not race cleanup.
+    static void RetainPreviewPath(const std::filesystem::path& path);
+    static void ReleasePreviewPath(const std::filesystem::path& path);
+    static bool IsPreviewPathRetained(const std::filesystem::path& path);
+
+    // Test seam for LRU/lease regression coverage.
+    static void TrimPreviewCacheDirectoryForTests(
+        const std::filesystem::path& dir,
+        std::uintmax_t maxBytes,
+        std::wstring_view extension,
+        bool removeGlbSidecar);
 };
 
 } // namespace vrcsm::core

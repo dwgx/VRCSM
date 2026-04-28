@@ -68,6 +68,12 @@ public:
     // allowlist that every plugin gets for free (e.g. `app.version`).
     PermissionDecision CanInvoke(std::string_view pluginId, std::string_view method) const;
 
+    // Pure permission-table seam for regression tests. Does not check
+    // whether a plugin exists or is enabled.
+    static PermissionDecision CanPermissionsInvoke(
+        const std::vector<std::string>& permissions,
+        std::string_view method);
+
     // Parse a plugin virtual host origin into the underlying plugin
     // id, returning nullopt if the origin is not a plugin iframe. The
     // input may be either the bare host ("plugin.x.vrcsm") or a full

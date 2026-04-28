@@ -76,4 +76,10 @@ struct UnityBundle
 // lazy-decompress variant without changing callers.
 Result<UnityBundle> parseUnityBundle(const std::filesystem::path& path);
 
+// Lightweight structural validation used at download-cache boundaries.
+// It parses the UnityFS header, blocksInfo, block table, and node table,
+// and verifies block/node ranges without materializing the full bundle.
+// This catches truncated downloads that still start with "UnityFS".
+Result<std::monostate> validateUnityBundleStructure(const std::filesystem::path& path);
+
 } // namespace vrcsm::core

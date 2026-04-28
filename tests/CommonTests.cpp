@@ -2,10 +2,61 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <fstream>
+
+#include <Windows.h>
 
 #include "core/AvatarPreview.h"
 #include "core/Common.h"
+#include "core/UnityBundle.h"
+#include "core/VrcApi.h"
 #include "core/VrDiagnostics.h"
+#include "core/plugins/PluginRegistry.h"
+
+namespace
+{
+
+std::filesystem::path MakeTempTestDir(std::wstring_view name)
+{
+    auto dir = std::filesystem::temp_directory_path()
+        / (std::wstring(name) + L"-" + std::to_wstring(::GetCurrentProcessId()));
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    std::filesystem::create_directories(dir, ec);
+    return dir;
+}
+
+void WriteBytes(const std::filesystem::path& path, std::string_view bytes)
+{
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+}
+
+void WriteSizedFile(const std::filesystem::path& path, std::size_t bytes)
+{
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    std::string block(bytes, 'x');
+    out.write(block.data(), static_cast<std::streamsize>(block.size()));
+}
+
+void WriteDownloadMetadata(
+    const std::filesystem::path& path,
+    const std::string& url,
+    std::uintmax_t bytes)
+{
+    std::filesystem::path meta = path;
+    meta += L".download.json";
+    std::ofstream out(meta, std::ios::binary | std::ios::trunc);
+    out << nlohmann::json{
+        {"schema", 1},
+        {"url", url},
+        {"bytes", bytes},
+        {"complete", true},
+    }.dump();
+}
+
+} // namespace
 
 TEST(CommonTests, EnsureWithinBaseAcceptsNestedChild)
 {
@@ -168,4 +219,91 @@ TEST(CommonTests, SteamLinkBackupSourceAllowsOnlyChildren)
         backup, L"C:\\Steam\\config\\other-backup\\steamvr.vrsettings", false));
     EXPECT_FALSE(vrcsm::core::VrDiagnostics::IsSteamLinkBackupSourceAllowed(
         backup, L"..\\vrcsm-vrlink-reset-20260428-010203\\steamvr.vrsettings", false));
+}
+
+TEST(CommonTests, SteamLinkBackupMetadataHelpersRejectEscapes)
+{
+    const std::filesystem::path steam = L"C:\\Steam";
+    const std::optional<std::filesystem::path> local = std::filesystem::path(L"C:\\Users\\dwgx\\AppData\\Local");
+    const auto backup = steam / L"config" / L"vrcsm-vrlink-reset-20260428-010203";
+
+    EXPECT_FALSE(vrcsm::core::VrDiagnostics::IsSteamLinkBackupSourceAllowed(
+        backup, L"C:\\Users\\dwgx\\Desktop\\localconfig.vdf", false));
+    EXPECT_FALSE(vrcsm::core::VrDiagnostics::IsSteamLinkBackupSourceAllowed(
+        backup, steam / L"config" / L"vrcsm-vrlink-reset-20260428-010203-evil" / L"steamvr.vrsettings", false));
+    EXPECT_FALSE(vrcsm::core::VrDiagnostics::IsSteamLinkRestoreTargetAllowed(
+        steam, local, steam / L"steamapps" / L"appmanifest_250820.acf.bak"));
+    EXPECT_FALSE(vrcsm::core::VrDiagnostics::IsSteamLinkRestoreTargetAllowed(
+        steam, local, steam / L"config" / L"vrlink" / L"..\\..\\userdata\\123\\config\\config.vdf"));
+    EXPECT_FALSE(vrcsm::core::VrDiagnostics::IsSteamLinkRestoreTargetAllowed(
+        steam, local, *local / L"SteamVR" / L"..\\SteamVRBackup\\htmlcache"));
+}
+
+TEST(CommonTests, PluginPermissionSplitDoesNotLetIpcShellTouchFilesystem)
+{
+    using vrcsm::core::plugins::PluginRegistry;
+
+    EXPECT_TRUE(PluginRegistry::CanPermissionsInvoke({"ipc:shell"}, "shell.pickFolder").allowed);
+    EXPECT_TRUE(PluginRegistry::CanPermissionsInvoke({"ipc:shell"}, "shell.openUrl").allowed);
+    EXPECT_FALSE(PluginRegistry::CanPermissionsInvoke({"ipc:shell"}, "fs.listDir").allowed);
+    EXPECT_FALSE(PluginRegistry::CanPermissionsInvoke({"ipc:shell"}, "fs.writePlan").allowed);
+
+    EXPECT_TRUE(PluginRegistry::CanPermissionsInvoke({"ipc:fs:listDir"}, "fs.listDir").allowed);
+    EXPECT_FALSE(PluginRegistry::CanPermissionsInvoke({"ipc:fs:listDir"}, "fs.writePlan").allowed);
+    EXPECT_TRUE(PluginRegistry::CanPermissionsInvoke({"ipc:fs:writePlan"}, "fs.writePlan").allowed);
+    EXPECT_FALSE(PluginRegistry::CanPermissionsInvoke({"ipc:fs:writePlan"}, "fs.listDir").allowed);
+}
+
+TEST(CommonTests, TruncatedUnityFsMagicOnlyBundleIsNotTrusted)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-truncated-unityfs");
+    const auto path = dir / L"bad.vrca";
+    const std::string url = "https://assets.vrchat.com/test/bad.vrca";
+
+    WriteBytes(path, "UnityFS\0");
+    const auto bytes = std::filesystem::file_size(path);
+    WriteDownloadMetadata(path, url, bytes);
+
+    EXPECT_FALSE(vrcsm::core::isOk(vrcsm::core::validateUnityBundleStructure(path)));
+    EXPECT_FALSE(vrcsm::core::VrcApi::isTrustedBundleFile(url, path));
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, AvatarPreviewLruSkipsPartFilesAndRetainedGlbs)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-preview-lru");
+    const auto oldGlb = dir / L"old.glb";
+    const auto oldSidecar = dir / L"old.glb.json";
+    const auto retainedGlb = dir / L"retained.glb";
+    const auto part = dir / L"download.glb.part";
+
+    WriteSizedFile(oldGlb, 128);
+    WriteSizedFile(oldSidecar, 16);
+    WriteSizedFile(retainedGlb, 128);
+    WriteSizedFile(part, 256);
+
+    const auto oldTime = std::filesystem::file_time_type::clock::now() - std::chrono::hours(24);
+    std::error_code ec;
+    std::filesystem::last_write_time(oldGlb, oldTime, ec);
+    ec.clear();
+    std::filesystem::last_write_time(retainedGlb, oldTime + std::chrono::hours(1), ec);
+
+    vrcsm::core::AvatarPreview::RetainPreviewPath(retainedGlb);
+    EXPECT_TRUE(vrcsm::core::AvatarPreview::IsPreviewPathRetained(retainedGlb));
+
+    vrcsm::core::AvatarPreview::TrimPreviewCacheDirectoryForTests(
+        dir,
+        128,
+        L".glb",
+        true);
+
+    EXPECT_FALSE(std::filesystem::exists(oldGlb));
+    EXPECT_FALSE(std::filesystem::exists(oldSidecar));
+    EXPECT_TRUE(std::filesystem::exists(retainedGlb));
+    EXPECT_TRUE(std::filesystem::exists(part));
+
+    vrcsm::core::AvatarPreview::ReleasePreviewPath(retainedGlb);
+    std::filesystem::remove_all(dir, ec);
 }
