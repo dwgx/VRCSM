@@ -2,6 +2,16 @@
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
+## Continuity Documents
+
+Before changing code in a fresh session, read:
+
+1. `MEMORY.md` — repo-local current state and verification baseline.
+2. `docs/NEXT-AGENT-HANDOFF.md` — latest continuation notes, sensitive decisions, and recent verification.
+3. `docs/MD-INDEX.md` — Markdown document map and reading order.
+
+These docs are the handoff surface for future agents. Keep them updated when shipping a release-facing change or changing avatar thumbnail, SteamVR repair, plugin IPC, cache, or packaging behavior.
+
 ## Build Commands
 
 **Prerequisites:** MSVC 2026 (VS18), CMake 3.28+, Ninja, vcpkg (at `third_party/vcpkg`), pnpm
