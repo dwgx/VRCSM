@@ -3,9 +3,11 @@
 #include "CacheScanner.h"
 #include "Common.h"
 #include "PathProbe.h"
+#include "ProcessGuard.h"
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <system_error>
 
 namespace vrcsm::core
@@ -38,6 +40,70 @@ const CategoryDef* findCategory(std::string_view key)
     }
     return nullptr;
 }
+
+bool samePathLexical(const std::filesystem::path& a, const std::filesystem::path& b)
+{
+    return ensureWithinBase(a, b) && ensureWithinBase(b, a);
+}
+
+std::filesystem::path normalizeLexical(const std::filesystem::path& path)
+{
+    std::error_code ec;
+    auto abs = std::filesystem::absolute(path, ec);
+    if (ec) abs = path;
+    return abs.lexically_normal();
+}
+
+bool isChildOfCategoryRoot(
+    const std::filesystem::path& categoryRoot,
+    const std::filesystem::path& target)
+{
+    return ensureWithinBase(categoryRoot, target)
+        && !samePathLexical(categoryRoot, target);
+}
+
+bool isPreservedCwpRootTarget(
+    const std::filesystem::path& cwpRoot,
+    const std::filesystem::path& target)
+{
+    const auto normalizedRoot = normalizeLexical(cwpRoot);
+    const auto normalizedTarget = normalizeLexical(target);
+    return samePathLexical(normalizedTarget.parent_path(), normalizedRoot)
+        && isPreserved(normalizedTarget);
+}
+
+std::optional<Error> validateDeleteTarget(
+    const std::filesystem::path& baseDir,
+    const std::filesystem::path& target)
+{
+    if (!ensureWithinBase(baseDir, target))
+    {
+        return Error{"escape", "Target escapes baseDir"};
+    }
+
+    for (const auto& def : categoryDefs())
+    {
+        if (!def.safe_delete) continue;
+
+        const auto categoryRoot = baseDir / std::filesystem::path(toWide(def.rel_path));
+        if (!isChildOfCategoryRoot(categoryRoot, target))
+        {
+            continue;
+        }
+
+        if (def.key == std::string_view("cache_windows_player")
+            && isPreservedCwpRootTarget(categoryRoot, target))
+        {
+            return Error{
+                "preserved_target",
+                "Cache-WindowsPlayer root __info and vrc-version are preserved"};
+        }
+
+        return std::nullopt;
+    }
+
+    return Error{"unsafe_target", "Target is not a child of a safe delete category"};
+}
 } // namespace
 
 DeletePlan SafeDelete::Plan(
@@ -55,7 +121,10 @@ DeletePlan SafeDelete::Plan(
     if (entry.has_value())
     {
         const auto entryPath = categoryRoot / std::filesystem::path(toWide(*entry));
-        if (ensureWithinBase(categoryRoot, entryPath))
+        if (ensureWithinBase(categoryRoot, entryPath)
+            && !samePathLexical(categoryRoot, entryPath)
+            && !(category == "cache_windows_player"
+                && isPreservedCwpRootTarget(categoryRoot, entryPath)))
         {
             plan.targets.push_back(toUtf8(entryPath.wstring()));
         }
@@ -79,13 +148,19 @@ Result<std::size_t> SafeDelete::ExecutePlan(
     const std::filesystem::path& baseDir,
     const DeletePlan& plan)
 {
+    const auto vrc = ProcessGuard::IsVRChatRunning();
+    if (vrc.running)
+    {
+        return Error{"vrchat_running", "VRChat is currently running"};
+    }
+
     std::size_t deleted = 0;
     for (const auto& targetUtf8 : plan.targets)
     {
         const auto target = utf8Path(targetUtf8);
-        if (!ensureWithinBase(baseDir, target))
+        if (const auto validation = validateDeleteTarget(baseDir, target))
         {
-            return Error{"escape", "Target escapes baseDir"};
+            return *validation;
         }
         std::error_code ec;
         const auto count = std::filesystem::remove_all(target, ec);

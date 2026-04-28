@@ -226,6 +226,11 @@ public:
     //     total_avatars_seen, total_hours_in_world }
     Result<nlohmann::json> StatsOverview();
 
+    // Evidence-first global search over local VRCSM data only. This is
+    // intentionally local-only in v1: no VRChat API calls, no cache fanout,
+    // and no destructive/account-changing actions.
+    Result<nlohmann::json> GlobalSearch(const nlohmann::json& request);
+
     // ─── avatar_embeddings (v0.11 experimental visual search) ────
     //
     // `avatar_embeddings_meta` is a plain table (avatar_id + model +

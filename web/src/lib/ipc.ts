@@ -18,6 +18,8 @@ import type {
   PluginInstallResult,
   ProcessStatus,
   Report,
+  SearchGlobalRequest,
+  SearchGlobalResponse,
   LogStreamChunk,
   VrcSettingsReport,
   VrcSettingsWriteRequest,
@@ -34,6 +36,100 @@ import type {
 } from "./types";
 
 const FAVORITES_COMPAT_STORAGE_KEY = "vrcsm:favorites-compat";
+
+const MOCK_SIGNED_OUT: AuthStatus = {
+  authed: false,
+  userId: null,
+  displayName: null,
+};
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function buildMockSteamVrConfig(): SteamVrConfig {
+  return {
+    ok: true,
+    path: "D:/Steam/config/steamvr.vrsettings",
+    steamvr_running: false,
+    knownDevices: ["Quest 3"],
+    hardware: {
+      gpuVendor: "NVIDIA",
+      gpuHorsepower: 14,
+      hmdModel: "Quest 3",
+      hmdSerial: "MOCK-HMD",
+      hmdManufacturer: "Meta",
+      hmdDriver: "driver_vrlink",
+    },
+    driver_vrlink: {
+      automaticBandwidth: true,
+      automaticStreamFormatWidth: true,
+      targetBandwidth: 90,
+    },
+    steamvr: {
+      supersampleScale: 1.0,
+      supersampleManualOverride: true,
+      preferredRefreshRate: 72,
+      motionSmoothing: false,
+      allowSupersampleFiltering: true,
+    },
+  };
+}
+
+const MOCK_MARKET_PLUGINS: MarketFeedDto["plugins"] = [
+  {
+    id: "dev.vrcsm.autouploader",
+    name: "VRChat Auto-Uploader",
+    version: "0.9.2",
+    hostMin: "0.9.2",
+    shape: "panel",
+    description: "Batch helper for preparing avatar upload folders.",
+    homepage: "https://github.com/dwgx/VRCSM",
+    authorName: "VRCSM",
+    permissions: ["ipc:shell", "ipc:fs:listDir", "ipc:fs:writePlan"],
+    download: "https://example.invalid/vrcsm-autouploader.zip",
+    sha256: "mock-autouploader-sha256",
+  },
+  {
+    id: "dev.vrcsm.hello",
+    name: "Hello Panel",
+    version: "0.1.0",
+    hostMin: "0.8.0",
+    shape: "panel",
+    description: "Minimal panel used by browser-dev mock mode.",
+    authorName: "VRCSM",
+    permissions: [],
+    download: "https://example.invalid/vrcsm-hello.zip",
+    sha256: "mock-hello-sha256",
+  },
+];
+
+function marketEntryToInstalled(
+  entry: MarketFeedDto["plugins"][number],
+  bundled = false,
+): InstalledPluginDto {
+  const hostLabel = entry.id.replace(/\./g, "-");
+  return {
+    id: entry.id,
+    name: entry.name,
+    version: entry.version,
+    hostMin: entry.hostMin,
+    shape: entry.shape,
+    entry: { panel: "index.html" },
+    permissions: entry.permissions ?? [],
+    author: entry.authorName ? { name: entry.authorName, url: entry.authorUrl } : undefined,
+    homepage: entry.homepage,
+    icon: entry.iconUrl,
+    description: entry.description,
+    enabled: true,
+    bundled,
+    installDir: bundled
+      ? `D:/Project/VRCSM/plugins/${entry.id}`
+      : `C:/Users/dev/AppData/Roaming/VRCSM/plugins/${entry.id}`,
+    dataDir: `C:/Users/dev/AppData/Roaming/VRCSM/plugin-data/${entry.id}`,
+    virtualHost: `plugin.${hostLabel}.vrcsm`,
+  };
+}
 
 export interface CalendarEvent {
   id?: string;
@@ -197,6 +293,9 @@ class IpcClient {
   private events: EventTarget;
   private listenerAttached: boolean;
   private mockLogStreamTimer: number | null;
+  private mockAuthStatus: AuthStatus;
+  private mockSteamVrConfig: SteamVrConfig;
+  private mockInstalledPlugins: InstalledPluginDto[];
 
   constructor() {
     this.bridge = window.chrome?.webview ?? null;
@@ -204,6 +303,9 @@ class IpcClient {
     this.events = new EventTarget();
     this.listenerAttached = false;
     this.mockLogStreamTimer = null;
+    this.mockAuthStatus = { ...MOCK_SIGNED_OUT };
+    this.mockSteamVrConfig = buildMockSteamVrConfig();
+    this.mockInstalledPlugins = [marketEntryToInstalled(MOCK_MARKET_PLUGINS[0]!, true)];
     if (!this.bridge) {
       window.__VRCSM_MOCK__ = true;
     }
@@ -424,11 +526,7 @@ class IpcClient {
         return { results } as unknown as TResult;
       }
       case "auth.status":
-        return {
-          authed: false,
-          userId: null,
-          displayName: null,
-        } satisfies AuthStatus as unknown as TResult;
+        return { ...this.mockAuthStatus } satisfies AuthStatus as unknown as TResult;
       case "auth.login": {
         // Browser-only dev mode has no real WinHTTP path. Pretend the
         // call succeeded so UI flows can be exercised without the C++
@@ -442,25 +540,28 @@ class IpcClient {
             error: "missing-credentials",
           } as unknown as TResult;
         }
+        this.mockAuthStatus = {
+          authed: true,
+          userId: "usr_mock-1234-5678",
+          displayName: p.username,
+        };
         return {
           status: "success",
-          user: {
-            authed: true,
-            userId: "usr_mock-1234-5678",
-            displayName: p.username,
-          },
+          user: { ...this.mockAuthStatus },
         } as unknown as TResult;
       }
       case "auth.verify2FA":
+        this.mockAuthStatus = {
+          authed: true,
+          userId: "usr_mock-1234-5678",
+          displayName: "mock_user",
+        };
         return {
           ok: true,
-          user: {
-            authed: true,
-            userId: "usr_mock-1234-5678",
-            displayName: "mock_user",
-          },
+          user: { ...this.mockAuthStatus },
         } as unknown as TResult;
       case "auth.logout":
+        this.mockAuthStatus = { ...MOCK_SIGNED_OUT };
         return { ok: true } as unknown as TResult;
       case "avatar.preview": {
         // Browser-only dev mode can't spawn AssetRipper, so always
@@ -490,12 +591,15 @@ class IpcClient {
           skipped: "browser-dev-mode",
         } as unknown as TResult;
       case "auth.user":
+        if (!this.mockAuthStatus.authed) {
+          return { authed: false, user: null } satisfies AuthUserDetailsResult as unknown as TResult;
+        }
         return {
           authed: true,
           user: {
             id: "usr_mock-1234-5678",
             username: "mock_user",
-            displayName: "mock_user",
+            displayName: this.mockAuthStatus.displayName ?? "mock_user",
             currentAvatarImageUrl: null,
             currentAvatarThumbnailImageUrl: null,
             status: "active",
@@ -520,6 +624,24 @@ class IpcClient {
           ok: true,
           path: "C:/Users/dev/AppData/Local/Temp/vrcsm-vrc-settings-mock.reg",
         } satisfies VrcSettingsExportResult as unknown as TResult;
+      case "steamvr.read":
+        return cloneJson(this.mockSteamVrConfig) as unknown as TResult;
+      case "steamvr.write": {
+        const updates = (params ?? {}) as Partial<SteamVrConfig>;
+        this.mockSteamVrConfig = {
+          ...this.mockSteamVrConfig,
+          ...updates,
+          driver_vrlink: {
+            ...(this.mockSteamVrConfig.driver_vrlink ?? {}),
+            ...(updates.driver_vrlink ?? {}),
+          },
+          steamvr: {
+            ...(this.mockSteamVrConfig.steamvr ?? {}),
+            ...(updates.steamvr ?? {}),
+          },
+        };
+        return { ok: true } as unknown as TResult;
+      }
       case "steamvr.link.diagnose":
         return {
           ok: true,
@@ -640,8 +762,171 @@ class IpcClient {
           localconfigBetaBlocksRemoved: p.dryRun ? 0 : 1,
         } satisfies SteamVrLinkRepairResult as unknown as TResult;
       }
+      case "steamvr.link.backups":
+        return {
+          ok: true,
+          steamPath: "D:/Steam",
+          items: [
+            {
+              name: "vrcsm-vrlink-reset-mock",
+              path: "D:/Steam/config/vrcsm-vrlink-reset-mock",
+              hasMetadata: true,
+              restorable: true,
+              backupCount: 4,
+              planId: "full-vrlink-reset",
+              created: "2026-04-29T00:00:00Z",
+              lastWriteTime: nowIso(),
+            },
+          ],
+        } satisfies SteamVrLinkBackupList as unknown as TResult;
+      case "steamvr.link.restore": {
+        const p = (params ?? {}) as { backupDir?: string; dryRun?: boolean };
+        return {
+          ok: true,
+          dryRun: p.dryRun ?? false,
+          planId: "restore",
+          backupDir: p.backupDir ?? "D:/Steam/config/vrcsm-vrlink-reset-mock",
+          actions: [
+            "Stop process steam.exe (4321)",
+            `Restore D:/Steam/config/steamvr.vrsettings from ${p.backupDir ?? "mock backup"}`,
+          ],
+          backups: [],
+          stopped: [],
+          failures: [],
+          currentBackupDir: "D:/Steam/config/vrcsm-before-restore-mock",
+          currentBackups: [],
+          restored: p.dryRun ? 0 : 1,
+        } satisfies SteamVrLinkRepairResult as unknown as TResult;
+      }
+      case "plugin.list":
+        return { plugins: cloneJson(this.mockInstalledPlugins) } as unknown as TResult;
+      case "plugin.marketFeed":
+        return {
+          version: 1,
+          generated: nowIso(),
+          plugins: cloneJson(MOCK_MARKET_PLUGINS),
+        } satisfies MarketFeedDto as unknown as TResult;
+      case "plugin.install": {
+        const p = (params ?? {}) as { url?: string; sha256?: string };
+        const entry =
+          MOCK_MARKET_PLUGINS.find((candidate) => candidate.download === p.url || candidate.sha256 === p.sha256) ??
+          MOCK_MARKET_PLUGINS[1]!;
+        const installed = marketEntryToInstalled(entry, false);
+        const existing = this.mockInstalledPlugins.findIndex((plugin) => plugin.id === installed.id);
+        if (existing >= 0) {
+          this.mockInstalledPlugins.splice(existing, 1, installed);
+        } else {
+          this.mockInstalledPlugins.push(installed);
+        }
+        return {
+          id: installed.id,
+          version: installed.version,
+          installDir: installed.installDir,
+        } satisfies PluginInstallResult as unknown as TResult;
+      }
+      case "plugin.uninstall": {
+        const p = (params ?? {}) as { id?: string };
+        this.mockInstalledPlugins = this.mockInstalledPlugins.filter(
+          (plugin) => plugin.id !== p.id || plugin.bundled,
+        );
+        return { ok: true, id: p.id ?? "" } as unknown as TResult;
+      }
+      case "plugin.enable": {
+        const p = (params ?? {}) as { id?: string };
+        this.mockInstalledPlugins = this.mockInstalledPlugins.map((plugin) =>
+          plugin.id === p.id
+            ? { ...plugin, enabled: true, virtualHost: plugin.virtualHost || `plugin.${plugin.id.replace(/\./g, "-")}.vrcsm` }
+            : plugin,
+        );
+        return { ok: true, id: p.id ?? "" } as unknown as TResult;
+      }
+      case "plugin.disable": {
+        const p = (params ?? {}) as { id?: string };
+        this.mockInstalledPlugins = this.mockInstalledPlugins.map((plugin) =>
+          plugin.id === p.id ? { ...plugin, enabled: false, virtualHost: "" } : plugin,
+        );
+        return { ok: true, id: p.id ?? "" } as unknown as TResult;
+      }
       case "favorites.lists":
         return { lists: buildMockFavoriteLists() } as unknown as TResult;
+      case "search.global": {
+        const p = (params ?? {}) as SearchGlobalRequest;
+        const normalized = (p.query ?? "").trim().toLowerCase();
+        const limit = Math.min(Math.max(p.limit ?? 20, 1), 50);
+        const offset = Math.max(p.offset ?? 0, 0);
+        const source = mockFavorites.filter((item) => {
+          if (!normalized) return true;
+          return [
+            item.type ?? "",
+            item.target_id,
+            item.display_name ?? "",
+            item.list_name,
+            item.note ?? "",
+            ...(item.tags ?? []),
+          ].join(" ").toLowerCase().includes(normalized);
+        });
+        const items: SearchGlobalResponse["items"] = source
+          .slice(offset, offset + limit)
+          .map((item) => ({
+            type: (item.type === "world" || item.type === "avatar" || item.type === "user" ? item.type : "favorite"),
+            id: item.target_id,
+            displayName: item.display_name ?? item.target_id,
+            subtitle: `Favorite in ${item.list_name}`,
+            source: {
+              kind: "local.favorite",
+              label: "Local favorite",
+              updatedAt: item.added_at,
+            },
+            evidence: [
+              {
+                kind: "favorite",
+                label: "Favorite",
+                detail: item.note ? `Saved in ${item.list_name} with note` : `Saved in ${item.list_name}`,
+                sourceId: `mock:favorite:${item.target_id}`,
+                observedAt: item.added_at ?? undefined,
+                reliability: "verified",
+                privacy: "local-only",
+              },
+            ],
+            thumbnail: {
+              url: item.thumbnail_url,
+              kind: item.thumbnail_url ? "remote-cdn" : "placeholder",
+              source: item.thumbnail_url ? "vrc-api" : "placeholder",
+              verified: Boolean(item.thumbnail_url),
+              alt: item.display_name ?? item.target_id,
+            },
+            localStatus: {
+              state: "favorite",
+              isFavorite: true,
+              hasLocalCache: false,
+              has3dPreview: false,
+            },
+            primaryAction: {
+              kind: item.type === "avatar" ? "inspect" : "open",
+              label: item.type === "world" ? "Open world" : item.type === "avatar" ? "Inspect avatar" : "Open",
+              route: item.type === "world"
+                ? `/worlds?select=${item.target_id}`
+                : item.type === "avatar"
+                  ? `/avatars?select=${item.target_id}`
+                  : `/friends?select=${item.target_id}`,
+              enabled: true,
+            },
+            confidence: 0.9,
+          }));
+        return {
+          query: p.query ?? "",
+          normalizedQuery: normalized,
+          mode: "local",
+          items,
+          nextOffset: offset + items.length < source.length ? offset + items.length : null,
+          diagnostics: {
+            localSources: ["mock_favorites"],
+            remoteSources: [],
+            cacheHit: false,
+            remoteSuppressedReason: "disabled",
+          },
+        } satisfies SearchGlobalResponse as unknown as TResult;
+      }
       case "favorites.items": {
         const p = (params ?? {}) as { list_name?: string };
         const listName = p.list_name ?? "Library";
@@ -1020,8 +1305,11 @@ class IpcClient {
           removed: ["session.dat", "thumb-cache.json"],
           skipped: ["WebView2"],
         } as unknown as TResult;
-      default:
-        return null as unknown as TResult;
+      default: {
+        const message = `Mock IPC method not implemented: ${method}`;
+        console.warn(message);
+        throw new IpcError("mock_not_implemented", message);
+      }
     }
   }
 
@@ -1562,6 +1850,13 @@ class IpcClient {
     return this.call<{ include_friend_notes: boolean }, any>(
       "db.history.clear",
       { include_friend_notes: includeFriendNotes },
+    );
+  }
+
+  async searchGlobal(params: SearchGlobalRequest) {
+    return this.call<SearchGlobalRequest, SearchGlobalResponse>(
+      "search.global",
+      params,
     );
   }
 

@@ -1090,6 +1090,14 @@ static bool CopyFileToBackup(const std::filesystem::path& from,
     return true;
 }
 
+static bool IsExistingDirectoryReparsePoint(const std::filesystem::path& path)
+{
+    const DWORD attrs = GetFileAttributesW(path.c_str());
+    return attrs != INVALID_FILE_ATTRIBUTES
+        && (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0
+        && (attrs & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+}
+
 static bool CopyPathToBackup(const std::filesystem::path& from,
                              const std::filesystem::path& backupDir,
                              const std::string& label,
@@ -1100,6 +1108,11 @@ static bool CopyPathToBackup(const std::filesystem::path& from,
     {
         ec.clear();
         return true;
+    }
+    if (IsExistingDirectoryReparsePoint(from))
+    {
+        ec = std::make_error_code(std::errc::operation_not_supported);
+        return false;
     }
 
     const auto dest = backupDir / fmt::format("{}-{}", label, from.filename().string());
@@ -1749,6 +1762,12 @@ Result<nlohmann::json> VrDiagnostics::RepairSteamLink(const nlohmann::json& para
             localEc.clear();
             if (isDir)
             {
+                if (IsExistingDirectoryReparsePoint(path))
+                {
+                    return Error{"reparse_point",
+                        fmt::format("Refusing to recursively move reparse point directory {}", toUtf8(path.wstring())),
+                        400};
+                }
                 std::filesystem::copy(path, dest,
                     std::filesystem::copy_options::recursive |
                     std::filesystem::copy_options::overwrite_existing,
@@ -1799,6 +1818,12 @@ Result<nlohmann::json> VrDiagnostics::RepairSteamLink(const nlohmann::json& para
             const auto htmlcache = *localAppData / L"SteamVR" / L"htmlcache";
             if (std::filesystem::exists(htmlcache, ec) && !ec)
             {
+                if (IsExistingDirectoryReparsePoint(htmlcache))
+                {
+                    return Error{"reparse_point",
+                        fmt::format("Refusing to recursively remove reparse point directory {}", toUtf8(htmlcache.wstring())),
+                        400};
+                }
                 const auto dest = backupDir / L"htmlcache";
                 std::filesystem::copy(htmlcache, dest,
                     std::filesystem::copy_options::recursive |
@@ -2078,6 +2103,16 @@ Result<nlohmann::json> VrDiagnostics::RestoreSteamLinkBackup(const nlohmann::jso
         {
             failures.push_back({{"error", fmt::format("Backup source missing: {}", entry.toText)}});
             ec.clear();
+            continue;
+        }
+        if (IsExistingDirectoryReparsePoint(to))
+        {
+            failures.push_back({{"error", fmt::format("Backup source is a reparse point directory: {}", entry.toText)}});
+            continue;
+        }
+        if (IsExistingDirectoryReparsePoint(from))
+        {
+            failures.push_back({{"error", fmt::format("Restore target is a reparse point directory: {}", entry.fromText)}});
             continue;
         }
 

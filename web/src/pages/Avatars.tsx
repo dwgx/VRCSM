@@ -307,7 +307,7 @@ function readWearerReferenceCache(): Record<string, WearerReference> {
     for (const [key, value] of Object.entries(parsed)) {
       if (!key || !value || typeof value !== "object") continue;
       const item = value as Partial<WearerReference>;
-      if (item.status !== "resolved" && item.status !== "miss") continue;
+      if (item.status !== "resolved" || !item.url) continue;
       out[key] = {
         status: item.status,
         userId: typeof item.userId === "string" ? item.userId : undefined,
@@ -1251,8 +1251,8 @@ function AvatarRow({
       ) : null}
       <AvatarRowThumb
         avatarId={item.avatar_id}
-        fallbackUrl={item.resolved_thumbnail_url ?? item.reference_thumbnail_url ?? item.wearer_reference_url}
-        isReference={!item.resolved_thumbnail_url && Boolean(item.reference_thumbnail_url ?? item.wearer_reference_url)}
+        fallbackUrl={item.resolved_thumbnail_url ?? item.reference_thumbnail_url}
+        isReference={!item.resolved_thumbnail_url && Boolean(item.reference_thumbnail_url)}
         placeholder={item.source === "encounter-log" ? "image" : "cube"}
         isFavorited={isFavorited}
         loadPriority={isSelected}
@@ -1269,7 +1269,7 @@ function AvatarRow({
               {t("avatars.encounterLog", { defaultValue: "Seen" })}
             </span>
           ) : null}
-          {item.source === "encounter-log" && !item.resolved_thumbnail_url && (item.reference_thumbnail_url || item.wearer_reference_url) ? (
+          {item.source === "encounter-log" && !item.resolved_thumbnail_url && item.reference_thumbnail_url ? (
             <span className="shrink-0 rounded-[var(--radius-sm)] border border-amber-500/40 bg-amber-500/12 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-600">
               {t("avatars.referenceImageBadgeShort", { defaultValue: "Reference" })}
             </span>
@@ -1713,7 +1713,6 @@ function Avatars() {
         if (!hit && !ref) return item;
         const hitUrl = trustedVrchatImageUrl(hit?.url);
         const verifiedHitUrl = hitUrl && hit?.verified !== false ? hitUrl : undefined;
-        const referenceHitUrl = hitUrl && hit?.verified === false ? hitUrl : undefined;
         const trustedReferenceUrl = trustedVrchatImageUrl(ref?.localUrl) ?? trustedVrchatImageUrl(ref?.url);
         const verifiedReferenceUrl =
           trustedReferenceUrl && ref?.verifiedForAvatarName && isSameAvatarName(ref.verifiedForAvatarName, item.display_name)
@@ -1723,7 +1722,6 @@ function Avatars() {
           !verifiedReferenceUrl && trustedReferenceUrl && ref?.status === "resolved"
             ? trustedReferenceUrl
             : undefined;
-        const referenceFallbackUrl = verifiedReferenceUrl ?? unverifiedReferenceUrl;
         const hasPrimaryThumbnail = Boolean(verifiedHitUrl ?? item.resolved_thumbnail_url);
         return {
           ...item,
@@ -1731,14 +1729,10 @@ function Avatars() {
           resolved_thumbnail_url: verifiedHitUrl ?? item.resolved_thumbnail_url,
           author_user_id: hit?.authorId?.startsWith("usr_") ? hit.authorId : item.author_user_id,
           thumbnail_status: hit?.status ?? item.thumbnail_status,
-          reference_thumbnail_url: !hasPrimaryThumbnail ? referenceHitUrl ?? referenceFallbackUrl : undefined,
-          reference_source: referenceHitUrl
-            ? "public_search_name_unique_reference"
-            : verifiedReferenceUrl
+          reference_thumbnail_url: !hasPrimaryThumbnail ? verifiedReferenceUrl : undefined,
+          reference_source: !hasPrimaryThumbnail && verifiedReferenceUrl
             ? "wearer_current_profile_verified"
-            : referenceFallbackUrl
-              ? "wearer_current_profile"
-              : undefined,
+            : undefined,
           reference_status: !hasPrimaryThumbnail ? ref?.status : undefined,
           wearer_reference_url: unverifiedReferenceUrl,
           wearer_reference_user_id: ref?.userId?.startsWith("usr_") ? ref.userId : undefined,
@@ -1805,7 +1799,20 @@ function Avatars() {
   }, [displayRows, listFilter]);
 
   useEffect(() => {
-    if (!authStatus.authed || listFilter !== "encounters") return;
+    if (!authStatus.authed) {
+      setWearerReferences((prev) => {
+        let next = prev;
+        for (const [avatarId, reference] of Object.entries(prev)) {
+          if (reference.status === "resolved") continue;
+          if (next === prev) next = { ...prev };
+          delete next[avatarId];
+        }
+        if (next !== prev) wearerReferencesRef.current = next;
+        return next;
+      });
+      return;
+    }
+    if (listFilter !== "encounters") return;
     const targets = displayRows
       .filter((item) => {
         if (item.source !== "encounter-log") return false;
@@ -2069,6 +2076,7 @@ function Avatars() {
   ]);
 
   useEffect(() => {
+    if (!authStatus.authed) return;
     if (!selectedEncounterLookup) return;
     const lookup = selectedEncounterLookup;
     if (!lookup.wearerUserId?.startsWith("usr_")) return;
@@ -2158,6 +2166,7 @@ function Avatars() {
       cancelled = true;
     };
   }, [
+    authStatus.authed,
     selectedEncounterLookup?.avatarId,
     selectedEncounterLookup?.displayName,
     selectedEncounterLookup?.wearerUserId,

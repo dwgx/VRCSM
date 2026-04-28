@@ -19,8 +19,10 @@
 #include <charconv>
 #include <cstdint>
 #include <limits>
+#include <set>
 #include <string_view>
 #include <system_error>
+#include <unordered_map>
 
 namespace vrcsm::core
 {
@@ -366,6 +368,295 @@ std::vector<std::string> NormalizeFavoriteTags(const std::vector<std::string>& t
         return LowerAscii(a) < LowerAscii(b);
     });
     return normalized;
+}
+
+std::string CollapseWhitespaceAscii(std::string value)
+{
+    value = TrimAscii(std::move(value));
+
+    std::string out;
+    out.reserve(value.size());
+    bool inWhitespace = false;
+    for (const unsigned char ch : value)
+    {
+        if (std::isspace(ch))
+        {
+            if (!inWhitespace && !out.empty())
+            {
+                out.push_back(' ');
+            }
+            inWhitespace = true;
+            continue;
+        }
+        out.push_back(static_cast<char>(ch));
+        inWhitespace = false;
+    }
+    return out;
+}
+
+bool JsonStringArrayContains(const nlohmann::json& params, std::string_view value)
+{
+    if (!params.is_object() || !params.contains("types") || !params["types"].is_array())
+    {
+        return false;
+    }
+    for (const auto& item : params["types"])
+    {
+        if (item.is_string() && item.get<std::string>() == value)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool SearchTypeAllowed(const nlohmann::json& params, std::string_view type, bool favoriteBacked = false)
+{
+    if (!params.is_object() || !params.contains("types") || !params["types"].is_array() || params["types"].empty())
+    {
+        return true;
+    }
+    return JsonStringArrayContains(params, type) || (favoriteBacked && JsonStringArrayContains(params, "favorite"));
+}
+
+bool IsThumbLocalUrl(std::string_view url)
+{
+    const auto lowered = LowerAscii(url);
+    return lowered == "thumb.local"
+        || lowered.rfind("thumb.local/", 0) == 0
+        || lowered.rfind("https://thumb.local/", 0) == 0
+        || lowered.rfind("http://thumb.local/", 0) == 0;
+}
+
+std::string SearchRouteFor(std::string_view type, std::string_view id)
+{
+    if (type == "world")
+    {
+        return "/worlds?select=" + std::string(id);
+    }
+    if (type == "avatar")
+    {
+        return "/avatars?select=" + std::string(id);
+    }
+    if (type == "user")
+    {
+        return "/friends?select=" + std::string(id);
+    }
+    return "/logs";
+}
+
+std::string SearchPrimaryLabel(std::string_view type)
+{
+    if (type == "world") return "Open world";
+    if (type == "avatar") return "Inspect avatar";
+    if (type == "user") return "Open user";
+    return "Inspect evidence";
+}
+
+double TextMatchScore(const std::string& normalizedQuery,
+                      const std::string& id,
+                      const std::string& displayName,
+                      const std::string& extra = {})
+{
+    if (normalizedQuery.empty())
+    {
+        return 0.05;
+    }
+
+    const auto loweredId = LowerAscii(id);
+    const auto loweredDisplay = LowerAscii(displayName);
+    const auto loweredExtra = LowerAscii(extra);
+    double score = 0.0;
+
+    if (loweredId == normalizedQuery)
+    {
+        score += 0.45;
+    }
+    else if (loweredId.find(normalizedQuery) != std::string::npos)
+    {
+        score += 0.22;
+    }
+
+    if (!displayName.empty() && loweredDisplay == normalizedQuery)
+    {
+        score += 0.35;
+    }
+    else if (!displayName.empty() && loweredDisplay.rfind(normalizedQuery, 0) == 0)
+    {
+        score += 0.25;
+    }
+    else if (!displayName.empty() && loweredDisplay.find(normalizedQuery) != std::string::npos)
+    {
+        score += 0.15;
+    }
+
+    if (!extra.empty() && loweredExtra.find(normalizedQuery) != std::string::npos)
+    {
+        score += 0.08;
+    }
+    return score;
+}
+
+nlohmann::json SearchEvidence(std::string kind,
+                              std::string label,
+                              std::string detail,
+                              std::string sourceId,
+                              std::optional<std::string> observedAt,
+                              std::string reliability,
+                              std::string privacy)
+{
+    nlohmann::json item{
+        {"kind", std::move(kind)},
+        {"label", std::move(label)},
+        {"detail", std::move(detail)},
+        {"sourceId", std::move(sourceId)},
+        {"reliability", std::move(reliability)},
+        {"privacy", std::move(privacy)},
+    };
+    if (observedAt.has_value() && !observedAt->empty())
+    {
+        item["observedAt"] = *observedAt;
+    }
+    return item;
+}
+
+struct GlobalSearchCandidate
+{
+    std::string type;
+    std::string id;
+    std::string displayName;
+    std::string subtitle;
+    std::string sourceKind;
+    std::string sourceLabel;
+    std::string updatedAt;
+    std::string thumbnailUrl;
+    std::string thumbnailKind{"placeholder"};
+    std::string thumbnailSource{"placeholder"};
+    bool thumbnailVerified{false};
+    std::vector<nlohmann::json> evidence;
+    double score{0.0};
+    bool isFavorite{false};
+    bool hasLocalCache{false};
+    bool has3dPreview{false};
+    int visitCount{0};
+    int encounterCount{0};
+    std::optional<std::string> firstSeenAt;
+    std::optional<std::string> lastSeenAt;
+    std::set<std::string> warnings;
+};
+
+using SearchCandidateMap = std::unordered_map<std::string, GlobalSearchCandidate>;
+
+std::string CandidateKey(std::string_view type, std::string_view id)
+{
+    return std::string(type) + ":" + std::string(id);
+}
+
+GlobalSearchCandidate& UpsertSearchCandidate(
+    SearchCandidateMap& candidates,
+    std::string type,
+    std::string id,
+    std::string displayName,
+    std::string sourceKind,
+    std::string sourceLabel,
+    std::optional<std::string> updatedAt)
+{
+    auto& c = candidates[CandidateKey(type, id)];
+    if (c.type.empty())
+    {
+        c.type = std::move(type);
+        c.id = std::move(id);
+        c.displayName = displayName.empty() ? c.id : std::move(displayName);
+        c.sourceKind = std::move(sourceKind);
+        c.sourceLabel = std::move(sourceLabel);
+        if (updatedAt.has_value())
+        {
+            c.updatedAt = *updatedAt;
+        }
+        return c;
+    }
+
+    if ((c.displayName.empty() || c.displayName == c.id) && !displayName.empty())
+    {
+        c.displayName = std::move(displayName);
+    }
+    if (c.sourceKind != sourceKind)
+    {
+        c.sourceKind = "mixed";
+        c.sourceLabel = "Mixed local evidence";
+    }
+    if (updatedAt.has_value() && *updatedAt > c.updatedAt)
+    {
+        c.updatedAt = *updatedAt;
+    }
+    return c;
+}
+
+nlohmann::json CandidateToJson(const GlobalSearchCandidate& c)
+{
+    const bool isAvatar = c.type == "avatar";
+    const auto actionKind = isAvatar ? "inspect" : (c.type == "timeline_event" ? "focus-timeline" : "open");
+
+    std::string state = "unknown";
+    if (c.isFavorite) state = "favorite";
+    else if (c.visitCount > 0) state = "visited";
+    else if (c.encounterCount > 0) state = "encountered";
+    else if (isAvatar) state = "seen-avatar";
+    else if (c.hasLocalCache) state = "cached-asset";
+
+    nlohmann::json warnings = nlohmann::json::array();
+    for (const auto& warning : c.warnings)
+    {
+        warnings.push_back(warning);
+    }
+
+    nlohmann::json evidence = nlohmann::json::array();
+    for (const auto& item : c.evidence)
+    {
+        evidence.push_back(item);
+    }
+
+    nlohmann::json thumbnail = {
+        {"url", c.thumbnailUrl.empty() ? nlohmann::json(nullptr) : nlohmann::json(c.thumbnailUrl)},
+        {"kind", c.thumbnailKind},
+        {"source", c.thumbnailSource},
+        {"verified", c.thumbnailVerified},
+        {"alt", c.displayName.empty() ? c.id : c.displayName},
+    };
+
+    nlohmann::json localStatus{
+        {"state", state},
+        {"isFavorite", c.isFavorite},
+        {"hasLocalCache", c.hasLocalCache},
+        {"has3dPreview", c.has3dPreview},
+    };
+    if (c.visitCount > 0) localStatus["visitCount"] = c.visitCount;
+    if (c.encounterCount > 0) localStatus["encounterCount"] = c.encounterCount;
+    if (c.firstSeenAt.has_value()) localStatus["firstSeenAt"] = *c.firstSeenAt;
+    if (c.lastSeenAt.has_value()) localStatus["lastSeenAt"] = *c.lastSeenAt;
+    if (!warnings.empty()) localStatus["warnings"] = warnings;
+
+    return nlohmann::json{
+        {"type", c.type},
+        {"id", c.id},
+        {"displayName", c.displayName.empty() ? c.id : c.displayName},
+        {"subtitle", c.subtitle.empty() ? (c.evidence.empty() ? "Local evidence" : c.evidence.front().value("detail", "Local evidence")) : c.subtitle},
+        {"source", {
+            {"kind", c.sourceKind.empty() ? "mixed" : c.sourceKind},
+            {"label", c.sourceLabel.empty() ? "Local evidence" : c.sourceLabel},
+            {"updatedAt", c.updatedAt.empty() ? nlohmann::json(nullptr) : nlohmann::json(c.updatedAt)},
+        }},
+        {"evidence", evidence},
+        {"thumbnail", thumbnail},
+        {"localStatus", localStatus},
+        {"primaryAction", {
+            {"kind", actionKind},
+            {"label", SearchPrimaryLabel(c.type)},
+            {"route", SearchRouteFor(c.type, c.id)},
+            {"enabled", true},
+        }},
+        {"confidence", std::clamp(c.score, 0.0, 1.0)},
+    };
 }
 
 Result<std::monostate> UpsertFavoriteNote(sqlite3* db,
@@ -2007,6 +2298,500 @@ Result<nlohmann::json> Database::StatsOverview()
     result["total_avatars_seen"] = static_cast<std::int64_t>(sqlite3_column_int64(rawStmt, 2));
     result["total_hours_in_world"] = sqlite3_column_double(rawStmt, 3);
     return result;
+}
+
+Result<nlohmann::json> Database::GlobalSearch(const nlohmann::json& request)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    if (!request.is_null() && !request.is_object())
+    {
+        return MakeError("db_invalid_argument", "search.global params must be an object");
+    }
+
+    const auto rawQuery = request.is_object() && request.contains("query") && request["query"].is_string()
+        ? request["query"].get<std::string>()
+        : std::string{};
+    const auto normalizedQuery = LowerAscii(CollapseWhitespaceAscii(rawQuery));
+    const auto likeQuery = "%" + normalizedQuery + "%";
+
+    int limit = 20;
+    int offset = 0;
+    if (request.is_object())
+    {
+        (void)JsonObjectInt(request, "limit", limit);
+        (void)JsonObjectInt(request, "offset", offset);
+    }
+    limit = std::clamp(limit, 1, 50);
+    offset = std::max(offset, 0);
+
+    SearchCandidateMap candidates;
+
+    auto bindQueryPair = [&](sqlite3_stmt* stmt, int firstIndex) -> bool
+    {
+        return BindText(stmt, firstIndex, normalizedQuery) == SQLITE_OK
+            && BindText(stmt, firstIndex + 1, likeQuery) == SQLITE_OK;
+    };
+
+    if (SearchTypeAllowed(request, "world", true)
+        || SearchTypeAllowed(request, "avatar", true)
+        || SearchTypeAllowed(request, "user", true))
+    {
+        const char* sql =
+            "SELECT f.type, f.target_id, f.list_name, f.display_name, f.thumbnail_url, f.added_at, "
+            "       n.note, COALESCE(group_concat(t.tag, ' '), '') AS tags "
+            "FROM local_favorites f "
+            "LEFT JOIN local_favorite_notes n "
+            "  ON n.type = f.type AND n.target_id = f.target_id AND n.list_name = f.list_name "
+            "LEFT JOIN local_favorite_tags t "
+            "  ON t.type = f.type AND t.target_id = f.target_id AND t.list_name = f.list_name "
+            "WHERE (?1 = '' "
+            "   OR lower(f.type) LIKE ?2 "
+            "   OR lower(f.target_id) LIKE ?2 "
+            "   OR lower(COALESCE(f.display_name, '')) LIKE ?2 "
+            "   OR lower(f.list_name) LIKE ?2 "
+            "   OR lower(COALESCE(n.note, '')) LIKE ?2 "
+            "   OR lower(COALESCE(t.tag, '')) LIKE ?2) "
+            "GROUP BY f.type, f.target_id, f.list_name, f.display_name, f.thumbnail_url, f.added_at, n.note "
+            "ORDER BY f.added_at DESC "
+            "LIMIT 200;";
+
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (!bindQueryPair(rawStmt, 1))
+        {
+            return MakeError("db_bind_failed");
+        }
+
+        int rc = SQLITE_OK;
+        while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+        {
+            const auto type = ColumnOptionalText(rawStmt, 0).value_or("other");
+            if (!SearchTypeAllowed(request, type, true))
+            {
+                continue;
+            }
+            const auto targetId = ColumnOptionalText(rawStmt, 1).value_or("");
+            if (targetId.empty())
+            {
+                continue;
+            }
+            const auto listName = ColumnOptionalText(rawStmt, 2).value_or("Library");
+            const auto displayName = ColumnOptionalText(rawStmt, 3).value_or(targetId);
+            const auto thumbnailUrl = ColumnOptionalText(rawStmt, 4);
+            const auto addedAt = ColumnOptionalText(rawStmt, 5);
+            const auto note = ColumnOptionalText(rawStmt, 6).value_or("");
+            const auto tags = ColumnOptionalText(rawStmt, 7).value_or("");
+
+            auto& c = UpsertSearchCandidate(
+                candidates,
+                type,
+                targetId,
+                displayName,
+                "local.favorite",
+                "Local favorite",
+                addedAt);
+            c.isFavorite = true;
+            c.score += 0.20 + TextMatchScore(normalizedQuery, targetId, displayName, listName + " " + note + " " + tags);
+            c.subtitle = "Favorite in " + listName;
+            if (thumbnailUrl.has_value() && !thumbnailUrl->empty() && c.thumbnailUrl.empty())
+            {
+                c.thumbnailUrl = *thumbnailUrl;
+                c.thumbnailKind = IsThumbLocalUrl(*thumbnailUrl) ? "local-thumb" : "remote-cdn";
+                c.thumbnailSource = IsThumbLocalUrl(*thumbnailUrl) ? "thumb.local" : "vrc-api";
+                c.thumbnailVerified = true;
+            }
+            c.evidence.push_back(SearchEvidence(
+                "favorite",
+                "Favorite",
+                "Saved in " + listName + (note.empty() ? "" : " with note"),
+                "local_favorites:" + type + ":" + targetId + ":" + listName,
+                addedAt,
+                "verified",
+                "local-only"));
+        }
+        if (rc != SQLITE_DONE)
+        {
+            return MakeError("db_step_failed");
+        }
+    }
+
+    if (SearchTypeAllowed(request, "world"))
+    {
+        const char* sql =
+            "SELECT w.world_id, COUNT(*) AS visit_count, MIN(w.joined_at), MAX(w.joined_at), "
+            "       (SELECT instance_id FROM world_visits w2 WHERE w2.world_id = w.world_id ORDER BY joined_at DESC LIMIT 1), "
+            "       (SELECT access_type FROM world_visits w2 WHERE w2.world_id = w.world_id ORDER BY joined_at DESC LIMIT 1), "
+            "       (SELECT region FROM world_visits w2 WHERE w2.world_id = w.world_id ORDER BY joined_at DESC LIMIT 1), "
+            "       MAX(w.id) "
+            "FROM world_visits w "
+            "WHERE (?1 = '' "
+            "   OR lower(w.world_id) LIKE ?2 "
+            "   OR lower(w.instance_id) LIKE ?2 "
+            "   OR lower(COALESCE(w.access_type, '')) LIKE ?2 "
+            "   OR lower(COALESCE(w.owner_id, '')) LIKE ?2 "
+            "   OR lower(COALESCE(w.region, '')) LIKE ?2 "
+            "   OR EXISTS ("
+            "       SELECT 1 FROM local_favorites f "
+            "       WHERE f.type = 'world' AND f.target_id = w.world_id "
+            "         AND (lower(COALESCE(f.display_name, '')) LIKE ?2 "
+            "              OR lower(f.list_name) LIKE ?2))) "
+            "GROUP BY w.world_id "
+            "ORDER BY MAX(w.joined_at) DESC "
+            "LIMIT 200;";
+
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (!bindQueryPair(rawStmt, 1))
+        {
+            return MakeError("db_bind_failed");
+        }
+
+        int rc = SQLITE_OK;
+        while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+        {
+            const auto worldId = ColumnOptionalText(rawStmt, 0).value_or("");
+            if (worldId.empty())
+            {
+                continue;
+            }
+            const auto visitCount = sqlite3_column_int(rawStmt, 1);
+            const auto firstSeen = ColumnOptionalText(rawStmt, 2);
+            const auto lastSeen = ColumnOptionalText(rawStmt, 3);
+            const auto instanceId = ColumnOptionalText(rawStmt, 4).value_or("");
+            const auto accessType = ColumnOptionalText(rawStmt, 5).value_or("");
+            const auto region = ColumnOptionalText(rawStmt, 6).value_or("");
+            const auto sourceId = fmt::format("world_visits:{}", sqlite3_column_int64(rawStmt, 7));
+
+            auto& c = UpsertSearchCandidate(
+                candidates,
+                "world",
+                worldId,
+                worldId,
+                "local.world_visit",
+                "World visits",
+                lastSeen);
+            c.visitCount += visitCount;
+            c.firstSeenAt = firstSeen;
+            c.lastSeenAt = lastSeen;
+            c.score += 0.12 + std::min(0.15, static_cast<double>(visitCount) * 0.03)
+                + TextMatchScore(normalizedQuery, worldId, worldId, instanceId + " " + accessType + " " + region);
+            c.subtitle = fmt::format("Visited {} time{}{}", visitCount, visitCount == 1 ? "" : "s",
+                                     lastSeen.has_value() ? ", last " + *lastSeen : "");
+            c.evidence.push_back(SearchEvidence(
+                "world_visit",
+                fmt::format("Visited {}x", visitCount),
+                instanceId.empty() ? "World visit history" : "Latest instance " + instanceId,
+                sourceId,
+                lastSeen,
+                "verified",
+                "local-only"));
+        }
+        if (rc != SQLITE_DONE)
+        {
+            return MakeError("db_step_failed");
+        }
+    }
+
+    if (SearchTypeAllowed(request, "user"))
+    {
+        const char* sql =
+            "SELECT user_id, display_name, SUM(encounter_count), MIN(first_seen), MAX(last_seen), "
+            "       COALESCE(group_concat(DISTINCT world_id), '') "
+            "FROM player_encounters "
+            "WHERE (?1 = '' "
+            "   OR lower(user_id) LIKE ?2 "
+            "   OR lower(display_name) LIKE ?2 "
+            "   OR lower(world_id) LIKE ?2) "
+            "GROUP BY user_id, display_name "
+            "ORDER BY MAX(last_seen) DESC "
+            "LIMIT 200;";
+
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (!bindQueryPair(rawStmt, 1))
+        {
+            return MakeError("db_bind_failed");
+        }
+
+        int rc = SQLITE_OK;
+        while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+        {
+            const auto userId = ColumnOptionalText(rawStmt, 0).value_or("");
+            if (userId.empty())
+            {
+                continue;
+            }
+            const auto displayName = ColumnOptionalText(rawStmt, 1).value_or(userId);
+            const auto encounterCount = sqlite3_column_int(rawStmt, 2);
+            const auto firstSeen = ColumnOptionalText(rawStmt, 3);
+            const auto lastSeen = ColumnOptionalText(rawStmt, 4);
+            const auto worlds = ColumnOptionalText(rawStmt, 5).value_or("");
+
+            auto& c = UpsertSearchCandidate(
+                candidates,
+                "user",
+                userId,
+                displayName,
+                "local.player_encounter",
+                "Player encounters",
+                lastSeen);
+            c.encounterCount += encounterCount;
+            c.firstSeenAt = firstSeen;
+            c.lastSeenAt = lastSeen;
+            c.score += 0.12 + std::min(0.15, static_cast<double>(encounterCount) * 0.02)
+                + TextMatchScore(normalizedQuery, userId, displayName, worlds);
+            c.subtitle = fmt::format("Encountered {} time{}{}", encounterCount, encounterCount == 1 ? "" : "s",
+                                     lastSeen.has_value() ? ", last " + *lastSeen : "");
+            c.evidence.push_back(SearchEvidence(
+                "player_encounter",
+                fmt::format("Seen {}x", encounterCount),
+                worlds.empty() ? "Local player encounter history" : "Seen in worlds " + worlds,
+                "player_encounters:" + userId,
+                lastSeen,
+                "verified",
+                "local-only"));
+        }
+        if (rc != SQLITE_DONE)
+        {
+            return MakeError("db_step_failed");
+        }
+    }
+
+    if (SearchTypeAllowed(request, "timeline_event"))
+    {
+        const char* sql =
+            "SELECT id, kind, user_id, display_name, world_id, instance_id, occurred_at "
+            "FROM player_events "
+            "WHERE (?1 = '' "
+            "   OR lower(COALESCE(user_id, '')) LIKE ?2 "
+            "   OR lower(display_name) LIKE ?2 "
+            "   OR lower(COALESCE(world_id, '')) LIKE ?2 "
+            "   OR lower(COALESCE(instance_id, '')) LIKE ?2 "
+            "   OR lower(kind) LIKE ?2) "
+            "ORDER BY occurred_at DESC "
+            "LIMIT 100;";
+
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (!bindQueryPair(rawStmt, 1))
+        {
+            return MakeError("db_bind_failed");
+        }
+
+        int rc = SQLITE_OK;
+        while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+        {
+            const auto rowId = sqlite3_column_int64(rawStmt, 0);
+            const auto kind = ColumnOptionalText(rawStmt, 1).value_or("event");
+            const auto userId = ColumnOptionalText(rawStmt, 2);
+            const auto displayName = ColumnOptionalText(rawStmt, 3).value_or("Player event");
+            const auto worldId = ColumnOptionalText(rawStmt, 4).value_or("");
+            const auto instanceId = ColumnOptionalText(rawStmt, 5).value_or("");
+            const auto occurredAt = ColumnOptionalText(rawStmt, 6);
+            const auto resultId = userId.has_value() && !userId->empty()
+                ? *userId
+                : fmt::format("timeline:player_events:{}", rowId);
+            const auto resultType = userId.has_value() && !userId->empty() ? "user" : "timeline_event";
+            if (!SearchTypeAllowed(request, resultType))
+            {
+                continue;
+            }
+
+            auto& c = UpsertSearchCandidate(
+                candidates,
+                resultType,
+                resultId,
+                displayName,
+                "local.player_event",
+                "Player events",
+                occurredAt);
+            c.score += 0.06 + TextMatchScore(normalizedQuery, resultId, displayName, worldId + " " + instanceId + " " + kind);
+            if (c.subtitle.empty())
+            {
+                c.subtitle = kind + (worldId.empty() ? "" : " in " + worldId);
+            }
+            c.evidence.push_back(SearchEvidence(
+                kind == "left" ? "player_leave" : "player_join",
+                kind == "left" ? "Left" : "Joined",
+                displayName + " " + kind + (worldId.empty() ? "" : " in " + worldId),
+                fmt::format("player_events:{}", rowId),
+                occurredAt,
+                "verified",
+                "local-only"));
+        }
+        if (rc != SQLITE_DONE)
+        {
+            return MakeError("db_step_failed");
+        }
+    }
+
+    if (SearchTypeAllowed(request, "avatar"))
+    {
+        const char* sql =
+            "SELECT avatar_id, avatar_name, author_name, first_seen_on, first_seen_at, release_status, first_seen_user_id, "
+            "       resolved_avatar_id, resolved_thumbnail_url, resolution_status, resolved_at "
+            "FROM avatar_history "
+            "WHERE (?1 = '' "
+            "   OR lower(avatar_id) LIKE ?2 "
+            "   OR lower(COALESCE(avatar_name, '')) LIKE ?2 "
+            "   OR lower(COALESCE(author_name, '')) LIKE ?2 "
+            "   OR lower(COALESCE(first_seen_on, '')) LIKE ?2 "
+            "   OR lower(COALESCE(first_seen_user_id, '')) LIKE ?2 "
+            "   OR EXISTS ("
+            "       SELECT 1 FROM local_favorites f "
+            "       WHERE f.type = 'avatar' AND f.target_id = avatar_history.avatar_id "
+            "         AND (lower(COALESCE(f.display_name, '')) LIKE ?2 "
+            "              OR lower(f.list_name) LIKE ?2))) "
+            "ORDER BY first_seen_at DESC "
+            "LIMIT 200;";
+
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard stmt(rawStmt);
+        if (!bindQueryPair(rawStmt, 1))
+        {
+            return MakeError("db_bind_failed");
+        }
+
+        int rc = SQLITE_OK;
+        while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+        {
+            const auto avatarId = ColumnOptionalText(rawStmt, 0).value_or("");
+            if (avatarId.empty())
+            {
+                continue;
+            }
+            const auto avatarName = ColumnOptionalText(rawStmt, 1).value_or(avatarId);
+            const auto authorName = ColumnOptionalText(rawStmt, 2).value_or("");
+            const auto firstSeenOn = ColumnOptionalText(rawStmt, 3).value_or("");
+            const auto firstSeenAt = ColumnOptionalText(rawStmt, 4);
+            const auto releaseStatus = ColumnOptionalText(rawStmt, 5).value_or("");
+            const auto wearerUserId = ColumnOptionalText(rawStmt, 6).value_or("");
+            const auto resolvedAvatarId = ColumnOptionalText(rawStmt, 7).value_or("");
+            const auto resolvedThumb = ColumnOptionalText(rawStmt, 8).value_or("");
+            const auto resolutionStatus = ColumnOptionalText(rawStmt, 9).value_or("");
+            const auto resolvedAt = ColumnOptionalText(rawStmt, 10);
+
+            auto& c = UpsertSearchCandidate(
+                candidates,
+                "avatar",
+                avatarId,
+                avatarName,
+                "local.avatar_history",
+                "Avatar history",
+                firstSeenAt);
+            c.firstSeenAt = firstSeenAt;
+            c.lastSeenAt = firstSeenAt;
+            c.score += 0.14 + TextMatchScore(
+                normalizedQuery,
+                avatarId,
+                avatarName,
+                authorName + " " + firstSeenOn + " " + wearerUserId + " " + releaseStatus);
+            c.subtitle = firstSeenOn.empty()
+                ? "Seen in local avatar history"
+                : "Seen on " + firstSeenOn;
+
+            if (resolutionStatus == "resolved" && resolvedAvatarId == avatarId && !resolvedThumb.empty() && c.thumbnailUrl.empty())
+            {
+                c.thumbnailUrl = resolvedThumb;
+                c.thumbnailKind = IsThumbLocalUrl(resolvedThumb) ? "local-thumb" : "remote-cdn";
+                c.thumbnailSource = IsThumbLocalUrl(resolvedThumb) ? "thumb.local" : "vrc-api";
+                c.thumbnailVerified = true;
+            }
+            else if (resolutionStatus == "resolved" && !resolvedThumb.empty())
+            {
+                c.warnings.insert("thumbnail-reference-only");
+            }
+
+            c.evidence.push_back(SearchEvidence(
+                "avatar_seen",
+                "Seen avatar",
+                firstSeenOn.empty()
+                    ? "Log-derived avatar history"
+                    : "Log-derived avatar row seen on " + firstSeenOn,
+                "avatar_history:" + avatarId,
+                firstSeenAt,
+                "verified",
+                resolvedAt.has_value() ? "local-cache" : "local-only"));
+        }
+        if (rc != SQLITE_DONE)
+        {
+            return MakeError("db_step_failed");
+        }
+    }
+
+    std::vector<GlobalSearchCandidate> sorted;
+    sorted.reserve(candidates.size());
+    for (auto& [_, candidate] : candidates)
+    {
+        if (candidate.evidence.empty())
+        {
+            continue;
+        }
+        sorted.push_back(std::move(candidate));
+    }
+
+    std::sort(sorted.begin(), sorted.end(), [](const GlobalSearchCandidate& a, const GlobalSearchCandidate& b)
+    {
+        if (a.score != b.score)
+        {
+            return a.score > b.score;
+        }
+        if (a.updatedAt != b.updatedAt)
+        {
+            return a.updatedAt > b.updatedAt;
+        }
+        return a.displayName < b.displayName;
+    });
+
+    nlohmann::json items = nlohmann::json::array();
+    const auto start = static_cast<std::size_t>(std::min<int>(offset, static_cast<int>(sorted.size())));
+    const auto end = std::min(sorted.size(), start + static_cast<std::size_t>(limit));
+    for (std::size_t i = start; i < end; ++i)
+    {
+        items.push_back(CandidateToJson(sorted[i]));
+    }
+
+    nlohmann::json diagnostics{
+        {"localSources", nlohmann::json::array({"local_favorites", "world_visits", "player_events", "player_encounters", "avatar_history"})},
+        {"remoteSources", nlohmann::json::array()},
+        {"cacheHit", false},
+        {"remoteSuppressedReason", "disabled"},
+    };
+
+    return nlohmann::json{
+        {"query", rawQuery},
+        {"normalizedQuery", normalizedQuery},
+        {"mode", "local"},
+        {"items", items},
+        {"nextOffset", end < sorted.size() ? nlohmann::json(static_cast<int>(end)) : nlohmann::json(nullptr)},
+        {"diagnostics", diagnostics},
+    };
 }
 
 Result<std::monostate> Database::InitSchema()

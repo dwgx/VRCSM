@@ -36,6 +36,10 @@ This file maps the repo's Markdown documents so the next agent can start from th
 
 ## Planning / Research Docs
 
+- `docs/GLOBAL-SEARCH-SPEC.md`
+  - Implementation-backed spec for Global Quick Search + Timeline evidence model.
+  - Defines shipped local-only `search.global` v1, the evidence-first result schema, local-first ranking, disabled remote API policy for v1, and 1-month / 3-month follow-up rollout.
+
 - `docs/VRCSM-PLAN.md`
   - Older but still useful product roadmap: VRCX comparison, auth layer plan, social/avatar/world/history feature mapping, and explicit non-goals.
   - Treat as strategic context, not a current implementation contract.
@@ -60,7 +64,7 @@ This file maps the repo's Markdown documents so the next agent can start from th
 
 - `docs/NEXT-AGENT-HANDOFF.md`
   - Current branch, latest commits, verification commands, sensitive decisions, likely next work.
-  - Read before changing avatar thumbnails, VRLink repair, plugin permissions, cache deletion, downloads, or release packaging.
+  - Read before changing avatar thumbnails, global search, VRLink repair, plugin permissions, cache deletion, downloads, or release packaging.
 
 ## Plugin Docs
 

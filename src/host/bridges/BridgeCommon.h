@@ -28,15 +28,6 @@ inline nlohmann::json ToJson(const T& value)
     return nlohmann::json(value);
 }
 
-// Structured exception carrying a full Error — the dispatch layer catches
-// this to produce PostError(id, err.code, err.message).
-struct IpcException : std::exception
-{
-    vrcsm::core::Error err;
-    explicit IpcException(vrcsm::core::Error e) : err(std::move(e)) {}
-    const char* what() const noexcept override { return err.message.c_str(); }
-};
-
 // Unwrap a Result<json> — returns the value on success, throws
 // IpcException on failure.
 inline nlohmann::json unwrapResult(vrcsm::core::Result<nlohmann::json>&& r)

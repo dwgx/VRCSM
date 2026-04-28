@@ -6,6 +6,7 @@ $buildDir  = "$repo\build\x64-release\src\host"
 $outDir    = "$repo\build\release"
 $zipOut    = "$outDir\VRCSM_v${version}_x64.zip"
 $msiOut    = "$outDir\VRCSM_v${version}_x64_Installer.msi"
+$stagingDir = Join-Path $outDir "portable-staging"
 $wix       = "$env:USERPROFILE\.dotnet\tools\wix.exe"
 $icon      = "$repo\resources\icons\vrcsm.ico"
 $wxs       = "$repo\installer\vrcsm.wxs"
@@ -25,7 +26,26 @@ if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out
 # --- ZIP ---
 Write-Host "[package] Building ZIP -> $zipOut"
 if (Test-Path $zipOut) { Remove-Item $zipOut -Force }
-Compress-Archive -Path "$buildDir\*" -DestinationPath $zipOut
+$oldExeBackups = @(Get-ChildItem -LiteralPath $buildDir -File -Filter 'VRCSM.exe.*.old' -ErrorAction SilentlyContinue)
+if ($oldExeBackups.Count -gt 0) {
+    Write-Warning "[package] Excluding $($oldExeBackups.Count) stale executable backup(s): VRCSM.exe.*.old"
+}
+
+if (Test-Path $stagingDir) { Remove-Item -LiteralPath $stagingDir -Recurse -Force }
+New-Item -ItemType Directory -Path $stagingDir | Out-Null
+
+try {
+    Get-ChildItem -LiteralPath $buildDir -Force |
+        Where-Object { $_.Name -notmatch '^VRCSM\.exe\..+\.old$' } |
+        ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $stagingDir -Recurse -Force
+        }
+
+    Compress-Archive -Path (Join-Path $stagingDir '*') -DestinationPath $zipOut
+}
+finally {
+    if (Test-Path $stagingDir) { Remove-Item -LiteralPath $stagingDir -Recurse -Force }
+}
 $zipSize = [math]::Round((Get-Item $zipOut).Length / 1MB, 1)
 Write-Host "[package] ZIP done: ${zipSize} MB"
 

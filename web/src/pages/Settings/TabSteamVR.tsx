@@ -122,6 +122,8 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       .readSteamVrConfig()
       .then((c) => {
         if ((c as any).error) {
+          setConfig({ ok: false, error: (c as any).error });
+          if (!preserveDirty) setDirty(false);
           if ((c as any).error.code !== "not_found") {
             toast.error(t("settings.steamvr.errorRead", { defaultValue: "Failed to read steamvr.vrsettings: {{msg}}", msg: (c as any).error.message }));
           }
@@ -132,6 +134,8 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e);
+        setConfig({ ok: false, error: { code: "read_failed", message: msg } });
+        if (!preserveDirty) setDirty(false);
         toast.error(t("settings.steamvr.errorRead", { defaultValue: "Failed to read steamvr.vrsettings: {{msg}}", msg }));
       })
       .finally(() => setLoading(false));
@@ -167,11 +171,9 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
     };
   }, []);
 
-  if (!config || !config.ok) {
-    return null;
-  }
-
-  const steamVrProcRunning = config.steamvr_running === true;
+  const configReady = Boolean(config?.ok);
+  const configError = !configReady ? (config as any)?.error : null;
+  const steamVrProcRunning = configReady && config.steamvr_running === true;
   // Only SteamVR itself blocks a safe write — its rolling autosave
   // races with our atomic rename. VRChat running is irrelevant when it's
   // in desktop mode; when it's in VR mode, SteamVR is already up and
@@ -179,7 +181,7 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
   // overcautious blanket ban that surprised users.
   const locked = steamVrProcRunning;
   void vrcRunning;
-  const knownDevices: string[] = Array.isArray(config.knownDevices) ? config.knownDevices : [];
+  const knownDevices: string[] = configReady && Array.isArray(config.knownDevices) ? config.knownDevices : [];
 
   const setField = (section: string, key: string, val: any) => {
     setDirty(true);
@@ -379,6 +381,10 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
     return action;
   };
 
+  const repairFailureText = (res: SteamVrLinkRepairResult) =>
+    res.failures?.map((failure) => failure.error).filter(Boolean).join("; ") ||
+    t("settings.steamvr.linkRepair.reviewFailures", { defaultValue: "Review the result details below." });
+
   const repairParamsForPlan = (planId: string, dryRun: boolean) => ({
     planId,
     dryRun,
@@ -491,12 +497,33 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       setLinkRepair(res);
       void loadBackups();
       if (dryRun) {
-        toast.info(t("settings.steamvr.linkRepair.dryRunDone", { defaultValue: "Dry-run complete. Review the planned repair steps." }));
+        if (res.ok) {
+          toast.info(t("settings.steamvr.linkRepair.dryRunDone", { defaultValue: "Dry-run complete. Review the planned repair steps." }));
+        } else {
+          toast.warning(t("settings.steamvr.linkRepair.dryRunWarning", {
+            msg: repairFailureText(res),
+            defaultValue: "Dry-run completed with warnings: {{msg}}",
+          }));
+        }
       } else if (planId === "quest-link-backup") {
-        toast.success(t("settings.steamvr.linkRepair.backupDone", { defaultValue: "Quest Link settings backup created." }));
+        if (res.ok) {
+          toast.success(t("settings.steamvr.linkRepair.backupDone", { defaultValue: "Quest Link settings backup created." }));
+        } else {
+          toast.warning(t("settings.steamvr.linkRepair.backupPartial", {
+            msg: repairFailureText(res),
+            defaultValue: "Quest Link backup completed with warnings: {{msg}}",
+          }));
+        }
       } else {
-        toast.success(t("settings.steamvr.linkRepair.repairDone", { defaultValue: "Repair applied. Steam validation has been opened." }));
-        void diagnoseSteamLink();
+        if (res.ok) {
+          toast.success(t("settings.steamvr.linkRepair.repairDone", { defaultValue: "Repair applied. Steam validation has been opened." }));
+          void diagnoseSteamLink();
+        } else {
+          toast.warning(t("settings.steamvr.linkRepair.repairPartial", {
+            msg: repairFailureText(res),
+            defaultValue: "Repair completed with warnings: {{msg}}",
+          }));
+        }
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -516,11 +543,18 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
       });
       setLinkRepair(res);
       void loadBackups();
-      toast.success(t("settings.steamvr.linkRepair.restoreDone", {
-        count: res.restored ?? 0,
-        defaultValue: "Restored {{count}} backed-up item(s).",
-      }));
-      void diagnoseSteamLink();
+      if (res.ok) {
+        toast.success(t("settings.steamvr.linkRepair.restoreDone", {
+          count: res.restored ?? 0,
+          defaultValue: "Restored {{count}} backed-up item(s).",
+        }));
+        void diagnoseSteamLink();
+      } else {
+        toast.warning(t("settings.steamvr.linkRepair.restorePartial", {
+          msg: repairFailureText(res),
+          defaultValue: "Restore completed with warnings: {{msg}}",
+        }));
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(t("settings.steamvr.linkRepair.restoreFailed", { msg, defaultValue: "Restore failed: {{msg}}" }));
@@ -545,9 +579,9 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
     }
   };
 
-  const link = config.driver_vrlink || {};
-  const steamvr = config.steamvr || {};
-  const hw = config.hardware || {};
+  const link = configReady ? config.driver_vrlink || {} : {};
+  const steamvr = configReady ? config.steamvr || {} : {};
+  const hw = configReady ? config.hardware || {} : {};
 
   return (
     <Card>
@@ -563,7 +597,12 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
             </CardDescription>
           </div>
           <div className="flex flex-shrink-0 items-center gap-2">
-            {steamVrProcRunning ? (
+            {!configReady ? (
+              <Badge variant="warning" className="gap-1">
+                <AlertTriangle className="size-3" />
+                {t("settings.steamvr.configNotFoundBadge", { defaultValue: "Settings not found" })}
+              </Badge>
+            ) : steamVrProcRunning ? (
               <Badge variant="warning" className="gap-1">
                 <Lock className="size-3" />
                 {t("settings.steamvr.vrRunning", { defaultValue: "VR Runtime Active" })}
@@ -578,14 +617,14 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
               <RefreshCw className={loading ? "animate-spin size-3 mr-2" : "size-3 mr-2"} />
               {t("settings.steamvr.reload", { defaultValue: "Reload" })}
             </Button>
-            <Button size="sm" onClick={saveConfig} disabled={saving || locked || !dirty} className={dirty && !saving && !locked ? "relative after:absolute after:top-1 after:right-1 after:size-1.5 after:rounded-full after:bg-[hsl(var(--primary))]" : ""}>
+            <Button size="sm" onClick={saveConfig} disabled={saving || locked || !dirty || !configReady} className={dirty && !saving && !locked && configReady ? "relative after:absolute after:top-1 after:right-1 after:size-1.5 after:rounded-full after:bg-[hsl(var(--primary))]" : ""}>
               {saving ? t("settings.steamvr.saving", { defaultValue: "Saving..." }) : dirty ? t("settings.steamvr.saveDirty", { defaultValue: "Save Settings *" }) : t("settings.steamvr.save", { defaultValue: "Save Settings" })}
             </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 pt-0">
-        {knownDevices.length > 0 && (
+        {configReady && knownDevices.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 p-2 rounded bg-[hsl(var(--surface-raised))] border border-[hsl(var(--border))]">
             <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-1">
               {t("settings.steamvr.knownDevices", { defaultValue: "Detected VR Devices:" })}
@@ -595,16 +634,31 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
             ))}
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-2 mb-2 p-2 rounded bg-[hsl(var(--surface-raised))] border border-[hsl(var(--border))]">
-          <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-2">{t("settings.steamvr.quickPresets", { defaultValue: "Quick Presets:" })}</span>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(50, 0.8, 72, false, true, true)} disabled={locked}>{t("settings.steamvr.presetPerformance", { defaultValue: "Performance (50Mbps)" })}</Button>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(90, 1.0, 72, false, true, true)} disabled={locked}>{t("settings.steamvr.presetBalanced", { defaultValue: "Balanced (90Mbps)" })}</Button>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(130, 1.2, 90, false, true, true)} disabled={locked}>{t("settings.steamvr.presetQuality", { defaultValue: "Quality (130Mbps)" })}</Button>
-          <Button size="sm" variant="secondary" onClick={() => applyPreset(90, 1.0, 72, false, true, true)} disabled={locked} title={t("settings.steamvr.presetQuest3Hint", { defaultValue: "Tuned for Quest 3 via Steam Link" })}>{t("settings.steamvr.presetQuest3", { defaultValue: "Quest 3 Stable" })}</Button>
-        </div>
+        {configReady ? (
+          <div className="flex flex-wrap items-center gap-2 mb-2 p-2 rounded bg-[hsl(var(--surface-raised))] border border-[hsl(var(--border))]">
+            <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))] mr-2">{t("settings.steamvr.quickPresets", { defaultValue: "Quick Presets:" })}</span>
+            <Button size="sm" variant="secondary" onClick={() => applyPreset(50, 0.8, 72, false, true, true)} disabled={locked}>{t("settings.steamvr.presetPerformance", { defaultValue: "Performance (50Mbps)" })}</Button>
+            <Button size="sm" variant="secondary" onClick={() => applyPreset(90, 1.0, 72, false, true, true)} disabled={locked}>{t("settings.steamvr.presetBalanced", { defaultValue: "Balanced (90Mbps)" })}</Button>
+            <Button size="sm" variant="secondary" onClick={() => applyPreset(130, 1.2, 90, false, true, true)} disabled={locked}>{t("settings.steamvr.presetQuality", { defaultValue: "Quality (130Mbps)" })}</Button>
+            <Button size="sm" variant="secondary" onClick={() => applyPreset(90, 1.0, 72, false, true, true)} disabled={locked} title={t("settings.steamvr.presetQuest3Hint", { defaultValue: "Tuned for Quest 3 via Steam Link" })}>{t("settings.steamvr.presetQuest3", { defaultValue: "Quest 3 Stable" })}</Button>
+          </div>
+        ) : (
+          <div className="rounded-[var(--radius-md)] border border-[hsl(var(--warning)/0.45)] bg-[hsl(var(--warning)/0.08)] px-4 py-3 text-[12px]">
+            <div className="mb-1 flex items-center gap-2 font-semibold text-[hsl(var(--foreground))]">
+              <AlertTriangle className="size-4 text-[hsl(var(--warning))]" />
+              {t("settings.steamvr.configNotFoundTitle", { defaultValue: "steamvr.vrsettings not found" })}
+            </div>
+            <p className="leading-relaxed text-[hsl(var(--muted-foreground))]">
+              {t("settings.steamvr.configNotFoundBody", {
+                msg: configError?.message ?? "",
+                defaultValue: "VRCSM could not read SteamVR's settings file. Diagnostics and backup-first repair remain available; the parameter editor is disabled until SteamVR creates the file.",
+              })}
+            </p>
+          </div>
+        )}
 
         {/* Quest 3 troubleshooting hint — shown when hardware looks like Quest */}
-        {(hw.hmdModel?.toLowerCase().includes("quest") || knownDevices.some((d) => d.toLowerCase().includes("quest"))) && (
+        {configReady && (hw.hmdModel?.toLowerCase().includes("quest") || knownDevices.some((d) => d.toLowerCase().includes("quest"))) && (
           <div className="rounded-[var(--radius-md)] border border-[hsl(var(--primary)/0.35)] bg-[hsl(var(--primary)/0.06)] px-4 py-3 text-[12px]">
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--primary))]">
               {t("settings.steamvr.questSection.title", { defaultValue: "Quest troubleshooting" })}
@@ -815,7 +869,7 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
                   <button
                     key={profile.id}
                     type="button"
-                    disabled={locked}
+                    disabled={locked || !configReady}
                     onClick={() => applySettingsProfile(profile)}
                     className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-2 text-left transition hover:border-[hsl(var(--primary)/0.45)] disabled:opacity-50"
                   >
@@ -840,11 +894,15 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
           {linkRepair ? (
             <div className="mt-3 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] p-3 text-[11px]">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={linkRepair.dryRun ? "secondary" : linkRepair.ok ? "success" : "warning"} className="text-[10px]">
+                <Badge variant={linkRepair.dryRun && linkRepair.ok ? "secondary" : linkRepair.ok ? "success" : "warning"} className="text-[10px]">
                   {linkRepair.dryRun
-                    ? t("settings.steamvr.linkRepair.dryRunShort", { defaultValue: "Dry-run" })
+                    ? linkRepair.ok
+                      ? t("settings.steamvr.linkRepair.dryRunShort", { defaultValue: "Dry-run" })
+                      : t("settings.steamvr.linkRepair.dryRunWarningShort", { defaultValue: "Dry-run warning" })
                     : linkRepair.ok
-                      ? t("settings.steamvr.linkRepair.applied", { defaultValue: "Applied" })
+                      ? typeof linkRepair.restored === "number"
+                        ? t("settings.steamvr.linkRepair.restoredShort", { defaultValue: "Restored" })
+                        : t("settings.steamvr.linkRepair.applied", { defaultValue: "Applied" })
                       : t("settings.steamvr.linkRepair.partial", { defaultValue: "Partial" })}
                 </Badge>
                 {linkRepair.planId && (
@@ -878,7 +936,7 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
                         : t("common.no", { defaultValue: "no" })}
                     </div>
                     {typeof linkRepair.restored === "number" && (
-                      <div>{t("settings.steamvr.linkRepair.resultRestored", { defaultValue: "Restored" })}: {linkRepair.restored}</div>
+                      <div>{t("settings.steamvr.linkRepair.resultRestoreCount", { defaultValue: "Restore count" })}: {linkRepair.restored}</div>
                     )}
                     {linkRepair.currentBackupDir && (
                       <div className="break-all">
@@ -950,6 +1008,7 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
           ) : null}
         </div>
 
+        {configReady ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <SettingRow label={t("settings.steamvr.targetBandwidth.label", { defaultValue: "Target Bandwidth (Mbps)" })} hint={t("settings.steamvr.targetBandwidth.hint", { defaultValue: "Bitrate limit for Steam Link. Up to 150-200 for good routers." })}>
             <div className="w-[200px]">
@@ -1059,6 +1118,13 @@ export function TabSteamVR({ vrcRunning }: { vrcRunning: boolean }) {
             );
           })()}
         </div>
+        ) : (
+          <div className="rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-6 text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("settings.steamvr.editorUnavailable", {
+              defaultValue: "SteamVR configuration editor unavailable: steamvr.vrsettings is not installed or has not been created yet.",
+            })}
+          </div>
+        )}
         <Dialog
           open={confirmRequest !== null}
           onOpenChange={(open) => {

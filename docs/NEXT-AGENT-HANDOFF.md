@@ -9,8 +9,33 @@ Last updated: 2026-04-29
 - Latest implementation commit before this doc pass: `74e522a Harden preview cache and thumbnail loading`
 - Remote: `origin https://github.com/dwgx/VRCSM.git`
 - Current app version shown in UI / release artifacts: `0.14.3`
+- Release metadata gate now has `scripts/verify-release-metadata.ps1` for
+  CI/package drift checks. It covers pnpm lock usage, README network/signing
+  claims, portable ZIP `.old` exclusions, and `VERSION` alignment with
+  `web/package.json`, `vcpkg.json`, and README artifact names.
 
 ## What Was Just Stabilized
+
+### Global Quick Search v1
+
+- `search.global` is now a local-only async IPC method backed by `Database::GlobalSearch()`.
+- The search aggregator merges local favorites, world visits, player events, player encounters, and avatar history into evidence-first results.
+- Remote VRChat API enrichment is intentionally disabled in v1. `includeRemote` is accepted, but diagnostics report no remote sources and `remoteSuppressedReason: "disabled"`.
+- `Ctrl+K` / command palette calls `search.global` and renders evidence-backed world/user/avatar rows before the built-in command list.
+- Historical avatar thumbnails keep the existing semantic guard: wearer/current-profile reference images are not promoted unless the resolved avatar id matches the logged avatar id.
+
+Important files:
+
+- `src/core/Database.cpp`
+- `src/core/Database.h`
+- `src/host/bridges/SearchBridge.cpp`
+- `src/host/IpcBridge.cpp`
+- `src/host/IpcBridge.h`
+- `web/src/components/CommandPalette.tsx`
+- `web/src/lib/ipc.ts`
+- `web/src/lib/types.ts`
+- `tests/CommonTests.cpp`
+- `docs/GLOBAL-SEARCH-SPEC.md`
 
 ### Avatar Preview / Thumbnail Pipeline
 
@@ -77,22 +102,22 @@ The last implementation pass verified:
 
 ```powershell
 pnpm --prefix web build
+pnpm --prefix web test
 pnpm --prefix web test:smoke
 cmd.exe /s /c '"D:\Software\MS\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
 ctest --test-dir build\x64-release --output-on-failure
-scripts\build-msi.bat
-Start-Process -FilePath "D:\Project\VRCSM\build\x64-release\src\host\VRCSM.exe"
-git push origin main
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-release-metadata.ps1
 ```
 
 Observed results:
 
 - Web build: passed.
+- Web tests: 78/78 passed.
 - Web smoke: 22/22 passed.
 - C++ release build: passed.
-- CTest: 32/32 passed.
-- MSI: `build\msi\VRCSM-0.14.3-x64.msi`.
-- Release exe launched from `build\x64-release\src\host\VRCSM.exe`.
+- CTest: 38/38 passed.
+- Release metadata gate: passed, `version=0.14.3`.
+- MSI and release-exe launch were not rerun for the global-search feature cut.
 
 ## Known Watch Points
 
@@ -101,6 +126,7 @@ Observed results:
 - Stop running `VRCSM.exe` before building release, otherwise the linker may fail.
 - Do not commit generated `web/dist`, `build/`, or MSI artifacts unless the user explicitly asks.
 - Some docs are historical; prefer `MEMORY.md`, this handoff, `AGENTS.md`, and `CHANGELOG.md` for current behavior.
+- Global search v1 is local-only by design. Do not add live remote fanout to keystroke search without a debounce/cache/rate-limit plan and tests.
 
 ## If The User Says "Continue"
 
