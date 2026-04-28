@@ -115,6 +115,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "fs.writePlan",
         "fs.appDataDir",
         "thumbnails.fetch",
+        "images.cache",
         "auth.status",
         "auth.user",
         "auth.logout",
@@ -599,6 +600,7 @@ void IpcBridge::RegisterHandlers()
 
     // Thumbnails / Auth
     m_handlers.emplace("thumbnails.fetch", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleThumbnailsFetch(p, id); });
+    m_handlers.emplace("images.cache", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleImagesCache(p, id); });
     m_handlers.emplace("auth.status", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAuthStatus(p, id); });
     m_handlers.emplace("auth.login", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAuthLogin(p, id); });
     m_handlers.emplace("auth.verify2FA", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAuthVerify2FA(p, id); });

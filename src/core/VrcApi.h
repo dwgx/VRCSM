@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -27,6 +28,21 @@ struct ThumbnailResult
 };
 
 void to_json(nlohmann::json& j, const ThumbnailResult& r);
+
+// Generic VRChat image disk-cache result. Used for wearer profile/reference
+// images that are not addressable by an avtr_/wrld_ id but should still load
+// from VRCSM's own AppData cache on the next app start.
+struct CachedImageResult
+{
+    std::string id;
+    std::string url;
+    std::optional<std::string> localUrl;
+    bool imageCached{false};
+    std::string source{"network"};
+    std::optional<std::string> error;
+};
+
+void to_json(nlohmann::json& j, const CachedImageResult& r);
 
 // Outcome of a native VRChat login attempt. Mirrors VRChat's own
 // /api/1/auth/user contract: a successful password check either
@@ -95,6 +111,13 @@ public:
     static std::vector<ThumbnailResult> fetchThumbnails(
         const std::vector<std::string>& ids,
         bool downloadImages = false);
+
+    static CachedImageResult cacheImageUrl(
+        const std::string& id,
+        const std::string& url);
+
+    static std::vector<CachedImageResult> cacheImageUrls(
+        const std::vector<std::pair<std::string, std::string>>& items);
 
     // Auth-gated VRChat endpoints. They require a real VRChat browser
     // session cookie in the `AuthStore`, which is populated by the

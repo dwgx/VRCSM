@@ -36,6 +36,8 @@ type CacheEntry =
   | { state: "pending"; promise: Promise<string | null> };
 
 const memo = new Map<string, CacheEntry>();
+const lowPriorityQueue = new Set<string>();
+let lowPriorityTimer: number | null = null;
 
 // A successful URL never expires (the resolved CDN URL doesn't move within a
 // session). A negative result (genuinely not-found) is cached for 5 min so
@@ -47,6 +49,14 @@ const FOREVER = Number.POSITIVE_INFINITY;
 
 function isResolvedFresh(e: CacheEntry, now: number): e is { state: "resolved"; url: string | null; expiresAt: number } {
   return e.state === "resolved" && e.expiresAt > now;
+}
+
+function needsFetch(id: string, now: number): boolean {
+  if (!isLookupSupported(id)) return false;
+  const hit = memo.get(id);
+  if (!hit) return true;
+  if (hit.state === "pending") return false;
+  return !isResolvedFresh(hit, now);
 }
 
 // Generation counter + listeners let mounted `useThumbnail` hooks re-run
@@ -194,12 +204,7 @@ export function prefetchThumbnails(ids: string[]): void {
     }
   }
 
-  const need = ids.filter((id) => {
-    const hit = memo.get(id);
-    if (!hit) return isLookupSupported(id);
-    if (hit.state === "pending") return false;
-    return isLookupSupported(id) && !isResolvedFresh(hit, now);
-  });
+  const need = ids.filter((id) => needsFetch(id, now));
   if (need.length === 0) return;
 
   const batchPromise = ipc
@@ -254,4 +259,33 @@ export function prefetchThumbnails(ids: string[]): void {
       }),
     });
   }
+}
+
+function pumpLowPriorityQueue(): void {
+  lowPriorityTimer = null;
+  const now = Date.now();
+  const batch: string[] = [];
+  for (const id of Array.from(lowPriorityQueue)) {
+    lowPriorityQueue.delete(id);
+    if (!needsFetch(id, now)) continue;
+    batch.push(id);
+    if (batch.length >= 6) break;
+  }
+  if (batch.length > 0) {
+    prefetchThumbnails(batch);
+  }
+  if (lowPriorityQueue.size > 0) {
+    lowPriorityTimer = window.setTimeout(pumpLowPriorityQueue, 450);
+  }
+}
+
+/** Queue lookahead thumbnails in small delayed batches so visible rows and
+ * explicit user clicks keep the fast lane. */
+export function prefetchThumbnailsLowPriority(ids: string[]): void {
+  const now = Date.now();
+  for (const id of ids) {
+    if (needsFetch(id, now)) lowPriorityQueue.add(id);
+  }
+  if (lowPriorityQueue.size === 0 || lowPriorityTimer !== null) return;
+  lowPriorityTimer = window.setTimeout(pumpLowPriorityQueue, 250);
 }
