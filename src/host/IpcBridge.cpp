@@ -14,6 +14,7 @@
 
 #include "../core/plugins/PluginRegistry.h"
 
+#include <cctype>
 #include <future>
 #include <thread>
 #include <unordered_set>
@@ -182,6 +183,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "db.stats.heatmap",
         "db.stats.overview",
         "db.history.clear",
+        "search.global",
         "favorites.lists",
         "favorites.items",
         "favorites.add",
@@ -248,30 +250,18 @@ const std::unordered_set<std::string>& AsyncMethodSet()
     return kMethods;
 }
 
-// Methods reachable from inside a plugin iframe. Everything else
-// must go through `plugin.rpc` which goes through the permission
-// gate. This is the origin-security seam — a plugin that tries to
-// call `delete.execute` directly gets a forbidden_origin error.
+// The only method reachable directly from inside a plugin iframe.
+// Every host call must go through `plugin.rpc` so the permission gate
+// can evaluate the real caller plugin id. This is the origin-security
+// seam — a plugin that tries to call `delete.execute` directly gets a
+// forbidden_origin error.
 const std::unordered_set<std::string>& PluginReachableMethods()
 {
     static const std::unordered_set<std::string> kMethods = {
         "plugin.rpc",
-        "plugin.self.info",
-        "plugin.self.i18n",
     };
     return kMethods;
 }
-
-// Structured exception carrying a full Error — the dispatch layer
-// catches this to produce PostError(id, err.code, err.message) with
-// the correct error code instead of the generic "handler_error".
-// Declared here so bridges/*.cpp can also throw it via BridgeCommon.h.
-struct IpcException : std::exception
-{
-    vrcsm::core::Error err;
-    explicit IpcException(vrcsm::core::Error e) : err(std::move(e)) {}
-    const char* what() const noexcept override { return err.message.c_str(); }
-};
 
 std::optional<std::string> ExtractId(const nlohmann::json& envelope)
 {
@@ -280,6 +270,20 @@ std::optional<std::string> ExtractId(const nlohmann::json& envelope)
         return std::nullopt;
     }
     return envelope.at("id").get<std::string>();
+}
+
+std::string HostFromOrigin(std::string_view origin)
+{
+    std::string host(origin);
+    const auto schemeEnd = host.find("://");
+    if (schemeEnd != std::string::npos) host.erase(0, schemeEnd + 3);
+    const auto slash = host.find('/');
+    if (slash != std::string::npos) host.erase(slash);
+    const auto colon = host.find(':');
+    if (colon != std::string::npos) host.erase(colon);
+    std::transform(host.begin(), host.end(), host.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return host;
 }
 
 std::optional<std::string> JsonStringField(const nlohmann::json& json, const char* key)
@@ -395,13 +399,20 @@ void IpcBridge::DispatchFromOrigin(const std::string& originUri, const std::stri
         const nlohmann::json params = envelope.value("params", nlohmann::json::object());
 
         // ── Origin classification ──
-        // Empty caller id means "host SPA" (app.vrcsm) — full access.
-        // Non-empty means "plugin iframe <id>" — everything except the
-        // plugin-self whitelist must tunnel through plugin.rpc.
+        // Only app.vrcsm is the trusted SPA with full access. Plugin
+        // frames are identified explicitly and must use plugin.rpc for
+        // every host call. Any other WebView origin is rejected before
+        // method dispatch, even if it can reach chrome.webview.postMessage.
         std::string callerPluginId;
         if (auto pid = vrcsm::core::plugins::PluginRegistry::PluginIdFromOrigin(originUri))
         {
             callerPluginId = *pid;
+        }
+        else if (HostFromOrigin(originUri) != "app.vrcsm")
+        {
+            PostError(id, "forbidden_origin",
+                      fmt::format("origin '{}' may not call '{}'", originUri, method));
+            return;
         }
 
         if (!callerPluginId.empty() && PluginReachableMethods().count(method) == 0)
@@ -718,6 +729,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("db.stats.heatmap", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsHeatmap(p, id); });
     m_handlers.emplace("db.stats.overview", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsOverview(p, id); });
     m_handlers.emplace("db.history.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbHistoryClear(p, id); });
+    m_handlers.emplace("search.global", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSearchGlobal(p, id); });
     m_handlers.emplace("favorites.lists", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesLists(p, id); });
     m_handlers.emplace("favorites.items", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesItems(p, id); });
     m_handlers.emplace("favorites.add", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesAdd(p, id); });

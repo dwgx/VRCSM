@@ -16,6 +16,16 @@
 
 class WebViewHost;
 
+// Structured exception carrying a full Error. Bridge handlers throw this
+// when a core Result<T> fails so DispatchFromOrigin can preserve the stable
+// error code instead of collapsing it into generic handler_error.
+struct IpcException : std::exception
+{
+    vrcsm::core::Error err;
+    explicit IpcException(vrcsm::core::Error e) : err(std::move(e)) {}
+    const char* what() const noexcept override { return err.message.c_str(); }
+};
+
 class IpcBridge
 {
 public:
@@ -30,7 +40,7 @@ public:
     // `app.vrcsm` for the main SPA and `plugin.<id>.vrcsm` for a
     // plugin iframe. Messages from a plugin origin are routed through
     // the plugin-rpc permission gate; the main SPA retains full access
-    // to every handler.
+    // to every handler. Every other origin is rejected.
     void DispatchFromOrigin(const std::string& originUri, const std::string& jsonText);
 
     // Backwards-compatible entry: assumes host origin. Tests and the
@@ -196,6 +206,7 @@ private:
     nlohmann::json HandleDbStatsHeatmap(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbStatsOverview(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbHistoryClear(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSearchGlobal(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesLists(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesItems(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesAdd(const nlohmann::json& params, const std::optional<std::string>& id);

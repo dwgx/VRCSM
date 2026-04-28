@@ -38,6 +38,17 @@ they do not.
 - **Small hardening pass.** IPC shutdown drain, release build behavior,
   lazy thumbnail loading, and Jam image field fallbacks were tightened
   while this branch was in motion.
+- **Release metadata gate tightened.** CI now installs from
+  `web/pnpm-lock.yaml` with pnpm, release/package scripts reject stale
+  metadata assumptions, portable ZIPs exclude `VRCSM.exe.*.old`
+  linker backups, and version drift across `VERSION`,
+  `web/package.json`, `vcpkg.json`, and README is checked by
+  `scripts/verify-release-metadata.ps1`.
+- **Global quick search v1 landed as local-only evidence search.**
+  `search.global` now merges favorites, world visits, player events,
+  player encounters, and avatar history, and the existing `Ctrl+K`
+  command palette shows evidence-backed world/user/avatar rows without
+  firing live VRChat API searches while the user types.
 
 ## [0.14.3] — 2026-04-27
 

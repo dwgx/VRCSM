@@ -63,7 +63,7 @@ cmake --build --preset x64-release
 - 默认所有破坏性操作都是 dry-run，请认真看清单后再确认执行
 - 删除/迁移前会自动检测 VRChat 进程，运行中会被阻断
 - 数据迁移使用 NTFS junction，与 VRChat 完全兼容，无需管理员权限
-- 本工具只读取本地数据，不会向 VRChat 服务器发起非常规请求，但仍请遵守 VRChat 服务条款
+- VRCSM 是 local-first：扫描、解析、清理与迁移优先处理本地文件；登录后会调用 VRChat API，更新检查与 update/plugin feed 也会访问网络。不会向 VRChat 服务器发起非常规请求，但仍请遵守 VRChat 服务条款
 
 ### 许可证
 
@@ -93,7 +93,7 @@ VRCSM is a native Windows 11 desktop tool that combines a C++ host with an embed
 
 Grab the prebuilt artifact from [Releases](https://github.com/dwgx/VRCSM/releases/latest):
 
-- `VRCSM_v0.14.3_x64_Installer.msi` — recommended, signed WiX installer
+- `VRCSM_v0.14.3_x64_Installer.msi` — recommended, WiX installer
 - `VRCSM_v0.14.3_x64.zip` — portable, run in place
 
 ### Build From Source
@@ -112,7 +112,7 @@ cmake --build --preset x64-release
 - Every destructive action is a dry-run first — review the planned changes before confirming
 - VRChat process detection blocks delete/migrate while the game is running
 - Cache migration uses NTFS junctions, fully compatible with VRChat, no admin elevation
-- VRCSM only reads local files. It does not perform abnormal requests against VRChat servers, but you remain responsible for compliance with the VRChat ToS
+- VRCSM is local-first: scanning, parsing, cleanup, and migration operate on local files first; after sign-in it calls the VRChat API, and update checks / plugin feed requests also use the network. It does not perform abnormal requests against VRChat servers, but you remain responsible for compliance with the VRChat ToS
 
 ### License
 
@@ -161,7 +161,7 @@ cmake --build --preset x64-release
 - 破壊的操作はすべて dry-run が初期動作です。一覧を確認してから実行してください
 - 削除・移行前に VRChat プロセスを検出し、実行中はブロックされます
 - キャッシュ移行は NTFS ジャンクションを使用するため、VRChat と完全互換、管理者権限は不要です
-- VRCSM はローカルファイルしか読みません。VRChat サーバーへの異常な要求は行いませんが、利用者は VRChat 利用規約を遵守する必要があります
+- VRCSM は local-first です。スキャン、解析、削除、移行はローカルファイルを優先して処理しますが、ログイン後は VRChat API を呼び出し、更新確認 / plugin feed もネットワークを使用します。VRChat サーバーへの異常な要求は行いませんが、利用者は VRChat 利用規約を遵守する必要があります
 
 ### ライセンス
 

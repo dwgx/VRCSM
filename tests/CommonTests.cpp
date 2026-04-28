@@ -9,6 +9,11 @@
 
 #include "core/AvatarPreview.h"
 #include "core/Common.h"
+#include "core/Database.h"
+#include "core/JunctionUtil.h"
+#include "core/Migrator.h"
+#include "core/ProcessGuard.h"
+#include "core/SafeDelete.h"
 #include "core/UnityBundle.h"
 #include "core/VrcApi.h"
 #include "core/VrDiagnostics.h"
@@ -56,6 +61,21 @@ void WriteDownloadMetadata(
     }.dump();
 }
 
+bool ContainsSubstring(const std::vector<std::string>& items, std::string_view needle)
+{
+    return std::any_of(items.begin(), items.end(), [&](const std::string& item) {
+        return item.find(needle) != std::string::npos;
+    });
+}
+
+void OpenTempDatabase(const std::filesystem::path& dbPath)
+{
+    auto& db = vrcsm::core::Database::Instance();
+    db.Close();
+    auto opened = db.Open(dbPath);
+    ASSERT_TRUE(vrcsm::core::isOk(opened)) << vrcsm::core::error(opened).message;
+}
+
 } // namespace
 
 TEST(CommonTests, EnsureWithinBaseAcceptsNestedChild)
@@ -84,6 +104,83 @@ TEST(CommonTests, EnsureWithinBaseIsCaseInsensitiveOnWindows)
     EXPECT_TRUE(vrcsm::core::ensureWithinBase(
         L"c:\\vrchat\\cache",
         L"C:\\VRChat\\Cache\\HTTPCache-WindowsPlayer"));
+}
+
+TEST(CommonTests, DeleteExecuteRejectsPreservedCwpRootTargets)
+{
+    if (vrcsm::core::ProcessGuard::IsVRChatRunning().running)
+    {
+        GTEST_SKIP() << "VRChat is running, so ExecutePlan correctly rejects before path validation";
+    }
+
+    const auto dir = MakeTempTestDir(L"vrcsm-delete-preserved");
+    const auto cwp = dir / L"Cache-WindowsPlayer";
+    std::filesystem::create_directories(cwp);
+    const auto info = cwp / L"__info";
+    const auto version = cwp / L"vrc-version";
+    WriteBytes(info, "keep");
+    WriteBytes(version, "keep");
+
+    for (const auto& preserved : {info, version})
+    {
+        vrcsm::core::DeletePlan plan;
+        plan.targets.push_back(vrcsm::core::toUtf8(preserved.wstring()));
+
+        const auto result = vrcsm::core::SafeDelete::ExecutePlan(dir, plan);
+
+        ASSERT_FALSE(vrcsm::core::isOk(result));
+        EXPECT_EQ(vrcsm::core::error(result).code, "preserved_target");
+    }
+    EXPECT_TRUE(std::filesystem::exists(info));
+    EXPECT_TRUE(std::filesystem::exists(version));
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, MigratorPreflightRejectsExistingSourceOutsideVrchatBase)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-migrate-outside-source");
+    const auto source = dir / L"existing-source";
+    const auto target = dir / L"target";
+    std::filesystem::create_directories(source);
+
+    const auto result = vrcsm::core::Migrator::preflight(source, target);
+
+    ASSERT_TRUE(vrcsm::core::isOk(result));
+    EXPECT_TRUE(ContainsSubstring(
+        vrcsm::core::value(result).blockers,
+        "detected VRChat cache roots"));
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, JunctionRepairRejectsExistingSourceOutsideVrchatBase)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-junction-outside-source");
+    const auto source = dir / L"existing-source";
+    const auto target = dir / L"target";
+    std::filesystem::create_directories(source);
+    std::filesystem::create_directories(target);
+
+    const nlohmann::json params{
+        {"source", vrcsm::core::toUtf8(source.wstring())},
+        {"target", vrcsm::core::toUtf8(target.wstring())},
+    };
+
+    try
+    {
+        (void)vrcsm::core::JunctionUtil::Repair(params);
+        FAIL() << "junction.repair accepted an existing source outside the VRChat base";
+    }
+    catch (const std::runtime_error& ex)
+    {
+        EXPECT_NE(std::string(ex.what()).find("detected VRChat cache roots"), std::string::npos);
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
 }
 
 TEST(CommonTests, AvatarPreviewCacheKeyIsStableLowerHex)
@@ -147,6 +244,126 @@ TEST(CommonTests, AvatarPreviewSourceGlbPathStaysInsidePreviewCacheDir)
 
     EXPECT_TRUE(vrcsm::core::ensureWithinBase(cacheDir, glbPath));
     EXPECT_EQ(glbPath.extension(), L".glb");
+}
+
+TEST(CommonTests, AvatarPreviewRetainRejectsOutsidePreviewCache)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-preview-retain-outside");
+    const auto outsideGlb = dir / L"outside.glb";
+    WriteSizedFile(outsideGlb, 32);
+
+    vrcsm::core::AvatarPreview::RetainPreviewPath(outsideGlb);
+
+    EXPECT_FALSE(vrcsm::core::AvatarPreview::IsPreviewPathRetained(outsideGlb));
+    vrcsm::core::AvatarPreview::ReleasePreviewPath(outsideGlb);
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, GlobalSearchMergesFavoriteAndVisitEvidence)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-global-search-merge");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    auto& db = vrcsm::core::Database::Instance();
+    ASSERT_TRUE(vrcsm::core::isOk(db.AddFavorite({
+        "world",
+        "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "Library",
+        "Moonlit Workshop",
+        "https://thumb.local/worlds/moonlit.png",
+        "2026-04-27T10:00:00Z",
+        0,
+    })));
+    ASSERT_TRUE(vrcsm::core::isOk(db.InsertWorldVisit({
+        "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345~hidden(usr_owner)~region(jp)",
+        std::optional<std::string>{"hidden"},
+        std::optional<std::string>{"usr_owner"},
+        std::optional<std::string>{"jp"},
+        "2026-04-27T11:12:00Z",
+    })));
+
+    auto result = db.GlobalSearch({
+        {"query", "Moonlit"},
+        {"includeRemote", "debounced"},
+    });
+
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    const auto& payload = vrcsm::core::value(result);
+    ASSERT_EQ(payload.at("mode"), "local");
+    ASSERT_TRUE(payload.at("diagnostics").at("remoteSources").empty());
+    ASSERT_EQ(payload.at("diagnostics").at("remoteSuppressedReason"), "disabled");
+    ASSERT_FALSE(payload.at("items").empty());
+
+    const auto& item = payload.at("items").front();
+    EXPECT_EQ(item.at("type"), "world");
+    EXPECT_EQ(item.at("id"), "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    EXPECT_EQ(item.at("source").at("kind"), "mixed");
+    EXPECT_EQ(item.at("thumbnail").at("kind"), "local-thumb");
+    EXPECT_EQ(item.at("thumbnail").at("source"), "thumb.local");
+    EXPECT_TRUE(item.at("thumbnail").at("verified").get<bool>());
+    EXPECT_GE(item.at("evidence").size(), 2u);
+
+    std::vector<std::string> evidenceKinds;
+    for (const auto& evidence : item.at("evidence"))
+    {
+        evidenceKinds.push_back(evidence.at("kind").get<std::string>());
+    }
+    EXPECT_TRUE(ContainsSubstring(evidenceKinds, "favorite"));
+    EXPECT_TRUE(ContainsSubstring(evidenceKinds, "world_visit"));
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, GlobalSearchKeepsHistoricalAvatarReferenceThumbnailUnverified)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-global-search-avatar-reference");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    auto& db = vrcsm::core::Database::Instance();
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordAvatarSeen({
+        "avtr_11111111-2222-3333-4444-555555555555",
+        std::optional<std::string>{"public"},
+        std::optional<std::string>{"Cyber Jacket"},
+        std::optional<std::string>{"Test Author"},
+        std::optional<std::string>{"Alice"},
+        std::optional<std::string>{"usr_alice"},
+        "2026-04-27T12:20:00Z",
+    })));
+    ASSERT_TRUE(vrcsm::core::isOk(db.UpdateAvatarResolution({
+        "avtr_11111111-2222-3333-4444-555555555555",
+        std::optional<std::string>{"avtr_different-current-avatar"},
+        std::optional<std::string>{"https://example.invalid/current-wearer-thumb.png"},
+        std::optional<std::string>{"https://example.invalid/current-wearer-image.png"},
+        std::optional<std::string>{"wearer-current-profile"},
+        "resolved",
+        "2026-04-27T12:30:00Z",
+    })));
+
+    auto result = db.GlobalSearch({{"query", "Cyber Jacket"}});
+
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    const auto& items = vrcsm::core::value(result).at("items");
+    ASSERT_FALSE(items.empty());
+
+    const auto& item = items.front();
+    EXPECT_EQ(item.at("type"), "avatar");
+    EXPECT_EQ(item.at("thumbnail").at("url"), nullptr);
+    EXPECT_EQ(item.at("thumbnail").at("verified"), false);
+    ASSERT_TRUE(item.at("localStatus").contains("warnings"));
+
+    const auto warnings = item.at("localStatus").at("warnings").dump();
+    EXPECT_NE(warnings.find("thumbnail-reference-only"), std::string::npos);
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
 }
 
 TEST(CommonTests, SteamLinkRestoreTargetAllowsOnlySteamVrRepairRoots)
@@ -273,7 +490,11 @@ TEST(CommonTests, TruncatedUnityFsMagicOnlyBundleIsNotTrusted)
 
 TEST(CommonTests, AvatarPreviewLruSkipsPartFilesAndRetainedGlbs)
 {
-    const auto dir = MakeTempTestDir(L"vrcsm-preview-lru");
+    const auto dir = vrcsm::core::AvatarPreview::PreviewCacheDir()
+        / (L"test-lru-" + std::to_wstring(::GetCurrentProcessId()));
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    std::filesystem::create_directories(dir, ec);
     const auto oldGlb = dir / L"old.glb";
     const auto oldSidecar = dir / L"old.glb.json";
     const auto retainedGlb = dir / L"retained.glb";
@@ -285,7 +506,6 @@ TEST(CommonTests, AvatarPreviewLruSkipsPartFilesAndRetainedGlbs)
     WriteSizedFile(part, 256);
 
     const auto oldTime = std::filesystem::file_time_type::clock::now() - std::chrono::hours(24);
-    std::error_code ec;
     std::filesystem::last_write_time(oldGlb, oldTime, ec);
     ec.clear();
     std::filesystem::last_write_time(retainedGlb, oldTime + std::chrono::hours(1), ec);

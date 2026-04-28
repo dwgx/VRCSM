@@ -20,6 +20,7 @@ add_executable(vrcsm WIN32
     bridges/SettingsBridge.cpp
     bridges/MigrateBridge.cpp
     bridges/ScreenshotBridge.cpp
+    bridges/SearchBridge.cpp
     bridges/ShellBridge.cpp
     bridges/LogsBridge.cpp
     bridges/RadarBridge.cpp

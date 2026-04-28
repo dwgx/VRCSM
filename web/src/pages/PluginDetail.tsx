@@ -6,6 +6,25 @@ import { ipc, IpcError } from "@/lib/ipc";
 import { usePluginRegistry } from "@/lib/plugin-context";
 import type { MarketPluginEntry } from "@/lib/types";
 
+function permissionTokens(permissions?: string[]): string[] {
+  return permissions && permissions.length > 0 ? permissions : ["none"];
+}
+
+function PermissionTokens({ permissions }: { permissions?: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {permissionTokens(permissions).map((token) => (
+        <span
+          key={token}
+          className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1.5 py-0.5 font-mono text-[10px] text-[hsl(var(--muted-foreground))]"
+        >
+          {token}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function PluginDetail() {
   const { t } = useTranslation();
   const { id = "" } = useParams<{ id: string }>();
@@ -36,6 +55,8 @@ export default function PluginDetail() {
 
   const install = async () => {
     if (!entry?.download) return;
+    const permissionLines = permissionTokens(entry.permissions).map((token) => `- ${token}`).join("\n");
+    if (!window.confirm(`Install ${entry.name}?\n\nManifest permissions:\n${permissionLines}`)) return;
     setBusy(true);
     try {
       await ipc.pluginInstall({ url: entry.download, sha256: entry.sha256 });
@@ -196,6 +217,12 @@ export default function PluginDetail() {
               <dd className="truncate font-mono text-[10.5px]">{entry.download}</dd>
             </>
           ) : null}
+          <dt className="text-[hsl(var(--muted-foreground))]">
+            {t("plugins.detail.permissions", { defaultValue: "Permissions" })}
+          </dt>
+          <dd>
+            <PermissionTokens permissions={installed?.permissions ?? entry.permissions} />
+          </dd>
         </dl>
       </section>
 

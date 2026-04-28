@@ -108,9 +108,44 @@ std::unordered_map<std::wstring, PreviewPathLeaseState>& previewPathLeases()
     return leases;
 }
 
-std::wstring previewLeaseKey(const std::filesystem::path& path)
+std::optional<std::filesystem::path> canonicalExistingPreviewGlbPath(
+    const std::filesystem::path& path)
 {
-    auto key = canonicalBestEffort(path).wstring();
+    if (path.empty() || _wcsicmp(path.extension().c_str(), L".glb") != 0)
+    {
+        return std::nullopt;
+    }
+
+    std::error_code ec;
+    const auto status = std::filesystem::symlink_status(path, ec);
+    if (ec || std::filesystem::is_symlink(status) || !std::filesystem::is_regular_file(status))
+    {
+        return std::nullopt;
+    }
+
+    const auto cacheDir = std::filesystem::weakly_canonical(AvatarPreview::PreviewCacheDir(), ec);
+    if (ec)
+    {
+        return std::nullopt;
+    }
+    const auto canonicalPath = std::filesystem::weakly_canonical(path, ec);
+    if (ec || !ensureWithinBase(cacheDir, canonicalPath))
+    {
+        return std::nullopt;
+    }
+
+    return canonicalPath;
+}
+
+std::optional<std::wstring> previewLeaseKey(const std::filesystem::path& path)
+{
+    const auto canonical = canonicalExistingPreviewGlbPath(path);
+    if (!canonical.has_value())
+    {
+        return std::nullopt;
+    }
+
+    auto key = canonical->wstring();
     std::transform(key.begin(), key.end(), key.begin(), [](wchar_t ch) {
         return static_cast<wchar_t>(std::towlower(ch));
     });
@@ -120,19 +155,19 @@ std::wstring previewLeaseKey(const std::filesystem::path& path)
 void retainPreviewPath(const std::filesystem::path& path)
 {
     const auto key = previewLeaseKey(path);
-    if (key.empty()) return;
+    if (!key.has_value() || key->empty()) return;
     std::lock_guard<std::mutex> lock(previewPathLeaseMutex());
-    auto& state = previewPathLeases()[key];
+    auto& state = previewPathLeases()[*key];
     state.refs += 1;
 }
 
 void releasePreviewPath(const std::filesystem::path& path)
 {
     const auto key = previewLeaseKey(path);
-    if (key.empty()) return;
+    if (!key.has_value() || key->empty()) return;
     std::lock_guard<std::mutex> lock(previewPathLeaseMutex());
     auto& leases = previewPathLeases();
-    const auto it = leases.find(key);
+    const auto it = leases.find(*key);
     if (it == leases.end()) return;
     it->second.refs = std::max(0, it->second.refs - 1);
     it->second.leaseUntil = std::chrono::steady_clock::now() + std::chrono::minutes(2);
@@ -176,7 +211,10 @@ bool isPreviewPathLeased(const std::filesystem::path& path)
         }
     }
 
-    const auto it = leases.find(previewLeaseKey(path));
+    const auto key = previewLeaseKey(path);
+    if (!key.has_value() || key->empty()) return false;
+
+    const auto it = leases.find(*key);
     return it != leases.end()
         && (it->second.refs > 0 || it->second.leaseUntil > now);
 }
@@ -946,7 +984,6 @@ AvatarPreviewResult runNativeExtractor(
 {
     AvatarPreviewResult result;
     PreviewPathLease bundleLease(dataPath);
-    PreviewPathLease glbLease(glbPath);
 
     if (token && token->cancelled)
     {
@@ -1024,6 +1061,8 @@ AvatarPreviewResult runNativeExtractor(
         summary.totalVertices,
         summary.totalTriangles,
         summary.unityRevision);
+
+    PreviewPathLease glbLease(glbPath);
 
     result.ok = true;
     result.cached = false;

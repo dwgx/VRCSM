@@ -1,5 +1,6 @@
 #include "JunctionUtil.h"
 
+#include "CacheScanner.h"
 #include "PathProbe.h"
 
 #include <cstring>
@@ -33,6 +34,39 @@ std::wstring withNtPrefix(const std::filesystem::path& target)
     auto ws = std::filesystem::absolute(target).wstring();
     if (ws.rfind(L"\\??\\", 0) == 0) return ws;
     return L"\\??\\" + ws;
+}
+
+bool samePathLexical(const std::filesystem::path& a, const std::filesystem::path& b)
+{
+    return ensureWithinBase(a, b) && ensureWithinBase(b, a);
+}
+
+bool isRepairableCacheRoot(
+    const std::filesystem::path& vrchatBaseDir,
+    const std::filesystem::path& source)
+{
+    if (vrchatBaseDir.empty() || source.empty())
+    {
+        return false;
+    }
+
+    for (const auto& def : categoryDefs())
+    {
+        if (def.key != std::string_view("cache_windows_player")
+            && def.key != std::string_view("http_cache")
+            && def.key != std::string_view("texture_cache"))
+        {
+            continue;
+        }
+
+        const auto root = vrchatBaseDir / std::filesystem::path(toWide(def.rel_path));
+        if (samePathLexical(source, root))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 } // namespace
 
@@ -175,10 +209,10 @@ nlohmann::json JunctionUtil::Repair(const nlohmann::json& params)
     const auto sourceStr = params.at(sourceKey).get<std::string>();
     const auto source = utf8Path(sourceStr);
     const auto probe = PathProbe::Probe();
-    if ((probe.baseDir.empty() || !ensureWithinBase(probe.baseDir, source))
-        && !std::filesystem::exists(source))
+    if (!isRepairableCacheRoot(probe.baseDir, source))
     {
-        throw std::runtime_error("junction.repair source does not exist and is outside the detected VRChat data directory");
+        throw std::runtime_error(
+            "junction.repair source must be one of the detected VRChat cache roots");
     }
 
     std::optional<std::filesystem::path> target;

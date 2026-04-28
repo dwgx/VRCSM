@@ -7,6 +7,22 @@ import { usePluginRegistry } from "@/lib/plugin-context";
 import { pluginDisplayName } from "@/lib/plugin-i18n";
 import { cn } from "@/lib/utils";
 
+function PermissionTokens({ permissions }: { permissions?: string[] }) {
+  const tokens = permissions && permissions.length > 0 ? permissions : ["none"];
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {tokens.map((token) => (
+        <span
+          key={token}
+          className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1.5 py-0.5 font-mono text-[10px] text-[hsl(var(--muted-foreground))]"
+        >
+          {token}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function PluginInstalled() {
   const { t, i18n } = useTranslation();
   const { plugins, loading, refresh } = usePluginRegistry();
@@ -80,6 +96,7 @@ export default function PluginInstalled() {
                     <td className="px-3 py-2">
                       <div className="font-medium">{pluginDisplayName(p, i18n.resolvedLanguage ?? i18n.language)}</div>
                       <div className="font-mono text-[10px] text-[hsl(var(--muted-foreground))]">{p.id}</div>
+                      <PermissionTokens permissions={p.permissions} />
                     </td>
                     <td className="px-3 py-2 font-mono">{p.version}</td>
                     <td className="px-3 py-2 uppercase text-[10.5px] tracking-wide text-[hsl(var(--muted-foreground))]">

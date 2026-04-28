@@ -27,6 +27,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/lib/ipc";
+import type { GlobalSearchResult } from "@/lib/types";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { useInstalledPanelPlugins } from "@/lib/plugin-context";
 
@@ -58,7 +59,13 @@ interface LogEntry {
   action: () => void;
 }
 
+interface GlobalSearchEntry extends GlobalSearchResult {
+  section: string;
+  action: () => void;
+}
+
 const MAX_LOGS = 500;
+const MAX_GLOBAL_RESULTS = 20;
 
 function matchScore(haystack: string, query: string): number {
   if (!query) return 1;
@@ -90,6 +97,8 @@ export function CommandPalette({
   const [activeIndex, setActiveIndex] = useState(0);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [globalResults, setGlobalResults] = useState<GlobalSearchResult[]>([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
   const [, setSidebarHidden] = useUiPrefBoolean("vrcsm.layout.sidebar.hidden", false);
   const [, setDockHidden] = useUiPrefBoolean("vrcsm.layout.dock.hidden", false);
 
@@ -189,9 +198,50 @@ export function CommandPalette({
   }, [open, navigate, t]);
 
   useEffect(() => {
+    if (!open) {
+      setGlobalResults([]);
+      setLoadingSearch(false);
+      return;
+    }
+
+    const q = query.trim();
+    if (!q) {
+      setGlobalResults([]);
+      setLoadingSearch(false);
+      return;
+    }
+
+    setLoadingSearch(true);
+    let alive = true;
+    const timer = window.setTimeout(() => {
+      void ipc
+        .searchGlobal({
+          query: q,
+          limit: MAX_GLOBAL_RESULTS,
+          includeRemote: "never",
+        })
+        .then((res) => {
+          if (alive) setGlobalResults(res.items ?? []);
+        })
+        .catch(() => {
+          if (alive) setGlobalResults([]);
+        })
+        .finally(() => {
+          if (alive) setLoadingSearch(false);
+        });
+    }, 120);
+
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [open, query]);
+
+  useEffect(() => {
     if (open) {
       setQuery("");
       setActiveIndex(0);
+      setGlobalResults([]);
       window.requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
@@ -200,6 +250,7 @@ export function CommandPalette({
     const q = query.trim();
     const allItems: Array<
       | (CommandEntry & { _type: "command"; score: number })
+      | (GlobalSearchEntry & { _type: "search"; score: number })
       | (LogEntry & { _type: "log"; score: number })
     > = [];
 
@@ -216,6 +267,22 @@ export function CommandPalette({
     // Only show logs when user types a query; otherwise keep the
     // palette focused on navigation/actions.
     if (q !== "") {
+      globalResults.forEach((result, index) => {
+        allItems.push({
+          ...result,
+          section: t("cmd.sections.globalSearch", { defaultValue: "Global Search" }),
+          action: () => {
+            if (result.primaryAction.enabled && result.primaryAction.route) {
+              navigate(result.primaryAction.route);
+              return;
+            }
+            void navigator.clipboard?.writeText(result.id);
+          },
+          _type: "search",
+          score: 900 - index,
+        });
+      });
+
       for (const log of logs) {
         const s = Math.max(
           matchScore(log.label, q),
@@ -229,7 +296,7 @@ export function CommandPalette({
 
     allItems.sort((a, b) => b.score - a.score);
     return allItems.slice(0, 80);
-  }, [commands, logs, query]);
+  }, [commands, globalResults, logs, navigate, query, t]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, typeof filtered>();
@@ -309,8 +376,8 @@ export function CommandPalette({
         >
           {grouped.length === 0 ? (
             <div className="px-4 py-10 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
-              {loadingLogs
-                ? t("cmd.loading", { defaultValue: "Loading session logs…" })
+              {loadingSearch || loadingLogs
+                ? t("cmd.loading", { defaultValue: "Loading local evidence…" })
                 : t("cmd.empty", { defaultValue: "No matching commands." })}
             </div>
           ) : (
@@ -343,6 +410,51 @@ export function CommandPalette({
                             {item.shortcut}
                           </span>
                         ) : null}
+                      </button>
+                    );
+                  }
+                  if (item._type === "search") {
+                    const Icon =
+                      item.type === "world"
+                        ? Globe
+                        : item.type === "avatar"
+                          ? Shirt
+                          : item.type === "user"
+                            ? User
+                            : item.type === "asset"
+                              ? Package
+                              : FileText;
+                    const badge = item.evidence[0]?.label ?? item.source.label;
+                    return (
+                      <button
+                        key={`${item.type}-${item.id}-${idx}`}
+                        data-index={idx}
+                        type="button"
+                        className={cn(
+                          "flex w-full items-start gap-2.5 px-3 py-1.5 text-left text-[12px]",
+                          "hover:bg-[hsl(var(--surface-raised))]",
+                          isActive && "bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--foreground))]",
+                        )}
+                        onMouseEnter={() => setActiveIndex(idx)}
+                        onClick={() => run(item.action)}
+                      >
+                        <span className="mt-0.5 text-[hsl(var(--muted-foreground))]">
+                          <Icon className="size-3.5" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate font-medium">{item.displayName}</span>
+                            <span className="shrink-0 rounded border border-[hsl(var(--border))] px-1.5 py-0.5 text-[9px] uppercase text-[hsl(var(--muted-foreground))]">
+                              {badge}
+                            </span>
+                          </div>
+                          <div className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">
+                            {item.subtitle}
+                          </div>
+                          <div className="truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                            {item.id}
+                          </div>
+                        </div>
                       </button>
                     );
                   }

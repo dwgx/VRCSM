@@ -235,6 +235,7 @@ export interface SteamVrHardwareInfo {
   gpuVendor: string;
   gpuHorsepower: number;
   hmdModel: string;
+  hmdSerial?: string;
   hmdManufacturer: string;
   hmdDriver: string;
 }
@@ -242,7 +243,9 @@ export interface SteamVrHardwareInfo {
 export interface SteamVrConfig {
   ok?: boolean;
   path?: string;
+  error?: { code?: string; message?: string; httpStatus?: number };
   hardware?: SteamVrHardwareInfo;
+  knownDevices?: string[];
   driver_vrlink?: {
     automaticBandwidth?: boolean;
     automaticStreamFormatWidth?: boolean;
@@ -694,6 +697,124 @@ export interface FavoritesSyncResult {
   synced_at: string;
 }
 
+// ─── Global Search ───────────────────────────────────────────────────
+
+export type GlobalSearchResultType =
+  | "user"
+  | "world"
+  | "avatar"
+  | "favorite"
+  | "timeline_event"
+  | "asset";
+
+export interface SearchGlobalRequest {
+  query: string;
+  limit?: number;
+  offset?: number;
+  types?: GlobalSearchResultType[];
+  includeRemote?: "never" | "cached" | "debounced";
+  timelineWindow?: {
+    start?: string;
+    end?: string;
+  };
+}
+
+export interface SearchResultSource {
+  kind:
+    | "local.favorite"
+    | "local.world_visit"
+    | "local.player_event"
+    | "local.player_encounter"
+    | "local.avatar_history"
+    | "local.cache_asset"
+    | "remote.vrchat.cached"
+    | "remote.vrchat.live"
+    | "mixed";
+  label: string;
+  updatedAt?: string | null;
+}
+
+export interface SearchEvidence {
+  kind:
+    | "favorite"
+    | "world_visit"
+    | "player_join"
+    | "player_leave"
+    | "player_encounter"
+    | "avatar_seen"
+    | "cache_asset"
+    | "preview_3d"
+    | "thumbnail_cache"
+    | "remote_detail"
+    | "remote_search";
+  label: string;
+  detail: string;
+  sourceId?: string;
+  observedAt?: string;
+  timeRange?: {
+    start: string;
+    end?: string;
+  };
+  reliability: "verified" | "inferred" | "reference" | "remote";
+  privacy: "local-only" | "local-cache" | "remote-cached" | "remote-live";
+}
+
+export interface SearchThumbnail {
+  url: string | null;
+  kind: "local-thumb" | "remote-cdn" | "placeholder" | "preview-3d" | "reference";
+  source: "thumb.local" | "screenshot-thumbs.local" | "vrc-api" | "preview-cache" | "placeholder";
+  verified: boolean;
+  alt: string;
+}
+
+export interface SearchLocalStatus {
+  state: "favorite" | "visited" | "encountered" | "seen-avatar" | "cached-asset" | "remote-only" | "unknown";
+  isFavorite: boolean;
+  hasLocalCache: boolean;
+  has3dPreview: boolean;
+  visitCount?: number;
+  encounterCount?: number;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  warnings?: Array<"thumbnail-reference-only" | "remote-stale" | "private-or-unresolved" | "cache-missing">;
+}
+
+export interface SearchPrimaryAction {
+  kind: "open" | "inspect" | "focus-timeline" | "preview-3d" | "join" | "wear" | "open-browser" | "copy-id";
+  label: string;
+  route?: string;
+  ipc?: string;
+  enabled: boolean;
+  disabledReason?: string;
+}
+
+export interface GlobalSearchResult {
+  type: GlobalSearchResultType;
+  id: string;
+  displayName: string;
+  subtitle: string;
+  source: SearchResultSource;
+  evidence: SearchEvidence[];
+  thumbnail: SearchThumbnail | null;
+  localStatus: SearchLocalStatus;
+  primaryAction: SearchPrimaryAction;
+  confidence: number;
+}
+
+export interface SearchGlobalResponse {
+  query: string;
+  normalizedQuery: string;
+  mode: "local" | "local+remote-cache" | "local+remote-refresh";
+  items: GlobalSearchResult[];
+  nextOffset: number | null;
+  diagnostics: {
+    localSources: string[];
+    remoteSources: string[];
+    cacheHit: boolean;
+    remoteSuppressedReason?: "short_query" | "offline" | "signed_out" | "rate_limited" | "disabled";
+  };
+}
+
 // ─── Plugins (v0.8.0) ────────────────────────────────────────────────
 
 export type PluginShape = "panel" | "service" | "app";
@@ -743,6 +864,7 @@ export interface MarketPluginEntry {
   authorName?: string;
   authorUrl?: string;
   iconUrl?: string;
+  permissions?: string[];
   download?: string;
   sha256?: string;
 }

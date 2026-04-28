@@ -7,6 +7,25 @@ import { usePluginRegistry } from "@/lib/plugin-context";
 import type { MarketFeedDto, MarketPluginEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+function permissionTokens(permissions?: string[]): string[] {
+  return permissions && permissions.length > 0 ? permissions : ["none"];
+}
+
+function PermissionTokens({ permissions }: { permissions?: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {permissionTokens(permissions).map((token) => (
+        <span
+          key={token}
+          className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1.5 py-0.5 font-mono text-[10px] text-[hsl(var(--muted-foreground))]"
+        >
+          {token}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function PluginsMarket() {
   const { t } = useTranslation();
   const { plugins: installed, refresh: refreshInstalled } = usePluginRegistry();
@@ -40,6 +59,8 @@ export default function PluginsMarket() {
 
   const install = async (entry: MarketPluginEntry) => {
     if (!entry.download) return;
+    const permissionLines = permissionTokens(entry.permissions).map((token) => `- ${token}`).join("\n");
+    if (!window.confirm(`Install ${entry.name}?\n\nManifest permissions:\n${permissionLines}`)) return;
     setInstallingId(entry.id);
     setLastInstallError(null);
     try {
@@ -155,6 +176,8 @@ export default function PluginsMarket() {
                   {entry.description}
                 </p>
               ) : null}
+
+              <PermissionTokens permissions={entry.permissions} />
 
               <div className="mt-auto flex items-center justify-between">
                 <Link

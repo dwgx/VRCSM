@@ -1,5 +1,6 @@
 #include "Migrator.h"
 
+#include "CacheScanner.h"
 #include "Common.h"
 #include "JunctionUtil.h"
 #include "PathProbe.h"
@@ -89,6 +90,39 @@ std::uint64_t freeBytesOnVolume(const std::filesystem::path& target)
     }
     return 0;
 }
+
+bool samePathLexical(const std::filesystem::path& a, const std::filesystem::path& b)
+{
+    return ensureWithinBase(a, b) && ensureWithinBase(b, a);
+}
+
+bool isMigratableCacheRoot(
+    const std::filesystem::path& vrchatBaseDir,
+    const std::filesystem::path& source)
+{
+    if (vrchatBaseDir.empty() || source.empty())
+    {
+        return false;
+    }
+
+    for (const auto& def : categoryDefs())
+    {
+        if (def.key != std::string_view("cache_windows_player")
+            && def.key != std::string_view("http_cache")
+            && def.key != std::string_view("texture_cache"))
+        {
+            continue;
+        }
+
+        const auto root = vrchatBaseDir / std::filesystem::path(toWide(def.rel_path));
+        if (samePathLexical(source, root))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 } // namespace
 
 Result<MigratePlan> Migrator::preflight(
@@ -111,10 +145,10 @@ Result<MigratePlan> Migrator::preflight(
     }
 
     const auto probe = PathProbe::Probe();
-    if (probe.baseDir.empty() || !ensureWithinBase(probe.baseDir, source))
+    if (!isMigratableCacheRoot(probe.baseDir, source))
     {
-        if (!std::filesystem::exists(source, ec))
-            plan.blockers.push_back("source path does not exist and is outside the detected VRChat data directory");
+        plan.blockers.push_back(
+            "source must be one of the detected VRChat cache roots");
     }
 
     auto normalizedSource = std::filesystem::absolute(source, ec);

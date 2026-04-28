@@ -14,12 +14,16 @@ set OUT_MSI=%OUT_DIR%\VRCSM-%APP_VERSION%-x64.msi
 
 if not exist "%BUILD_DIR%\VRCSM.exe" (
     echo [build-msi] ERROR: VRCSM.exe not found at %BUILD_DIR%
-    echo [build-msi] Run scripts\build-debug.bat and scripts\deploy-web.bat first.
+    echo [build-msi] Build the release host from the source directory first:
+    echo [build-msi]   cmake --preset x64-release
+    echo [build-msi]   cmake --build --preset x64-release
     exit /b 1
 )
 if not exist "%BUILD_DIR%\web\index.html" (
     echo [build-msi] ERROR: web\index.html not found in %BUILD_DIR%
-    echo [build-msi] Run scripts\deploy-web.bat first.
+    echo [build-msi] Build web from the source directory, then rebuild the release host so CMake syncs web/dist:
+    echo [build-msi]   pnpm --prefix "%REPO%\web" build
+    echo [build-msi]   cmake --build --preset x64-release
     exit /b 1
 )
 if not exist "%WIX%" (

@@ -1,6 +1,6 @@
 {
   "name": "vrcsm",
-  "version": "0.11.0",
+  "version": "0.14.3",
   "dependencies": [
     "nlohmann-json",
     "fmt",
