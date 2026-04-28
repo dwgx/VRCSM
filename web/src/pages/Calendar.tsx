@@ -15,10 +15,7 @@ import {
   Users,
   ExternalLink,
   UserCircle,
-  ImageOff,
 } from "lucide-react";
-import { useThumbnail } from "@/lib/thumbnails";
-import { ThumbImage } from "@/components/ThumbImage";
 
 type CalendarTab = "discover" | "featured" | "jams";
 
@@ -60,130 +57,16 @@ interface Jam {
   title?: string;
   name?: string;
   description?: string;
-  thumbnailImageUrl?: string;
-  thumbnail_image_url?: string;
-  imageUrl?: string;
-  image_url?: string;
   state?: string;
   isActive?: boolean;
   submissionsCanBeVoted?: boolean;
   closedAt?: string;
   startedAt?: string;
-  coverImageUrl?: string;
-  cover_image_url?: string;
-  bannerImageUrl?: string;
-  banner_image_url?: string;
-  bannerUrl?: string;
-  banner_url?: string;
-  coverUrl?: string;
-  cover_url?: string;
-  previewImageUrl?: string;
-  preview_image_url?: string;
-  posterImageUrl?: string;
-  poster_image_url?: string;
   [key: string]: unknown;
-}
-
-function getJamImage(jam: Jam): string | undefined {
-  return firstString(
-    jam.thumbnailImageUrl,
-    jam.thumbnail_image_url,
-    jam.imageUrl,
-    jam.image_url,
-    jam.coverImageUrl,
-    jam.cover_image_url,
-    jam.bannerImageUrl,
-    jam.banner_image_url,
-    jam.bannerUrl,
-    jam.banner_url,
-    jam.coverUrl,
-    jam.cover_url,
-    jam.previewImageUrl,
-    jam.preview_image_url,
-    jam.posterImageUrl,
-    jam.poster_image_url,
-  ) ?? findImageUrlDeep(jam);
-}
-
-function mergeJamDetail(jam: Jam, detail: unknown): Jam {
-  if (!detail || typeof detail !== "object" || Array.isArray(detail)) return jam;
-  const record = detail as Record<string, unknown>;
-  const inner =
-    (record.jam && typeof record.jam === "object" && !Array.isArray(record.jam))
-      ? record.jam as Record<string, unknown>
-      : (record.data && typeof record.data === "object" && !Array.isArray(record.data))
-        ? record.data as Record<string, unknown>
-        : (record.result && typeof record.result === "object" && !Array.isArray(record.result))
-          ? record.result as Record<string, unknown>
-          : (record.details && typeof record.details === "object" && !Array.isArray(record.details))
-            ? record.details as Record<string, unknown>
-            : record;
-  return { ...jam, ...record, ...inner };
 }
 
 function firstString(...values: (string | undefined | null)[]): string | undefined {
   for (const v of values) if (v) return v;
-  return undefined;
-}
-
-function looksLikeImageUrl(value: string): boolean {
-  return /^https?:\/\/\S+\.(?:avif|webp|png|jpe?g|gif)(?:[?#]\S*)?$/i.test(value)
-    || /^https?:\/\/api\.vrchat\.cloud\/api\/1\/file\/file_[^/\s]+\/[^/\s]+\/file$/i.test(value)
-    || /^https?:\/\/[^/\s]*vrchat[^/\s]*\/\S*(?:image|thumbnail|icon|banner|cover|preview|poster|media)\S*$/i.test(value);
-}
-
-function extractImageUrlFromText(value: string): string | undefined {
-  const markdownMatch = value.match(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/i);
-  if (markdownMatch?.[1] && looksLikeImageUrl(markdownMatch[1])) return markdownMatch[1];
-
-  const urlMatches = value.match(/https?:\/\/[^\s)]+/gi);
-  return urlMatches?.find(looksLikeImageUrl);
-}
-
-function findImageUrlDeep(value: unknown, depth = 0, seen = new Set<unknown>()): string | undefined {
-  if (depth > 4 || value == null) return undefined;
-  if (typeof value === "string") return extractImageUrlFromText(value);
-  if (typeof value !== "object") return undefined;
-  if (seen.has(value)) return undefined;
-  seen.add(value);
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findImageUrlDeep(item, depth + 1, seen);
-      if (found) return found;
-    }
-    return undefined;
-  }
-
-  const record = value as Record<string, unknown>;
-  const preferredKeys = [
-    "thumbnailImageUrl", "thumbnail_image_url",
-    "imageUrl", "image_url",
-    "coverImageUrl", "cover_image_url",
-    "bannerImageUrl", "banner_image_url",
-    "bannerUrl", "banner_url",
-    "coverUrl", "cover_url",
-    "previewImageUrl", "preview_image_url",
-    "posterImageUrl", "poster_image_url",
-    "previewUrl", "preview_url",
-    "posterUrl", "poster_url",
-    "image", "thumbnail", "cover", "banner", "preview", "poster",
-    "url", "fileUrl", "file_url",
-  ];
-  for (const key of preferredKeys) {
-    const candidate = record[key];
-    if (typeof candidate === "string") {
-      if (looksLikeImageUrl(candidate)) return candidate;
-      const extracted = extractImageUrlFromText(candidate);
-      if (extracted) return extracted;
-    }
-  }
-
-  for (const [key, candidate] of Object.entries(record)) {
-    if (!/(image|thumbnail|icon|banner|cover|preview|poster|media|asset|file|gallery|screenshot|submission|description)/i.test(key)) continue;
-    const found = findImageUrlDeep(candidate, depth + 1, seen);
-    if (found) return found;
-  }
   return undefined;
 }
 
@@ -202,10 +85,6 @@ function getStartsAt(e: CalendarEvent): string | undefined {
 
 function getEndsAt(e: CalendarEvent): string | undefined {
   return firstString(e.endsAt, e.ends_at);
-}
-
-function getImageUrl(e: CalendarEvent): string | undefined {
-  return firstString(e.imageUrl, e.image_url, e.thumbnailImageUrl, e.thumbnail_image_url);
 }
 
 function getWorldId(e: CalendarEvent): string | undefined {
@@ -322,10 +201,10 @@ export default function CalendarPage() {
         <div className="grid gap-3 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="unity-panel overflow-hidden">
-              <div className="h-32 bg-[hsl(var(--muted)/0.2)] animate-pulse" />
               <CardContent className="p-3 flex flex-col gap-2">
                 <div className="h-4 w-3/4 bg-[hsl(var(--muted)/0.3)] rounded animate-pulse" />
                 <div className="h-3 w-1/2 bg-[hsl(var(--muted)/0.2)] rounded animate-pulse" />
+                <div className="h-3 w-5/6 bg-[hsl(var(--muted)/0.16)] rounded animate-pulse" />
               </CardContent>
             </Card>
           ))}
@@ -377,40 +256,31 @@ function EventCard({ event, onOpen }: { event: CalendarEvent; onOpen: (e: Calend
   const { t } = useTranslation();
   const when = formatWhen(getStartsAt(event));
   const endsWhen = formatWhen(getEndsAt(event));
-  const thumb = getImageUrl(event);
   const worldId = getWorldId(event);
-  const { url: worldThumb } = useThumbnail(!thumb && worldId ? worldId : null);
-  const banner = thumb ?? worldThumb;
   const groupName = getGroupName(event);
   const hostName = getHostName(event);
   const attending = getAttending(event);
 
   return (
     <Card className="unity-panel overflow-hidden flex flex-col">
-      <div className="relative h-32 overflow-hidden">
-        <ThumbImage
-          src={banner}
-          seedKey={event.id ?? getEventTitle(event)}
-          label={getEventTitle(event)}
-          className="h-full w-full rounded-none border-0"
-          aspect=""
-          priority="eager"
-        />
-        {event.isFeatured && (
-          <Badge variant="warning" className="absolute top-2 right-2 gap-1 z-10">
-            <Star className="size-3" />
-            Featured
-          </Badge>
-        )}
-        {event.region && (
-          <Badge variant="outline" className="absolute top-2 left-2 gap-1 bg-[hsl(var(--surface)/0.85)] backdrop-blur-sm z-10">
-            <Globe className="size-3" />
-            {String(event.region).toUpperCase()}
-          </Badge>
-        )}
-      </div>
       <CardContent className="p-3 flex flex-col gap-1.5 flex-1">
-        <div className="text-[13px] font-medium line-clamp-1">{getEventTitle(event)}</div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 text-[13px] font-medium line-clamp-1">{getEventTitle(event)}</div>
+          <div className="flex shrink-0 gap-1">
+            {event.isFeatured && (
+              <Badge variant="warning" className="gap-1">
+                <Star className="size-3" />
+                Featured
+              </Badge>
+            )}
+            {event.region && (
+              <Badge variant="outline" className="gap-1">
+                <Globe className="size-3" />
+                {String(event.region).toUpperCase()}
+              </Badge>
+            )}
+          </div>
+        </div>
         {when && (
           <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))] font-mono">
             <Clock className="size-3" />
@@ -427,6 +297,11 @@ function EventCard({ event, onOpen }: { event: CalendarEvent; onOpen: (e: Calend
           )}
           {attending !== undefined && attending > 0 && (
             <Badge variant="secondary" className="text-[10px]">{attending} attending</Badge>
+          )}
+          {worldId && (
+            <Badge variant="outline" className="text-[10px]">
+              {worldId}
+            </Badge>
           )}
         </div>
         {event.description && (
@@ -459,59 +334,29 @@ function openJam(jam: Jam) {
 
 function JamCard({ jam }: { jam: Jam }) {
   const { t } = useTranslation();
-  const detail = useQuery({
-    queryKey: ["jams.detail", jam.id],
-    queryFn: () => ipc.jamsDetail(jam.id!),
-    enabled: !!jam.id && !getJamImage(jam),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-  const mergedJam = mergeJamDetail(jam, detail.data);
-  const title = firstString(mergedJam.title, mergedJam.name) ?? "Untitled Jam";
-  const thumb = getJamImage(mergedJam);
-  const state = firstString(mergedJam.state) ?? (mergedJam.isActive ? "active" : undefined);
+  const title = firstString(jam.title, jam.name) ?? "Untitled Jam";
+  const state = firstString(jam.state) ?? (jam.isActive ? "active" : undefined);
 
   return (
     <Card className="unity-panel overflow-hidden flex flex-col">
-      <div className="relative h-32 overflow-hidden">
-        {thumb ? (
-          <ThumbImage
-            src={thumb}
-            seedKey={mergedJam.id ?? title}
-            label={title}
-            className="h-full w-full rounded-none border-0"
-            aspect=""
-            priority="eager"
-          />
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.18)] text-[hsl(var(--muted-foreground))]">
-            <ImageOff className="size-7 opacity-70" />
-            <span className="text-[11px] font-medium">
-              {detail.isFetching
-                ? t("calendar.resolvingPreview", { defaultValue: "Looking for preview…" })
-                : t("calendar.noPreview", { defaultValue: "No preview image" })}
-            </span>
-          </div>
-        )}
-      </div>
       <CardHeader className="pb-1.5">
         <CardTitle className="text-[13px] flex items-center gap-2 line-clamp-1">
           <Trophy className="size-3.5 text-amber-400" />
           {title}
           {state && (
-            <Badge variant={mergedJam.isActive ? "default" : "outline"} className="text-[9px] h-4">{state.toUpperCase()}</Badge>
+            <Badge variant={jam.isActive ? "default" : "outline"} className="text-[9px] h-4">{state.toUpperCase()}</Badge>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-0 flex-1 flex flex-col">
-        {mergedJam.description && (
+        {jam.description && (
           <p className="text-[11px] text-[hsl(var(--muted-foreground))] line-clamp-3">
-            {String(mergedJam.description)}
+            {String(jam.description)}
           </p>
         )}
-        {mergedJam.closedAt && (
+        {jam.closedAt && (
           <div className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">
-            {t("calendar.closesAt", { defaultValue: "Closes {{when}}", when: formatWhen(mergedJam.closedAt) })}
+            {t("calendar.closesAt", { defaultValue: "Closes {{when}}", when: formatWhen(jam.closedAt) })}
           </div>
         )}
         <div className="mt-auto pt-2">

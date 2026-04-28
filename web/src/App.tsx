@@ -158,6 +158,10 @@ function AppContent() {
         title: t("nav.friends"),
         breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.friends")],
       },
+      "/groups": {
+        title: t("nav.groups", { defaultValue: "Groups" }),
+        breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.groups", { defaultValue: "Groups" })],
+      },
       "/profile": {
         title: t("nav.profile"),
         breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.profile")],
@@ -187,6 +191,41 @@ function AppContent() {
         breadcrumb: [
           t("nav.category.workspace", { defaultValue: "Workspace" }),
           t("nav.rules", { defaultValue: "Automation Rules" }),
+        ],
+      },
+      "/events": {
+        title: t("nav.events", { defaultValue: "Event Recorder" }),
+        breadcrumb: [
+          t("nav.category.workspace", { defaultValue: "Workspace" }),
+          t("nav.events", { defaultValue: "Event Recorder" }),
+        ],
+      },
+      "/social": {
+        title: t("nav.social", { defaultValue: "Social Analytics" }),
+        breadcrumb: [
+          t("nav.category.social", { defaultValue: "Social" }),
+          t("nav.social", { defaultValue: "Social Analytics" }),
+        ],
+      },
+      "/benchmark": {
+        title: t("nav.benchmark", { defaultValue: "Avatar Benchmark" }),
+        breadcrumb: [
+          t("nav.category.assets", { defaultValue: "Assets" }),
+          t("nav.benchmark", { defaultValue: "Avatar Benchmark" }),
+        ],
+      },
+      "/fbt": {
+        title: t("nav.fbt", { defaultValue: "FBT Monitor" }),
+        breadcrumb: [
+          t("nav.category.workspace", { defaultValue: "Workspace" }),
+          t("nav.fbt", { defaultValue: "FBT Monitor" }),
+        ],
+      },
+      "/tools/osc": {
+        title: t("nav.osc", { defaultValue: "OSC Tools" }),
+        breadcrumb: [
+          t("nav.category.workspace", { defaultValue: "Workspace" }),
+          t("nav.osc", { defaultValue: "OSC Tools" }),
         ],
       },
       "/calendar": {

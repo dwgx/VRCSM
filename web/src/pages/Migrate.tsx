@@ -700,10 +700,10 @@ function Migrate() {
                 <Check className="size-4 shrink-0 text-[hsl(var(--success))]" />
                 <div className="flex-1 text-[12px]">
                   <span className="font-medium text-[hsl(var(--success))]">
-                    {t("migrate.alreadyMigrated", { defaultValue: "Already migrated" })}
-                  </span>
-                  <span className="ml-2 font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                    → {selected?.resolved_path}
+                    {t("migrate.alreadyMigrated", {
+                      target: selected?.resolved_path ?? "",
+                      defaultValue: "Already migrated to {{target}}",
+                    })}
                   </span>
                 </div>
                 <Button

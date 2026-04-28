@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { ipc, type CalendarEvent } from "@/lib/ipc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ThumbImage } from "@/components/ThumbImage";
 
 // VRChat-official upcoming events tile. Read-only for v0.11 — clicking
 // an event opens the event's landing page in the browser (VRChat has no
@@ -37,9 +36,6 @@ function formatEventTime(iso: string | undefined): string {
 
 function getStartsAt(e: CalendarEvent): string | undefined {
   return e.startsAt ?? e.starts_at;
-}
-function getImageUrl(e: CalendarEvent): string | undefined {
-  return e.imageUrl ?? e.image_url ?? e.thumbnailImageUrl;
 }
 
 export function CalendarTile() {
@@ -78,7 +74,6 @@ export function CalendarTile() {
         )}
         {events.slice(0, 5).map((e, i) => {
           const when = formatEventTime(getStartsAt(e));
-          const thumb = getImageUrl(e);
           return (
             <button
               key={e.id ?? i}
@@ -91,19 +86,9 @@ export function CalendarTile() {
                 });
               }}
             >
-              {thumb ? (
-                <ThumbImage
-                  src={thumb}
-                  seedKey={e.worldId ?? e.id ?? String(i)}
-                  label={e.name ?? t("calendar.untitledEvent")}
-                  alt=""
-                  className="h-10 w-10 shrink-0"
-                  aspect=""
-                  rounded="rounded"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded bg-[hsl(var(--muted))] shrink-0" />
-              )}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[hsl(var(--muted))] text-[10px] font-mono text-[hsl(var(--muted-foreground))]">
+                {e.region ? e.region.toUpperCase().slice(0, 2) : "EV"}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] font-medium truncate">
                   {e.name ?? t("calendar.untitledEvent")}

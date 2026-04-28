@@ -514,11 +514,23 @@ function WearerProfileFallbackCard({
   const imageUrl = trustedProfileImage(fallbackUser);
   const name = profile?.displayName ?? searchPick?.user.displayName ?? wearerName ?? t("common.unknown", { defaultValue: "Unknown" });
   const loading = thumbnailStatus === "loading" || searchLoading || profileLoading;
+  const [loadingExpired, setLoadingExpired] = useState(false);
   const matchLabel = searchPick && !directUserId
     ? searchPick.exact && !searchPick.ambiguous
       ? t("avatars.profileFallbackNameMatch", { defaultValue: "Name match" })
       : t("avatars.profileFallbackAmbiguous", { defaultValue: "Name guess" })
     : t("avatars.profileFallbackKnownUser", { defaultValue: "Wearer profile" });
+
+  useEffect(() => {
+    setLoadingExpired(false);
+    if (!loading) return;
+    const timeout = window.setTimeout(() => {
+      setLoadingExpired(true);
+    }, WEARER_REFERENCE_TIMEOUT_MS + 1000);
+    return () => window.clearTimeout(timeout);
+  }, [loading, profileUserId, query, thumbnailStatus]);
+
+  const showLoading = loading && !loadingExpired;
 
   useEffect(() => {
     if (!imageUrl || !onResolvedReference) return;
@@ -578,7 +590,7 @@ function WearerProfileFallbackCard({
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-[hsl(var(--canvas))]">
-            {loading ? (
+            {showLoading ? (
               <Loader2 className="size-9 animate-spin text-[hsl(var(--muted-foreground))]" />
             ) : (
               <User className="size-12 text-[hsl(var(--muted-foreground))]" />
@@ -610,7 +622,7 @@ function WearerProfileFallbackCard({
           <ProfileCard user={profile} />
         ) : (
           <div className="p-8 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
-            {loading
+            {showLoading
               ? t("common.loading", { defaultValue: "Loading…" })
               : t("avatars.profileFallbackUnavailable", { defaultValue: "Could not load the wearer profile." })}
           </div>
