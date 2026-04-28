@@ -14,6 +14,7 @@
  */
 
 type Task<T> = () => Promise<T>;
+type TaskPriority = "high" | "normal" | "low";
 
 export interface ThrottleOptions {
   /** Max in-flight promises. */
@@ -61,14 +62,19 @@ export function createThrottle(opts: ThrottleOptions) {
     run();
   }
 
-  return function enqueue<T>(task: Task<T>): Promise<T> {
+  return function enqueue<T>(task: Task<T>, priority: TaskPriority = "normal"): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      queue.push(() => {
+      const run = () => {
         task().then(resolve, reject).finally(() => {
           inFlight -= 1;
           pump();
         });
-      });
+      };
+      if (priority === "high") {
+        queue.unshift(run);
+      } else {
+        queue.push(run);
+      }
       pump();
     });
   };

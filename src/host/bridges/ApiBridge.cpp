@@ -257,6 +257,36 @@ nlohmann::json IpcBridge::HandleThumbnailsFetch(const nlohmann::json& params, co
     return nlohmann::json{{"results", std::move(out)}};
 }
 
+nlohmann::json IpcBridge::HandleImagesCache(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    std::vector<std::pair<std::string, std::string>> items;
+    if (params.contains("items") && params["items"].is_array())
+    {
+        for (const auto& item : params["items"])
+        {
+            if (!item.is_object()) continue;
+            const auto id = JsonStringField(item, "id").value_or("");
+            const auto url = JsonStringField(item, "url").value_or("");
+            if (!id.empty() && !url.empty()) items.emplace_back(id, url);
+            if (items.size() >= 64) break;
+        }
+    }
+    else
+    {
+        const auto id = JsonStringField(params, "id").value_or("");
+        const auto url = JsonStringField(params, "url").value_or("");
+        if (!id.empty() && !url.empty()) items.emplace_back(id, url);
+    }
+
+    const auto results = vrcsm::core::VrcApi::cacheImageUrls(items);
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& r : results)
+    {
+        out.push_back(ToJson(r));
+    }
+    return nlohmann::json{{"results", std::move(out)}};
+}
+
 nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const bool offline = params.contains("offline") && params["offline"].is_boolean()

@@ -72,6 +72,25 @@ void to_json(nlohmann::json& j, const ThumbnailResult& r)
     }
 }
 
+void to_json(nlohmann::json& j, const CachedImageResult& r)
+{
+    j = nlohmann::json{
+        {"id", r.id},
+        {"url", r.url},
+        {"localUrl", r.localUrl.has_value() ? nlohmann::json(*r.localUrl) : nlohmann::json(nullptr)},
+        {"imageCached", r.imageCached},
+        {"source", r.source},
+    };
+    if (r.error.has_value())
+    {
+        j["error"] = *r.error;
+    }
+    else
+    {
+        j["error"] = nullptr;
+    }
+}
+
 namespace
 {
 // Public API key shipped with every VRChat web/desktop build — required as
@@ -922,6 +941,30 @@ std::optional<CrackedUrl> crackHttpUrl(const std::string& url)
     return out;
 }
 
+bool isTrustedVrchatImageUrl(const std::string& url)
+{
+    const auto cracked = crackHttpUrl(url);
+    if (!cracked || (cracked->flags & WINHTTP_FLAG_SECURE) == 0)
+    {
+        return false;
+    }
+
+    std::string host = toUtf8(cracked->host);
+    std::transform(host.begin(), host.end(), host.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    auto endsWith = [](const std::string& value, const std::string& suffix)
+    {
+        return value.size() >= suffix.size()
+            && value.compare(value.size() - suffix.size(), suffix.size(), suffix) == 0;
+    };
+
+    return host == "api.vrchat.cloud"
+        || endsWith(host, ".vrchat.cloud")
+        || host == "assets.vrchat.com"
+        || endsWith(host, ".assets.vrchat.com");
+}
+
 bool fileStartsWithAny(const std::filesystem::path& path, const std::vector<std::string>& magic)
 {
     std::ifstream in(path, std::ios::binary);
@@ -1241,6 +1284,53 @@ void ensureLocalThumbnail(ThumbnailResult& out)
     }
 }
 
+CachedImageResult cacheRawImageUrl(const std::string& id, const std::string& url)
+{
+    CachedImageResult out;
+    out.id = id;
+    out.url = url;
+    out.source = "network";
+
+    if (id.empty() || url.empty())
+    {
+        out.source = "negative";
+        out.error = "missing-id-or-url";
+        return out;
+    }
+    if (!isTrustedVrchatImageUrl(url))
+    {
+        out.source = "negative";
+        out.error = "untrusted-image-url";
+        return out;
+    }
+
+    const auto path = thumbnailFileFor("image|" + id, url);
+    if (auto localUrl = localThumbnailUrlFor(path, url))
+    {
+        out.localUrl = localUrl;
+        out.imageCached = true;
+        out.source = "disk";
+        std::error_code ec;
+        (void)std::filesystem::last_write_time(path, std::filesystem::file_time_type::clock::now(), ec);
+        return out;
+    }
+
+    if (downloadUrlToFileAtomic(url, path, looksLikeImageFile, false))
+    {
+        out.localUrl = localThumbnailUrlFor(path, url);
+        out.imageCached = out.localUrl.has_value();
+        out.source = out.imageCached ? "network" : "negative";
+        trimCacheDirectory(thumbCacheDir(), 512ull * 1024ull * 1024ull);
+    }
+    else
+    {
+        out.source = "negative";
+        out.error = "download-failed";
+    }
+
+    return out;
+}
+
 ThumbnailResult performLookup(const std::string& id, bool downloadImage)
 {
     ThumbnailResult out;
@@ -1428,6 +1518,40 @@ std::vector<ThumbnailResult> VrcApi::fetchThumbnails(const std::vector<std::stri
         {
             out[i] = out[it->second];
         }
+    }
+    return out;
+}
+
+CachedImageResult VrcApi::cacheImageUrl(const std::string& id, const std::string& url)
+{
+    return cacheRawImageUrl(id, url);
+}
+
+std::vector<CachedImageResult> VrcApi::cacheImageUrls(
+    const std::vector<std::pair<std::string, std::string>>& items)
+{
+    constexpr std::size_t kMaxConcurrent = 4;
+    std::vector<CachedImageResult> out(items.size());
+    if (items.empty()) return out;
+
+    std::size_t cursor = 0;
+    while (cursor < items.size())
+    {
+        const std::size_t batchEnd = std::min(cursor + kMaxConcurrent, items.size());
+        std::vector<std::future<CachedImageResult>> futures;
+        futures.reserve(batchEnd - cursor);
+        for (std::size_t i = cursor; i < batchEnd; ++i)
+        {
+            const auto [id, url] = items[i];
+            futures.push_back(std::async(std::launch::async, [id, url] {
+                return cacheRawImageUrl(id, url);
+            }));
+        }
+        for (std::size_t i = cursor; i < batchEnd; ++i)
+        {
+            out[i] = futures[i - cursor].get();
+        }
+        cursor = batchEnd;
     }
     return out;
 }
