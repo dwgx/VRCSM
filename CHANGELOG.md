@@ -49,6 +49,10 @@ they do not.
   player encounters, and avatar history, and the existing `Ctrl+K`
   command palette shows evidence-backed world/user/avatar rows without
   firing live VRChat API searches while the user types.
+- **World history is no longer stuck at 100 rows.** The page now has
+  visible 100/250/500/1000/2000 presets plus a persisted custom limit
+  up to 5000, and each visit shows local-log `logged players` counts
+  derived from `player_events`.
 
 ## [0.14.3] — 2026-04-27
 

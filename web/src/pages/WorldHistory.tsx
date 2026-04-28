@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { Users } from "lucide-react";
 import { ipc } from "@/lib/ipc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
+
+const LIMIT_STORAGE_KEY = "vrcsm.worldHistory.limit";
+const DEFAULT_LIMIT = 250;
+const MAX_LIMIT = 5000;
+const LIMIT_OPTIONS = [100, 250, 500, 1000, 2000] as const;
 
 interface WorldVisit {
   id: number;
@@ -15,6 +21,9 @@ interface WorldVisit {
   region?: string;
   joined_at?: string;
   left_at?: string | null;
+  player_count?: number;
+  player_event_count?: number;
+  last_player_seen_at?: string | null;
 }
 
 function formatRelative(iso: string | undefined): string {
@@ -64,48 +73,85 @@ function accessBadgeVariant(
   }
 }
 
-function EditableLimit({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [editing, setEditing] = useState(false);
+function clampLimit(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_LIMIT;
+  return Math.max(25, Math.min(MAX_LIMIT, Math.round(value)));
+}
+
+function readInitialLimit(): number {
+  if (typeof window === "undefined") return DEFAULT_LIMIT;
+  const stored = window.localStorage.getItem(LIMIT_STORAGE_KEY);
+  return stored ? clampLimit(Number(stored)) : DEFAULT_LIMIT;
+}
+
+function LimitControl({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(String(value));
 
-  if (editing) {
-    return (
-      <input
-        autoFocus
-        type="number"
-        min={10}
-        max={1000}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          const n = Math.max(10, Math.min(1000, parseInt(draft) || value));
-          onChange(n);
-          setEditing(false);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          if (e.key === "Escape") { setDraft(String(value)); setEditing(false); }
-        }}
-        className="w-12 h-5 text-center text-[10px] font-mono rounded border border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--canvas))] text-[hsl(var(--foreground))] outline-none"
-      />
-    );
-  }
+  const commitDraft = () => {
+    const next = clampLimit(Number(draft));
+    setDraft(String(next));
+    onChange(next);
+  };
 
   return (
-    <button
-      type="button"
-      onClick={() => { setDraft(String(value)); setEditing(true); }}
-      className="font-mono text-[11px] text-[hsl(var(--primary))] hover:underline cursor-pointer"
-      title="Click to change limit"
-    >
-      {value}
-    </button>
+    <div className="flex flex-wrap items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+      <span className="font-mono uppercase tracking-[0.08em]">
+        {t("worldHistory.limitLabel", { defaultValue: "Rows" })}
+      </span>
+      <div className="inline-flex overflow-hidden rounded-md border border-[hsl(var(--border))]">
+        {LIMIT_OPTIONS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => {
+              setDraft(String(option));
+              onChange(option);
+            }}
+            className={`h-7 px-2 font-mono text-[10px] transition-colors ${
+              value === option
+                ? "bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                : "bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface))]"
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <input
+        aria-label={t("worldHistory.customLimit", { defaultValue: "Custom world history row limit" })}
+        type="number"
+        min={25}
+        max={MAX_LIMIT}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commitDraft}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") setDraft(String(value));
+        }}
+        className="h-7 w-20 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-2 text-center font-mono text-[10px] text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary)/0.6)]"
+      />
+    </div>
   );
 }
 
 export default function WorldHistory() {
   const { t } = useTranslation();
-  const [limit, setLimit] = useState(100);
+  const [limit, setLimitState] = useState(readInitialLimit);
+  const setLimit = (next: number) => {
+    const clamped = clampLimit(next);
+    setLimitState(clamped);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LIMIT_STORAGE_KEY, String(clamped));
+    }
+  };
   const { data, isLoading, error } = useQuery({
     queryKey: ["db.worldVisits.list", { limit, offset: 0 }],
     queryFn: () => ipc.dbWorldVisits(limit, 0),
@@ -117,20 +163,24 @@ export default function WorldHistory() {
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
-      <header className="flex items-center gap-2">
-        <div className="unity-panel-header inline-flex items-center gap-2 border-0 bg-transparent px-0 py-0 normal-case tracking-normal">
-          <span className="text-[11px] uppercase tracking-[0.08em]">
-            {t("worldHistory.title")}
+      <header className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="unity-panel-header inline-flex items-center gap-2 border-0 bg-transparent px-0 py-0 normal-case tracking-normal">
+            <span className="text-[11px] uppercase tracking-[0.08em]">
+              {t("worldHistory.title")}
+            </span>
+          </div>
+          <span className="h-[11px] w-px bg-[hsl(var(--border-strong))]" />
+          <span className="min-w-0 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
+            {t("worldHistory.recentLimit", {
+              count: limit,
+              defaultValue: "Recent {{count}} visits",
+            })}
+            {" · "}
+            {t("worldHistory.subtitle")}
           </span>
         </div>
-        <span className="h-[11px] w-px bg-[hsl(var(--border-strong))]" />
-        <span className="font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
-          {t("worldHistory.recentN", { defaultValue: "Recent" })}{" "}
-          <EditableLimit value={limit} onChange={setLimit} />{" "}
-          {t("worldHistory.visits", { defaultValue: "visits" })}
-          {" · "}
-          {t("worldHistory.subtitle")}
-        </span>
+        <LimitControl value={limit} onChange={setLimit} />
       </header>
 
       {isLoading && (
@@ -174,6 +224,30 @@ export default function WorldHistory() {
                   {v.region && (
                     <Badge variant="outline">{v.region.toUpperCase()}</Badge>
                   )}
+                  <Badge
+                    variant={v.player_count && v.player_count > 0 ? "secondary" : "outline"}
+                    className="gap-1"
+                    title={
+                      v.player_event_count && v.player_event_count > 0
+                        ? t("worldHistory.playerCountHint", {
+                            count: v.player_event_count,
+                            defaultValue: "{{count}} local player log events in this visit window.",
+                          })
+                        : t("worldHistory.noPlayerCountHint", {
+                            defaultValue: "No local player join/leave events were recorded in this visit window.",
+                          })
+                    }
+                  >
+                    <Users className="size-3" />
+                    {v.player_count && v.player_count > 0
+                      ? t("worldHistory.loggedPlayers", {
+                          count: v.player_count,
+                          defaultValue: "{{count}} logged players",
+                        })
+                      : t("worldHistory.noLoggedPlayers", {
+                          defaultValue: "No player log",
+                        })}
+                  </Badge>
                 </div>
                 <div className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
                   {formatRelative(v.joined_at)}
@@ -181,6 +255,15 @@ export default function WorldHistory() {
                   {v.left_at ? formatRelative(v.left_at) : t("worldHistory.stillInWorld")}
                   {" · "}
                   {durationMinutes(v.joined_at, v.left_at)}
+                  {v.last_player_seen_at && (
+                    <>
+                      {" · "}
+                      {t("worldHistory.lastPlayerSeen", {
+                        time: formatRelative(v.last_player_seen_at),
+                        defaultValue: "last player event {{time}}",
+                      })}
+                    </>
+                  )}
                 </div>
               </div>
               {v.world_id && (
