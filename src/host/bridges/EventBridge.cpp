@@ -28,6 +28,16 @@ nlohmann::json IpcBridge::HandleEventStop(const nlohmann::json& params, const st
     return nlohmann::json{{"ok", true}};
 }
 
+nlohmann::json IpcBridge::HandleEventDelete(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const int64_t id = ParamInt(params, "id", 0);
+    if (id <= 0) throw IpcException({"missing_field", "event.delete: missing 'id'", 400});
+    const auto r = vrcsm::core::Database::Instance().DeleteRecording(id);
+    if (std::holds_alternative<vrcsm::core::Error>(r))
+        throw IpcException(std::get<vrcsm::core::Error>(r));
+    return nlohmann::json{{"ok", true}};
+}
+
 nlohmann::json IpcBridge::HandleEventList(const nlohmann::json&, const std::optional<std::string>&)
 {
     return unwrapResult(vrcsm::core::Database::Instance().ListRecordings());

@@ -1515,7 +1515,12 @@
     "closesAt": "{{when}} को बंद",
     "tabDiscover": "खोजें",
     "tabFeatured": "विशेष रुप से प्रदर्शित",
-    "tabJams": "जैम्स"
+    "tabJams": "जैम्स",
+    "tabGroups": "मेरे समूह",
+    "groupsSignIn": "अपने जुड़े समूहों के ईवेंट देखने के लिए VRChat में साइन इन करें।",
+    "noGroups": "आपने अभी तक किसी VRChat समूह में शामिल नहीं हुए हैं।",
+    "noGroupEvents": "आपके {{count}} समूह(समूहों) में अभी कोई सार्वजनिक ईवेंट नहीं है।",
+    "openGroupPage": "समूह पेज खोलें"
   },
   "worldHistory": {
     "title": "विश्व इतिहास",
@@ -1570,7 +1575,15 @@
     "public": "सार्वजनिक",
     "private": "निजी",
     "logOnly": "केवल लॉग",
-    "byAuthor": "{{author}} द्वारा"
+    "byAuthor": "{{author}} द्वारा",
+    "thumbnailResolved": "थंबनेल",
+    "referenceImage": "संदर्भ",
+    "referenceImageVerified": "संदर्भ · मेल",
+    "referenceImageHint": "यह छवि पहनने वाले के वर्तमान अवतार/प्रोफ़ाइल चित्र है, सत्यापित ऐतिहासिक मिलान नहीं।",
+    "wearerCount": "{{count}} पहनने वाला(वाले)",
+    "seenTimes": "{{count}} बार देखा गया",
+    "showWearers": "पहनने वाले",
+    "localEncounterIndexHint": "स्थानीय VRChat लॉग से बनाया गया। VRCSM सहेजे गए थंबनेल और वास्तविक अवतार ID को प्राथमिकता देता है; ID न होने वाली पंक्तियाँ साइन-इन होने पर सटीक सार्वजनिक खोज से हल होती हैं, और अस्पष्ट/निजी पंक्तियों में प्लेसहोल्डर बना रहता है।"
   },
   "fbt": {
     "title": "FBT कैलिब्रेशन मॉनिटर",

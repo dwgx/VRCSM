@@ -6,7 +6,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
-## [Unreleased] — 2026-04-27
+## [0.14.4] — 2026-05-07
 
 After v0.14.3, the branch centered on making the Avatars page useful for
 models seen on other players, without pretending VRChat logs contain data
@@ -53,6 +53,28 @@ they do not.
   visible 100/250/500/1000/2000 presets plus a persisted custom limit
   up to 5000, and each visit shows local-log `logged players` counts
   derived from `player_events`.
+- **DM compose replaced by honest boop slot picker.** VRChat's API
+  returns 405 for arbitrary-text DMs — the `POST /api/1/message/`
+  path only serves the four saved invite-message slots. The broken DM
+  textarea is removed and a Boop card lets users pick which saved
+  request-invite snippet to attach, fetched from the corrected
+  `GET /api/1/message/{userId}/{messageType}` endpoint.
+- **Event recordings can now be deleted.** A delete button on the
+  Event Recorder page calls the new `event.delete` IPC method with
+  FK-cascade cleanup.
+- **Group IDs are now the actual group id.** The API bridge promotes
+  `groupId` (grp_…) over membership `id` (gmem_…) so group detail
+  lookups and representation URLs resolve correctly.
+- **Avatar preview source cascade reworked.** Caller-supplied paths
+  are treated as hints rather than hard requirements, and the local
+  cache is searched before falling back to network downloads.
+- **Calendar and Bundles moved to Lab.** These experimental pages now
+  live under the Lab section of the sidebar so the main nav stays
+  focused on stable features.
+- **Avatar Benchmark gets wearer reference images.** Seen-avatar rows
+  now show cached wearer profile images as reference thumbnails with
+  zoom, persisted via the new `seenThumbnails.ts` utilities.
+- **i18n strings updated for all supported locales.**
 
 ## [0.14.3] — 2026-04-27
 

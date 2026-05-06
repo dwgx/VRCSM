@@ -281,6 +281,8 @@ public:
     Result<nlohmann::json> RecordingAttendees(int64_t recording_id);
     Result<std::monostate> AddAttendee(int64_t recording_id,
         const std::string& user_id, const std::string& display_name);
+    /// Cascades to event_attendees via the FK ON DELETE CASCADE.
+    Result<std::monostate> DeleteRecording(int64_t id);
 
     // ─── rules (automation engine) ─────────────────────────────
 

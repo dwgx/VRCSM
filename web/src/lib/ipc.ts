@@ -1424,6 +1424,9 @@ class IpcClient {
   async eventAddAttendee(recording_id: number, user_id: string, display_name: string) {
     return this.call<Record<string, unknown>, { ok: boolean }>("event.addAttendee", { recording_id, user_id, display_name });
   }
+  async eventDelete(id: number) {
+    return this.call<{ id: number }, { ok: boolean }>("event.delete", { id });
+  }
 
   async rulesList() {
     return this.call<undefined, { rules: Array<Record<string, unknown>> }>("rules.list");
@@ -1622,6 +1625,12 @@ class IpcClient {
       { userId: string; location: string; slot: number },
       { ok: boolean }
     >("user.inviteTo", { userId, location, slot });
+  }
+
+  async getSavedMessages(type: "invite" | "inviteResponse" | "requestInvite" | "requestInviteResponse" = "requestInvite") {
+    return this.call<{ type: string }, { messages: Array<{ id?: string; slot?: number; message?: string; messageType?: string; remainingCooldownMinutes?: number }> }>(
+      "user.getSavedMessages", { type },
+    );
   }
 
   async requestInvite(userId: string, slot = 0) {

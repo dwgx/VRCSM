@@ -150,6 +150,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "event.list",
         "event.attendees",
         "event.addAttendee",
+        "event.delete",
         "rules.list",
         "rules.get",
         "rules.create",
@@ -161,6 +162,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "user.invite",
         "user.inviteTo",
         "user.requestInvite",
+        "user.getSavedMessages",
         "user.mute",
         "user.unmute",
         "user.block",
@@ -566,6 +568,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("event.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventList(p, id); });
     m_handlers.emplace("event.attendees", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventAttendees(p, id); });
     m_handlers.emplace("event.addAttendee", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventAddAttendee(p, id); });
+    m_handlers.emplace("event.delete", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventDelete(p, id); });
     m_handlers.emplace("rules.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesList(p, id); });
     m_handlers.emplace("rules.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesGet(p, id); });
     m_handlers.emplace("rules.create", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesCreate(p, id); });
@@ -673,6 +676,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("user.invite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInvite(p, id); });
     m_handlers.emplace("user.inviteTo", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInviteTo(p, id); });
     m_handlers.emplace("user.requestInvite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserRequestInvite(p, id); });
+    m_handlers.emplace("user.getSavedMessages", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserGetSavedMessages(p, id); });
     m_handlers.emplace("user.mute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserMute(p, id); });
     m_handlers.emplace("user.unmute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserUnmute(p, id); });
     m_handlers.emplace("user.block", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserBlock(p, id); });

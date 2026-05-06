@@ -627,13 +627,13 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
               <span className="text-sm">{t("common.loading")}</span>
             </div>
           ) : (tab === "session" ? filteredSession : filteredSocial).length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-[hsl(var(--muted-foreground))]">
-              <Clock className="mb-2 size-8 opacity-40" />
-              <span className="text-sm">
+            <div className="flex flex-col items-center justify-center px-6 py-10 text-[hsl(var(--muted-foreground))]">
+              <Clock className="mb-3 size-8 opacity-40" />
+              <pre className="max-w-[60ch] whitespace-pre-line text-center text-[12px] font-sans leading-relaxed">
                 {tab === "session"
                   ? t("friendLog.session.empty")
                   : t("friendLog.social.empty")}
-              </span>
+              </pre>
             </div>
           ) : (
             <>

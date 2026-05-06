@@ -68,6 +68,7 @@ private:
     nlohmann::json HandleEventList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleEventAttendees(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleEventAddAttendee(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventDelete(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleRulesList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleRulesGet(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleRulesCreate(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -125,6 +126,7 @@ private:
     nlohmann::json HandleUserInvite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserInviteTo(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserRequestInvite(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleUserGetSavedMessages(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserMute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserUnmute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserBlock(const nlohmann::json& params, const std::optional<std::string>& id);

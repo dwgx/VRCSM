@@ -1068,8 +1068,8 @@
     },
     "social": {
       "title": "好友变化流",
-      "desc": "保存在本地数据库中的长期社交变化记录。",
-      "empty": "暂时还没有好友变化记录。",
+      "desc": "保存在本地数据库中的长期社交变化记录。当好友状态、虚拟形象或昵称改变，以及加 / 删好友时会自动记录。需要 VRChat 在线 + Pipeline (WebSocket) 已连接。",
+      "empty": "暂时还没有好友变化记录。\n\n触发条件：\n• 你登录 VRChat 且 Pipeline 已连上（看左下角 dwgx 旁边的状态指示）\n• 好友更换头像、改状态、改昵称\n• 你加好友 / 删好友\n\n首次启动需要等好友进行一次变化才会有记录。",
       "unknownUser": "未知用户",
       "from": "旧值",
       "to": "新值",
@@ -3573,7 +3573,12 @@
     "noPreview": "无预览图",
     "tabDiscover": "发现",
     "tabFeatured": "精选",
-    "tabJams": "Jams"
+    "tabJams": "Jams",
+    "tabGroups": "我的团体",
+    "groupsSignIn": "登录 VRChat 后才能看到加入团体的活动。",
+    "noGroups": "你还没有加入任何 VRChat 团体。",
+    "noGroupEvents": "你加入的 {{count}} 个团体目前没有公开活动。",
+    "openGroupPage": "打开团体页"
   },
   "worldHistory": {
     "title": "世界历史",
@@ -3631,6 +3636,9 @@
     "byAuthor": "作者：{{author}}",
     "localEncounterIndexHint": "基于本地 VRChat 日志生成。VRCSM 会优先使用已保存缩略图和真实模型 ID；没有 ID 的条目会在已登录时做精确公开搜索，重名或私有模型不会乱配图。",
     "thumbnailResolved": "已配图",
+    "referenceImage": "参考图",
+    "referenceImageVerified": "参考图 · 匹配",
+    "referenceImageHint": "此图来自穿戴者当前的虚拟形象 / 头像，并非已验证的历史匹配。",
     "wearerCount": "{{count}} 位穿戴者",
     "seenTimes": "看到 {{count}} 次",
     "showWearers": "穿戴者"

@@ -1515,7 +1515,12 @@
     "closesAt": "Закрывается {{when}}",
     "tabDiscover": "Обзор",
     "tabFeatured": "Рекомендуемые",
-    "tabJams": "Джемы"
+    "tabJams": "Джемы",
+    "tabGroups": "Мои группы",
+    "groupsSignIn": "Войдите в VRChat, чтобы видеть события групп, в которых состоите.",
+    "noGroups": "Вы ещё не вступили ни в одну группу VRChat.",
+    "noGroupEvents": "В ваших {{count}} группах сейчас нет публичных событий.",
+    "openGroupPage": "Открыть страницу группы"
   },
   "worldHistory": {
     "title": "История миров",
@@ -1570,7 +1575,15 @@
     "public": "Публичный",
     "private": "Приватный",
     "logOnly": "Только лог",
-    "byAuthor": "автор: {{author}}"
+    "byAuthor": "автор: {{author}}",
+    "thumbnailResolved": "Превью",
+    "referenceImage": "REF",
+    "referenceImageVerified": "REF · совпадает",
+    "referenceImageHint": "Это текущий аватар/изображение профиля носителя — не подтверждённое историческое совпадение.",
+    "wearerCount": "{{count}} носитель(ей)",
+    "seenTimes": "встречен {{count}} раз",
+    "showWearers": "Носители",
+    "localEncounterIndexHint": "Построено из локальных логов VRChat. VRCSM предпочитает сохранённые превью и реальные ID аватаров; строки без ID разрешаются через точный публичный поиск при входе в систему, а неоднозначные/приватные строки сохраняют плейсхолдер."
   },
   "fbt": {
     "title": "Монитор калибровки FBT",

@@ -49,12 +49,10 @@ const coreItems: NavItem[] = [
   { to: "/friends", labelKey: "nav.friends", icon: Users },
   { to: "/groups", labelKey: "nav.groups", icon: Users2 },
   { to: "/radar", labelKey: "nav.radar", icon: Radio },
-  { to: "/bundles", labelKey: "nav.bundles", icon: Package },
   { to: "/library", labelKey: "nav.library", icon: Heart },
   { to: "/avatars", labelKey: "nav.avatars", icon: User },
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
   { to: "/history/worlds", labelKey: "nav.worldHistory", icon: Globe2 },
-  { to: "/calendar", labelKey: "nav.calendar", icon: CalendarDays },
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
@@ -63,6 +61,8 @@ const coreItems: NavItem[] = [
 
 const labItems: NavItem[] = [
   { to: "/plugins", labelKey: "nav.plugins", icon: Plug },
+  { to: "/bundles", labelKey: "nav.bundles", icon: Package },
+  { to: "/calendar", labelKey: "nav.calendar", icon: CalendarDays },
   { to: "/events", labelKey: "nav.events", icon: CircleDot },
   { to: "/social", labelKey: "nav.social", icon: TrendingUp },
   { to: "/benchmark", labelKey: "nav.benchmark", icon: Gauge },

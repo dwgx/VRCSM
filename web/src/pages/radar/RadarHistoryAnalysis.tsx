@@ -414,16 +414,27 @@ export function RadarHistoryAnalysis() {
               ) : (
                 <ul className="divide-y divide-[hsl(var(--border)/0.4)]">
                   {aggregate.topPlayers.map((p) => (
-                    <li key={p.userId ?? p.displayName} className="flex items-center justify-between gap-3 px-3 py-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <TrustDot tags={p.userId ? playerTags[p.userId] : undefined} />
-                        <span className="text-[12px] font-medium truncate">{p.displayName}</span>
-                        {p.userId ? (
-                          <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))]">
-                            {shortId(p.userId)}
-                          </span>
-                        ) : null}
-                      </div>
+                    <li
+                      key={p.userId ?? p.displayName}
+                      className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-[hsl(var(--muted)/0.2)] transition-colors"
+                    >
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 min-w-0 flex-1 text-left hover:text-[hsl(var(--primary))] transition-colors"
+                          >
+                            <TrustDot tags={p.userId ? playerTags[p.userId] : undefined} />
+                            <span className="text-[12px] font-medium truncate">{p.displayName}</span>
+                            {p.userId ? (
+                              <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))]">
+                                {shortId(p.userId)}
+                              </span>
+                            ) : null}
+                          </button>
+                        </DialogTrigger>
+                        <PlayerProfileDialog userId={p.userId} displayName={p.displayName} />
+                      </Dialog>
                       <Badge variant="secondary" className="font-mono text-[10px]">
                         ×{p.count}
                       </Badge>

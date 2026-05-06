@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { usePipelineEvent } from "@/lib/pipeline-events";
 import { useSelfLocation } from "@/lib/useSelfLocation";
 import { parseLocation } from "@/lib/vrcFriends";
-import { CircleDot, Square, Users, Clock } from "lucide-react";
+import { CircleDot, Square, Users, Clock, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface Recording {
   id: number; name: string; world_id: string; instance_id: string;
@@ -26,6 +27,8 @@ export default function EventRecorder() {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [newName, setNewName] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Recording | null>(null);
+  const [deleting, setDeleting] = useState(false);
   // Local user's current world+instance — used to gate attendee inserts so
   // recordings only capture people actually in the same room as the user,
   // not every random user-location event flying past on the global pipeline.
@@ -138,6 +141,27 @@ export default function EventRecorder() {
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
   }
 
+  async function deleteRec(rec: Recording) {
+    setDeleting(true);
+    try {
+      await ipc.eventDelete(rec.id);
+      // If we just deleted the active recording row, clear that state
+      // so the UI doesn't keep streaming attendees into a dead row.
+      if (activeId === rec.id) setActiveId(null);
+      if (selectedId === rec.id) {
+        setSelectedId(null);
+        setAttendees([]);
+      }
+      toast.success(t("eventRecorder.deleted", { defaultValue: "Recording deleted" }));
+      setPendingDelete(null);
+      void refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
       <header className="flex items-center gap-2">
@@ -202,16 +226,19 @@ export default function EventRecorder() {
             </Card>
           )}
           {recordings.map((rec) => (
-            <button
+            <div
               key={rec.id}
-              onClick={() => setSelectedId(rec.id)}
-              className={`unity-panel flex items-center gap-3 rounded-[var(--radius-md)] border p-3 text-left transition-colors ${
+              className={`unity-panel group flex items-center gap-2 rounded-[var(--radius-md)] border p-3 transition-colors ${
                 selectedId === rec.id ? "border-[hsl(var(--primary)/0.55)]" : "border-[hsl(var(--border))]"
               }`}
             >
-              <div className="flex-1 min-w-0">
-                <div className="text-[12px] font-medium truncate">{rec.name}</div>
-                <div className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedId(rec.id)}
+                className="flex flex-1 min-w-0 flex-col items-start text-left"
+              >
+                <div className="text-[12px] font-medium truncate w-full">{rec.name}</div>
+                <div className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono flex gap-2 flex-wrap">
                   <span><Users className="inline size-2.5" /> {rec.attendee_count}</span>
                   <span><Clock className="inline size-2.5" /> {new Date(rec.started_at).toLocaleString()}</span>
                   {!rec.ended_at && (
@@ -220,10 +247,41 @@ export default function EventRecorder() {
                     </Badge>
                   )}
                 </div>
-              </div>
-            </button>
+              </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-[hsl(var(--muted-foreground))] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[hsl(var(--destructive))]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingDelete(rec);
+                }}
+                title={t("eventRecorder.delete", { defaultValue: "Delete recording" })}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
           ))}
         </div>
+
+        <ConfirmDialog
+          open={pendingDelete !== null}
+          onOpenChange={(v) => { if (!v) setPendingDelete(null); }}
+          title={t("eventRecorder.deleteTitle", { defaultValue: "Delete recording?" })}
+          description={t("eventRecorder.deleteDesc", {
+            defaultValue: "This permanently removes \"{{name}}\" and its {{count}} attendee record(s). This cannot be undone.",
+            name: pendingDelete?.name ?? "",
+            count: pendingDelete?.attendee_count ?? 0,
+          })}
+          confirmLabel={deleting
+            ? t("common.deleting", { defaultValue: "Deleting…" })
+            : t("eventRecorder.delete", { defaultValue: "Delete" })}
+          cancelLabel={t("common.cancel", { defaultValue: "Cancel" })}
+          tone="destructive"
+          onConfirm={async () => {
+            if (pendingDelete) await deleteRec(pendingDelete);
+          }}
+        />
 
         {selectedId && (
           <Card className="unity-panel">

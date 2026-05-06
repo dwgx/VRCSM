@@ -1534,7 +1534,12 @@
     "closesAt": "ปิด {{when}}",
     "tabDiscover": "ค้นพบ",
     "tabFeatured": "แนะนำ",
-    "tabJams": "แจม"
+    "tabJams": "แจม",
+    "tabGroups": "กลุ่มของฉัน",
+    "groupsSignIn": "เข้าสู่ระบบ VRChat เพื่อดูกิจกรรมจากกลุ่มที่คุณเข้าร่วม",
+    "noGroups": "คุณยังไม่ได้เข้าร่วมกลุ่ม VRChat ใดๆ",
+    "noGroupEvents": "กลุ่มของคุณ {{count}} กลุ่ม ไม่มีกิจกรรมสาธารณะในขณะนี้",
+    "openGroupPage": "เปิดหน้ากลุ่ม"
   },
   "worldHistory": {
     "title": "ประวัติเวิลด์",
@@ -1589,7 +1594,15 @@
     "public": "สาธารณะ",
     "private": "ส่วนตัว",
     "logOnly": "เฉพาะล็อก",
-    "byAuthor": "โดย {{author}}"
+    "byAuthor": "โดย {{author}}",
+    "thumbnailResolved": "ภาพย่อ",
+    "referenceImage": "REF",
+    "referenceImageVerified": "REF · ตรงกัน",
+    "referenceImageHint": "ภาพนี้คืออวตาร/รูปโปรไฟล์ปัจจุบันของผู้สวมใส่ ไม่ใช่การจับคู่ทางประวัติศาสตร์ที่ตรวจสอบแล้ว",
+    "wearerCount": "ผู้สวมใส่ {{count}} คน",
+    "seenTimes": "เห็น {{count}} ครั้ง",
+    "showWearers": "ผู้สวมใส่",
+    "localEncounterIndexHint": "สร้างจากล็อก VRChat ภายในเครื่อง VRCSM จะใช้ภาพย่อที่บันทึกไว้และ ID อวตารจริงเป็นอันดับแรก แถวที่ไม่มี ID จะแก้ไขผ่านการค้นหาสาธารณะที่ตรงเป๊ะเมื่อเข้าสู่ระบบแล้ว และแถวคลุมเครือ/ส่วนตัวจะคงพื้นที่ว่างไว้"
   },
   "fbt": {
     "title": "เครื่องมือติดตามการเทียบมาตรฐาน FBT",

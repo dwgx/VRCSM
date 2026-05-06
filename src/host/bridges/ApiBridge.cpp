@@ -179,8 +179,18 @@ std::optional<bool> JsonBoolField(const nlohmann::json& json, const char* key)
 
 nlohmann::json FilterGroup(const nlohmann::json& groupJson)
 {
+    // /users/{userId}/groups returns LimitedUserGroups: each row's `id`
+    // is the membership id (gmem_…) and `groupId` is the actual group
+    // (grp_…). The /home/group/{id} URL and /groups/{id}/representation
+    // endpoint both expect grp_, so promote groupId to `id` and keep
+    // the membership id available as `membershipId`.
+    const auto membershipId = JsonStringField(groupJson, "id").value_or("");
+    const auto realGroupId = JsonStringField(groupJson, "groupId").value_or("");
+    const auto effectiveId = !realGroupId.empty() ? realGroupId : membershipId;
+
     nlohmann::json out{
-        {"id", JsonStringField(groupJson, "id").value_or("")},
+        {"id", effectiveId},
+        {"membershipId", membershipId},
         {"name", JsonStringField(groupJson, "name").value_or("")},
         {"shortCode", JsonStringField(groupJson, "shortCode").value_or("")},
         {"description", JsonStringField(groupJson, "description").value_or("")},
@@ -523,6 +533,12 @@ nlohmann::json IpcBridge::HandleUserRequestInvite(const nlohmann::json& params, 
         slot = params["slot"].get<int>();
     }
     return unwrapResult(vrcsm::core::VrcApi::requestInvite(*userId, slot));
+}
+
+nlohmann::json IpcBridge::HandleUserGetSavedMessages(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto type = JsonStringField(params, "type").value_or("requestInvite");
+    return nlohmann::json{{"messages", unwrapResult(vrcsm::core::VrcApi::fetchSavedMessages(type))}};
 }
 
 nlohmann::json IpcBridge::HandleUserMute(const nlohmann::json& params, const std::optional<std::string>&)

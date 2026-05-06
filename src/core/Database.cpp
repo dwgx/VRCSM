@@ -3565,6 +3565,16 @@ Result<nlohmann::json> Database::RecordingAttendees(int64_t recording_id)
     return nlohmann::json{{"attendees", arr}};
 }
 
+Result<std::monostate> Database::DeleteRecording(int64_t id)
+{
+    std::lock_guard lock(m_mutex);
+    // event_attendees FK cascade on delete handles attendee cleanup; this
+    // single statement removes the recording row plus all its attendees.
+    const std::string sql =
+        "DELETE FROM event_recordings WHERE id = " + std::to_string(id) + ";";
+    return ExecSimple(sql.c_str());
+}
+
 Result<std::monostate> Database::AddAttendee(int64_t recording_id,
     const std::string& user_id, const std::string& display_name)
 {

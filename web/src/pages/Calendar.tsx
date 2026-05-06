@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ipc } from "@/lib/ipc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
+import type { WorkspaceGroup, WorkspaceGroupsResult } from "@/lib/types";
 import {
   Calendar as CalendarIcon,
   Star,
-  Compass,
   Trophy,
   Clock,
   Globe,
@@ -17,7 +18,7 @@ import {
   UserCircle,
 } from "lucide-react";
 
-type CalendarTab = "discover" | "featured" | "jams";
+type CalendarTab = "groups" | "jams" | "featured";
 
 interface CalendarEvent {
   id?: string;
@@ -28,10 +29,6 @@ interface CalendarEvent {
   starts_at?: string;
   endsAt?: string;
   ends_at?: string;
-  imageUrl?: string;
-  image_url?: string;
-  thumbnailImageUrl?: string;
-  thumbnail_image_url?: string;
   worldId?: string;
   world_id?: string;
   region?: string;
@@ -91,6 +88,10 @@ function getWorldId(e: CalendarEvent): string | undefined {
   return firstString(e.worldId, e.world_id);
 }
 
+function getGroupId(e: CalendarEvent): string | undefined {
+  return firstString(e.groupId, e.group_id);
+}
+
 function getGroupName(e: CalendarEvent): string | undefined {
   return firstString(e.groupName, e.group_name);
 }
@@ -126,10 +127,32 @@ function openEvent(event: CalendarEvent) {
   void ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", { url });
 }
 
+function openGroup(groupId: string) {
+  void ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
+    url: `https://vrchat.com/home/group/${groupId}`,
+  });
+}
+
+function dedupeEvents(events: CalendarEvent[]): CalendarEvent[] {
+  const seen = new Set<string>();
+  const out: CalendarEvent[] = [];
+  for (const e of events) {
+    const key = e.id ?? `${getEventTitle(e)}|${getStartsAt(e) ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
+}
+
 export default function CalendarPage() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<CalendarTab>("jams");
+  const { status } = useAuth();
+  const [tab, setTab] = useState<CalendarTab>("groups");
 
+  // The two calendar feeds we know about. /discover is region-gated and
+  // /featured is the curator surface; merging both gives us the widest
+  // pool to filter against the user's joined groups.
   const discover = useQuery({
     queryKey: ["calendar.discover"],
     queryFn: () => ipc.calendarDiscover(),
@@ -148,23 +171,68 @@ export default function CalendarPage() {
     staleTime: 5 * 60_000,
   });
 
-  const events: CalendarEvent[] =
-    tab === "discover"
-      ? ((discover.data?.events ?? []) as CalendarEvent[])
-      : tab === "featured"
-        ? ((featured.data?.events ?? []) as CalendarEvent[])
-        : [];
+  const groups = useQuery<WorkspaceGroupsResult>({
+    queryKey: ["groups.list", undefined],
+    queryFn: () => ipc.call<undefined, WorkspaceGroupsResult>("groups.list", undefined),
+    enabled: status.authed,
+    staleTime: 5 * 60_000,
+  });
+
+  const joinedGroupIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of (groups.data?.groups ?? []) as WorkspaceGroup[]) {
+      if (g.id) set.add(g.id);
+    }
+    return set;
+  }, [groups.data]);
+
+  const allEvents: CalendarEvent[] = useMemo(() => {
+    const a = (discover.data?.events ?? []) as CalendarEvent[];
+    const b = (featured.data?.events ?? []) as CalendarEvent[];
+    return dedupeEvents([...a, ...b]);
+  }, [discover.data, featured.data]);
+
+  const groupEvents = useMemo(() => {
+    if (joinedGroupIds.size === 0) return [];
+    return allEvents.filter((e) => {
+      const gid = getGroupId(e);
+      return gid ? joinedGroupIds.has(gid) : false;
+    });
+  }, [allEvents, joinedGroupIds]);
+
+  const featuredEvents: CalendarEvent[] =
+    (featured.data?.events ?? []) as CalendarEvent[];
 
   const rawJams = jams.data;
-  const jamItems: Jam[] = tab === "jams"
-    ? (Array.isArray(rawJams)
-      ? (rawJams as Jam[])
-      : ((rawJams as unknown as Record<string, unknown>)?.submissions as Jam[] ?? []))
-    : [];
+  const jamItems: Jam[] = Array.isArray(rawJams)
+    ? (rawJams as Jam[])
+    : ((rawJams as unknown as Record<string, unknown>)?.submissions as Jam[] ?? []);
+
   const isLoading =
-    tab === "discover" ? discover.isPending
+    tab === "groups" ? (discover.isPending || featured.isPending || groups.isPending)
       : tab === "featured" ? featured.isPending
         : jams.isPending;
+
+  const tabDefs = [
+    {
+      key: "groups" as const,
+      icon: Users,
+      label: t("calendar.tabGroups", { defaultValue: "我的团体" }),
+      count: groupEvents.length,
+    },
+    {
+      key: "jams" as const,
+      icon: Trophy,
+      label: t("calendar.tabJams", { defaultValue: "Jams" }),
+      count: jamItems.length,
+    },
+    {
+      key: "featured" as const,
+      icon: Star,
+      label: t("calendar.tabFeatured", { defaultValue: "Featured" }),
+      count: featuredEvents.length,
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
@@ -178,11 +246,7 @@ export default function CalendarPage() {
       </header>
 
       <div className="flex gap-1 border-b border-[hsl(var(--border))] pb-0">
-        {([
-          { key: "jams" as const, icon: Trophy, label: "Jams", count: Array.isArray(rawJams) ? rawJams.length : 0 },
-          { key: "discover" as const, icon: Compass, label: "Discover", count: (discover.data?.events as CalendarEvent[] | undefined)?.length ?? 0 },
-          { key: "featured" as const, icon: Star, label: "Featured", count: (featured.data?.events as CalendarEvent[] | undefined)?.length ?? 0 },
-        ]).map((tabDef) => (
+        {tabDefs.map((tabDef) => (
           <button
             key={tabDef.key}
             onClick={() => setTab(tabDef.key)}
@@ -211,21 +275,29 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {tab !== "jams" && !isLoading && events.length === 0 && (
+      {tab === "groups" && !isLoading && (
+        <GroupsTab
+          authed={status.authed}
+          groupCount={joinedGroupIds.size}
+          events={groupEvents}
+        />
+      )}
+
+      {tab === "featured" && !isLoading && featuredEvents.length === 0 && (
         <Card className="unity-panel">
           <CardContent className="p-6 text-center">
             <CalendarIcon className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
             <p className="text-[12px] text-[hsl(var(--muted-foreground))]">
-              {t("calendar.empty", { defaultValue: "No events to show right now — VRChat's calendar is region- and account-gated, try again later." })}
+              {t("calendar.empty", { defaultValue: "No events to show right now." })}
             </p>
           </CardContent>
         </Card>
       )}
 
-      {tab !== "jams" && !isLoading && events.length > 0 && (
+      {tab === "featured" && !isLoading && featuredEvents.length > 0 && (
         <div className="grid gap-3 md:grid-cols-2">
-          {events.map((e, i) => (
-            <EventCard key={e.id ?? `${tab}-${i}`} event={e} onOpen={openEvent} />
+          {featuredEvents.map((e, i) => (
+            <EventCard key={e.id ?? `featured-${i}`} event={e} onOpen={openEvent} />
           ))}
         </div>
       )}
@@ -252,11 +324,86 @@ export default function CalendarPage() {
   );
 }
 
-function EventCard({ event, onOpen }: { event: CalendarEvent; onOpen: (e: CalendarEvent) => void }) {
+function GroupsTab({
+  authed,
+  groupCount,
+  events,
+}: {
+  authed: boolean;
+  groupCount: number;
+  events: CalendarEvent[];
+}) {
+  const { t } = useTranslation();
+
+  if (!authed) {
+    return (
+      <Card className="unity-panel">
+        <CardContent className="p-6 text-center">
+          <Users className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
+          <p className="text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("calendar.groupsSignIn", {
+              defaultValue: "登录 VRChat 后才能看到加入团体的活动。",
+            })}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (groupCount === 0) {
+    return (
+      <Card className="unity-panel">
+        <CardContent className="p-6 text-center">
+          <Users className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
+          <p className="text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("calendar.noGroups", {
+              defaultValue: "你还没有加入任何 VRChat 团体。",
+            })}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <Card className="unity-panel">
+        <CardContent className="p-6 text-center">
+          <CalendarIcon className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
+          <p className="text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("calendar.noGroupEvents", {
+              defaultValue: "你加入的 {{count}} 个团体目前没有公开活动。",
+              count: groupCount,
+            })}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {events.map((e, i) => (
+        <EventCard key={e.id ?? `group-${i}`} event={e} onOpen={openEvent} showGroupAction />
+      ))}
+    </div>
+  );
+}
+
+function EventCard({
+  event,
+  onOpen,
+  showGroupAction,
+}: {
+  event: CalendarEvent;
+  onOpen: (e: CalendarEvent) => void;
+  showGroupAction?: boolean;
+}) {
   const { t } = useTranslation();
   const when = formatWhen(getStartsAt(event));
   const endsWhen = formatWhen(getEndsAt(event));
   const worldId = getWorldId(event);
+  const groupId = getGroupId(event);
   const groupName = getGroupName(event);
   const hostName = getHostName(event);
   const attending = getAttending(event);
@@ -309,7 +456,7 @@ function EventCard({ event, onOpen }: { event: CalendarEvent; onOpen: (e: Calend
             {String(event.description)}
           </p>
         )}
-        <div className="mt-auto pt-1">
+        <div className="mt-auto pt-1 flex flex-wrap gap-1.5">
           <Button
             variant="outline"
             size="sm"
@@ -319,6 +466,17 @@ function EventCard({ event, onOpen }: { event: CalendarEvent; onOpen: (e: Calend
             <ExternalLink className="size-3" />
             {t("calendar.openInBrowser", { defaultValue: "Open in VRChat" })}
           </Button>
+          {showGroupAction && groupId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 h-7 text-[11px]"
+              onClick={() => openGroup(groupId)}
+            >
+              <Users className="size-3" />
+              {t("calendar.openGroupPage", { defaultValue: "Open group" })}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

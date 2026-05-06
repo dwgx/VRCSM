@@ -1515,7 +1515,12 @@
     "closesAt": "{{when}} 終了",
     "tabDiscover": "発見",
     "tabFeatured": "注目",
-    "tabJams": "Jam"
+    "tabJams": "Jam",
+    "tabGroups": "マイグループ",
+    "groupsSignIn": "VRChat にサインインすると、参加グループのイベントが表示されます。",
+    "noGroups": "まだ VRChat グループに参加していません。",
+    "noGroupEvents": "参加中の {{count}} グループには現在公開イベントがありません。",
+    "openGroupPage": "グループページを開く"
   },
   "worldHistory": {
     "title": "ワールド履歴",
@@ -1570,7 +1575,15 @@
     "public": "公開",
     "private": "非公開",
     "logOnly": "ログのみ",
-    "byAuthor": "{{author}} 作"
+    "byAuthor": "{{author}} 作",
+    "thumbnailResolved": "サムネイル",
+    "referenceImage": "参考",
+    "referenceImageVerified": "参考 · 一致",
+    "referenceImageHint": "装着者の現在のアバター/プロフィール画像です。当時のアバターと一致するとは限りません。",
+    "wearerCount": "{{count}} 名の装着者",
+    "seenTimes": "{{count}} 回閲覧",
+    "showWearers": "装着者",
+    "localEncounterIndexHint": "ローカル VRChat ログから生成。VRCSM は保存済みのサムネイルと実際のアバター ID を優先し、ID 不明の項目はサインイン中に正確な公開検索で解決します。重複名・非公開アバターはプレースホルダのままです。"
   },
   "fbt": {
     "title": "FBTキャリブレーションモニター",

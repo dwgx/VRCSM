@@ -2724,9 +2724,12 @@ Result<nlohmann::json> VrcApi::sendUserMessage(
         {"messageType", "message"},
     }.dump();
 
+    // VRChat moved DMs onto the notification subsystem: the actual path
+    // is /api/1/message/{userId}/{messageType}, not /user/{}/message
+    // which 404s as "endpoint not implemented".
     const auto response = httpRequest(
         L"POST", kApiHostW,
-        toWide(fmt::format("/api/1/user/{}/message?apiKey={}",
+        toWide(fmt::format("/api/1/message/{}/message?apiKey={}",
                            targetUserId, kApiKey)),
         headers, body, false);
 
@@ -2747,6 +2750,54 @@ Result<nlohmann::json> VrcApi::sendUserMessage(
             static_cast<int>(response.status)};
     }
     return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::fetchSavedMessages(const std::string& messageType)
+{
+    if (messageType.empty())
+        return Error{"invalid_params", "messageType required", 400};
+
+    const auto me = fetchCurrentUser();
+    if (!isOk(me))
+    {
+        const auto& err = error(me);
+        if (err.code == "auth_expired") AuthStore::Instance().Clear();
+        return err;
+    }
+    const auto idIt = value(me).find("id");
+    if (idIt == value(me).end() || !idIt->is_string())
+        return Error{"api_error", "current user has no id", 500};
+    const std::string myId = idIt->get<std::string>();
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto response = httpRequest(
+        L"GET", kApiHostW,
+        toWide(fmt::format("/api/1/message/{}/{}?apiKey={}",
+                           myId, messageType, kApiKey)),
+        headers, "", false);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("getSavedMessages returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    try
+    {
+        return nlohmann::json::parse(response.body);
+    }
+    catch (const std::exception& e)
+    {
+        return Error{"parse_error", e.what(), 500};
+    }
 }
 
 Result<nlohmann::json> VrcApi::inviteUser(
