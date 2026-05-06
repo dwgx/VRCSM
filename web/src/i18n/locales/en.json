@@ -1058,8 +1058,8 @@
     },
     "social": {
       "title": "Friend Change Feed",
-      "desc": "Longer-lived social deltas tracked in the local database.",
-      "empty": "No friend change records yet.",
+      "desc": "Longer-lived social deltas tracked in the local database. Records are written when a friend changes status / avatar / display name, or when you add/remove a friend. Requires VRChat session + Pipeline (WebSocket) connected.",
+      "empty": "No friend change records yet.\n\nWhat triggers a row here:\n• You're signed into VRChat and the Pipeline is connected (see the chip next to your name top-right)\n• A friend changes their avatar, status, or display name\n• You add or remove a friend\n\nOn a fresh install nothing appears until at least one friend event occurs.",
       "unknownUser": "Unknown user",
       "from": "From",
       "to": "To",
@@ -1489,7 +1489,12 @@
     "noPreview": "No preview image",
     "tabDiscover": "Discover",
     "tabFeatured": "Featured",
-    "tabJams": "Jams"
+    "tabJams": "Jams",
+    "tabGroups": "My Groups",
+    "groupsSignIn": "Sign in to VRChat to see events from groups you've joined.",
+    "noGroups": "You haven't joined any VRChat groups yet.",
+    "noGroupEvents": "Your {{count}} group(s) have no public events right now.",
+    "openGroupPage": "Open group"
   },
   "worldHistory": {
     "title": "World History",
@@ -1614,6 +1619,9 @@
     "byAuthor": "by {{author}}",
     "localEncounterIndexHint": "Built from local VRChat logs. VRCSM now prefers saved thumbnails and real avatar ids; rows without ids resolve through exact public search when signed in, and ambiguous/private rows keep a stable placeholder.",
     "thumbnailResolved": "Thumbnail",
+    "referenceImage": "REF",
+    "referenceImageVerified": "REF · matched",
+    "referenceImageHint": "This image is the wearer's current avatar/profile picture, not a verified historical match.",
     "wearerCount": "{{count}} wearer",
     "seenTimes": "seen {{count}} times",
     "showWearers": "Wearers"

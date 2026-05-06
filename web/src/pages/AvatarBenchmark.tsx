@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,11 +7,21 @@ import { useAuth } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
 import { vrcApiThrottle } from "@/lib/api-throttle";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
+import {
+  attachLocalUrl,
+  pickProfileImage,
+  readWearerReference,
+  saveWearerReference,
+  type WearerReference,
+} from "@/lib/seenThumbnails";
+import type { VrcUserProfile } from "@/components/ProfileCard";
+import type { UserSearchResult } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThumbImage } from "@/components/ThumbImage";
+import { ImageZoom } from "@/components/ImageZoom";
 import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
@@ -506,13 +516,25 @@ function MyAvatarRow({
       <Badge variant="outline" className={`w-8 justify-center text-[9px] ${r.color} shrink-0`}>
         {r.tier}
       </Badge>
-      <ThumbImage
-        src={thumbUrl ?? undefined}
-        seedKey={a.avatar_id}
-        label={displayName}
-        className="size-8 shrink-0"
-        aspect=""
-      />
+      {thumbUrl ? (
+        <ImageZoom src={thumbUrl} alt={displayName} className="size-8 shrink-0">
+          <ThumbImage
+            src={thumbUrl}
+            seedKey={a.avatar_id}
+            label={displayName}
+            className="size-8 shrink-0 cursor-zoom-in"
+            aspect=""
+          />
+        </ImageZoom>
+      ) : (
+        <ThumbImage
+          src={thumbUrl ?? undefined}
+          seedKey={a.avatar_id}
+          label={displayName}
+          className="size-8 shrink-0"
+          aspect=""
+        />
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="truncate font-medium font-mono text-[10.5px]">{displayName}</span>
@@ -575,13 +597,25 @@ function SeenAvatarRow({ a }: { a: SeenAvatar }) {
 
   return (
     <div className="flex items-center gap-2.5 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
-      <ThumbImage
-        src={thumbUrl}
-        seedKey={a.avatar_id}
-        label={a.avatar_name ?? a.avatar_id}
-        className="size-10 shrink-0"
-        aspect=""
-      />
+      {thumbUrl ? (
+        <ImageZoom src={thumbUrl} alt={displayName} className="size-10 shrink-0">
+          <ThumbImage
+            src={thumbUrl}
+            seedKey={a.avatar_id}
+            label={a.avatar_name ?? a.avatar_id}
+            className="size-10 shrink-0 cursor-zoom-in"
+            aspect=""
+          />
+        </ImageZoom>
+      ) : (
+        <ThumbImage
+          src={thumbUrl}
+          seedKey={a.avatar_id}
+          label={a.avatar_name ?? a.avatar_id}
+          className="size-10 shrink-0"
+          aspect=""
+        />
+      )}
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         <div className="flex items-center gap-1.5">
           <span className="font-medium truncate">{displayName}</span>
@@ -675,6 +709,9 @@ function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
       ? a.avatar_id
       : null;
   const { url: cachedThumb } = useThumbnail(rowAvatarId);
+
+  // Tier 1: public-search match by avatar name (+author when available).
+  // Persists a real avtr_ id on success so the second visit is instant.
   const resolveQuery = useQuery({
     queryKey: ["benchmark.seen.resolveThumb", a.avatar_history_id, a.avatar_name, a.author_name],
     queryFn: async () => {
@@ -715,32 +752,259 @@ function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
   });
   const searchAvatarId = resolveQuery.data?.avatarId ?? null;
   const { url: searchCachedThumb } = useThumbnail(searchAvatarId);
+
+  // Tier 2: wearer-profile fallback. The image is the wearer's *current*
+  // avatar/profile picture, NOT a verified historical match — that's why
+  // we surface it with a "REF" badge below. Cached in localStorage so a
+  // page revisit is instant; the cache TTL drops stale wearer-current
+  // images on its own (24h).
+  const wearerCacheKey = useMemo(() => {
+    const wearerKey = primaryWearer?.userId?.startsWith("usr_")
+      ? primaryWearer.userId
+      : primaryWearer?.displayName ?? "";
+    return `${a.avatar_history_id}|${wearerKey}`;
+  }, [a.avatar_history_id, primaryWearer?.userId, primaryWearer?.displayName]);
+  const cachedWearerRef = useMemo(() => readWearerReference(wearerCacheKey), [wearerCacheKey]);
+  // Fire the wearer query in parallel with the public-search resolveQuery
+  // rather than serially. The two are independent — one searches by avatar
+  // name, the other walks the wearer's profile — and the throttle pool
+  // already serialises them inside the IPC layer. Gating wearerQuery on
+  // resolveQuery.isFetched left it disabled forever in practice when the
+  // resolveQuery never settled (cache cold + slow API).
+  const wearerEnabled =
+    authStatus.authed
+    && !rowAvatarId
+    && !a.resolved_thumbnail_url
+    && a.resolution_status !== "miss"
+    && cachedWearerRef?.status !== "miss"
+    && Boolean(primaryWearer?.userId?.startsWith("usr_") || primaryWearer?.displayName);
+
+  const wearerQuery = useQuery<WearerReference | null>({
+    queryKey: ["benchmark.seen.wearerRef", wearerCacheKey],
+    // initialData stays out of the options entirely when there's no cache
+    // hit. Passing `initialData: undefined` makes React Query mark the
+    // query as already-settled with `data: undefined`, which permanently
+    // suppresses the fetch — the very bug we hit here.
+    ...(cachedWearerRef ? { initialData: cachedWearerRef } : {}),
+    queryFn: async () => {
+      let userId = primaryWearer?.userId?.startsWith("usr_")
+        ? (primaryWearer.userId as string)
+        : null;
+      let resolvedDisplayName = primaryWearer?.displayName ?? null;
+
+      // Resolve the wearer to a usr_ id if we only have their display name.
+      if (!userId && primaryWearer?.displayName) {
+        const search = await vrcApiThrottle(() =>
+          ipc.searchUsers(primaryWearer.displayName, 6),
+        );
+        const exact = (search.users ?? []).find(
+          (u: UserSearchResult) =>
+            u.id?.startsWith("usr_") && isSameAvatarName(u.displayName, primaryWearer.displayName),
+        );
+        if (exact) {
+          userId = exact.id;
+          resolvedDisplayName = exact.displayName;
+        }
+      }
+
+      if (!userId) {
+        const miss: WearerReference = { status: "miss" };
+        saveWearerReference(wearerCacheKey, miss);
+        return miss;
+      }
+
+      const profileRes = await vrcApiThrottle(() =>
+        ipc.call<{ userId: string }, { profile: VrcUserProfile | null }>(
+          "user.getProfile",
+          { userId: userId as string },
+        ),
+      );
+      const profile = profileRes.profile;
+      const url = pickProfileImage(profile);
+      if (!url) {
+        const miss: WearerReference = {
+          status: "miss",
+          userId: userId,
+          displayName: resolvedDisplayName ?? undefined,
+        };
+        saveWearerReference(wearerCacheKey, miss);
+        return miss;
+      }
+
+      const verifiedForAvatarName = isSameAvatarName(profile?.currentAvatarName, a.avatar_name)
+        ? a.avatar_name
+        : undefined;
+
+      const baseRef: WearerReference = {
+        status: "resolved",
+        url,
+        userId: userId as string,
+        displayName: profile?.displayName ?? resolvedDisplayName ?? undefined,
+        avatarName: profile?.currentAvatarName ?? undefined,
+        avatarId: profile?.currentAvatarId?.startsWith("avtr_")
+          ? profile.currentAvatarId
+          : undefined,
+        verifiedForAvatarName,
+      };
+      // Send the URL through the host image cache so the <img> tag has a
+      // same-origin local URL it can render. Cross-origin VRChat CDN URLs
+      // would otherwise 401 in the browser (no auth cookies forwarded).
+      const ref = await attachLocalUrl(wearerCacheKey, baseRef);
+      saveWearerReference(wearerCacheKey, ref);
+
+      // If the wearer's current avatar happens to match the logged name,
+      // promote the resolution to the DB so future sessions see a verified
+      // thumbnail without re-walking the wearer profile.
+      if (verifiedForAvatarName && ref.avatarId) {
+        await ipc
+          .dbAvatarHistoryResolve({
+            avatar_id: a.avatar_history_id,
+            resolved_avatar_id: ref.avatarId,
+            resolved_thumbnail_url: ref.url,
+            resolved_image_url: ref.url,
+            resolution_source: "benchmark_wearer_profile_verified",
+            resolution_status: "resolved",
+          })
+          .catch(() => {});
+        if (ref.avatarId) prefetchThumbnails([ref.avatarId]);
+      }
+
+      return ref;
+    },
+    enabled: wearerEnabled,
+    staleTime: 60 * 60_000,
+    retry: 0,
+  });
+
+  // Backfill state for entries cached before we started downloading the
+  // image to a local proxy. Once attachLocalUrl resolves, we re-render
+  // with the local URL so the <img> can actually load.
+  const [backfilledRef, setBackfilledRef] = useState<WearerReference | null>(null);
+  const liveRef = wearerQuery.data ?? cachedWearerRef ?? null;
+  const wearerRef = backfilledRef ?? liveRef;
+
+  useEffect(() => {
+    if (!liveRef || liveRef.status !== "resolved") return;
+    if (liveRef.localUrl) return;
+    if (!liveRef.url) return;
+    let cancelled = false;
+    void attachLocalUrl(wearerCacheKey, liveRef).then((next) => {
+      if (cancelled) return;
+      if (next.localUrl && next.localUrl !== liveRef.localUrl) {
+        saveWearerReference(wearerCacheKey, next);
+        setBackfilledRef(next);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [liveRef, wearerCacheKey]);
+
+  const wearerRefUrl = wearerRef?.status === "resolved" ? wearerRef.localUrl ?? wearerRef.url : undefined;
+  const wearerCurrentAvatarMatches =
+    wearerRef?.status === "resolved"
+    && Boolean(wearerRef.verifiedForAvatarName)
+    && isSameAvatarName(wearerRef.verifiedForAvatarName, a.avatar_name);
+
+  // Persist DB miss when both tiers settle empty so the next session
+  // skips both queries entirely. Once-per-mount via ref guard.
+  const persistedMissRef = useRef(false);
+  useEffect(() => {
+    if (persistedMissRef.current) return;
+    if (a.resolution_status === "miss") return;
+    if (rowAvatarId || a.resolved_thumbnail_url) return;
+    if (!resolveQuery.isFetched) return;
+    if (resolveQuery.data?.url) return;
+    if (wearerEnabled && !wearerQuery.isFetched) return;
+    if (wearerRefUrl) return;
+    persistedMissRef.current = true;
+    ipc
+      .dbAvatarHistoryResolve({
+        avatar_id: a.avatar_history_id,
+        resolved_avatar_id: null,
+        resolved_thumbnail_url: null,
+        resolved_image_url: null,
+        resolution_source: "benchmark_search_and_wearer_miss",
+        resolution_status: "miss",
+      })
+      .catch(() => {});
+  }, [
+    a.avatar_history_id,
+    a.resolution_status,
+    a.resolved_thumbnail_url,
+    rowAvatarId,
+    resolveQuery.isFetched,
+    resolveQuery.data,
+    wearerEnabled,
+    wearerQuery.isFetched,
+    wearerRefUrl,
+  ]);
+
   const thumbUrl =
     cachedThumb ??
     a.resolved_thumbnail_url ??
     a.resolved_image_url ??
     searchCachedThumb ??
     resolveQuery.data?.url ??
+    wearerRefUrl ??
     null;
+  const isReference = Boolean(
+    wearerRefUrl
+    && !cachedThumb
+    && !a.resolved_thumbnail_url
+    && !a.resolved_image_url
+    && !searchCachedThumb
+    && !resolveQuery.data?.url,
+  );
 
   return (
     <div className="flex flex-col gap-2 border-b border-[hsl(var(--border)/0.35)] py-2">
       <div className="flex items-center gap-2.5 text-[11px]">
-        <ThumbImage
-          src={thumbUrl}
-          seedKey={a.local_id}
-          label={a.avatar_name}
-          className="size-10 shrink-0"
-          aspect=""
-        />
+        {thumbUrl ? (
+          <ImageZoom src={thumbUrl} alt={a.avatar_name} className="size-10 shrink-0">
+            <ThumbImage
+              src={thumbUrl}
+              seedKey={a.local_id}
+              label={a.avatar_name}
+              className="size-10 shrink-0 cursor-zoom-in"
+              aspect=""
+            />
+          </ImageZoom>
+        ) : (
+          <ThumbImage
+            src={thumbUrl}
+            seedKey={a.local_id}
+            label={a.avatar_name}
+            className="size-10 shrink-0"
+            aspect=""
+          />
+        )}
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
             <span className="font-medium truncate">{a.avatar_name}</span>
-            <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">
-              {thumbUrl
-                ? t("benchmark.thumbnailResolved", { defaultValue: "Thumbnail" })
-                : t("benchmark.logOnly", { defaultValue: "Log only" })}
-            </Badge>
+            {isReference ? (
+              <Badge
+                variant="outline"
+                className={
+                  wearerCurrentAvatarMatches
+                    ? "h-4 text-[9px] gap-0.5 border-emerald-500/40 text-emerald-400"
+                    : "h-4 text-[9px] gap-0.5 border-amber-500/40 text-amber-400"
+                }
+                title={t("benchmark.referenceImageHint", {
+                  defaultValue: "Wearer's current avatar/profile image — not a verified historical match.",
+                })}
+              >
+                {wearerCurrentAvatarMatches
+                  ? t("benchmark.referenceImageVerified", { defaultValue: "REF · matched" })
+                  : t("benchmark.referenceImage", { defaultValue: "REF" })}
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="h-4 text-[9px] text-[hsl(var(--muted-foreground))]">
+                {thumbUrl
+                  ? t("benchmark.thumbnailResolved", { defaultValue: "Thumbnail" })
+                  : t("benchmark.logOnly", { defaultValue: "Log only" })}
+              </Badge>
+            )}
             <Badge variant="secondary" className="h-4 text-[9px]">
               {t("benchmark.wearerCount", {
                 count: a.wearer_count,

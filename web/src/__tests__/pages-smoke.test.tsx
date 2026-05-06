@@ -160,9 +160,12 @@ describe("pages smoke", () => {
   it("Calendar tab switcher renders all three tabs", async () => {
     await renderAt("/calendar");
     const body = (document.body.textContent ?? "").toLowerCase();
-    expect(body).toContain("discover");
+    // Tabs are now: My Groups (default), Jams, Featured. The Discover tab
+    // was folded into My Groups since discover events are filtered by
+    // membership now.
     expect(body).toContain("featured");
     expect(body).toContain("jams");
+    expect(body.includes("groups") || body.includes("团体") || body.includes("グループ")).toBe(true);
   });
 });
 

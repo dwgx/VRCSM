@@ -1515,7 +1515,12 @@
     "closesAt": "{{when}} 마감",
     "tabDiscover": "탐색",
     "tabFeatured": "추천",
-    "tabJams": "잼"
+    "tabJams": "잼",
+    "tabGroups": "내 그룹",
+    "groupsSignIn": "VRChat에 로그인하면 가입한 그룹의 이벤트를 확인할 수 있습니다.",
+    "noGroups": "아직 가입한 VRChat 그룹이 없습니다.",
+    "noGroupEvents": "가입한 {{count}}개 그룹에 현재 공개 이벤트가 없습니다.",
+    "openGroupPage": "그룹 페이지 열기"
   },
   "worldHistory": {
     "title": "월드 방문 기록",
@@ -1570,7 +1575,15 @@
     "public": "공개",
     "private": "비공개",
     "logOnly": "로그 전용",
-    "byAuthor": "{{author}} 제작"
+    "byAuthor": "{{author}} 제작",
+    "thumbnailResolved": "썸네일",
+    "referenceImage": "참조",
+    "referenceImageVerified": "참조 · 일치",
+    "referenceImageHint": "착용자의 현재 아바타/프로필 이미지입니다. 당시 아바타와 일치한다고 보장되지는 않습니다.",
+    "wearerCount": "{{count}}명의 착용자",
+    "seenTimes": "{{count}}회 본 적 있음",
+    "showWearers": "착용자",
+    "localEncounterIndexHint": "로컬 VRChat 로그에서 생성됨. VRCSM 은 저장된 썸네일과 실제 아바타 ID 를 우선 사용하며, ID 가 없는 항목은 로그인 시 정확한 공개 검색으로 해결합니다. 모호하거나 비공개 아바타는 플레이스홀더가 유지됩니다."
   },
   "fbt": {
     "title": "FBT 보정 모니터",

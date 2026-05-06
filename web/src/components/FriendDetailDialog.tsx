@@ -205,28 +205,11 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
   const [muteConfirmOpen, setMuteConfirmOpen] = useState(false);
   const [unfriendStep, setUnfriendStep] = useState(0); // 0=idle, 1=first, 2=final
 
-  // --- DM compose --------------------------------------------------------------
-  const [messageText, setMessageText] = useState("");
-  const [messageSending, setMessageSending] = useState(false);
-  const sendMessage = useCallback(async () => {
-    if (!friend?.id || !messageText.trim()) return;
-    try {
-      setMessageSending(true);
-      await ipc.sendMessage(friend.id, messageText.trim());
-      setMessageText("");
-      toast.success(t("friendDetail.messageSent", { defaultValue: "Message sent" }));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
-    } finally {
-      setMessageSending(false);
-    }
-  }, [friend?.id, messageText, t]);
-
-  // Reset compose when switching between friends so an in-progress
-  // message doesn't leak into the next dialog open.
-  useEffect(() => {
-    setMessageText("");
-  }, [friend?.id]);
+  // DM compose UI was removed in favour of an honest unsupported-API
+  // notice (see the Direct message section). VRChat returns 405 for
+  // POST /api/1/message/{userId}/* — that path is for managing your
+  // own four invite-message slots (GET to read, PUT to update), not
+  // for sending arbitrary text to other users.
 
   // --- Derived data ------------------------------------------------------------
   const rank = trustRank(friend?.tags ?? []);
@@ -670,59 +653,9 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
             );
           })()}
 
-          {/* ========== 5b. Send Message ========== */}
-          <div className="px-5 py-4 border-t border-[hsl(var(--border)/0.4)]">
-            <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
-              <Send className="size-3" />
-              {t("friendDetail.sendMessage", { defaultValue: "Send a message" })}
-            </div>
-            <textarea
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value.slice(0, 2000))}
-              placeholder={t("friendDetail.messagePlaceholder", {
-                defaultValue: "Hi! Want to hop into a world?",
-              })}
-              className={cn(
-                "w-full resize-none rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.5)]",
-                "bg-[hsl(var(--canvas))] px-2.5 py-1.5 text-[11px] text-[hsl(var(--foreground))]",
-                "placeholder:text-[hsl(var(--muted-foreground)/0.5)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))] transition-all",
-              )}
-              rows={2}
-              maxLength={2000}
-              onKeyDown={(e) => {
-                // Ctrl/⌘+Enter sends — matches Discord's muscle memory.
-                if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !messageSending) {
-                  e.preventDefault();
-                  void sendMessage();
-                }
-              }}
-            />
-            <div className="flex items-center justify-between mt-1.5">
-              <div className="text-[10px] text-[hsl(var(--muted-foreground))]">
-                {messageText.length > 0 ? `${messageText.length} / 2000` : ""}
-                {/* VRChat silently drops DMs to non-friends — surface it
-                   inline so the user understands a missing reply isn't
-                   our bug. */}
-                {messageText.length === 0 ? (
-                  <span>
-                    {t("friendDetail.messageHint", {
-                      defaultValue: "Ctrl+Enter to send. VRChat drops DMs from non-friends.",
-                    })}
-                  </span>
-                ) : null}
-              </div>
-              <Button
-                variant="default"
-                size="sm"
-                className="h-7 text-[11px] gap-1"
-                disabled={messageSending || messageText.trim().length === 0}
-                onClick={() => void sendMessage()}
-              >
-                {messageSending ? <Loader2 className="size-3 animate-spin" /> : <Send className="size-3" />}
-                {t("friendDetail.send", { defaultValue: "Send" })}
-              </Button>
-            </div>
-          </div>
+          {/* ========== 5b. Boop / Quick Action — pick which saved request-invite slot to send ========== */}
+          <BoopCard friend={friend} inWorld={inWorld} />
+          {/* ========== End Boop card ========== */}
 
           {/* ========== 6. Friend Note ========== */}
           <div className="px-5 py-4">
@@ -760,3 +693,165 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
     </Dialog>
   );
 }
+
+interface SavedMessage {
+  id?: string;
+  slot?: number;
+  message?: string;
+  messageType?: string;
+  remainingCooldownMinutes?: number;
+}
+
+// Card that fetches the signed-in user's 4 saved request-invite messages
+// and lets the user pick which slot to attach to the boop. VRChat's API
+// has no arbitrary-text DM, but it does let you tag a request-invite
+// notification with one of your 0–3 saved snippets (set in the VRChat
+// client). Empty slots show as "(empty)" and still send the bare ping.
+function BoopCard({
+  friend,
+  inWorld,
+}: {
+  friend: Friend | null;
+  inWorld: boolean;
+}) {
+  const { t } = useTranslation();
+  const [boopingSlot, setBoopingSlot] = useState<number | null>(null);
+  const { data: messagesData } = useIpcQuery<
+    { type: string },
+    { messages: SavedMessage[] }
+  >("user.getSavedMessages", { type: "requestInvite" }, {
+    enabled: !!friend,
+    staleTime: 60_000,
+  });
+  const messages = messagesData?.messages ?? [];
+  const slots: Array<{ slot: number; msg?: SavedMessage }> = [0, 1, 2, 3].map(
+    (slot) => ({ slot, msg: messages.find((m) => m.slot === slot) }),
+  );
+
+  async function boopWithSlot(slot: number) {
+    if (!friend?.id) return;
+    try {
+      setBoopingSlot(slot);
+      await ipc.requestInvite(friend.id, slot);
+      toast.success(t("friendDetail.boopSent", {
+        defaultValue: "Boop sent — {{name}} will see a request-invite notification.",
+        name: friend.displayName ?? "",
+      }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBoopingSlot(null);
+    }
+  }
+
+  return (
+    <div className="px-5 py-4 border-t border-[hsl(var(--border)/0.4)]">
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
+        <Send className="size-3" />
+        {t("friendDetail.boop", { defaultValue: "Boop / Ping" })}
+      </div>
+      <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] p-3">
+        <p className="mb-2 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+          {t("friendDetail.boopHint", {
+            defaultValue:
+              "VRChat's in-world stickers are client-only and aren't exposed by the API. The closest API ping is a Request Invite — pick one of your 4 saved snippets (configured in the VRChat client) to attach.",
+          })}
+        </p>
+        <div className="grid grid-cols-2 gap-1.5 mb-2">
+          {slots.map(({ slot, msg }) => {
+            const onCooldown = (msg?.remainingCooldownMinutes ?? 0) > 0;
+            const isLoading = boopingSlot === slot;
+            const text = msg?.message?.trim();
+            return (
+              <button
+                key={slot}
+                type="button"
+                disabled={isLoading || onCooldown}
+                onClick={() => void boopWithSlot(slot)}
+                className={cn(
+                  "rounded-[var(--radius-sm)] border bg-[hsl(var(--canvas))] px-2.5 py-1.5",
+                  "text-left text-[11px] transition-colors",
+                  onCooldown
+                    ? "opacity-50 border-[hsl(var(--border)/0.4)] cursor-not-allowed"
+                    : "border-[hsl(var(--border)/0.5)] hover:border-[hsl(var(--primary)/0.55)] hover:bg-[hsl(var(--primary)/0.08)] cursor-pointer",
+                )}
+              >
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="text-[10px] font-mono uppercase text-[hsl(var(--muted-foreground))]">
+                    {t("friendDetail.boopSlot", { defaultValue: "Slot {{n}}", n: slot + 1 })}
+                  </span>
+                  {isLoading ? (
+                    <Loader2 className="size-3 animate-spin text-[hsl(var(--primary))]" />
+                  ) : onCooldown ? (
+                    <span className="text-[9px] font-mono text-amber-400">
+                      {t("friendDetail.boopCooldown", {
+                        defaultValue: "{{m}}m",
+                        m: msg?.remainingCooldownMinutes ?? 0,
+                      })}
+                    </span>
+                  ) : (
+                    <Send className="size-3 text-[hsl(var(--primary))]" />
+                  )}
+                </div>
+                <div className="mt-0.5 truncate text-[11px] font-medium text-[hsl(var(--foreground))]">
+                  {text && text.length > 0
+                    ? text
+                    : <span className="italic text-[hsl(var(--muted-foreground)/0.6)]">{t("friendDetail.boopEmptySlot", { defaultValue: "(empty — sends bare ping)" })}</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {inWorld ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] gap-1.5"
+              onClick={async () => {
+                if (!friend?.location) return;
+                try {
+                  await ipc.call("user.invite", { location: friend.location });
+                  toast.success(t("friendDetail.inviteSent", { defaultValue: "Invite sent" }));
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : String(e));
+                }
+              }}
+            >
+              <MessageSquare className="size-3" />
+              {t("friendDetail.inviteToTheirWorld", { defaultValue: "Invite myself to their world" })}
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[11px] gap-1.5"
+            onClick={() => {
+              void ipc.call("shell.openUrl", {
+                url: `https://vrchat.com/home/user/${friend?.id}`,
+              });
+            }}
+          >
+            <ExternalLink className="size-3" />
+            {t("friendDetail.openVrchatProfile", { defaultValue: "Open profile on vrchat.com" })}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[11px] gap-1.5"
+            onClick={() => {
+              void ipc.call("shell.openUrl", {
+                url: "https://vrchat.com/home/messages",
+              });
+            }}
+            title={t("friendDetail.editSlotsHint", { defaultValue: "Edit your saved request-invite snippets in the VRChat client (Quick Menu → Notifications → Messages)." })}
+          >
+            <StickyNote className="size-3" />
+            {t("friendDetail.editSlots", { defaultValue: "Edit slots in VRChat" })}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

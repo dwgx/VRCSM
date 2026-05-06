@@ -747,6 +747,10 @@ PreviewSourcePlan preparePreviewSource(
 {
     PreviewSourcePlan plan;
 
+    // 1) Caller-supplied path. When the UI passes selected.path it is
+    //    usually the LocalAvatarData JSON (not a real bundle) — treat it
+    //    as a hint, not a hard requirement, and cascade to other sources
+    //    if it does not resolve to a UnityFS payload.
     std::filesystem::path localBundlePath;
     if (!bundlePath.empty())
     {
@@ -755,37 +759,38 @@ PreviewSourcePlan preparePreviewSource(
             progress("resolving_bundle", "Checking the selected local avatar files");
         }
         localBundlePath = normalizeExplicitBundlePath(toWide(bundlePath));
-        if (localBundlePath.empty())
+        if (!localBundlePath.empty())
         {
-            plan.code = "bundle_not_found";
-            plan.message = "The selected bundle path is not a readable VRChat/Unity bundle.";
+            plan.ok = true;
+            plan.dataPath = localBundlePath;
+            plan.cacheSource = "local-bundle";
+            plan.sourceSig = sourceSignatureForLocalBundle("explicit", localBundlePath);
             return plan;
         }
-        plan.ok = true;
-        plan.dataPath = localBundlePath;
-        plan.cacheSource = "local-bundle";
-        plan.sourceSig = sourceSignatureForLocalBundle("explicit", localBundlePath);
-        return plan;
     }
 
-    if (assetUrl.empty())
+    // 2) Cache-WindowsPlayer + LocalAvatarData by avatar id. We do this
+    //    BEFORE assetUrl so an offline / private avatar with a present
+    //    cache entry never burns a network request.
+    if (progress)
     {
-        if (progress)
-        {
-            progress("resolving_bundle", "Searching VRChat local cache for the avatar bundle");
-        }
-        localBundlePath = resolveBundlePath(vrchatBaseDir, avatarId);
-        if (localBundlePath.empty())
-        {
-            plan.code = "bundle_not_found";
-            plan.message = "No assetUrl provided and bundle not found in LocalAvatarData or Cache-WindowsPlayer.";
-            return plan;
-        }
+        progress("resolving_bundle", "Searching VRChat local cache for the avatar bundle");
+    }
+    localBundlePath = resolveBundlePath(vrchatBaseDir, avatarId);
+    if (!localBundlePath.empty())
+    {
         plan.ok = true;
         plan.bundleIndexed = true;
         plan.dataPath = localBundlePath;
         plan.cacheSource = "bundle-index";
         plan.sourceSig = sourceSignatureForLocalBundle("cache", localBundlePath);
+        return plan;
+    }
+
+    if (assetUrl.empty())
+    {
+        plan.code = "bundle_not_found";
+        plan.message = "No assetUrl provided and bundle not found in LocalAvatarData or Cache-WindowsPlayer.";
         return plan;
     }
 

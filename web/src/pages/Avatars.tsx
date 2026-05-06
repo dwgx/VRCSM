@@ -818,7 +818,13 @@ function AvatarInspector({
     selected.wearer_name ??
     t("common.unknown", { defaultValue: "Unknown" });
   const previewSize = isEncounterLog ? 200 : 220;
-  const can3D = !isEncounterLog && Boolean(windowsAssetUrl);
+  // 3D works whenever the C++ side can find a bundle: assetUrl (download),
+  // explicit local path, or Cache-WindowsPlayer keyed by avatar id. The UI
+  // used to require `windowsAssetUrl`, which broke private/own avatars
+  // whose API response omits assetUrl even though the cache hit is local.
+  const can3D =
+    !isEncounterLog
+    && (Boolean(windowsAssetUrl) || Boolean(selected.path) || selected.avatar_id.startsWith("avtr_"));
   const show3D = can3D && preview3DFor === selected.avatar_id;
 
   useEffect(() => {
@@ -1251,8 +1257,15 @@ function AvatarRow({
       ) : null}
       <AvatarRowThumb
         avatarId={item.avatar_id}
-        fallbackUrl={item.resolved_thumbnail_url ?? item.reference_thumbnail_url}
-        isReference={!item.resolved_thumbnail_url && Boolean(item.reference_thumbnail_url)}
+        fallbackUrl={
+          item.resolved_thumbnail_url
+          ?? item.reference_thumbnail_url
+          ?? item.wearer_reference_url
+        }
+        isReference={
+          !item.resolved_thumbnail_url
+          && Boolean(item.reference_thumbnail_url ?? item.wearer_reference_url)
+        }
         placeholder={item.source === "encounter-log" ? "image" : "cube"}
         isFavorited={isFavorited}
         loadPriority={isSelected}
@@ -1269,8 +1282,15 @@ function AvatarRow({
               {t("avatars.encounterLog", { defaultValue: "Seen" })}
             </span>
           ) : null}
-          {item.source === "encounter-log" && !item.resolved_thumbnail_url && item.reference_thumbnail_url ? (
-            <span className="shrink-0 rounded-[var(--radius-sm)] border border-amber-500/40 bg-amber-500/12 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-600">
+          {item.source === "encounter-log" && !item.resolved_thumbnail_url && (item.reference_thumbnail_url || item.wearer_reference_url) ? (
+            <span
+              className="shrink-0 rounded-[var(--radius-sm)] border border-amber-500/40 bg-amber-500/12 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-600"
+              title={
+                item.reference_thumbnail_url
+                  ? t("avatars.referenceImageVerifiedHint", { defaultValue: "Wearer's current avatar matches the logged name." })
+                  : t("avatars.referenceImageHint", { defaultValue: "Wearer's current avatar/profile picture — not a verified historical match." })
+              }
+            >
               {t("avatars.referenceImageBadgeShort", { defaultValue: "Reference" })}
             </span>
           ) : nameMismatch ? (

@@ -263,6 +263,16 @@ public:
         const std::string& targetUserId,
         const std::string& message);
 
+    /// Fetch the signed-in user's saved invite-message slots via
+    /// `GET /api/1/message/{me}/{messageType}`. messageType is one of
+    /// `invite`, `inviteResponse`, `requestInvite`, `requestInviteResponse`.
+    /// Returns up to 4 entries with `slot`, `message`, `remainingCooldownMinutes`.
+    /// These are user-defined text snippets configured in the VRChat client
+    /// — VRCSM cannot edit them, but it can read them so the boop UI can
+    /// preview which message will be attached to a given slot.
+    static Result<nlohmann::json> fetchSavedMessages(
+        const std::string& messageType);
+
     /// Fetch calendar discovery feed via GET /api/1/calendar/discover.
     static Result<std::vector<nlohmann::json>> fetchCalendarDiscover();
 
