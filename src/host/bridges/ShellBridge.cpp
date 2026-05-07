@@ -6,6 +6,7 @@
 #include "../../core/Database.h"
 #include "../../core/PathProbe.h"
 #include "../../core/ProcessGuard.h"
+#include "../../core/VrcApi.h"
 #include "../WebViewHost.h"
 
 #include <fstream>
@@ -154,6 +155,44 @@ nlohmann::json IpcBridge::HandleShellOpenUrl(const nlohmann::json& params, const
     if (!okScheme)
     {
         throw std::runtime_error("shell.openUrl: unsupported URL scheme");
+    }
+
+    // When VRChat is already running, prefer its REST API over the
+    // vrchat:// protocol handler so the running process receives the
+    // join command through its existing server connection instead of
+    // spawning a second VRChat.exe.
+    if (url.rfind("vrchat://launch", 0) == 0)
+    {
+        const auto vrc = vrcsm::core::ProcessGuard::IsVRChatRunning();
+        if (vrc.running)
+        {
+            // Extract world+instance id from vrchat://launch?id=wrld_xxx:instance
+            const auto idPos = url.find("?id=");
+            if (idPos == std::string::npos)
+            {
+                const auto idPos2 = url.find("&id=");
+                if (idPos2 == std::string::npos)
+                {
+                    throw std::runtime_error("shell.openUrl: vrchat://launch URL missing id parameter");
+                }
+                const std::string location = url.substr(idPos2 + 4);
+                const auto r = vrcsm::core::VrcApi::inviteSelf(location);
+                if (std::holds_alternative<vrcsm::core::Error>(r))
+                {
+                    const auto& err = std::get<vrcsm::core::Error>(r);
+                    throw std::runtime_error("shell.openUrl: inviteSelf failed: " + err.message);
+                }
+                return nlohmann::json{{"ok", true}};
+            }
+            const std::string location = url.substr(idPos + 4);
+            const auto r = vrcsm::core::VrcApi::inviteSelf(location);
+            if (std::holds_alternative<vrcsm::core::Error>(r))
+            {
+                const auto& err = std::get<vrcsm::core::Error>(r);
+                throw std::runtime_error("shell.openUrl: inviteSelf failed: " + err.message);
+            }
+            return nlohmann::json{{"ok", true}};
+        }
     }
 
     const std::wstring wide = Utf8ToWide(url);

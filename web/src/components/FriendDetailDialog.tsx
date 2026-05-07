@@ -14,14 +14,10 @@ import {
   History,
   StickyNote,
   Save,
-  Send,
   Users,
   MapPin,
   UserMinus,
-  Smile,
   BellRing,
-  Reply,
-  MailPlus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -698,59 +694,24 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
   );
 }
 
-interface SavedMessage {
-  id?: string;
-  slot?: number;
-  message?: string;
-  messageType?: string;
-  remainingCooldownMinutes?: number;
-}
-
-const BOOP_MSG_TYPES = [
-  { type: "requestInvite", icon: BellRing, labelKey: "friendDetail.boopTypeRequestInvite", fallback: "Ping" },
-  { type: "invite", icon: MailPlus, labelKey: "friendDetail.boopTypeInvite", fallback: "Invite" },
-  { type: "inviteResponse", icon: Reply, labelKey: "friendDetail.boopTypeInviteResponse", fallback: "Reply" },
-  { type: "requestInviteResponse", icon: MessageSquare, labelKey: "friendDetail.boopTypeReqInviteReply", fallback: "Ping Reply" },
-] as const;
-
-// Common VRChat boop emoji — the ones VRChat's in-game sticker/bubble
-// system exposes. These are pasted into saved-message slots in the
-// VRChat client. The API does not have a sticker endpoint, but the
-// server-side invite/request-invite notifications render emoji inline.
+// Common VRChat boop emoji — mirrors the in-game sticker wheel.
+// Click an emoji to send a request-invite (boop) notification with
+// that emoji as the attached message. VRChat's API has no arbitrary-text
+// DM or sticker endpoint, so we use requestInvite with slot 0 (bare ping)
+// and the emoji goes to clipboard so the user can paste it in chat.
 const BOOP_EMOJI = [
-  // Wave / greet
   "👋","✋","🤚","🖐","🖖","🤙","💁","🙋","🙌","🤗",
-  // Hearts & affection
   "❤️","🧡","💛","💚","💙","💜","🤎","🖤","🤍","💕","💗","💖","💘","💝","🫶","💌","💟",
-  // Faces
   "😊","😄","😆","🥰","😍","🤩","😎","🥺","😭","🤣","😅","🙂","😌","😋","🤪",
-  // Fun & party
   "🎉","🎊","🥳","🎈","🎀","🎁","💃","🕺","🪩","🎵","🎶","🎤","🎧","🎹","🥁",
-  // Animals
   "🐱","🐶","🐰","🦊","🐼","🐨","🐸","🐙","🦝","🐣","🐝","🦋",
-  // Nature & sky
   "⭐","🌟","✨","💫","🔥","🌈","☀️","🌙","🌺","🌸","🌻","🍀","🌊","❄️","☁️","⚡",
-  // Food & drink
   "🍕","🍰","🧁","🍩","🍪","🍓","🍉","🍜","☕","🧋","🧃","🍻","🥂",
-  // Gestures
   "👍","👎","👏","🙏","💪","✌️","🤞","🤝","👌","🤌",
-  // Gaming & tech
   "🎮","👾","🕹","🎲","🎯","🪄","💻","📱","🔔","💡",
-  // Misc fun
-  "💀","👻","🤖","👽","💩","🍑","👁","🧠","💤","💢","💯","🔥","❓","❗",
+  "💀","👻","🤖","👽","💩","🍑","👁","🧠","💤","💢","💯","❓","❗",
 ];
 
-function emojiText(text: string): string {
-  // VRChat saved messages are plain UTF-8 text; emoji are already
-  // literal codepoints. No conversion needed — this hook exists so
-  // the render path can be swapped later if VRChat starts escaping.
-  return text;
-}
-
-// Card that fetches the signed-in user's 4 saved invite/request-invite
-// messages and lets the user pick which message-type + slot to attach
-// to the boop. VRChat's API has no arbitrary-text DM, but it does let
-// you tag a notification with one of your 0–3 saved snippets.
 function BoopCard({
   friend,
   inWorld,
@@ -759,199 +720,78 @@ function BoopCard({
   inWorld: boolean;
 }) {
   const { t } = useTranslation();
-  const [boopingSlot, setBoopingSlot] = useState<number | null>(null);
-  const [msgTypeIdx, setMsgTypeIdx] = useState(0);
-  const msgType = BOOP_MSG_TYPES[msgTypeIdx] ?? BOOP_MSG_TYPES[0];
-  const { data: messagesData, isLoading: loadingMessages } = useIpcQuery<
-    { type: string },
-    { messages: SavedMessage[] }
-  >("user.getSavedMessages", { type: msgType.type }, {
-    enabled: !!friend,
-    staleTime: 60_000,
-  });
-  const messages = messagesData?.messages ?? [];
-  const allEmpty = messages.length === 0 && !loadingMessages;
-  const slots: Array<{ slot: number; msg?: SavedMessage }> = [0, 1, 2, 3].map(
-    (slot) => ({ slot, msg: messages.find((m: SavedMessage) => m.slot === slot) }),
-  );
-  const hasAnyContent = slots.some((s) => s.msg?.message?.trim());
+  const [booping, setBooping] = useState(false);
 
-  const isRequestType = msgType.type === "requestInvite" || msgType.type === "requestInviteResponse";
-
-  async function boopWithSlot(slot: number) {
+  async function boop() {
     if (!friend?.id) return;
     try {
-      setBoopingSlot(slot);
-      if (isRequestType) {
-        await ipc.requestInvite(friend.id, slot);
-        toast.success(t("friendDetail.boopSent", {
-          defaultValue: "Boop sent — {{name}} will see a notification.",
-          name: friend.displayName ?? "",
-        }));
-      }
+      setBooping(true);
+      await ipc.requestInvite(friend.id, 0);
+      toast.success(t("friendDetail.boopSent", {
+        defaultValue: "Boop sent — {{name}} will see a notification.",
+        name: friend.displayName ?? "",
+      }));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
-      setBoopingSlot(null);
+      setBooping(false);
+    }
+  }
+
+  async function joinTheirWorld() {
+    if (!friend?.location) return;
+    try {
+      await ipc.call("user.invite", { location: friend.location });
+      toast.success(t("friendDetail.inviteSent", { defaultValue: "Joining..." }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   }
 
   return (
     <div className="px-5 py-4 border-t border-[hsl(var(--border)/0.4)]">
       <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
-        <Send className="size-3" />
+        <BellRing className="size-3" />
         {t("friendDetail.boop", { defaultValue: "Boop / Ping" })}
       </div>
       <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] p-3">
-
-        {/* message-type tabs */}
-        <div className="flex gap-0.5 mb-3 flex-wrap">
-          {BOOP_MSG_TYPES.map((bt, i) => {
-            const Icon = bt.icon;
-            const active = i === msgTypeIdx;
-            return (
-              <button
-                key={bt.type}
-                type="button"
-                onClick={() => setMsgTypeIdx(i)}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-[var(--radius-xs)] px-2 py-1 text-[10px] font-medium transition-colors",
-                  active
-                    ? "bg-[hsl(var(--primary)/0.18)] text-[hsl(var(--primary))]"
-                    : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--canvas))]",
-                )}
-              >
-                <Icon className="size-3" />
-                {t(bt.labelKey, { defaultValue: bt.fallback })}
-              </button>
-            );
+        <p className="mb-2 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
+          {t("friendDetail.boopHint", {
+            defaultValue: "Click an emoji to send a boop notification. The emoji is also copied to your clipboard so you can paste it in VRChat chat.",
           })}
-        </div>
+        </p>
 
-        {/* empty-state guidance: all slots empty for this type */}
-        {allEmpty ? (
-          <div className="rounded-[var(--radius-sm)] border border-dashed border-[hsl(var(--border)/0.6)] bg-[hsl(var(--canvas))] p-3 mb-2 text-center">
-            <StickyNote className="size-5 mx-auto mb-1.5 text-[hsl(var(--muted-foreground)/0.5)]" />
-            <p className="text-[11px] font-medium text-[hsl(var(--foreground))] mb-1">
-              {t("friendDetail.noSlotsTitle", { defaultValue: "No saved messages configured" })}
-            </p>
-            <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] leading-relaxed mb-2">
-              {t("friendDetail.noSlotsHint", {
-                defaultValue: "VRChat lets you save up to 4 invite snippets per type. Configure them in the VRChat client under Quick Menu → Notifications → Messages, then they'll appear here.",
-              })}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-[10px] gap-1.5"
+        {/* Send Boop button */}
+        <Button
+          variant="default"
+          size="sm"
+          className="w-full h-8 mb-2 text-[11px] gap-1.5"
+          disabled={booping}
+          onClick={() => void boop()}
+        >
+          {booping ? <Loader2 className="size-3 animate-spin" /> : <BellRing className="size-3" />}
+          {booping
+            ? t("friendDetail.boopSending", { defaultValue: "Sending…" })
+            : t("friendDetail.boopSend", { defaultValue: "Boop {{name}}", name: friend?.displayName ?? "" })}
+        </Button>
+
+        {/* Emoji wheel */}
+        <div className="flex flex-wrap gap-1 max-h-[96px] overflow-y-auto mb-2">
+          {BOOP_EMOJI.map((e) => (
+            <button
+              key={e}
+              type="button"
+              className="rounded-[var(--radius-sm)] bg-[hsl(var(--canvas))] size-8 grid place-items-center text-[15px] hover:bg-[hsl(var(--primary)/0.15)] hover:scale-110 active:scale-95 transition-all cursor-pointer"
+              title={t("friendDetail.boopSendEmoji", { defaultValue: "Boop with {{e}}", e })}
               onClick={() => {
-                void ipc.call("shell.openUrl", { url: "https://vrchat.com/home/messages" });
+                void navigator.clipboard.writeText(e);
+                void boop();
               }}
             >
-              <ExternalLink className="size-3" />
-              {t("friendDetail.editSlots", { defaultValue: "Edit slots in VRChat" })}
-            </Button>
-          </div>
-        ) : (
-          /* slot grid — has at least one message */
-          <div className={cn("grid gap-1.5 mb-2", hasAnyContent ? "grid-cols-2" : "grid-cols-1")}>
-            {slots.map(({ slot, msg }) => {
-              const onCooldown = (msg?.remainingCooldownMinutes ?? 0) > 0;
-              const isLoading = boopingSlot === slot;
-              const text = msg?.message?.trim();
-              // Only show empty slots if some other slot has content
-              if (!text && hasAnyContent) return null;
-
-              return (
-                <button
-                  key={slot}
-                  type="button"
-                  disabled={isLoading || onCooldown || !isRequestType}
-                  onClick={() => {
-                    if (isRequestType) {
-                      void boopWithSlot(slot);
-                    } else {
-                      void ipc.call("shell.openUrl", { url: "https://vrchat.com/home/messages" });
-                    }
-                  }}
-                  title={!isRequestType
-                    ? t("friendDetail.boopInviteNeedsWorld", { defaultValue: "Invite messages need your own world location. Open the VRChat website to manage them." })
-                    : (onCooldown
-                      ? t("friendDetail.boopCooldownTooltip", { defaultValue: "On cooldown — wait before sending again" })
-                      : t("friendDetail.boopSendTooltip", { defaultValue: "Send this message as a request-invite notification" }))}
-                  className={cn(
-                    "rounded-[var(--radius-sm)] border bg-[hsl(var(--canvas))] px-2.5 py-1.5",
-                    "text-left text-[11px] transition-colors",
-                    onCooldown
-                      ? "opacity-50 border-[hsl(var(--border)/0.4)] cursor-not-allowed"
-                      : isRequestType
-                      ? "border-[hsl(var(--border)/0.5)] hover:border-[hsl(var(--primary)/0.55)] hover:bg-[hsl(var(--primary)/0.08)] cursor-pointer"
-                      : "opacity-40 border-[hsl(var(--border)/0.3)] cursor-default",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span className="text-[10px] font-mono uppercase text-[hsl(var(--muted-foreground))]">
-                      {t("friendDetail.boopSlot", { defaultValue: "Slot {{n}}", n: slot + 1 })}
-                    </span>
-                    {isLoading ? (
-                      <Loader2 className="size-3 animate-spin text-[hsl(var(--primary))]" />
-                    ) : onCooldown ? (
-                      <span className="text-[9px] font-mono text-amber-400">
-                        {t("friendDetail.boopCooldown", {
-                          defaultValue: "{{m}}m",
-                          m: msg?.remainingCooldownMinutes ?? 0,
-                        })}
-                      </span>
-                    ) : isRequestType ? (
-                      <Send className="size-3 text-[hsl(var(--primary))]" />
-                    ) : (
-                      <ExternalLink className="size-3 text-[hsl(var(--muted-foreground))]" />
-                    )}
-                  </div>
-                  <div className="mt-0.5 truncate text-[12px] font-medium text-[hsl(var(--foreground))]">
-                    {text && text.length > 0
-                      ? emojiText(text)
-                      : <span className="italic text-[hsl(var(--muted-foreground)/0.6)]">{t("friendDetail.boopEmptySlot", { defaultValue: "(empty — sends bare ping)" })}</span>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* type-specific hint — only shown when not all-empty */}
-        {!allEmpty && !isRequestType && (
-          <p className="mb-2 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">
-            {t("friendDetail.boopInviteTypeHint", {
-              defaultValue: "Invite and invite-response messages are used when inviting someone to your world. These previews are shown for reference — configure them in the VRChat client to use with the invite action.",
-            })}
-          </p>
-        )}
-
-        {/* quick emoji palette */}
-        <details className="mb-2">
-          <summary className="cursor-pointer text-[10px] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] inline-flex items-center gap-1 select-none">
-            <Smile className="size-3" />
-            {t("friendDetail.boopEmojiHint", { defaultValue: "Common VRChat boop emoji — click to copy, then paste into your saved-message slots" })}
-          </summary>
-          <div className="mt-1.5 flex flex-wrap gap-1 max-h-[120px] overflow-y-auto">
-            {BOOP_EMOJI.map((e) => (
-              <button
-                key={e}
-                type="button"
-                className="rounded-[var(--radius-xs)] bg-[hsl(var(--canvas))] px-1.5 py-0.5 text-[14px] hover:bg-[hsl(var(--primary)/0.15)] transition-colors cursor-pointer"
-                title={t("friendDetail.boopCopyEmoji", { defaultValue: "Click to copy" })}
-                onClick={() => {
-                  void navigator.clipboard.writeText(e).then(() => {
-                    toast.success(t("friendDetail.boopEmojiCopied", { defaultValue: "Copied! Paste it into a saved-message slot in the VRChat client." }));
-                  });
-                }}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        </details>
+              {e}
+            </button>
+          ))}
+        </div>
 
         <div className="flex flex-wrap gap-1.5">
           {inWorld ? (
@@ -959,18 +799,10 @@ function BoopCard({
               variant="outline"
               size="sm"
               className="h-7 text-[11px] gap-1.5"
-              onClick={async () => {
-                if (!friend?.location) return;
-                try {
-                  await ipc.call("user.invite", { location: friend.location });
-                  toast.success(t("friendDetail.inviteSent", { defaultValue: "Invite sent" }));
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : String(e));
-                }
-              }}
+              onClick={() => void joinTheirWorld()}
             >
               <MessageSquare className="size-3" />
-              {t("friendDetail.inviteToTheirWorld", { defaultValue: "Invite myself to their world" })}
+              {t("friendDetail.inviteToTheirWorld", { defaultValue: "Join their world" })}
             </Button>
           ) : null}
           <Button
@@ -985,20 +817,6 @@ function BoopCard({
           >
             <ExternalLink className="size-3" />
             {t("friendDetail.openVrchatProfile", { defaultValue: "Open profile on vrchat.com" })}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-[11px] gap-1.5"
-            onClick={() => {
-              void ipc.call("shell.openUrl", {
-                url: "https://vrchat.com/home/messages",
-              });
-            }}
-            title={t("friendDetail.editSlotsHint", { defaultValue: "Edit your saved snippets in the VRChat client (Quick Menu → Notifications → Messages)." })}
-          >
-            <StickyNote className="size-3" />
-            {t("friendDetail.editSlots", { defaultValue: "Edit slots in VRChat" })}
           </Button>
         </div>
       </div>
