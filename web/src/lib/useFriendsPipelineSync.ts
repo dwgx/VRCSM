@@ -130,7 +130,7 @@ export function useFriendsPipelineSync() {
                     avatar_name: avatarName,
                     first_seen_on: patch.displayName ?? userId,
                     first_seen_user_id: userId,
-                  }).catch(() => {});
+                  }).catch((err) => { console.warn("[pipeline] avatarHistory.record failed:", err instanceof Error ? err.message : String(err)); });
                 }
               })();
             }
@@ -147,7 +147,7 @@ export function useFriendsPipelineSync() {
                 occurred_at: new Date().toISOString(),
                 display_name: patch.displayName ?? undefined,
               })
-              .catch(() => {});
+              .catch((err) => { console.warn("[pipeline] friendLogInsert friend.added failed:", err instanceof Error ? err.message : String(err)); });
           }
         }
         if (type === "friend-delete") {
@@ -162,7 +162,7 @@ export function useFriendsPipelineSync() {
                 occurred_at: new Date().toISOString(),
                 display_name: prev?.displayName ?? undefined,
               })
-              .catch(() => {});
+              .catch((err) => { console.warn("[pipeline] friendLogInsert friend.removed failed:", err instanceof Error ? err.message : String(err)); });
           }
         }
 

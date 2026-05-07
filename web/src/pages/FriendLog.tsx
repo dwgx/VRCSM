@@ -24,6 +24,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 interface SessionEvent {
@@ -169,6 +170,7 @@ function NoteEditor({
   const { t } = useTranslation();
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -178,7 +180,7 @@ function NoteEditor({
       setNote(r?.note ?? "");
       setLoading(false);
     }).catch(() => {
-      if (alive) setLoading(false);
+      if (alive) { setLoading(false); setLoadError(true); }
     });
     return () => {
       alive = false;
@@ -208,6 +210,17 @@ function NoteEditor({
         <div className="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
           <Loader2 className="size-3 animate-spin" />
           {t("friendLog.note.loading")}
+        </div>
+      ) : loadError ? (
+        <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+          {t("friendLog.note.loadFailed", { defaultValue: "Could not load note." })}
+          <button
+            type="button"
+            className="ml-2 underline text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.8)]"
+            onClick={() => { setLoadError(false); setLoading(true); }}
+          >
+            {t("common.retry", { defaultValue: "Retry" })}
+          </button>
         </div>
       ) : (
         <>
@@ -343,6 +356,7 @@ function SocialEventRow({ event }: { event: SocialEvent }) {
 
 export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
   const { t } = useTranslation();
+  const { status: authStatus } = useAuth();
   const queryClient = useQueryClient();
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [tab, setTab] = useState<FeedTab>("session");
@@ -451,6 +465,27 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
     });
     return set.size;
   }, [sessionEvents]);
+
+  if (!authStatus.authed) {
+    return (
+      <div className={cn("space-y-4", !embedded && "animate-fade-in")}>
+        {embedded ? null : (
+          <header className="flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-[22px] font-semibold leading-none tracking-tight">
+                {t("nav.friendLog")}
+              </h1>
+            </div>
+          </header>
+        )}
+        <div className="flex min-h-[200px] items-center justify-center rounded-xl border-2 border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.1)] p-8 text-center">
+          <p className="text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("friendLog.loginRequired", { defaultValue: "Log in to VRChat via the Settings page to view friend activity history." })}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("space-y-4", !embedded && "animate-fade-in")}>
@@ -609,9 +644,9 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
             <input
               type="number"
               min={10}
-              max={9999}
+              max={500}
               value={pageSize}
-              onChange={(e) => setPageSize(Math.max(10, Number(e.target.value) || DEFAULT_PAGE_SIZE))}
+              onChange={(e) => setPageSize(Math.min(500, Math.max(10, Number(e.target.value) || DEFAULT_PAGE_SIZE)))}
               className="w-12 rounded border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1 py-0.5 text-center text-[10px] font-mono text-[hsl(var(--foreground))]"
               title={t("friendLog.perPage", { defaultValue: "Items per page" })}
             />

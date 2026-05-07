@@ -172,7 +172,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
                 QQ Group
               </div>
               <div className="mt-1 font-mono text-[14px] text-[hsl(var(--foreground))]">
-                901738883
+                974118886
               </div>
             </div>
           </div>
