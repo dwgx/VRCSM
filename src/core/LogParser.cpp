@@ -166,13 +166,13 @@ void to_json(nlohmann::json& j, const LogReport& r)
 
 namespace
 {
-constexpr std::size_t kMaxLogFiles = 5;
+constexpr std::size_t kMaxLogFiles = 20;
 constexpr std::size_t kMaxRecentIds = 1000;
 // Hard cap per event stream. A long party in GoGo Loco routinely generates
 // 2000+ OnPlayerJoined lines and the frontend doesn't need them all — 500
 // gives "recent activity" enough headroom while keeping the IPC payload
 // under a few hundred kilobytes worst case.
-constexpr std::size_t kMaxEventsPerKind = 500;
+constexpr std::size_t kMaxEventsPerKind = 2000;
 
 const std::regex kLogFileRe(R"(^output_log_.*\.txt$)");
 
@@ -534,12 +534,19 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
     // Player presence — OnPlayerJoined / OnPlayerLeft.
     if (std::regex_search(line, m, kPlayerJoinedRe))
     {
-        const std::string joinedName = stripTrailing(m[1]);
-        if (m.size() > 2 && m[2].matched)
+        const bool hasUsrId = m.size() > 2 && m[2].matched;
+        std::string joinedName = stripTrailing(m[1]);
+        if (hasUsrId)
         {
             // Persist for the entire parse so any later avatar switch by the
             // same display name can be tagged with the matching usr_xxx.
             st.playerNameToUserId[joinedName] = stripTrailing(m[2]);
+        }
+        else
+        {
+            // Non-friend / unresolved profile: VRChat appends hex hash
+            // suffixes instead of a parenthesised usr_xxx id.
+            joinedName = stripUnresolvedHashSuffix(joinedName);
         }
         if (report.player_events.size() < kMaxEventsPerKind)
         {
@@ -547,7 +554,7 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             ev.kind = "joined";
             ev.iso_time = st.lastTimestamp;
             ev.display_name = joinedName;
-            if (m.size() > 2 && m[2].matched)
+            if (hasUsrId)
             {
                 ev.user_id = stripTrailing(m[2]);
             }
@@ -566,11 +573,14 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
     {
         if (report.player_events.size() < kMaxEventsPerKind)
         {
+            const bool hasUsrId = m.size() > 2 && m[2].matched;
+            std::string leftName = stripTrailing(m[1]);
+            if (!hasUsrId) leftName = stripUnresolvedHashSuffix(leftName);
             PlayerEvent ev;
             ev.kind = "left";
             ev.iso_time = st.lastTimestamp;
-            ev.display_name = stripTrailing(m[1]);
-            if (m.size() > 2 && m[2].matched)
+            ev.display_name = leftName;
+            if (hasUsrId)
             {
                 ev.user_id = stripTrailing(m[2]);
             }
@@ -821,6 +831,36 @@ void parseLine(const std::string& line, LogReport& report, ParseState& st)
     }
 }
 } // namespace
+
+// VRChat appends hex hash suffixes to display names when the playerʼs
+// profile has not been loaded (non-friend, rate-limited, etc.). The
+// format is "DisplayName_hash1_hash2" where hash1 is 7+ hex chars and
+// hash2 is 4+ hex chars. Strip those so the UI shows the real name.
+// Only called when no usr_xxx user_id was captured from the log line.
+std::string stripUnresolvedHashSuffix(std::string name)
+{
+    static const std::regex kHashSuffixRe(R"(_[0-9a-f]{4,}$)");
+    static const std::regex kTrailingHexRe(R"(\s+[0-9a-f]{7,}$|(?:_[0-9a-f]{4,})?[0-9a-f]{7,}$)");
+
+    // First pass: strip trailing _XXXX (4+ hex chars after underscore).
+    // This handles the innermost hash suffix (e.g., _542d, _c635).
+    std::string prev;
+    do {
+        prev = name;
+        name = std::regex_replace(name, kHashSuffixRe, "");
+    } while (name != prev);
+
+    // Second pass: strip trailing space+hex or directly-appended hex
+    // (7+ chars) that remains after removing the _XXXX suffixes.
+    // E.g., "dsb 542d f76f94e9" → "dsb 542d"
+    //       "Smuxib379ed70"     → "Smuxib"
+    do {
+        prev = name;
+        name = std::regex_replace(name, kTrailingHexRe, "");
+    } while (name != prev);
+
+    return name;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Entry point

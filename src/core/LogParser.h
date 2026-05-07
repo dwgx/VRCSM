@@ -170,4 +170,9 @@ public:
     static LogReport parse(const std::filesystem::path& baseDir);
 };
 
+/// Strip trailing hex hash suffixes VRChat appends to display names when
+/// a player's profile hasn't been loaded (non-friend / rate-limited).
+/// Called by both the batch LogParser and the live LogEventClassifier.
+std::string stripUnresolvedHashSuffix(std::string name);
+
 } // namespace vrcsm::core
