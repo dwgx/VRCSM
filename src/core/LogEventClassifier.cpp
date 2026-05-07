@@ -61,6 +61,10 @@ nlohmann::json ClassifyStreamLine(const LogTailLine& line)
             {
                 event.user_id = match[2].str();
             }
+            else
+            {
+                event.display_name = stripUnresolvedHashSuffix(event.display_name);
+            }
             return nlohmann::json{
                 {"kind", "player"},
                 {"data", event},
@@ -79,6 +83,10 @@ nlohmann::json ClassifyStreamLine(const LogTailLine& line)
             if (match[2].matched)
             {
                 event.user_id = match[2].str();
+            }
+            else
+            {
+                event.display_name = stripUnresolvedHashSuffix(event.display_name);
             }
             return nlohmann::json{
                 {"kind", "player"},

@@ -717,7 +717,28 @@ const BOOP_MSG_TYPES = [
 // system exposes. These are pasted into saved-message slots in the
 // VRChat client. The API does not have a sticker endpoint, but the
 // server-side invite/request-invite notifications render emoji inline.
-const BOOP_EMOJI = ["👋","💬","🔔","⭐","❤️","🎉","🔥","👀","💤","🍰","☕","🎵","🫂","💀","✨","🥳","🐱","👍","👾","🎮","🪄","🌈","🎂","🍕","🌙"];
+const BOOP_EMOJI = [
+  // Wave / greet
+  "👋","✋","🤚","🖐","🖖","🤙","💁","🙋","🙌","🤗",
+  // Hearts & affection
+  "❤️","🧡","💛","💚","💙","💜","🤎","🖤","🤍","💕","💗","💖","💘","💝","🫶","💌","💟",
+  // Faces
+  "😊","😄","😆","🥰","😍","🤩","😎","🥺","😭","🤣","😅","🙂","😌","😋","🤪",
+  // Fun & party
+  "🎉","🎊","🥳","🎈","🎀","🎁","💃","🕺","🪩","🎵","🎶","🎤","🎧","🎹","🥁",
+  // Animals
+  "🐱","🐶","🐰","🦊","🐼","🐨","🐸","🐙","🦝","🐣","🐝","🦋",
+  // Nature & sky
+  "⭐","🌟","✨","💫","🔥","🌈","☀️","🌙","🌺","🌸","🌻","🍀","🌊","❄️","☁️","⚡",
+  // Food & drink
+  "🍕","🍰","🧁","🍩","🍪","🍓","🍉","🍜","☕","🧋","🧃","🍻","🥂",
+  // Gestures
+  "👍","👎","👏","🙏","💪","✌️","🤞","🤝","👌","🤌",
+  // Gaming & tech
+  "🎮","👾","🕹","🎲","🎯","🪄","💻","📱","🔔","💡",
+  // Misc fun
+  "💀","👻","🤖","👽","💩","🍑","👁","🧠","💤","💢","💯","🔥","❓","❗",
+];
 
 function emojiText(text: string): string {
   // VRChat saved messages are plain UTF-8 text; emoji are already
