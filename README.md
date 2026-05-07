@@ -179,7 +179,7 @@ cmake --build --preset x64-release
 
 ### Author / 作者
 
-**dwgx** · [somdhmtb@gmail.com](mailto:somdhmtb@gmail.com) · QQ `136666451` · QQ Group `901738883`
+**dwgx** · [somdhmtb@gmail.com](mailto:somdhmtb@gmail.com) · QQ `136666451` · QQ Group `974118886`
 
 Special thanks to 嗯呐！！ (QQ `1033484989`)
 

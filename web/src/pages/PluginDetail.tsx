@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ExternalLink, Package, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Package, AlertTriangle, ShieldAlert } from "lucide-react";
 import { ipc, IpcError } from "@/lib/ipc";
 import { usePluginRegistry } from "@/lib/plugin-context";
 import type { MarketPluginEntry } from "@/lib/types";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 function permissionTokens(permissions?: string[]): string[] {
   return permissions && permissions.length > 0 ? permissions : ["none"];
@@ -34,6 +38,7 @@ export default function PluginDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showInstallConfirm, setShowInstallConfirm] = useState(false);
 
   const installed = plugins.find((p) => p.id === id) ?? null;
 
@@ -53,10 +58,14 @@ export default function PluginDetail() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const install = async () => {
+  const promptInstall = () => {
     if (!entry?.download) return;
-    const permissionLines = permissionTokens(entry.permissions).map((token) => `- ${token}`).join("\n");
-    if (!window.confirm(`Install ${entry.name}?\n\nManifest permissions:\n${permissionLines}`)) return;
+    setShowInstallConfirm(true);
+  };
+
+  const doInstall = async () => {
+    if (!entry?.download) return;
+    setShowInstallConfirm(false);
     setBusy(true);
     try {
       await ipc.pluginInstall({ url: entry.download, sha256: entry.sha256 });
@@ -180,7 +189,7 @@ export default function PluginDetail() {
             <button
               type="button"
               disabled={busy || !entry.download}
-              onClick={install}
+              onClick={promptInstall}
               className="inline-flex items-center justify-center rounded-[var(--radius-sm)] bg-[hsl(var(--primary))] px-4 py-1.5 text-[12px] font-medium text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)/0.9)] disabled:opacity-50"
             >
               {busy ? t("plugins.market.installing") : t("plugins.market.install")}
@@ -240,6 +249,40 @@ export default function PluginDetail() {
           {t("plugins.detail.open")}
         </Link>
       ) : null}
+
+      <Dialog open={showInstallConfirm} onOpenChange={(open) => { if (!open) setShowInstallConfirm(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="size-4 text-[hsl(var(--primary))]" />
+              {t("plugins.install.title", { defaultValue: "Install Plugin" })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("plugins.install.confirm", { name: entry?.name ?? "", defaultValue: `You are about to install "${entry?.name}". Please review the permissions before proceeding.` })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-3">
+            <div className="mb-1.5 text-[10.5px] font-semibold uppercase text-[hsl(var(--muted-foreground))]">
+              {t("plugins.install.permissions", { defaultValue: "Manifest Permissions" })}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {permissionTokens(entry?.permissions).map((token) => (
+                <code key={token} className="rounded-[var(--radius-xs)] bg-[hsl(var(--surface))] px-1.5 py-0.5 font-mono text-[10.5px] text-[hsl(var(--muted-foreground))]">
+                  {token}
+                </code>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowInstallConfirm(false)}>
+              {t("common.cancel", { defaultValue: "Cancel" })}
+            </Button>
+            <Button size="sm" onClick={() => { void doInstall(); }}>
+              {t("plugins.install.confirmBtn", { defaultValue: "Install" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

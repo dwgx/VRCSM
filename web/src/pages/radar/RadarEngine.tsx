@@ -151,7 +151,7 @@ function RadarEngine({
             setPlayerTags(prev => (prev[userId] ? prev : { ...prev, [userId]: tags }));
           }
         })
-        .catch(() => {/* silently ignore */});
+        .catch((err) => { console.warn("[radar] profile fetch failed:", err instanceof Error ? err.message : String(err)); });
     }
   }, [activePlayers, playerTags, queryClient]);
 
@@ -160,7 +160,7 @@ function RadarEngine({
     void ipc.dbPlayerEvents(10, 0).then((res) => {
       if (!alive) return;
       setRecentSessionEvents(res.items as RecentSessionEvent[]);
-    }).catch(() => undefined);
+    }).catch((err) => { console.warn("[radar] dbPlayerEvents failed:", err instanceof Error ? err.message : String(err)); });
     return () => {
       alive = false;
     };
@@ -289,7 +289,8 @@ function RadarEngine({
          processLiveEvent(payload);
       }
       hydrationQueue.current = [];
-    }).catch(() => {
+    }).catch((err) => {
+      console.warn("[radar] scan failed:", err instanceof Error ? err.message : String(err));
       isHydrating.current = false;
     });
 

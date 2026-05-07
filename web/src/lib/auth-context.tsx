@@ -255,12 +255,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!status.authed) {
       if (pipelineRef.current !== "stopped") {
-        void ipc.pipelineStop().catch(() => {});
+        void ipc.pipelineStop().catch((err) => { console.warn("[auth] pipelineStop failed:", err instanceof Error ? err.message : String(err)); });
         setPipelineState("stopped");
       }
       return;
     }
-    void ipc.pipelineStart().catch(() => {});
+    void ipc.pipelineStart().catch((err) => { console.warn("[auth] pipelineStart failed:", err instanceof Error ? err.message : String(err)); });
   }, [status.authed]);
 
   useEffect(() => {

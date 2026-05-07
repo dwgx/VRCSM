@@ -144,7 +144,7 @@ function VersionFooter() {
   const [ver, setVer] = useState<AppVersion | null>(null);
   useEffect(() => {
     let alive = true;
-    ipc.version().then((v) => { if (alive) setVer(v); }).catch(() => {});
+    ipc.version().then((v) => { if (alive) setVer(v); }).catch((err) => { console.warn("[sidebar] version fetch failed:", err instanceof Error ? err.message : String(err)); });
     return () => { alive = false; };
   }, []);
   const label = ver ? `v${ver.version} · ${ver.build}` : "v…";

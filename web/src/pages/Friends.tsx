@@ -647,15 +647,27 @@ export default function Friends() {
       const intv = parseInt(localStorage.getItem("vrcsm.friends.refreshInterval") || "60", 10);
       
       if (live) {
-        // Silently poll without triggering the main loading spinner or toasts
+        // Poll with the current filter. Track the fetch timestamp so
+        // pipeline WebSocket events merged since the last poll are not
+        // overwritten by a stale polling response.
+        const started = Date.now();
         ipc
           .call<{ offline: boolean }, FriendsListResult>("friends.list", {
             offline: showOffline,
           })
           .then((result) => {
-            if (!cancelled) setData(result);
+            if (!cancelled) {
+              setData((prev) => {
+                // If pipeline events have been merged since this poll
+                // was issued, the poll result is stale — keep prev.
+                if ((prev as any).__polledAt && (prev as any).__polledAt > started) return prev;
+                return Object.assign(result, { __polledAt: Date.now() });
+              });
+            }
           })
-          .catch(() => undefined);
+          .catch((err) => {
+            if (!cancelled) console.warn("[friends] live poll failed:", err instanceof Error ? err.message : String(err));
+          });
       }
       
       const nextDelay = isNaN(intv) || intv < 10 ? 60 : intv;

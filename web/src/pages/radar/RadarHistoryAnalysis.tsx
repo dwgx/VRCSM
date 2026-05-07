@@ -27,6 +27,7 @@ import {
   BarChart3,
   RefreshCw,
   History,
+  AlertTriangle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ export function RadarHistoryAnalysis() {
   const { status: authStatus } = useAuth();
   const [scan, setScan] = useState<ScanLogsResponse | null>(null);
   const [loading, setLoadingState] = useState(true);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [playerTags, setPlayerTags] = useState<Record<string, string[]>>({});
@@ -79,6 +81,7 @@ export function RadarHistoryAnalysis() {
   useEffect(() => {
     let alive = true;
     setLoadingState(true);
+    setScanError(null);
     void ipc
       .call<object, { logs: ScanLogsResponse }>("scan", {})
       .then((res) => {
@@ -86,8 +89,9 @@ export function RadarHistoryAnalysis() {
         setScan(res?.logs ?? null);
         setLoadingState(false);
       })
-      .catch(() => {
+      .catch((err) => {
         if (!alive) return;
+        setScanError(err instanceof Error ? err.message : String(err));
         setLoadingState(false);
       });
     return () => {
@@ -344,6 +348,19 @@ export function RadarHistoryAnalysis() {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
+  if (!authStatus.authed) {
+    return (
+      <div className="flex min-h-[200px] items-center justify-center rounded-xl border-2 border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.1)] p-8 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <History className="size-8 text-[hsl(var(--muted-foreground)/0.5)]" />
+          <p className="text-[12px] text-[hsl(var(--muted-foreground))]">
+            {t("radar.analysis.loginRequired", { defaultValue: "Login required to scan local logs for session history." })}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -475,6 +492,15 @@ export function RadarHistoryAnalysis() {
           {loading ? (
             <div className="p-8 text-center text-[12px] text-[hsl(var(--muted-foreground))] animate-pulse">
               {t("common.loading", { defaultValue: "Loading…" })}
+            </div>
+          ) : scanError ? (
+            <div className="flex flex-col items-center gap-3 p-8 text-center">
+              <AlertTriangle className="size-8 text-[hsl(var(--destructive))]" />
+              <p className="text-[12px] text-[hsl(var(--destructive))]">{scanError}</p>
+              <Button variant="outline" size="sm" onClick={() => setRefreshKey((k) => k + 1)}>
+                <RefreshCw className="size-3 mr-1" />
+                {t("common.retry", { defaultValue: "Retry" })}
+              </Button>
             </div>
           ) : sessions.length === 0 ? (
             <div className="p-8 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
