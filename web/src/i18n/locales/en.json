@@ -165,7 +165,31 @@
     "unfriendConfirm2": "If you click the red button, {{name}} might be gone from here for good. QvQ",
     "unfriendFinal": "Yes, red button",
     "unfriendNevermind": "Never mind!!",
-    "unfriendCancelled": "Cancelled. Friendship stays tucked in safely."
+    "unfriendCancelled": "Cancelled. Friendship stays tucked in safely.",
+    "boop": "Boop / Ping",
+    "boopHint": "Pick a message type, then choose which saved snippet to attach. Configure up to 4 slots per type in the VRChat client (Quick Menu → Notifications → Messages).",
+    "boopSent": "Boop sent — {{name}} will see a notification.",
+    "boopSlot": "Slot {{n}}",
+    "boopCooldown": "{{m}}m",
+    "boopEmptySlot": "(empty — sends bare ping)",
+    "boopEmojiHint": "Common VRChat boop emoji — click to copy, then paste into your saved-message slots",
+    "boopCopyEmoji": "Click to copy",
+    "boopEmojiCopied": "Copied! Paste it into a saved-message slot in the VRChat client.",
+    "boopInviteNeedsWorld": "Invite messages need your own world location. Open the VRChat website to manage them.",
+    "boopSendTooltip": "Send this message as a request-invite notification",
+    "boopCooldownTooltip": "On cooldown — wait before sending again",
+    "boopInviteTypeHint": "Invite and invite-response messages are used when inviting someone to your world. These previews are shown for reference — configure them in the VRChat client to use with the invite action.",
+    "boopTypeRequestInvite": "Ping",
+    "boopTypeInvite": "Invite",
+    "boopTypeInviteResponse": "Reply",
+    "boopTypeReqInviteReply": "Ping Reply",
+    "noSlotsTitle": "No saved messages configured",
+    "noSlotsHint": "VRChat lets you save up to 4 invite snippets per type. Configure them in the VRChat client under Quick Menu → Notifications → Messages, then they'll appear here to choose from.",
+    "editSlots": "Edit slots in VRChat",
+    "editSlotsHint": "Edit your saved snippets in the VRChat client (Quick Menu → Notifications → Messages).",
+    "inviteToTheirWorld": "Invite myself to their world",
+    "inviteSent": "Invite sent",
+    "openVrchatProfile": "Open profile on vrchat.com"
   },
   "osc": {
     "title": "OSC Tools",
@@ -1549,7 +1573,14 @@
       "hostMin": "Minimum host",
       "sha256": "SHA-256",
       "downloadUrl": "Download URL",
+      "permissions": "Manifest Permissions",
       "open": "Open"
+    },
+    "install": {
+      "title": "Install Plugin",
+      "confirm": "You are about to install \"{{name}}\". Please review the permissions before proceeding.",
+      "permissions": "Manifest Permissions",
+      "confirmBtn": "Install"
     },
     "installed": {
       "title": "Installed plugins",
