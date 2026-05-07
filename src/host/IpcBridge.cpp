@@ -226,6 +226,14 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "hw.recommend",
         "update.check",
         "update.download",
+        "update.install",
+        "update.skipVersion",
+        "update.unskipVersion",
+        "update.getState",
+        "migrate.execute",
+        "screenshots.open",
+        "screenshots.folder",
+        "screenshots.delete",
 
         // VRChat process-memory probes — must run off-UI or the WebView2
         // message loop stalls while we walk GB-scale address space.

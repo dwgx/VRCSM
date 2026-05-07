@@ -70,7 +70,7 @@ function parseBioLink(url: string): { url: string; label: string; iconSvg: strin
     if (host.includes("twitter.com") || host.includes("x.com")) return { url, label: "Twitter", iconSvg: SOCIAL_ICONS.Twitter };
     if (host.includes("bilibili.com")) return { url, label: "Bilibili", iconSvg: SOCIAL_ICONS.Bilibili };
     if (host.includes("youtube.com") || host.includes("youtu.be")) return { url, label: "YouTube", iconSvg: SOCIAL_ICONS.YouTube };
-    if (host.includes("discord")) return { url, label: "Discord", iconSvg: SOCIAL_ICONS.Discord };
+    if (host === "discord.com" || host === "discordapp.com" || host.endsWith(".discord.com") || host.endsWith(".discordapp.com")) return { url, label: "Discord", iconSvg: SOCIAL_ICONS.Discord };
     if (host.includes("github.com")) return { url, label: "GitHub", iconSvg: SOCIAL_ICONS.GitHub };
     if (host.includes("twitch.tv")) return { url, label: "Twitch", iconSvg: SOCIAL_ICONS.Twitch };
     if (host.includes("booth.pm")) return { url, label: "BOOTH", iconSvg: null };
@@ -750,7 +750,7 @@ function BoopCard({
   });
   const messages = messagesData?.messages ?? [];
   const slots: Array<{ slot: number; msg?: SavedMessage }> = [0, 1, 2, 3].map(
-    (slot) => ({ slot, msg: messages.find((m) => m.slot === slot) }),
+    (slot) => ({ slot, msg: messages.find((m: SavedMessage) => m.slot === slot) }),
   );
 
   const isRequestType = msgType.type === "requestInvite" || msgType.type === "requestInviteResponse";
