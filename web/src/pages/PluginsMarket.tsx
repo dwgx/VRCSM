@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { PluginHero } from "@/components/PluginHero";
 
 function permissionTokens(permissions?: string[]): string[] {
   return permissions && permissions.length > 0 ? permissions : ["none"];
@@ -117,6 +118,8 @@ export default function PluginsMarket() {
           </button>
         </div>
       </header>
+
+      <PluginHero className="mx-auto w-full max-w-[320px] h-auto mb-1" />
 
       {error ? (
         <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--destructive)/0.35)] bg-[hsl(var(--destructive)/0.06)] px-3 py-2.5 text-[12px]">
