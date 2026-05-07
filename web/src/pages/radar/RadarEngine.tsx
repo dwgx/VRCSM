@@ -151,7 +151,7 @@ function RadarEngine({
             setPlayerTags(prev => (prev[userId] ? prev : { ...prev, [userId]: tags }));
           }
         })
-        .catch((err) => { console.warn("[radar] profile fetch failed:", err instanceof Error ? err.message : String(err)); });
+        .catch((err: unknown) => { console.warn("[radar] profile fetch failed:", err instanceof Error ? err.message : String(err)); });
     }
   }, [activePlayers, playerTags, queryClient]);
 

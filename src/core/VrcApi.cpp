@@ -2757,6 +2757,12 @@ Result<nlohmann::json> VrcApi::fetchSavedMessages(const std::string& messageType
     if (messageType.empty())
         return Error{"invalid_params", "messageType required", 400};
 
+    static const std::unordered_set<std::string> kValidTypes = {
+        "invite", "inviteResponse", "requestInvite", "requestInviteResponse",
+    };
+    if (!kValidTypes.contains(messageType))
+        return Error{"invalid_params", "messageType must be one of: invite, inviteResponse, requestInvite, requestInviteResponse", 400};
+
     const auto me = fetchCurrentUser();
     if (!isOk(me))
     {

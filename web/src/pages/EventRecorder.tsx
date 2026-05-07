@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { usePipelineEvent } from "@/lib/pipeline-events";
 import { useSelfLocation } from "@/lib/useSelfLocation";
 import { parseLocation } from "@/lib/vrcFriends";
-import { CircleDot, Square, Users, Clock, Trash2 } from "lucide-react";
+import { CircleDot, Square, Users, Clock, Trash2, Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface Recording {
@@ -23,6 +23,7 @@ interface Attendee {
 export default function EventRecorder() {
   const { t } = useTranslation();
   const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [newName, setNewName] = useState("");
@@ -35,8 +36,13 @@ export default function EventRecorder() {
   const selfLoc = useSelfLocation();
 
   const refresh = useCallback(async () => {
-    const r = await ipc.eventList();
-    setRecordings((r?.recordings ?? []) as unknown as Recording[]);
+    setLoading(true);
+    try {
+      const r = await ipc.eventList();
+      setRecordings((r?.recordings ?? []) as unknown as Recording[]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -45,7 +51,7 @@ export default function EventRecorder() {
     if (!selectedId) return;
     ipc.eventAttendees(selectedId).then((r) =>
       setAttendees((r?.attendees ?? []) as unknown as Attendee[])
-    ).catch(() => {});
+    ).catch((err: unknown) => { console.warn("[eventRecorder] attendees fetch failed:", err instanceof Error ? err.message : String(err)); });
   }, [selectedId]);
 
   // Buffered events that arrived before useSelfLocation() resolved. Without
@@ -75,8 +81,14 @@ export default function EventRecorder() {
       const target = parseLocation(ev.location ?? null);
       if (target.kind !== "world") continue;
       if (target.worldId !== selfLoc.worldId || target.instanceId !== selfLoc.instanceId) continue;
-      ipc.eventAddAttendee(activeId, ev.userId, ev.displayName ?? ev.userId).catch(() => {});
+      ipc.eventAddAttendee(activeId, ev.userId, ev.displayName ?? ev.userId).catch((err: unknown) => { console.warn("[eventRecorder] addAttendee failed:", err instanceof Error ? err.message : String(err)); });
     }
+    return () => {
+      if (pendingTimeoutRef.current !== null) {
+        window.clearTimeout(pendingTimeoutRef.current);
+        pendingTimeoutRef.current = null;
+      }
+    };
   }, [activeId, selfLoc.isInWorld, selfLoc.worldId, selfLoc.instanceId]);
 
   usePipelineEvent("user-location", (content: { userId?: string; user?: { displayName?: string }; location?: string }) => {
@@ -107,7 +119,7 @@ export default function EventRecorder() {
     if (target.kind !== "world") return;
     if (target.worldId !== selfLoc.worldId || target.instanceId !== selfLoc.instanceId) return;
     const name = content.user?.displayName ?? content.userId;
-    ipc.eventAddAttendee(activeId, content.userId, name).catch(() => {});
+    ipc.eventAddAttendee(activeId, content.userId, name).catch((err: unknown) => { console.warn("[eventRecorder] live addAttendee failed:", err instanceof Error ? err.message : String(err)); });
   });
 
   async function startRec() {
@@ -215,7 +227,16 @@ export default function EventRecorder() {
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="flex flex-col gap-2">
-          {recordings.length === 0 && (
+          {loading ? (
+            <Card className="unity-panel">
+              <CardContent className="p-6 text-center">
+                <Loader2 className="size-6 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.5)] animate-spin" />
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                  {t("common.loading", { defaultValue: "Loading…" })}
+                </p>
+              </CardContent>
+            </Card>
+          ) : recordings.length === 0 ? (
             <Card className="unity-panel">
               <CardContent className="p-6 text-center">
                 <CircleDot className="size-6 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.5)]" />
@@ -224,7 +245,7 @@ export default function EventRecorder() {
                 </p>
               </CardContent>
             </Card>
-          )}
+          ) : null}
           {recordings.map((rec) => (
             <div
               key={rec.id}
