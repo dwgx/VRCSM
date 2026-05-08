@@ -130,6 +130,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "calendar.list",
         "calendar.discover",
         "calendar.featured",
+        "visits.list",
         "jams.list",
         "jams.detail",
         "avatar.bundle.download",
@@ -683,6 +684,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("friends.request", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsRequest(p, id); });
     m_handlers.emplace("user.invite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInvite(p, id); });
     m_handlers.emplace("user.inviteTo", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInviteTo(p, id); });
+    m_handlers.emplace("visits.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVisitsList(p, id); });
     m_handlers.emplace("user.requestInvite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserRequestInvite(p, id); });
     m_handlers.emplace("user.getSavedMessages", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserGetSavedMessages(p, id); });
     m_handlers.emplace("user.mute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserMute(p, id); });

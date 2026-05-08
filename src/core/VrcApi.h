@@ -293,6 +293,12 @@ public:
     /// Remove a friend via DELETE /api/1/auth/user/friends/{userId}.
     static Result<nlohmann::json> unfriend(const std::string& userId);
 
+    /// Fetch recently encountered players via GET /api/1/visits.
+    /// Returns an array of {userId, displayName, userIcon, instanceId,
+    /// worldId, worldName, joinTime, timesSeen}. This is VRChat's own
+    /// "recently played with" list — more reliable than log parsing.
+    static Result<std::vector<nlohmann::json>> fetchVisits();
+
     /// Send a friend request via POST /api/1/user/{userId}/friendRequest.
     static Result<nlohmann::json> sendFriendRequest(const std::string& userId);
 

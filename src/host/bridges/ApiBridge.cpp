@@ -535,6 +535,16 @@ nlohmann::json IpcBridge::HandleUserRequestInvite(const nlohmann::json& params, 
     return unwrapResult(vrcsm::core::VrcApi::requestInvite(*userId, slot));
 }
 
+nlohmann::json IpcBridge::HandleVisitsList(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto r = vrcsm::core::VrcApi::fetchVisits();
+    if (std::holds_alternative<vrcsm::core::Error>(r))
+    {
+        throw IpcException(std::move(std::get<vrcsm::core::Error>(r)));
+    }
+    return nlohmann::json{{"visits", std::get<std::vector<nlohmann::json>>(std::move(r))}};
+}
+
 nlohmann::json IpcBridge::HandleUserGetSavedMessages(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto type = JsonStringField(params, "type").value_or("requestInvite");

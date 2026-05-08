@@ -2976,4 +2976,17 @@ Result<nlohmann::json> VrcApi::setGroupRepresentation(
     return nlohmann::json{{"ok", true}};
 }
 
+Result<std::vector<nlohmann::json>> VrcApi::fetchVisits()
+{
+    return fetchPagedAuthedArray(
+        "/visits",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/visits?n={}&offset={}",
+                limit,
+                offset));
+        });
+}
+
 } // namespace vrcsm::core

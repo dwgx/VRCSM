@@ -1640,6 +1640,10 @@ class IpcClient {
     );
   }
 
+  async visitsList() {
+    return this.call<undefined, { visits: Array<{ userId?: string; displayName?: string; userIcon?: string; instanceId?: string; worldId?: string; worldName?: string; joinTime?: string; timesSeen?: number }> }>("visits.list");
+  }
+
   // ── Pipeline WebSocket (real-time events) ───────────────────────────
   // After login, call `pipelineStart()` once. Events arrive as
   // `pipeline.event` with shape `{type, content}` — subscribe via `on()`.
