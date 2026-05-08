@@ -1,166 +1,89 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-04-29
+Last updated: 2026-05-09
 
 ## Current State
 
 - Branch: `main`
-- Working tree at handoff time: expected clean after this documentation commit.
-- Latest implementation commit before this doc pass: `74e522a Harden preview cache and thumbnail loading`
+- Working tree at handoff time: docs + version bump commit pending.
+- Latest implementation commit: `d0b16c9` (Add VRChat visits API, fix stale log backfill, add unique DB constraint).
 - Remote: `origin https://github.com/dwgx/VRCSM.git`
-- Current app version shown in UI / release artifacts: `0.14.3`
-- Release metadata gate now has `scripts/verify-release-metadata.ps1` for
-  CI/package drift checks. It covers pnpm lock usage, README network/signing
-  claims, portable ZIP `.old` exclusions, and `VERSION` alignment with
-  `web/package.json`, `vcpkg.json`, and README artifact names.
+- Current app version: `0.14.5`
+- VS2026 path: `D:\Software\Microsoft\Microsoft Visual Studio\18` (note: "Microsoft" is in the path, unlike the old CLAUDE.md).
 
-## What Was Just Stabilized
+## What Changed Since 0.14.3
 
-### World History Row Limit / Logged Players
+### Critical Bug Fixes
 
-- World history now defaults to 250 rows instead of an implicit 100 and exposes visible 100/250/500/1000/2000 presets plus a custom limit capped at 5000.
-- `db.worldVisits.list` is clamped to 5000 rows server-side to avoid accidental unbounded SQLite reads.
-- `Database::RecentWorldVisits()` returns `player_count`, `player_event_count`, and `last_player_seen_at` per visit by aggregating local `player_events` in the same `world_id + instance_id + visit time window`.
-- UI wording is intentionally `logged players`, not live occupancy. These counts are local VRChat log evidence, not a remote VRChat API room population.
+- **Log backfill always-on (was: only when DB empty).** `LogsBridge.cpp` used to skip historical log import once the tables had any data. That meant sessions after day 1 never appeared in world history / player events / friend log. Now always scans the 20 newest log files on startup with `INSERT OR IGNORE`.
+- **Non-friend player names cleaned.** VRChat appends hex hashes to display names of unresolved players (`Alice_f76f94e9_542d`). `stripUnresolvedHashSuffix()` removes them in both batch LogParser and live LogEventClassifier.
+- **vrchat://launch no longer spawns second VRChat.exe.** `ShellBridge::HandleShellOpenUrl` intercepts `vrchat://launch` when VRChat is running and uses `VrcApi::inviteSelf` REST API instead.
+- **Friends list polling race condition.** Background poll used `setData(result)` which could overwrite WebSocket pipeline event merges. Now uses functional updater + timestamp guard.
 
-Important files:
+### New Features
 
-- `src/core/Database.cpp`
-- `src/host/bridges/DatabaseBridge.cpp`
-- `web/src/pages/WorldHistory.tsx`
-- `web/src/lib/ipc.ts`
-- `tests/CommonTests.cpp`
+- **VRChat recently encountered players API.** `visits.list` IPC → `GET /api/1/visits`. Frontend `ipc.visitsList()` available.
+- **Hardware recommendation tab.** Settings → Hardware: WMI GPU/CPU/RAM/HMD detection, hardware score, recommended SteamVR parameters. GPU table covers RTX 50-series, AMD RX 9000/7000/6000, Intel Arc.
+- **Plugin market hero SVG.** `PluginHero.tsx` — widescreen banner with robot mascot and floating plugin cards.
+- **Plugin install dialog.** shadcn Dialog replaces `window.confirm()`, shows manifest permissions.
+- **BoopCard emoji-only.** No more message type tabs or slot buttons — just emoji wheel + send.
+- **Calendar & Bundles moved to Lab** sidebar.
 
-### Global Quick Search v1
+### Data Changes
 
-- `search.global` is now a local-only async IPC method backed by `Database::GlobalSearch()`.
-- The search aggregator merges local favorites, world visits, player events, player encounters, and avatar history into evidence-first results.
-- Remote VRChat API enrichment is intentionally disabled in v1. `includeRemote` is accepted, but diagnostics report no remote sources and `remoteSuppressedReason: "disabled"`.
-- `Ctrl+K` / command palette calls `search.global` and renders evidence-backed world/user/avatar rows before the built-in command list.
-- Historical avatar thumbnails keep the existing semantic guard: wearer/current-profile reference images are not promoted unless the resolved avatar id matches the logged avatar id.
+- `world_visits` now has `CREATE UNIQUE INDEX uq_world_visits ON world_visits(world_id, instance_id, joined_at)`. If a DB from ≤0.14.4 has duplicates, the unique index creation will fail. Handle migration by deleting duplicates first.
+- Log scan limits raised: `kMaxLogFiles` 5→20, `kMaxEventsPerKind` 500→2000.
 
-Important files:
+## Last Verified Build (2026-05-09)
 
-- `src/core/Database.cpp`
-- `src/core/Database.h`
-- `src/host/bridges/SearchBridge.cpp`
-- `src/host/IpcBridge.cpp`
-- `src/host/IpcBridge.h`
-- `web/src/components/CommandPalette.tsx`
-- `web/src/lib/ipc.ts`
-- `web/src/lib/types.ts`
-- `tests/CommonTests.cpp`
-- `docs/GLOBAL-SEARCH-SPEC.md`
+- Web build: passed (tsc -b + vite build).
+- Web smoke: passed (22/22).
+- C++ release build: passed (MSVC 2026, Ninja).
+- CTest: 39/39 passed (100%).
+- MSI + ZIP: built at `build\release\VRCSM_v0.14.5_x64_*`.
+- GitHub release v0.14.5 created with artifacts.
 
-### Avatar Preview / Thumbnail Pipeline
-
-- `thumbnails.fetch` supports host-side image caching and returns local `thumb.local` URLs when available.
-- Avatar list rows now load thumbnails through visible-row gating and low-priority lookahead. Clicked/selected rows stay high priority.
-- Broken `thumb.local` image URLs are invalidated and fall back instead of leaving a dead tile.
-- Wearer profile/reference images are cached in VRCSM-owned cache, but they remain semantically marked as reference images unless verified.
-- Historical log-only avatar rows must not pretend a current wearer profile image is the old avatar thumbnail.
-
-Important files:
-
-- `web/src/pages/Avatars.tsx`
-- `web/src/lib/thumbnails.ts`
-- `web/src/lib/image-cache.ts`
-- `web/src/components/ThumbImage.tsx`
-- `src/core/VrcApi.cpp`
-
-### 3D Preview / Cache Safety
-
-- Bundle download trust was tightened: `UnityFS` magic alone is not enough; the code validates UnityFS header, blocksInfo, block table, and node table.
-- GLB output writes to `.part` and then renames to the final `.glb`.
-- WebView-visible GLBs can be retained/released through IPC so LRU cleanup does not delete active preview files.
-- Tests cover truncated magic-only bundles and LRU lease behavior.
-
-Important files:
-
-- `src/core/UnityBundle.cpp`
-- `src/core/UnityBundle.h`
-- `src/core/UnityPreview.cpp`
-- `src/core/AvatarPreview.cpp`
-- `src/core/AvatarPreview.h`
-- `src/host/IpcBridge.cpp`
-- `tests/CommonTests.cpp`
-
-### Steam Link / Quest Repair
-
-- SteamVR / Quest diagnostics are user-facing in Settings.
-- Repair is backup-first and split into safer actions: pairing reset, full VRLink reset, stable branch validation, safe streaming parameters.
-- Restore path validation was already hardened before the latest implementation pass; tests now cover malicious metadata escapes.
-
-Important files:
-
-- `src/core/VrDiagnostics.cpp`
-- `web/src/pages/Settings.tsx`
-- `tests/CommonTests.cpp`
-
-### Plugin IPC / Auto-Uploader
-
-- Plugin iframe calls now go directly through `chrome.webview.postMessage` / `plugin.rpc`.
-- Permission split exists: `ipc:shell`, `ipc:fs:listDir`, `ipc:fs:writePlan` are not one broad bucket.
-- Tests cover that `ipc:shell` does not grant filesystem methods.
-
-Important files:
-
-- `src/core/plugins/PluginRegistry.cpp`
-- `src/core/plugins/PluginRegistry.h`
-- `web/src/pages/PluginHost.tsx`
-- `plugins/vrc-auto-uploader/`
-- `tests/CommonTests.cpp`
-
-## Last Verified Commands
-
-The last implementation pass verified:
+## Release Workflow (corrected)
 
 ```powershell
+# 1. Build frontend
 pnpm --prefix web build
-pnpm --prefix web test
 pnpm --prefix web test:smoke
-cmd.exe /s /c '"D:\Software\MS\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
+# 2. Build C++ (VS2026)
+cmd.exe /s /c '"D:\Software\Microsoft\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
 ctest --test-dir build\x64-release --output-on-failure
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-release-metadata.ps1
+# 3. Package MSI + ZIP
+powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
+# 4. Tag + Release
+git tag -a v0.14.5 -m "VRCSM v0.14.5"
+git push origin main --tags
+gh release create v0.14.5 --title "VRCSM v0.14.5" --notes-file CHANGELOG.md
+gh release upload v0.14.5 "build\release\VRCSM_v0.14.5_x64_Installer.msi" "build\release\VRCSM_v0.14.5_x64.zip" --clobber
 ```
-
-Observed results:
-
-- Web build: passed.
-- Web tests: 78/78 passed.
-- Web smoke: 22/22 passed.
-- C++ release build: passed.
-- CTest: 39 total; 38 passed and `DeleteExecuteRejectsPreservedCwpRootTargets` skipped because VRChat was running.
-- Release metadata gate: passed, `version=0.14.3`.
-- MSI and release-exe launch were not rerun for the global-search feature cut.
 
 ## Known Watch Points
 
-- `rg.exe` may fail in this desktop environment with Access denied from the WindowsApps Codex bundle. Use PowerShell `Select-String` / `Get-ChildItem` fallback when needed.
-- `tmp\pyi-temp\...` may throw access-denied during recursive scans. Exclude `tmp/`.
-- Stop running `VRCSM.exe` before building release, otherwise the linker may fail.
-- Do not commit generated `web/dist`, `build/`, or MSI artifacts unless the user explicitly asks.
-- Some docs are historical; prefer `MEMORY.md`, this handoff, `AGENTS.md`, and `CHANGELOG.md` for current behavior.
-- Global search v1 is local-only by design. Do not add live remote fanout to keystroke search without a debounce/cache/rate-limit plan and tests.
-- World history `player_count` is local-log evidence only. Keep the UI copy distinct from remote `occupants` / capacity fields.
+- Stop `VRCSM.exe` before C++ build or linker may fail with file lock.
+- `D:\Software\Microsoft\Microsoft Visual Studio\18` is the correct VS path (CLAUDE.md has the old `D:\Software\MS` path which is wrong).
+- Ninja and cmake may need reinstall after system updates (use `pip install ninja cmake`).
+- `react-router-dom` must stay at v6 (v7 breaks the app); `pnpm-lock.yaml` was updated.
+- Do not commit `web/dist`, `build/`, or MSI artifacts.
+- `stripUnresolvedHashSuffix()` uses regex `_[0-9a-f]{4,}$` — legitimate names ending in 4+ hex chars after underscore will be incorrectly trimmed. This is a known tradeoff.
 
 ## If The User Says "Continue"
 
-1. Run `git status --short`.
+1. `git status --short`
 2. Read `MEMORY.md` and this file.
-3. Inspect the exact feature area before changing code.
-4. For release-facing fixes, run the full verification baseline and build MSI.
-5. If the user asks to upload, commit and push to `origin/main` after tests pass.
+3. Inspect the feature area before changing code.
+4. Full verification baseline + MSI before claiming done.
+5. Commit, push, tag, release with artifacts.
 
 ## Do Not Regress These Decisions
 
-- Keep avatar thumbnail semantics honest:
-  - Verified model thumbnail: okay as row thumbnail.
-  - Wearer current profile/current avatar image: reference only unless verified as matching the logged avatar.
-- Keep thumbnail prefetch bounded:
-  - Visible rows first.
-  - Small delayed lookahead.
-  - User click / selected row always wins.
-- Keep SteamVR repairs reversible and backup-first.
-- Keep plugin filesystem permissions split and explicit.
-- Keep downloaded bundle validation structural, not magic-only.
+- Log backfill must run every startup (not only when DB is empty).
+- `vrchat://launch` must use REST API when VRChat is running.
+- Non-friend player names must be cleaned of hex hash suffix.
+- Avatar thumbnail semantics: wearer profile images are reference only.
+- SteamVR repairs must be backup-first.
+- Plugin permissions must stay split and explicit.
+- BoopCard should stay simple (emoji wheel only, no message type tabs).

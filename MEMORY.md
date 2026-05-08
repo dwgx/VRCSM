@@ -1,6 +1,6 @@
 # VRCSM Agent Memory
 
-Last updated: 2026-04-29
+Last updated: 2026-05-09
 
 This is the repo-local handoff entrypoint. It exists because future agents should not have to rediscover the project state, document map, or the avatar/SteamVR decisions from chat history.
 
@@ -15,10 +15,26 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 ## Current Continuity Snapshot
 
 - Current branch: `main`.
-- Latest known pushed commit: `74e522a Harden preview cache and thumbnail loading`.
-- Current user priority: stability and correctness over speculative UI. When a feature is still uncertain, keep the UI honest instead of pretending it is verified.
-- Last verified release artifact: `build\msi\VRCSM-0.14.3-x64.msi`.
+- Latest known pushed commit: `d0b16c9` (Add VRChat visits API, fix stale log backfill, add unique DB constraint).
+- Current user priority: correctness and data freshness over speculative features. Log data must reflect recent sessions.
+- Last verified release artifact: `build\release\VRCSM_v0.14.5_x64_Installer.msi`.
 - Last verified runtime: `build\x64-release\src\host\VRCSM.exe`.
+- Current version: `0.14.5` (bumped from 0.14.4 on 2026-05-09).
+
+## Release Workflow
+
+```powershell
+# 1. Full build
+pnpm --prefix web build
+cmd.exe /s /c '"D:\Software\Microsoft\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
+ctest --test-dir build\x64-release --output-on-failure
+# 2. Package MSI + ZIP
+powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
+# 3. Upload to GitHub
+gh release upload v0.14.5 "build\release\VRCSM_v0.14.5_x64_Installer.msi" "build\release\VRCSM_v0.14.5_x64.zip" --clobber
+```
+
+Note: VS2026 path is `D:\Software\Microsoft\Microsoft Visual Studio\18` (not `D:\Software\MS`).
 
 ## High-Value Context
 
@@ -27,6 +43,11 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 - Successful wearer/reference image lookups are cached by VRCSM, but bulk-loading the entire avatar list made the UI laggy. Keep visible rows fast, lookahead low-priority, and clicked rows highest priority.
 - Steam Link / Quest repairs must always be backup-first. Do not delete SteamVR/Steam config directly; move/archive and record what happened.
 - Plugin IPC is intentionally permission-scoped. Do not re-expand `ipc:shell` into filesystem access.
+- **Log backfill now runs every startup (not just when DB is empty).** `INSERT OR IGNORE` + `UNIQUE` constraint on `world_visits` prevent duplicates. If data is stale, check that VRChat log directory is being probed correctly.
+- **Non-friend player names** are cleaned of VRChat's hex hash suffix by `stripUnresolvedHashSuffix()` in both LogParser and LogEventClassifier.
+- **`vrchat://launch` URLs** are intercepted in ShellBridge when VRChat is running — uses REST API instead of ShellExecute to avoid spawning a second VRChat.exe.
+- **BoopCard** is now emoji-only (no message type tabs, no slot buttons).
+- **Hardware recommendations** (Settings → Hardware) use WMI detection + built-in GPU/CPU score tables.
 
 ## Verification Baseline
 
@@ -35,10 +56,9 @@ Use this sequence before claiming a release-facing change is done:
 ```powershell
 pnpm --prefix web build
 pnpm --prefix web test:smoke
-cmd.exe /s /c '"D:\Software\MS\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
+cmd.exe /s /c '"D:\Software\Microsoft\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
 ctest --test-dir build\x64-release --output-on-failure
-scripts\build-msi.bat
-Start-Process -FilePath "D:\Project\VRCSM\build\x64-release\src\host\VRCSM.exe"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
 ```
 
 If `VRCSM.exe` is already running, stop it before the C++ release build or the linker may fail with file lock / access denied.
@@ -50,3 +70,4 @@ If `VRCSM.exe` is already running, stop it before the C++ release build or the l
 - Preserve `__info` and `vrc-version` in `Cache-WindowsPlayer`.
 - Keep project docs and release notes aligned with actual shipped behavior.
 - Do not update global Codex memory files from inside this repo. This file is the repo-local memory artifact.
+- VERSION, web/package.json, and README artifact names must stay in sync.
