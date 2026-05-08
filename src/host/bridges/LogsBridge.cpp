@@ -96,8 +96,11 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
         throw std::runtime_error("logs.stream.start: VRChat log directory not found");
     }
 
-    // Backfill historical log data into DB if tables are empty,
-    // then seed current-world state from the latest switch.
+    // Backfill historical log data into DB, then seed current-world
+    // state from the latest switch. We always scan the newest log files
+    // and INSERT OR IGNORE any visits/events not already recorded —
+    // previously we only backfilled when tables were completely empty,
+    // which caused sessions after the first day to never appear.
     try
     {
         const auto parsed = vrcsm::core::LogParser::parse(probe.baseDir);
@@ -111,11 +114,8 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
             m_currentInstanceId = latestSwitch.instance_id;
         }
 
-        // Backfill world_visits if empty.
-        auto existingVisits = vrcsm::core::Database::Instance().RecentWorldVisits(1, 0);
-        bool visitsEmpty = vrcsm::core::isOk(existingVisits) &&
-                           std::get<nlohmann::json>(existingVisits).empty();
-        if (visitsEmpty && !parsed.world_switches.empty())
+        // Always backfill world_visits — DB layer uses INSERT OR IGNORE.
+        if (!parsed.world_switches.empty())
         {
             std::string prevWorldId, prevInstanceId;
             for (size_t i = 0; i < parsed.world_switches.size(); ++i)
@@ -143,11 +143,8 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
             }
         }
 
-        // Backfill player_events if empty.
-        auto existingEvents = vrcsm::core::Database::Instance().RecentPlayerEvents(1, 0);
-        bool eventsEmpty = vrcsm::core::isOk(existingEvents) &&
-                           std::get<nlohmann::json>(existingEvents).empty();
-        if (eventsEmpty && !parsed.player_events.empty())
+        // Always backfill player_events — DB layer uses INSERT OR IGNORE.
+        if (!parsed.player_events.empty())
         {
             for (const auto& pe : parsed.player_events)
             {

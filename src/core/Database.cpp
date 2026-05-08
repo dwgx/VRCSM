@@ -921,7 +921,7 @@ Result<std::int64_t> Database::InsertWorldVisit(const WorldVisitInsert& v)
     std::lock_guard<std::mutex> lock(m_mutex);
 
     const char* sql =
-        "INSERT INTO world_visits ("
+        "INSERT OR IGNORE INTO world_visits ("
         "world_id, instance_id, access_type, owner_id, region, joined_at"
         ") VALUES (?, ?, ?, ?, ?, ?);";
 
@@ -2851,6 +2851,7 @@ CREATE TABLE IF NOT EXISTS world_visits (
 );
 CREATE INDEX IF NOT EXISTS idx_world_visits_world_id ON world_visits(world_id);
 CREATE INDEX IF NOT EXISTS idx_world_visits_joined_at ON world_visits(joined_at);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_world_visits ON world_visits(world_id, instance_id, joined_at);
 
 CREATE TABLE IF NOT EXISTS player_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

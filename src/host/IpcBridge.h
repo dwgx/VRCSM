@@ -125,6 +125,7 @@ private:
     nlohmann::json HandleFriendsRequest(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserInvite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserInviteTo(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleVisitsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserRequestInvite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserGetSavedMessages(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserMute(const nlohmann::json& params, const std::optional<std::string>& id);
