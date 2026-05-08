@@ -6,6 +6,58 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [0.14.5] — 2026-05-09
+
+After v0.14.4 shipped, the focus moved to correctness: fixing stale data,
+broken player names, IPC timeouts, and missing VRChat API coverage.
+
+- **Log backfill fixed (critical).** The boot path that seeds
+  `world_visits` / `player_events` from log files only ran when both
+  tables were completely empty — so sessions after the first day
+  silently never appeared in world history, friend log, or radar.
+  The guard is removed; the backfill now runs every startup with
+  `INSERT OR IGNORE` + a unique constraint to prevent duplicates.
+- **VRChat recently-encountered API exposed.** `visits.list` wraps
+  `GET /api/1/visits` so the app can cross-reference the VRChat
+  server's own list against local log evidence.
+- **Non-friend display names no longer carry hex noise.** When VRChat
+  cannot resolve a player's profile it appends a hex hash to the
+  display name (`Alice_f76f94e9_542d`). The batch log parser and the
+  live LogEventClassifier now strip that suffix when no `usr_` id is
+  present.
+- **ShellBridge vrchat://launch URLs are smarter.** When VRChat.exe is
+  already running, `vrchat://launch?id=…` is intercepted and resolved
+  through the REST API instead of `ShellExecuteW`, so the running
+  process receives the join command instead of spawning a second
+  instance.
+- **BoopCard simplified to an emoji wheel.** Message-type tabs,
+  slot buttons, and saved-invite-message fetching are removed.
+  Opening a friend row shows a compact emoji picker that both copies
+  the emoji to the clipboard and sends a request-invite notification.
+- **Plugin market gets a hero illustration.** A `PluginHero` SVG
+  banner with a cute robot mascot and floating plugin cards replaces
+  the bare header on the Plugin Market page.
+- **Settings → Hardware tab.** Auto-detects CPU/GPU/RAM/HMD via WMI,
+  computes a hardware score, and recommends SteamVR streaming
+  parameters (bandwidth, supersampling, refresh rate, motion
+  smoothing, FFR). GPU score table includes RTX 50-series, AMD RX
+  9000/7000/6000, and Intel Arc.
+- **Plugin install uses a shadcn Dialog** instead of `window.confirm()`,
+  showing manifest permissions and Confirm/Cancel buttons.
+- **Friends list polling race condition fixed.** Background poll
+  results can no longer clobber WebSocket pipeline updates.
+- **QQ group updated** to 974118886 across README, LICENSE, About
+  dialog, and GitHub Pages.
+- **Calendar & Bundles moved to Lab** sidebar section so the main
+  navigation stays focused on stable features.
+- **EventRecorder** gained proper loading state, timeout cleanup on
+  active session change, and error visibility.
+- **Silent catch blocks** in Sidebar, auth-context, pipeline sync,
+  and RadarEngine now emit `console.warn` so issues are debuggable.
+- **Log scan limits raised:** `kMaxLogFiles` 5→20,
+  `kMaxEventsPerKind` 500→2000.
+- **i18n** updated for boop strings and plugin install dialog (en, zh-CN).
+
 ## [0.14.4] — 2026-05-07
 
 After v0.14.3, the branch centered on making the Avatars page useful for
