@@ -181,6 +181,6 @@ cmake --build --preset x64-release
 
 **dwgx** · [somdhmtb@gmail.com](mailto:somdhmtb@gmail.com) · QQ `136666451` · QQ Group `974118886`
 
-Special thanks to 嗯呐！！ (QQ `1033484989`)
+随便做的 傻逼 阎王爷快点你丫名了
 
 </div>
