@@ -11,11 +11,10 @@ import { Button } from "@/components/ui/button";
 import {
   ExternalLink,
   Github,
-  Heart,
   MessageCircle,
   Users,
 } from "lucide-react";
-import { APP_ICON_URL, SPECIAL_THANKS_1033484989_URL } from "@/lib/assets";
+import { APP_ICON_URL } from "@/lib/assets";
 import { ipc } from "@/lib/ipc";
 import type { AppVersion } from "@/lib/types";
 
@@ -86,7 +85,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
         </div>
 
         <div className="space-y-4 px-6 py-5">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-4">
               <div className="text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
                 {t("about.developer", { defaultValue: "Developer" })}
@@ -97,36 +96,6 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
               <div className="mt-2 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
                 {t("about.developerBody", {
                   defaultValue: "Product direction, native host, frontend shell, and packaging are maintained in one codebase.",
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-4">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                <Heart className="size-3 text-[#C25B5B]" />
-                {t("about.specialThanks", { defaultValue: "Special Thanks" })}
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                <img
-                  src={SPECIAL_THANKS_1033484989_URL}
-                  alt="嗯呐！！"
-                  width={44}
-                  height={44}
-                  className="size-11 rounded-full border border-[hsl(var(--border))] object-cover"
-                  draggable={false}
-                />
-                <div className="min-w-0">
-                  <div className="text-[15px] font-semibold text-[hsl(var(--foreground))]">
-                    嗯呐！！
-                  </div>
-                  <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))]">
-                    QQ 1033484989
-                  </div>
-                </div>
-              </div>
-              <div className="mt-2 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
-                {t("about.specialThanksBody", {
-                  defaultValue: "The first friend met in VRChat, and still part of the project's story.",
                 })}
               </div>
             </div>

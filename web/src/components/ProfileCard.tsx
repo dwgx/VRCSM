@@ -32,47 +32,11 @@ import { cn } from "@/lib/utils";
 import { trustRank, trustColorClass, trustLabelKey } from "@/lib/vrcFriends";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "react-i18next";
+import type { VrcStatus, VrcUserProfile } from "@/lib/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type VrcStatus = "active" | "join me" | "ask me" | "busy" | "offline";
-
-export interface VrcUserProfile {
-  id: string;
-  displayName: string;
-  bio?: string;
-  bioLinks?: string[];
-  tags?: string[];
-  pronouns?: string;
-  userIcon?: string;
-  date_joined?: string;
-  ageVerificationStatus?: string;
-  status: VrcStatus;
-  statusDescription?: string;
-  currentAvatarImageUrl?: string;
-  currentAvatarThumbnailImageUrl?: string;
-  profilePicOverride?: string;
-  currentAvatarName?: string;
-  currentAvatarId?: string;
-  worldName?: string;
-  worldId?: string;
-  location?: string;
-  last_login?: string;
-  last_activity?: string;
-  developerType?: string;
-  isFriend?: boolean;
-  // Linked accounts (only present on own profile via user.me)
-  googleId?: string;
-  steamId?: string;
-  oculusId?: string;
-  picoId?: string;
-  viveId?: string;
-  hasEmail?: boolean;
-  emailVerified?: boolean;
-  twoFactorAuthEnabled?: boolean;
-  allowAvatarCopying?: boolean;
-  hasLoggedInFromClient?: boolean;
-}
+export type { VrcStatus, VrcUserProfile } from "@/lib/types";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 

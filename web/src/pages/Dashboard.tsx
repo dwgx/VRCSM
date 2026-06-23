@@ -24,7 +24,8 @@ import { useReport } from "@/lib/report-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn, formatBytes, formatDate } from "@/lib/utils";
 import { useVrcProcess } from "@/lib/vrc-context";
-import type { FriendsListResult, Report } from "@/lib/types";
+import type { DbPlayerEvent, DbWorldVisit, FriendsListResult, Report } from "@/lib/types";
+import { listPlayerEvents, listWorldVisits } from "@/lib/history-api";
 import {
   AlertTriangle,
   Camera,
@@ -75,27 +76,6 @@ interface TimelineEntry {
   time: string;
   label: string;
   detail?: string;
-}
-
-interface DbWorldVisit {
-  id: number;
-  world_id: string | null;
-  instance_id: string | null;
-  access_type: string | null;
-  owner_id: string | null;
-  region: string | null;
-  joined_at: string | null;
-  left_at: string | null;
-}
-
-interface DbPlayerEvent {
-  id: number;
-  kind: string | null;
-  user_id: string | null;
-  display_name: string | null;
-  world_id: string | null;
-  instance_id: string | null;
-  occurred_at: string | null;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────
@@ -296,10 +276,10 @@ function Dashboard() {
 
   useEffect(() => {
     let alive = true;
-    ipc.dbWorldVisits(20, 0)
+    listWorldVisits(20, 0)
       .then((result) => {
         if (!alive) return;
-        setDbVisits((result.items ?? []) as DbWorldVisit[]);
+        setDbVisits(result.items ?? []);
       })
       .catch(() => {
         if (!alive) return;
@@ -331,7 +311,7 @@ function Dashboard() {
       };
     }
 
-    ipc.dbPlayerEvents(500, 0, {
+    listPlayerEvents(500, 0, {
       worldId: selectedDbVisit.world_id,
       instanceId: selectedDbVisit.instance_id,
       occurredAfter: selectedDbVisit.joined_at,
@@ -339,7 +319,7 @@ function Dashboard() {
     })
       .then((result) => {
         if (!alive) return;
-        setDbSessionEvents((result.items ?? []) as DbPlayerEvent[]);
+        setDbSessionEvents(result.items ?? []);
       })
       .catch(() => {
         if (!alive) return;

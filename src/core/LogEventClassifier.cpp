@@ -1,8 +1,8 @@
 #include "LogEventClassifier.h"
 
-#include <regex>
 #include <string>
 
+#include "LogAtoms.h"
 #include "LogParser.h"
 
 namespace vrcsm::core
@@ -11,175 +11,88 @@ namespace vrcsm::core
 namespace
 {
 
-// These mirror the regexes `LogParser.cpp` uses for the batch pass. Kept in
-// their own file so the live-tail path doesn't pull in the entire batch
-// parser's block-state machine and per-line stickiness bookkeeping. If the
-// batch regexes drift, update both together — a mismatched live/batch pair
-// would make the same event appear differently in the Console dock and the
-// Logs page, which is exactly the confusion this helper exists to prevent.
-
-const std::regex kPlayerJoinedRe(
-    R"(\[Behaviour\] OnPlayerJoined (.+?)(?: \((usr_[0-9a-fA-F-]+)\))?\s*$)");
-const std::regex kPlayerLeftRe(
-    R"(\[Behaviour\] OnPlayerLeft (.+?)(?: \((usr_[0-9a-fA-F-]+)\))?\s*$)");
-const std::regex kSwitchingAvatarRe(
-    R"(\[Behaviour\] Switching (.+?) to avatar (.+?)\s*$)");
-const std::regex kScreenshotRe(
-    R"(\[VRC Camera\] Took screenshot to: (.+?)\s*$)");
-const std::regex kJoiningInstanceRe(
-    R"(\[Behaviour\] Joining (wrld_[0-9a-fA-F-]+):([0-9a-zA-Z~()_-]+)\s*$)");
-
 std::optional<std::string> isoTimeOrNull(const std::string& iso)
 {
     if (iso.empty()) return std::nullopt;
     return iso;
 }
 
+PlayerEvent playerEventFromAtom(const LogAtom& atom, const LogTailLine& line)
+{
+    PlayerEvent event;
+    event.kind = atom.getOr("kind");
+    event.iso_time = isoTimeOrNull(line.iso_time);
+    event.display_name = atom.getOr("display_name");
+    event.user_id = atom.get("user_id");
+    return event;
+}
+
+AvatarSwitchEvent avatarSwitchFromAtom(const LogAtom& atom, const LogTailLine& line)
+{
+    AvatarSwitchEvent event;
+    event.iso_time = isoTimeOrNull(line.iso_time);
+    event.actor = atom.getOr("actor");
+    event.avatar_name = atom.getOr("avatar_name");
+    return event;
+}
+
+ScreenshotEvent screenshotFromAtom(const LogAtom& atom, const LogTailLine& line)
+{
+    ScreenshotEvent event;
+    event.iso_time = isoTimeOrNull(line.iso_time);
+    event.path = atom.getOr("path");
+    return event;
+}
+
+WorldSwitchEvent worldSwitchFromAtom(const LogAtom& atom, const LogTailLine& line)
+{
+    WorldSwitchEvent event;
+    event.iso_time = isoTimeOrNull(line.iso_time);
+    event.world_id = atom.getOr("world_id");
+    event.instance_id = atom.getOr("instance_id");
+    event.access_type = atom.getOr("access_type", "public");
+    event.owner_id = atom.get("owner_id");
+    event.region = atom.get("region");
+    return event;
+}
+
 } // namespace
 
 nlohmann::json ClassifyStreamLine(const LogTailLine& line)
 {
-    // Fast bail on the 95% of lines that are noise — each regex_search is
-    // cheap individually but 5 of them per line × dozens of lines/sec adds
-    // up, and the VRChat log is dominated by Udon spam / network ticks /
-    // `UIManager` chatter that match none of the event shapes. Substring
-    // pre-filtering keeps us from paying the regex cost on those.
-    const auto& body = line.line;
-    if (body.empty()) return nullptr;
+    if (line.line.empty()) return nullptr;
 
-    // Player presence.
-    if (body.find("OnPlayerJoined") != std::string::npos)
+    const auto atom = ParseVrchatLogAtom(line.line);
+    if (!atom)
     {
-        std::smatch match;
-        if (std::regex_search(body, match, kPlayerJoinedRe))
-        {
-            PlayerEvent event;
-            event.kind = "joined";
-            event.iso_time = isoTimeOrNull(line.iso_time);
-            event.display_name = match[1].str();
-            if (match[2].matched)
-            {
-                event.user_id = match[2].str();
-            }
-            else
-            {
-                event.display_name = stripUnresolvedHashSuffix(event.display_name);
-            }
-            return nlohmann::json{
-                {"kind", "player"},
-                {"data", event},
-            };
-        }
-    }
-    if (body.find("OnPlayerLeft") != std::string::npos)
-    {
-        std::smatch match;
-        if (std::regex_search(body, match, kPlayerLeftRe))
-        {
-            PlayerEvent event;
-            event.kind = "left";
-            event.iso_time = isoTimeOrNull(line.iso_time);
-            event.display_name = match[1].str();
-            if (match[2].matched)
-            {
-                event.user_id = match[2].str();
-            }
-            else
-            {
-                event.display_name = stripUnresolvedHashSuffix(event.display_name);
-            }
-            return nlohmann::json{
-                {"kind", "player"},
-                {"data", event},
-            };
-        }
+        return nullptr;
     }
 
-    // Avatar switch. The `Switching ...` substring is unique to this line
-    // shape so one check is enough.
-    if (body.find("Switching ") != std::string::npos
-        && body.find(" to avatar ") != std::string::npos)
+    switch (atom->kind)
     {
-        std::smatch match;
-        if (std::regex_search(body, match, kSwitchingAvatarRe))
-        {
-            AvatarSwitchEvent event;
-            event.iso_time = isoTimeOrNull(line.iso_time);
-            event.actor = match[1].str();
-            event.avatar_name = match[2].str();
+        case LogAtomKind::PlayerPresence:
+            return nlohmann::json{
+                {"kind", "player"},
+                {"data", playerEventFromAtom(*atom, line)},
+            };
+        case LogAtomKind::AvatarSwitch:
             return nlohmann::json{
                 {"kind", "avatarSwitch"},
-                {"data", event},
+                {"data", avatarSwitchFromAtom(*atom, line)},
             };
-        }
-    }
-
-    // Screenshot. `[VRC Camera]` is a unique tag.
-    if (body.find("[VRC Camera] Took screenshot to: ") != std::string::npos)
-    {
-        std::smatch match;
-        if (std::regex_search(body, match, kScreenshotRe))
-        {
-            ScreenshotEvent event;
-            event.iso_time = isoTimeOrNull(line.iso_time);
-            event.path = match[1].str();
+        case LogAtomKind::Screenshot:
             return nlohmann::json{
                 {"kind", "screenshot"},
-                {"data", event},
+                {"data", screenshotFromAtom(*atom, line)},
             };
-        }
-    }
-
-    // World Join
-    if (body.find("Joining wrld_") != std::string::npos)
-    {
-        std::smatch match;
-        if (std::regex_search(body, match, kJoiningInstanceRe))
-        {
-            const std::string worldId = match[1].str();
-            const std::string instanceIdStr = match[2].str();
-            
-            WorldSwitchEvent event;
-            event.iso_time = isoTimeOrNull(line.iso_time);
-            event.world_id = worldId;
-            event.instance_id = worldId + ":" + instanceIdStr;
-            
-            event.access_type = "public"; // default
-            if (instanceIdStr.find("~private(") != std::string::npos) {
-                event.access_type = "private";
-                std::smatch t;
-                if (std::regex_search(instanceIdStr, t, std::regex(R"(private\((usr_[0-9a-fA-F-]+)\))")))
-                    event.owner_id = t[1].str();
-            } else if (instanceIdStr.find("~friends(") != std::string::npos) {
-                event.access_type = "friends";
-                std::smatch t;
-                if (std::regex_search(instanceIdStr, t, std::regex(R"(friends\((usr_[0-9a-fA-F-]+)\))")))
-                    event.owner_id = t[1].str();
-            } else if (instanceIdStr.find("~hidden(") != std::string::npos) {
-                event.access_type = "hidden";
-                std::smatch t;
-                if (std::regex_search(instanceIdStr, t, std::regex(R"(hidden\((usr_[0-9a-fA-F-]+)\))")))
-                    event.owner_id = t[1].str();
-            } else if (instanceIdStr.find("~group(") != std::string::npos) {
-                event.access_type = "group";
-                std::smatch t;
-                if (std::regex_search(instanceIdStr, t, std::regex(R"(group\((grp_[0-9a-fA-F-]+)\))")))
-                    event.owner_id = t[1].str();
-            }
-            
-            std::smatch r;
-            if (std::regex_search(instanceIdStr, r, std::regex(R"(~region\(([a-zA-Z]+)\))"))) {
-                event.region = r[1].str();
-            }
-
+        case LogAtomKind::WorldInstance:
             return nlohmann::json{
                 {"kind", "worldSwitch"},
-                {"data", event},
+                {"data", worldSwitchFromAtom(*atom, line)},
             };
-        }
+        default:
+            return nullptr;
     }
-
-    return nullptr;
 }
 
 } // namespace vrcsm::core

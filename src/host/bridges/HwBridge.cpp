@@ -5,6 +5,7 @@
 #include "../../core/hw/HwDetector.h"
 #include "../../core/hw/HwProfileFeed.h"
 #include "../../core/hw/HwProfiler.h"
+#include "../../core/hw/HwTelemetry.h"
 
 namespace
 {
@@ -19,6 +20,10 @@ nlohmann::json HwReportToJson(const vrcsm::core::hw::HwReport& report)
         {"gpu_name", report.gpuName},
         {"gpu_vram_bytes", report.gpuVramBytes},
         {"gpu_driver", report.gpuDriver},
+        {"gpu_vendor", report.gpuVendor},
+        {"gpu_pnp_id", report.gpuPnpId},
+        {"gpu_source", report.gpuSource},
+        {"gpu_virtual", report.gpuVirtual},
         {"ram_bytes", report.ramBytes},
         {"hmd_model", report.hmdModel},
         {"hmd_manufacturer", report.hmdManufacturer},
@@ -189,5 +194,30 @@ nlohmann::json IpcBridge::HandleHwRecommend(const nlohmann::json&, const std::op
     catch (...)
     {
         throw IpcException(vrcsm::core::Error{"hw_recommend_failed", "Unknown hardware recommendation failure", 0});
+    }
+}
+
+nlohmann::json IpcBridge::HandleHwTelemetry(const nlohmann::json&, const std::optional<std::string>&)
+{
+    try
+    {
+        auto result = vrcsm::core::hw::CollectTelemetry();
+        if (vrcsm::core::isOk(result))
+        {
+            return std::get<vrcsm::core::hw::TelemetrySnapshot>(std::move(result));
+        }
+        throw IpcException(std::get<vrcsm::core::Error>(std::move(result)));
+    }
+    catch (const IpcException&)
+    {
+        throw;
+    }
+    catch (const std::exception& ex)
+    {
+        throw IpcException(vrcsm::core::Error{"hw_telemetry_failed", ex.what(), 0});
+    }
+    catch (...)
+    {
+        throw IpcException(vrcsm::core::Error{"hw_telemetry_failed", "Unknown hardware telemetry failure", 0});
     }
 }

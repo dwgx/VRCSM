@@ -12,9 +12,17 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { subscribePipelineEvent } from "@/lib/pipeline-events";
+import {
+  acceptNotification,
+  clearNotifications,
+  hideNotification,
+  listNotifications,
+  markNotificationSeen,
+  respondToNotification,
+} from "@/lib/social";
+import type { NotificationEntry } from "@/lib/types";
 
 function formatDistanceShort(date: Date): string {
   const diff = Date.now() - date.getTime();
@@ -37,17 +45,6 @@ function formatDistanceShort(date: Date): string {
  * VRChat occasionally adds fields and the UI only renders a curated
  * subset.
  */
-interface NotificationEntry {
-  id: string;
-  senderUserId?: string;
-  senderUsername?: string;
-  type: string;
-  message?: string;
-  details?: Record<string, unknown> | string | null;
-  seen?: boolean;
-  created_at?: string;
-}
-
 function notificationIcon(type: string) {
   switch (type) {
     case "friendRequest":
@@ -105,7 +102,7 @@ export function NotificationsInbox() {
     }
     try {
       setLoading(true);
-      const res = await ipc.notificationsList(100);
+      const res = await listNotifications(100);
       setItems(res.notifications ?? []);
     } catch (err) {
       console.warn("notifications.list failed", err);
@@ -203,7 +200,7 @@ export function NotificationsInbox() {
     const unseen = items.filter((n) => !n.seen);
     if (unseen.length === 0) return;
     setItems((prev) => prev.map((n) => (n.seen ? n : { ...n, seen: true })));
-    Promise.allSettled(unseen.map((n) => ipc.notificationSee(n.id)))
+    Promise.allSettled(unseen.map((n) => markNotificationSeen(n.id)))
       .catch(() => {});
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -228,7 +225,7 @@ export function NotificationsInbox() {
 
   async function accept(id: string) {
     try {
-      await ipc.notificationAccept(id);
+      await acceptNotification(id);
       setItems((prev) => prev.filter((n) => n.id !== id));
       toast.success(t("notifications.accepted"));
     } catch (err) {
@@ -238,7 +235,7 @@ export function NotificationsInbox() {
 
   async function hide(id: string) {
     try {
-      await ipc.notificationHide(id);
+      await hideNotification(id);
       setItems((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
@@ -247,7 +244,7 @@ export function NotificationsInbox() {
 
   async function respondAccept(id: string) {
     try {
-      await ipc.notificationRespond(id, t("notifications.inviteAccept"));
+      await respondToNotification(id, t("notifications.inviteAccept"));
       setItems((prev) => prev.filter((n) => n.id !== id));
       toast.success(t("notifications.replied"));
     } catch (err) {
@@ -257,7 +254,7 @@ export function NotificationsInbox() {
 
   async function clearAll() {
     try {
-      await ipc.notificationsClear();
+      await clearNotifications();
       setItems([]);
       toast.success(t("notifications.cleared"));
     } catch (err) {

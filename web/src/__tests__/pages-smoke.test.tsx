@@ -130,6 +130,7 @@ const ROUTES: Array<{ path: string; marker: RegExp }> = [
   { path: "/history/worlds", marker: /./ },
   { path: "/settings", marker: /./ },
   { path: "/plugins", marker: /plugins|market/i },
+  { path: "/tools/osc", marker: /osc|studio/i },
 ];
 
 describe("pages smoke", () => {

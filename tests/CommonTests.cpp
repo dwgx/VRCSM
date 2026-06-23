@@ -6,11 +6,16 @@
 #include <fstream>
 
 #include <Windows.h>
+#include <sqlite3.h>
+#include <wil/resource.h>
 
 #include "core/AvatarPreview.h"
 #include "core/Common.h"
 #include "core/Database.h"
 #include "core/JunctionUtil.h"
+#include "core/LogAtoms.h"
+#include "core/LogEventClassifier.h"
+#include "core/LogParser.h"
 #include "core/Migrator.h"
 #include "core/ProcessGuard.h"
 #include "core/SafeDelete.h"
@@ -18,6 +23,7 @@
 #include "core/VrcApi.h"
 #include "core/VrDiagnostics.h"
 #include "core/plugins/PluginRegistry.h"
+#include "core/updater/UpdatePackage.h"
 
 namespace
 {
@@ -74,6 +80,35 @@ void OpenTempDatabase(const std::filesystem::path& dbPath)
     db.Close();
     auto opened = db.Open(dbPath);
     ASSERT_TRUE(vrcsm::core::isOk(opened)) << vrcsm::core::error(opened).message;
+}
+
+void ExecSql(sqlite3* db, const char* sql)
+{
+    char* error = nullptr;
+    const int rc = sqlite3_exec(db, sql, nullptr, nullptr, &error);
+    if (rc != SQLITE_OK)
+    {
+        const std::string message = error != nullptr ? error : "sqlite3_exec failed";
+        sqlite3_free(error);
+        FAIL() << message;
+    }
+}
+
+std::int64_t QueryInt64(sqlite3* db, const char* sql)
+{
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+    {
+        ADD_FAILURE() << sqlite3_errmsg(db);
+        return -1;
+    }
+    const auto finalize = wil::scope_exit([&]() { sqlite3_finalize(stmt); });
+    if (sqlite3_step(stmt) != SQLITE_ROW)
+    {
+        ADD_FAILURE() << "query returned no rows";
+        return -1;
+    }
+    return sqlite3_column_int64(stmt, 0);
 }
 
 } // namespace
@@ -261,6 +296,25 @@ TEST(CommonTests, AvatarPreviewRetainRejectsOutsidePreviewCache)
     std::filesystem::remove_all(dir, ec);
 }
 
+TEST(CommonTests, AvatarPreviewPreservesBundleInvalidFailureCode)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-avatar-preview-invalid");
+    const auto bundle = dir / L"invalid.vrca";
+    WriteBytes(bundle, "UnityFS");
+
+    const auto result = vrcsm::core::AvatarPreview::Request(
+        "avtr_164034fd-61d6-410d-892f-9ecc3964817e",
+        dir,
+        "",
+        vrcsm::core::toUtf8(bundle.wstring()));
+
+    EXPECT_FALSE(result.ok);
+    EXPECT_EQ(result.code, "bundle_invalid");
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
 TEST(CommonTests, GlobalSearchMergesFavoriteAndVisitEvidence)
 {
     const auto dir = MakeTempTestDir(L"vrcsm-global-search-merge");
@@ -436,6 +490,149 @@ TEST(CommonTests, RecentWorldVisitsIncludesLoggedPlayerCounts)
     std::filesystem::remove_all(dir, ec);
 }
 
+TEST(CommonTests, DatabaseOpenDedupesWorldVisitsBeforeUniqueIndex)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-world-visits-dedupe");
+    const auto dbPath = dir / L"vrcsm.db";
+
+    sqlite3* rawDb = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(
+        vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+        &rawDb,
+        SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE,
+        nullptr), SQLITE_OK);
+    ASSERT_NE(rawDb, nullptr);
+    {
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        ExecSql(rawDb, R"SQL(
+CREATE TABLE world_visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id TEXT NOT NULL,
+    instance_id TEXT NOT NULL,
+    access_type TEXT,
+    owner_id TEXT,
+    region TEXT,
+    joined_at TEXT NOT NULL,
+    left_at TEXT
+);
+INSERT INTO world_visits (world_id, instance_id, access_type, owner_id, region, joined_at, left_at)
+VALUES
+    ('wrld_old', 'wrld_old:12345', 'hidden', 'usr_owner', 'us', '2026-04-27T10:00:00Z', NULL),
+    ('wrld_old', 'wrld_old:12345', 'hidden', 'usr_owner', 'us', '2026-04-27T10:00:00Z', '2026-04-27T11:00:00Z'),
+    ('wrld_old', 'wrld_old:12345', 'hidden', 'usr_owner', 'us', '2026-04-27T10:00:00Z', '2026-04-27T11:30:00Z'),
+    ('wrld_other', 'wrld_other:12345', 'public', NULL, 'jp', '2026-04-28T10:00:00Z', NULL);
+)SQL");
+    }
+
+    auto& db = vrcsm::core::Database::Instance();
+    db.Close();
+    auto opened = db.Open(dbPath);
+    ASSERT_TRUE(vrcsm::core::isOk(opened)) << vrcsm::core::error(opened).message;
+    db.Close();
+
+    ASSERT_EQ(sqlite3_open_v2(
+        vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+        &rawDb,
+        SQLITE_OPEN_READONLY,
+        nullptr), SQLITE_OK);
+    ASSERT_NE(rawDb, nullptr);
+    {
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        EXPECT_EQ(QueryInt64(rawDb, "SELECT COUNT(*) FROM world_visits;"), 2);
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM world_visits "
+            "WHERE world_id = 'wrld_old' AND left_at IS NOT NULL;"), 1);
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM sqlite_master "
+            "WHERE type = 'index' AND name = 'uq_world_visits';"), 1);
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, UpdatePackageValidationRejectsInstallerOutsideUpdatesDirectory)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-update-package-outside");
+    const auto installer = dir / L"VRCSM-9.9.9.msi";
+    WriteBytes(installer, "not really an msi");
+
+    vrcsm::core::updater::PackageValidationOptions options;
+    options.version = "9.9.9";
+    options.expectedSize = static_cast<std::uint64_t>(std::filesystem::file_size(installer));
+
+    const auto result = vrcsm::core::updater::ValidateDownloadedPackage(installer, options);
+
+    ASSERT_FALSE(vrcsm::core::isOk(result));
+    EXPECT_EQ(vrcsm::core::error(result).code, "update_invalid");
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, UpdatePackageValidationAcceptsReleaseAssetFileName)
+{
+    const std::string fileName = "VRCSM_v9.9.9_x64_Installer.msi";
+    const auto installer = vrcsm::core::updater::BuildUpdateTargetPath(fileName);
+    std::error_code ec;
+    std::filesystem::remove(installer, ec);
+    WriteBytes(installer, "not really an msi");
+
+    vrcsm::core::updater::PackageValidationOptions options;
+    options.version = "9.9.9";
+    options.expectedFileName = fileName;
+    options.expectedSize = static_cast<std::uint64_t>(std::filesystem::file_size(installer));
+
+    const auto result = vrcsm::core::updater::ValidateDownloadedPackage(installer, options);
+
+    EXPECT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+
+    std::filesystem::remove(installer, ec);
+}
+
+TEST(CommonTests, UpdatePackageValidationRejectsPathLikeReleaseAssetFileName)
+{
+    const std::string fileName = "VRCSM_v9.9.9_x64_Installer.msi";
+    const auto installer = vrcsm::core::updater::BuildUpdateTargetPath(fileName);
+    std::error_code ec;
+    std::filesystem::remove(installer, ec);
+    WriteBytes(installer, "not really an msi");
+
+    vrcsm::core::updater::PackageValidationOptions options;
+    options.version = "9.9.9";
+    options.expectedFileName = "../VRCSM_v9.9.9_x64_Installer.msi";
+    options.expectedSize = static_cast<std::uint64_t>(std::filesystem::file_size(installer));
+
+    const auto result = vrcsm::core::updater::ValidateDownloadedPackage(installer, options);
+
+    ASSERT_FALSE(vrcsm::core::isOk(result));
+    EXPECT_EQ(vrcsm::core::error(result).code, "update_invalid");
+    EXPECT_FALSE(vrcsm::core::updater::IsSafeMsiFileName(options.expectedFileName));
+
+    std::filesystem::remove(installer, ec);
+}
+
+TEST(CommonTests, UpdatePackageValidationRejectsWrongReleaseAssetFileName)
+{
+    const std::string fileName = "VRCSM_v9.9.9_x64_Installer.msi";
+    const auto installer = vrcsm::core::updater::BuildUpdateTargetPath(fileName);
+    std::error_code ec;
+    std::filesystem::remove(installer, ec);
+    WriteBytes(installer, "not really an msi");
+
+    vrcsm::core::updater::PackageValidationOptions options;
+    options.version = "9.9.9";
+    options.expectedFileName = "VRCSM-9.9.9.msi";
+    options.expectedSize = static_cast<std::uint64_t>(std::filesystem::file_size(installer));
+
+    const auto result = vrcsm::core::updater::ValidateDownloadedPackage(installer, options);
+
+    ASSERT_FALSE(vrcsm::core::isOk(result));
+    EXPECT_EQ(vrcsm::core::error(result).code, "update_invalid");
+
+    std::filesystem::remove(installer, ec);
+}
+
 TEST(CommonTests, SteamLinkRestoreTargetAllowsOnlySteamVrRepairRoots)
 {
     const std::filesystem::path steam = L"C:\\Steam";
@@ -595,5 +792,95 @@ TEST(CommonTests, AvatarPreviewLruSkipsPartFilesAndRetainedGlbs)
     EXPECT_TRUE(std::filesystem::exists(part));
 
     vrcsm::core::AvatarPreview::ReleasePreviewPath(retainedGlb);
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, LogAtomsParsePrefixAndWorldInstanceParameters)
+{
+    const auto parsed = vrcsm::core::ParseVrchatLogLine(
+        "2026.06.23 22:11:45 Warning    -  [Behaviour] Joining "
+        "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345~hidden(usr_11111111-2222-3333-4444-555555555555)~region(JP)~canRequestInvite");
+
+    ASSERT_TRUE(parsed.has_prefix);
+    ASSERT_TRUE(parsed.iso_time.has_value());
+    EXPECT_EQ(*parsed.iso_time, "2026.06.23 22:11:45");
+    EXPECT_EQ(parsed.level, "warn");
+
+    const auto atom = vrcsm::core::ParseVrchatLogAtom(parsed.body);
+    ASSERT_TRUE(atom.has_value());
+    EXPECT_EQ(atom->kind, vrcsm::core::LogAtomKind::WorldInstance);
+    EXPECT_EQ(atom->getOr("world_id"), "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    EXPECT_EQ(
+        atom->getOr("instance_id"),
+        "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345~hidden(usr_11111111-2222-3333-4444-555555555555)~region(JP)~canRequestInvite");
+    EXPECT_EQ(atom->getOr("instance_number"), "12345");
+    EXPECT_EQ(atom->getOr("access_type"), "hidden");
+    EXPECT_EQ(atom->getOr("owner_id"), "usr_11111111-2222-3333-4444-555555555555");
+    EXPECT_EQ(atom->getOr("region"), "jp");
+    EXPECT_EQ(atom->getOr("can_request_invite"), "true");
+}
+
+TEST(CommonTests, LogEventClassifierUsesSharedWorldInstanceParsing)
+{
+    vrcsm::core::LogTailLine line;
+    line.iso_time = "2026.06.23 22:12:00";
+    line.line =
+        "[Behaviour] Joining "
+        "wrld_bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee:4242~group(grp_11111111-2222-3333-4444-555555555555)~region(us)";
+
+    auto event = vrcsm::core::ClassifyStreamLine(line);
+    ASSERT_TRUE(event.is_object());
+    EXPECT_EQ(event["kind"].get<std::string>(), "worldSwitch");
+    const auto& data = event["data"];
+    EXPECT_EQ(data["world_id"].get<std::string>(), "wrld_bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee");
+    EXPECT_EQ(data["access_type"].get<std::string>(), "group");
+    EXPECT_EQ(data["owner_id"].get<std::string>(), "grp_11111111-2222-3333-4444-555555555555");
+    EXPECT_EQ(data["region"].get<std::string>(), "us");
+}
+
+TEST(CommonTests, LogParserBuildsAtomicReportFromPrefixedVrchatLog)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-log-atoms");
+    const auto path = dir / L"output_log_2026-06-23_22-10-00.txt";
+    WriteBytes(path,
+        "2026.06.23 22:10:00 Log        -  User Authenticated: Local User (usr_00000000-0000-0000-0000-000000000000)\n"
+        "2026.06.23 22:10:01 Log        -  [Behaviour] Destination set: wrld_cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee:7777~friends(usr_99999999-2222-3333-4444-555555555555)~region(eu)\n"
+        "2026.06.23 22:10:02 Log        -  [Behaviour] Joining wrld_cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee:7777~friends(usr_99999999-2222-3333-4444-555555555555)~region(eu)\n"
+        "2026.06.23 22:10:03 Log        -  [Behaviour] Joining or Creating Room: Test World\n"
+        "2026.06.23 22:10:04 Log        -  [Behaviour] OnPlayerJoined Alice_f76f94e9_542d\n"
+        "2026.06.23 22:10:05 Log        -  [Behaviour] OnPlayerJoined Bob (usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb)\n"
+        "2026.06.23 22:10:06 Log        -  [Behaviour] Switching Bob to avatar Cool Avatar\n"
+        "2026.06.23 22:10:07 Log        -  [AssetBundleDownloadManager] [101] Unpacking Avatar (Cool Avatar by Avatar Author)\n"
+        "2026.06.23 22:10:08 Log        -  Loading Avatar Data:avtr_11111111-2222-3333-4444-555555555555\n"
+        "2026.06.23 22:10:09 Log        -  [VRC Camera] Took screenshot to: C:\\Users\\dwgx\\Pictures\\VRChat\\shot.png\n");
+
+    const auto report = vrcsm::core::LogParser::parse(dir);
+    ASSERT_EQ(report.log_count, 1u);
+    ASSERT_TRUE(report.local_user_id.has_value());
+    EXPECT_EQ(*report.local_user_id, "usr_00000000-0000-0000-0000-000000000000");
+
+    ASSERT_EQ(report.world_switches.size(), 1u);
+    EXPECT_EQ(report.world_switches[0].access_type, "friends");
+    ASSERT_TRUE(report.world_switches[0].owner_id.has_value());
+    EXPECT_EQ(*report.world_switches[0].owner_id, "usr_99999999-2222-3333-4444-555555555555");
+    ASSERT_TRUE(report.world_switches[0].region.has_value());
+    EXPECT_EQ(*report.world_switches[0].region, "eu");
+    EXPECT_EQ(report.world_names.at("wrld_cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee"), "Test World");
+
+    ASSERT_EQ(report.player_events.size(), 2u);
+    EXPECT_EQ(report.player_events[0].display_name, "Alice");
+    EXPECT_EQ(report.player_events[1].user_id.value_or(""), "usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb");
+
+    ASSERT_EQ(report.avatar_switches.size(), 1u);
+    EXPECT_EQ(report.avatar_switches[0].actor, "Bob");
+    ASSERT_TRUE(report.avatar_switches[0].actor_user_id.has_value());
+    EXPECT_EQ(*report.avatar_switches[0].actor_user_id, "usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb");
+    ASSERT_TRUE(report.avatar_switches[0].author_name.has_value());
+    EXPECT_EQ(*report.avatar_switches[0].author_name, "Avatar Author");
+
+    ASSERT_EQ(report.screenshots.size(), 1u);
+    EXPECT_EQ(report.screenshots[0].path, "C:\\Users\\dwgx\\Pictures\\VRChat\\shot.png");
+
+    std::error_code ec;
     std::filesystem::remove_all(dir, ec);
 }

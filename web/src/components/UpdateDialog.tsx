@@ -114,6 +114,7 @@ export function UpdateDialog({ open, onOpenChange, initial }: UpdateDialogProps)
         size: info.size ?? 0,
         sha256: info.sha256 ?? null,
         version: info.latest,
+        fileName: info.fileName ?? null,
       });
       setPhase({ kind: "ready", info, msiPath: res.path });
     } catch (e: unknown) {
@@ -125,8 +126,23 @@ export function UpdateDialog({ open, onOpenChange, initial }: UpdateDialogProps)
 
   async function handleInstall() {
     if (phase.kind !== "ready") return;
+    const version = phase.info.latest ?? phase.info.latestVersion;
+    const size = phase.info.size ?? phase.info.downloadSize ?? 0;
+    if (!version || size <= 0) {
+      toast.error(t("update.installFailed", {
+        defaultValue: "Install failed: {{msg}}",
+        msg: "missing update metadata",
+      }));
+      return;
+    }
     try {
-      await installUpdate(phase.msiPath);
+      await installUpdate({
+        path: phase.msiPath,
+        version,
+        size,
+        sha256: phase.info.sha256 ?? null,
+        fileName: phase.info.fileName ?? null,
+      });
       // Window will close imminently as the C++ side posts WM_QUIT.
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);

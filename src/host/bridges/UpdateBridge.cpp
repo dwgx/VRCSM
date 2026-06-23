@@ -5,26 +5,24 @@
 #include "../../core/updater/UpdateApplier.h"
 #include "../../core/updater/UpdateChecker.h"
 #include "../../core/updater/UpdateDownloader.h"
+#include "../../core/updater/UpdatePackage.h"
 #include "../../core/updater/UpdateState.h"
 
 namespace
 {
 
-nlohmann::json MakeError(std::string_view code, std::string_view message)
+[[noreturn]] void ThrowUpdateError(std::string_view code, std::string_view message)
 {
-    return nlohmann::json{
-        {"error", {
-            {"code", code},
-            {"message", message}
-        }}
-    };
+    throw IpcException(vrcsm::core::Error{
+        std::string(code),
+        std::string(message),
+        0
+    });
 }
 
-nlohmann::json MakeError(const vrcsm::core::Error& error)
+[[noreturn]] void ThrowUpdateError(const vrcsm::core::Error& error)
 {
-    nlohmann::json errJson;
-    to_json(errJson, error);
-    return nlohmann::json{{"error", errJson}};
+    throw IpcException(error);
 }
 
 nlohmann::json StateSnapshot()
@@ -41,9 +39,42 @@ nlohmann::json StateSnapshot()
     };
 }
 
-std::filesystem::path UpdateTargetPathForVersion(const std::string& version)
+std::string FileNameFromUrl(const std::string& url)
 {
-    return vrcsm::core::getAppDataRoot() / L"updates" / vrcsm::core::toWide(fmt::format("VRCSM-{}.msi", version));
+    const std::size_t query = url.find_first_of("?#");
+    const std::string withoutQuery = query == std::string::npos ? url : url.substr(0, query);
+    const std::size_t slash = withoutQuery.find_last_of('/');
+    if (slash == std::string::npos)
+    {
+        return withoutQuery;
+    }
+    return withoutQuery.substr(slash + 1);
+}
+
+std::string UpdateFileNameForRequest(
+    const nlohmann::json& params,
+    const std::string& version,
+    const std::optional<std::string>& url = std::nullopt)
+{
+    if (const auto fileName = JsonStringField(params, "fileName");
+        fileName.has_value() && !fileName->empty())
+    {
+        return *fileName;
+    }
+    if (url.has_value())
+    {
+        const std::string derived = FileNameFromUrl(*url);
+        if (!derived.empty() && vrcsm::core::updater::IsMsiFileName(derived))
+        {
+            return derived;
+        }
+    }
+    return fmt::format("VRCSM-{}.msi", version);
+}
+
+std::filesystem::path UpdateTargetPathForFileName(const std::string& fileName)
+{
+    return vrcsm::core::updater::BuildUpdateTargetPath(fileName);
 }
 
 std::optional<std::uint64_t> ExistingFileSize(const std::filesystem::path& path)
@@ -77,23 +108,29 @@ nlohmann::json IpcBridge::HandleUpdateCheck(const nlohmann::json& params, const 
 
         if (!vrcsm::core::isOk(result))
         {
-            return MakeError(vrcsm::core::error(result));
+            ThrowUpdateError(vrcsm::core::error(result));
         }
 
         const auto& info = vrcsm::core::value(result);
         nlohmann::json out{
             {"available", info.available},
+            {"current", info.currentVersion},
             {"currentVersion", info.currentVersion},
+            {"latest", info.latestVersion},
             {"latestVersion", info.latestVersion},
+            {"fileName", info.fileName.has_value() ? nlohmann::json(*info.fileName) : nlohmann::json(nullptr)},
             {"downloadUrl", info.downloadUrl.has_value() ? nlohmann::json(*info.downloadUrl) : nlohmann::json(nullptr)},
+            {"size", info.downloadSize.has_value() ? nlohmann::json(*info.downloadSize) : nlohmann::json(nullptr)},
             {"downloadSize", info.downloadSize.has_value() ? nlohmann::json(*info.downloadSize) : nlohmann::json(nullptr)},
             {"sha256", info.sha256.has_value() ? nlohmann::json(*info.sha256) : nlohmann::json(nullptr)},
+            {"releaseNotes", info.releaseNotesMarkdown},
             {"releaseNotesMarkdown", info.releaseNotesMarkdown},
             {"releaseUrl", info.releaseUrl},
             {"skipped", state.IsSkipped(info.latestVersion)}
         };
 
-        const auto existingMsi = UpdateTargetPathForVersion(info.latestVersion);
+        const auto targetFileName = info.fileName.value_or(fmt::format("VRCSM-{}.msi", info.latestVersion));
+        const auto existingMsi = UpdateTargetPathForFileName(targetFileName);
         std::error_code ec;
         if (std::filesystem::is_regular_file(existingMsi, ec))
         {
@@ -106,13 +143,17 @@ nlohmann::json IpcBridge::HandleUpdateCheck(const nlohmann::json& params, const 
 
         return out;
     }
+    catch (const IpcException&)
+    {
+        throw;
+    }
     catch (const std::exception& ex)
     {
-        return MakeError("update_check_failed", ex.what());
+        ThrowUpdateError("update_check_failed", ex.what());
     }
     catch (...)
     {
-        return MakeError("update_check_failed", "Unknown update check failure");
+        ThrowUpdateError("update_check_failed", "Unknown update check failure");
     }
 }
 
@@ -124,22 +165,27 @@ nlohmann::json IpcBridge::HandleUpdateDownload(const nlohmann::json& params, con
         const auto version = JsonStringField(params, "version");
         if (!url.has_value() || !version.has_value())
         {
-            return MakeError("update_invalid", "update.download requires url and version");
+            ThrowUpdateError("update_invalid", "update.download requires url and version");
         }
         if (!params.contains("size") || !params["size"].is_number_integer())
         {
-            return MakeError("update_invalid", "update.download requires numeric size");
+            ThrowUpdateError("update_invalid", "update.download requires numeric size");
         }
 
         const auto sizeValue = params["size"].get<std::int64_t>();
         if (sizeValue <= 0)
         {
-            return MakeError("update_invalid", "update.download size must be positive");
+            ThrowUpdateError("update_invalid", "update.download size must be positive");
         }
 
         const std::uint64_t expectedSize = static_cast<std::uint64_t>(sizeValue);
         const auto expectedSha256 = JsonStringField(params, "sha256");
-        const std::filesystem::path targetPath = UpdateTargetPathForVersion(*version);
+        const std::string targetFileName = UpdateFileNameForRequest(params, *version, url);
+        if (!vrcsm::core::updater::IsSafeMsiFileName(targetFileName))
+        {
+            ThrowUpdateError("update_invalid", "update.download fileName must be a single .msi file name");
+        }
+        const std::filesystem::path targetPath = UpdateTargetPathForFileName(targetFileName);
         const auto existingSize = ExistingFileSize(targetPath);
         const bool verifyOnly = expectedSha256.has_value()
             && existingSize.has_value()
@@ -161,7 +207,7 @@ nlohmann::json IpcBridge::HandleUpdateDownload(const nlohmann::json& params, con
         options.url = *url;
         options.expectedSize = expectedSize;
         options.expectedSha256 = expectedSha256;
-        options.targetFileName = fmt::format("VRCSM-{}.msi", *version);
+        options.targetFileName = targetFileName;
         options.onProgress = [this, version = *version, &sawDownloadComplete, &verifyPhase](
             std::uint64_t done,
             std::uint64_t total)
@@ -187,7 +233,7 @@ nlohmann::json IpcBridge::HandleUpdateDownload(const nlohmann::json& params, con
         auto result = vrcsm::core::updater::UpdateDownloader::Download(options);
         if (!vrcsm::core::isOk(result))
         {
-            return MakeError(vrcsm::core::error(result));
+            ThrowUpdateError(vrcsm::core::error(result));
         }
 
         const auto& path = vrcsm::core::value(result);
@@ -203,13 +249,17 @@ nlohmann::json IpcBridge::HandleUpdateDownload(const nlohmann::json& params, con
             {"path", vrcsm::core::toUtf8(path.wstring())}
         };
     }
+    catch (const IpcException&)
+    {
+        throw;
+    }
     catch (const std::exception& ex)
     {
-        return MakeError("update_download_failed", ex.what());
+        ThrowUpdateError("update_download_failed", ex.what());
     }
     catch (...)
     {
-        return MakeError("update_download_failed", "Unknown update download failure");
+        ThrowUpdateError("update_download_failed", "Unknown update download failure");
     }
 }
 
@@ -220,25 +270,58 @@ nlohmann::json IpcBridge::HandleUpdateInstall(const nlohmann::json& params, cons
         const auto path = JsonStringField(params, "path");
         if (!path.has_value())
         {
-            return MakeError("update_invalid", "update.install requires path");
+            ThrowUpdateError("update_invalid", "update.install requires path");
+        }
+        const auto version = JsonStringField(params, "version");
+        if (!version.has_value() || version->empty())
+        {
+            ThrowUpdateError("update_invalid", "update.install requires version");
+        }
+        if (!params.contains("size") || !params["size"].is_number_integer())
+        {
+            ThrowUpdateError("update_invalid", "update.install requires numeric size");
+        }
+        const auto sizeValue = params["size"].get<std::int64_t>();
+        if (sizeValue <= 0)
+        {
+            ThrowUpdateError("update_invalid", "update.install size must be positive");
         }
 
-        auto result = vrcsm::core::updater::UpdateApplier::Apply(vrcsm::core::utf8Path(*path));
+        vrcsm::core::updater::PackageValidationOptions validation;
+        validation.version = *version;
+        validation.expectedFileName = UpdateFileNameForRequest(params, *version);
+        validation.expectedSize = static_cast<std::uint64_t>(sizeValue);
+        validation.expectedSha256 = JsonStringField(params, "sha256");
+
+        auto validationResult = vrcsm::core::updater::ValidateDownloadedPackage(
+            vrcsm::core::utf8Path(*path),
+            validation);
+        if (!vrcsm::core::isOk(validationResult))
+        {
+            ThrowUpdateError(vrcsm::core::error(validationResult));
+        }
+
+        const auto installerPath = UpdateTargetPathForFileName(validation.expectedFileName);
+        auto result = vrcsm::core::updater::UpdateApplier::Apply(installerPath);
         if (!vrcsm::core::isOk(result))
         {
-            return MakeError(vrcsm::core::error(result));
+            ThrowUpdateError(vrcsm::core::error(result));
         }
 
         m_host.QuitForUpdate();
         return nlohmann::json{{"ok", true}};
     }
+    catch (const IpcException&)
+    {
+        throw;
+    }
     catch (const std::exception& ex)
     {
-        return MakeError("update_install_failed", ex.what());
+        ThrowUpdateError("update_install_failed", ex.what());
     }
     catch (...)
     {
-        return MakeError("update_install_failed", "Unknown update install failure");
+        ThrowUpdateError("update_install_failed", "Unknown update install failure");
     }
 }
 
@@ -249,7 +332,7 @@ nlohmann::json IpcBridge::HandleUpdateSkipVersion(const nlohmann::json& params, 
         const auto version = JsonStringField(params, "version");
         if (!version.has_value() || version->empty())
         {
-            return MakeError("update_invalid", "update.skipVersion requires version");
+            ThrowUpdateError("update_invalid", "update.skipVersion requires version");
         }
 
         auto& state = vrcsm::core::updater::UpdateState::Instance();
@@ -257,13 +340,17 @@ nlohmann::json IpcBridge::HandleUpdateSkipVersion(const nlohmann::json& params, 
         state.Save();
         return StateSnapshot();
     }
+    catch (const IpcException&)
+    {
+        throw;
+    }
     catch (const std::exception& ex)
     {
-        return MakeError("update_state_failed", ex.what());
+        ThrowUpdateError("update_state_failed", ex.what());
     }
     catch (...)
     {
-        return MakeError("update_state_failed", "Unknown update state failure");
+        ThrowUpdateError("update_state_failed", "Unknown update state failure");
     }
 }
 
@@ -274,7 +361,7 @@ nlohmann::json IpcBridge::HandleUpdateUnskipVersion(const nlohmann::json& params
         const auto version = JsonStringField(params, "version");
         if (!version.has_value() || version->empty())
         {
-            return MakeError("update_invalid", "update.unskipVersion requires version");
+            ThrowUpdateError("update_invalid", "update.unskipVersion requires version");
         }
 
         auto& state = vrcsm::core::updater::UpdateState::Instance();
@@ -282,13 +369,17 @@ nlohmann::json IpcBridge::HandleUpdateUnskipVersion(const nlohmann::json& params
         state.Save();
         return StateSnapshot();
     }
+    catch (const IpcException&)
+    {
+        throw;
+    }
     catch (const std::exception& ex)
     {
-        return MakeError("update_state_failed", ex.what());
+        ThrowUpdateError("update_state_failed", ex.what());
     }
     catch (...)
     {
-        return MakeError("update_state_failed", "Unknown update state failure");
+        ThrowUpdateError("update_state_failed", "Unknown update state failure");
     }
 }
 
@@ -298,12 +389,16 @@ nlohmann::json IpcBridge::HandleUpdateGetState(const nlohmann::json&, const std:
     {
         return StateSnapshot();
     }
+    catch (const IpcException&)
+    {
+        throw;
+    }
     catch (const std::exception& ex)
     {
-        return MakeError("update_state_failed", ex.what());
+        ThrowUpdateError("update_state_failed", ex.what());
     }
     catch (...)
     {
-        return MakeError("update_state_failed", "Unknown update state failure");
+        ThrowUpdateError("update_state_failed", "Unknown update state failure");
     }
 }

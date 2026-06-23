@@ -2851,7 +2851,6 @@ CREATE TABLE IF NOT EXISTS world_visits (
 );
 CREATE INDEX IF NOT EXISTS idx_world_visits_world_id ON world_visits(world_id);
 CREATE INDEX IF NOT EXISTS idx_world_visits_joined_at ON world_visits(joined_at);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_world_visits ON world_visits(world_id, instance_id, joined_at);
 
 CREATE TABLE IF NOT EXISTS player_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2959,6 +2958,38 @@ CREATE INDEX IF NOT EXISTS idx_local_favorite_tags_lookup ON local_favorite_tags
     }
 
     if (const auto r = ExecSimple(kSchemaSql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    static constexpr const char* kDedupeWorldVisitsSql = R"SQL(
+DELETE FROM world_visits
+WHERE id NOT IN (
+    SELECT keep_id
+    FROM (
+        SELECT
+            CASE
+                WHEN SUM(CASE WHEN left_at IS NOT NULL AND left_at <> '' THEN 1 ELSE 0 END) > 0
+                    THEN MIN(CASE WHEN left_at IS NOT NULL AND left_at <> '' THEN id END)
+                ELSE MIN(id)
+            END AS keep_id
+        FROM world_visits
+        GROUP BY world_id, instance_id, joined_at
+    )
+);
+)SQL";
+
+    if (const auto r = ExecSimple(kDedupeWorldVisitsSql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_world_visits "
+            "ON world_visits(world_id, instance_id, joined_at);");
+        std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
         return std::get<Error>(r);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Common.h"
+
 #include <cstddef>
 #include <filesystem>
 #include <map>
@@ -33,10 +35,34 @@ struct LocalAvatarReport
 
 void to_json(nlohmann::json& j, const LocalAvatarReport& r);
 
+struct LocalAvatarParameter
+{
+    std::string name;
+    std::string valueType;
+    nlohmann::json defaultValue;
+};
+
+void to_json(nlohmann::json& j, const LocalAvatarParameter& p);
+
+struct LocalAvatarParametersReport
+{
+    std::string avatar_id;
+    std::string user_id;
+    std::string path;
+    std::vector<LocalAvatarParameter> parameters;
+};
+
+void to_json(nlohmann::json& j, const LocalAvatarParametersReport& r);
+
 class AvatarData
 {
 public:
     static LocalAvatarReport scan(const std::filesystem::path& baseDir);
+    static Result<LocalAvatarParametersReport> readParameters(
+        const std::filesystem::path& baseDir,
+        std::string_view avatarId,
+        std::string_view userId = {},
+        std::size_t limit = 256);
 };
 
 } // namespace vrcsm::core

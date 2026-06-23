@@ -215,6 +215,55 @@
       "send": "Send",
       "sent": "Chatbox sent",
       "rateLimit": "Wait 2 seconds between messages (VRChat rate limit)"
+    },
+    "studio": {
+      "title": "OSC Studio",
+      "subtitle": "Build OSC from draggable hardware cards, four presets, live preview, and controlled auto-send.",
+      "refreshHardware": "Hardware",
+      "cards": "Cards",
+      "addScene": "Add scene",
+      "exported": "Profile copied",
+      "exportReady": "Profile ready",
+      "imported": "Profile imported",
+      "avatarMissing": "Select or enter an avatar id",
+      "avatarLoaded": "Loaded {{count}} parameters",
+      "preview": "Preview & Send",
+      "autoRunning": "AUTO",
+      "noPreview": "Select a card to preview output.",
+      "sendSelected": "Send selected",
+      "stopAuto": "Stop auto",
+      "startAuto": "Auto send",
+      "hardware": "Hardware variables",
+      "profile": "Profile import/export",
+      "variables": "Template variables",
+      "avatarParams": "Avatar parameter scan",
+      "noAvatarParams": "No parameters found in this local avatar file.",
+      "interval": "Every",
+      "type": "Type",
+      "insertVariable": "Insert variable",
+      "autoStarted": "Auto send started",
+      "templatePresets": "Templates",
+      "builder": "Template builder",
+      "editArea": "Edit area",
+      "dropHint": "Type text here, or drag hardware cards from the right into this editor.",
+      "chatboxPreview": "Chatbox preview",
+      "componentCards": "Component cards",
+      "dragComponent": "Drag into the editor or click to insert",
+      "composer": "Composer",
+      "emptyComposer": "Drag component cards here or add custom text below.",
+      "customText": "Custom text...",
+      "addText": "Add text",
+      "insertNewline": "Line",
+      "rawTemplate": "Raw template",
+      "blockMoveUp": "Move block left",
+      "blockMoveDown": "Move block right",
+      "blockRemove": "Remove block",
+      "recommended": "Recommended",
+      "searchComponents": "Search CPU, GPU, RAM...",
+      "componentHint": "Start with these stable cards. Temperature, fan and board cards appear in their own tabs because they depend on sensor providers.",
+      "clickToInsert": "Click to insert",
+      "noComponents": "No components match this filter.",
+      "avatarParamsHint": "Scans local avatar OSC config and turns parameters into control cards. It is not an avatar model unpacker."
     }
   },
   "auth": {
@@ -374,6 +423,14 @@
       "inviteSent": "Invited {{name}} to your room",
       "sendMessage": "Send Message",
       "viewProfile": "View Profile"
+    },
+    "views": {
+      "all": "All",
+      "favorites": "Favorites",
+      "sameInstance": "Same instance",
+      "joinable": "Joinable",
+      "online": "Online",
+      "offline": "Offline"
     }
   },
   "layout": {
@@ -630,7 +687,10 @@
     "first": "First",
     "previous": "Previous",
     "last": "Last",
-    "jumpTo": "Jump to"
+    "jumpTo": "Jump to",
+    "seconds": "s",
+    "ready": "Ready",
+    "partial": "Partial"
   },
   "about": {
     "title": "About VRCSM",
@@ -640,8 +700,6 @@
     "build": "Build",
     "developer": "Developer",
     "developerBody": "Solo dev, coffee in hand — the native host, the UI, and the packaging all live in one little codebase. Hope it makes your VRChat life comfier (｡•ㅅ•｡)♡",
-    "specialThanks": "Special Thanks",
-    "specialThanksBody": "The very first friend I made in VRChat — still quietly tucked inside this project, always.",
     "links": "Links",
     "footer": "Built for local-first VRChat account, cache, and session management."
   },
@@ -1626,9 +1684,11 @@
     "topWorlds": "Most Visited Worlds",
     "topEncounters": "Most Encountered Players",
     "noVisits": "No visit data yet.",
-    "noEncounters": "No encounter data yet.",
+    "noEncounters": "No encounter data yet. Player encounters are logged from VRChat output logs.",
     "guide": "Aggregates world visits and player encounters from your VRChat log history. Data accumulates as VRCSM parses logs — keep the app running while you play to build up analytics.",
-    "noWorlds": "No visit data yet. World history is recorded when VRCSM parses your VRChat logs."
+    "noWorlds": "No visit data yet. World history is recorded when VRCSM parses your VRChat logs.",
+    "selfFiltered": "Your own player id is excluded from encounter rankings.",
+    "lazyWorlds": "World badges and thumbnails are loaded only when visible or opened."
   },
   "benchmark": {
     "title": "Avatar Performance Benchmark",

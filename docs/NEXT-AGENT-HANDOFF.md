@@ -1,15 +1,38 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-05-09
+Last updated: 2026-06-23
 
 ## Current State
 
 - Branch: `main`
-- Working tree at handoff time: docs + version bump commit pending.
-- Latest implementation commit: `d0b16c9` (Add VRChat visits API, fix stale log backfill, add unique DB constraint).
+- Working tree at handoff time: local fixes pending for migration IPC, `world_visits` dedupe, updater IPC/package validation, release asset filename sync, packaging scripts, avatar-preview diagnostics, and frontend API facade cleanup.
+- Latest remote commit at audit time: `42940a5` (chore: align release metadata version).
 - Remote: `origin https://github.com/dwgx/VRCSM.git`
 - Current app version: `0.14.5`
-- VS2026 path: `D:\Software\Microsoft\Microsoft Visual Studio\18` (note: "Microsoft" is in the path, unlike the old CLAUDE.md).
+- VS2026 path: `D:\Software\Microsoft Visual Studio\18` (current machine path).
+
+## 2026-06-22/23 Local Fixes Pending
+
+- **Migration IPC single-response fix.** `migrate.execute` remains in `AsyncMethodSet()` and `MigrateBridge` no longer enqueues its own inner worker or posts a second result for the same request id. It still emits `migrate.progress` and `migrate.done`; the React page listens to both and guards against duplicate completion to avoid a stuck running state on failure.
+- **`world_visits` duplicate upgrade repair.** `Database::InitSchema()` now creates the table and normal indexes first, deletes duplicate `(world_id, instance_id, joined_at)` rows while preferring a row with `left_at`, and only then creates `uq_world_visits`.
+- **Updater IPC error semantics fixed.** `UpdateBridge` now throws `IpcException` instead of returning `{error}` as a successful JSON result, so frontend `try/catch` paths receive normal IPC errors.
+- **Updater install boundary tightened.** `update.install` now requires `path`, `version`, `size`, optional `sha256`, and optional `fileName`; validates that the installer is the expected MSI under the VRCSM updates directory with matching size/hash; and invokes `msiexec` with the canonical validated updates path.
+- **Updater release-asset filename sync fixed.** The current GitHub release asset is named `VRCSM_v0.14.5_x64_Installer.msi`, not the older assumed `VRCSM-<version>.msi`. `UpdateChecker` now carries the release asset `fileName`; `UpdateBridge` download/install passes and validates that filename; frontend `UpdateDialog` includes it in download/install IPC params. Tests cover accepting the real release asset name and rejecting a mismatched expected name.
+- **Packaging scripts no longer require global WiX only.** `package_release.ps1` and `scripts/build-msi.bat` now resolve WiX from `VRCSM_WIX`, user-global `%USERPROFILE%\.dotnet\tools\wix.exe`, or repo-local `build\tools\wix.exe`.
+- **pnpm 11 build-script approvals are project-local.** `web/pnpm-workspace.yaml` allows build scripts for `esbuild`, `onnxruntime-node`, `protobufjs`, and `sharp`; `corepack pnpm --dir web build` now completes.
+- **Avatar preview diagnostics improved.** Native avatar preview now preserves known UnityPreview failure codes (`bundle_invalid`, `typetree_unsupported`, `no_meshes`, `encrypted`) instead of folding them all into `preview_failed`. `CommonTests.AvatarPreviewPreservesBundleInvalidFailureCode` locks this behavior.
+- **Frontend API facade cleanup started.** Reusable wrappers now exist in `web/src/lib/vrchat-api.ts`, `web/src/lib/social.ts`, `web/src/lib/history-api.ts`, and `web/src/lib/shell-api.ts`. Profile save, Friends actions, Workspace friend request-invite, and FriendDetailDialog social actions now use these facades instead of direct low-level IPC calls.
+- **OSC Studio hardware telemetry expanded.** `src/core/hw/GpuProbe.*` now centralizes GPU candidate scoring and DXGI adapter enumeration. `hw.recommend` returns GPU vendor/source/virtual status; `hw.telemetry` returns `gpu_adapters`, uses finite WMI row timeouts, and NVML now selects across NVIDIA devices instead of hardcoding index 0. The OSC hardware panel displays GPU source, VRAM, adapter count and primary adapter.
+- **Local CodeGraph index ignored.** `.codegraph/` is intentionally local and ignored by Git.
+- **UI repair / VRCX parity plan added.** `docs/UI-REPAIR-VRCX-PARITY-PLAN.md` is now the execution guide for visible UI fixes, VRCX-parity feature sequencing, and the rule that new reusable frontend IPC/API calls should live in `web/src/lib` domain modules instead of being scattered across pages.
+- **VRCX reference checked.** Local reference clone `D:\Reference\VRCX` is at `e69d1e983ced794b791317e2b75ec3d23bdb8780` (`Fix group moderation actions`, 2026-06-09), matching `origin/master`.
+- **`D:\Project\vrchat-il2cpp-re` checked for unpacking ideas.** It is not a complete Unity/VRChat avatar model unpacker. Its useful pieces are cache/log correlation (`tools/load_cached_worlds.py`) and IL2CPP/runtime research scripts; no UnityFS/CAB/LZ4/LZMA/Texture2D/SkinnedMeshRenderer/GLB export pipeline was found there.
+- **Friends/i18n/social scan responsiveness slice.** Friends no longer has the misleading "has model/avatar" smart view; i18n keys were added for Friends views, OSC Studio, and Social Analytics in `en`, `zh-CN`, `ja`, `ko`, `ru`, `th`, and `hi`; Social Analytics excludes `useAuth().status.userId` from encounter rankings; `HandleScan` now reuses the `LogParser::parse()` result already needed for avatar-history backfill instead of parsing logs twice; Worlds thumbnail lookahead is capped to the first 96 low-priority rows after the 24 visible rows.
+- **OSC Studio interaction pass.** `web/src/lib/osc-studio.ts` first reset older local defaults to a cleaner set, then the card-builder slice bumped profile defaults to version 4 with exactly four Chatbox-oriented templates: clock, compact performance, hardware names, and thermal/power. `web/src/pages/OscTools.tsx` has live clock preview, latest-state refs for auto send, telemetry refresh during auto send, partial hardware snapshot fallback, Chatbox rate-limit waiting for auto mode, a larger selected-template edit area, and a drag/click hardware component-card palette for time/CPU/GPU/RAM/motherboard/sensor fragments. i18n keys were updated across all locale files; watch for Windows console encoding when editing non-ASCII locale text.
+- **Social Analytics lazy world rows + OSC DIY composer.** `web/src/pages/SocialGraph.tsx` now lazy-mounts `WorldPopupBadge` behind `IntersectionObserver`, so the Most Visited Worlds list does not construct world badges/thumbnails until rows are visible. `web/src/pages/OscTools.tsx` also has a visual composer above the raw template textarea: chunks can be moved/removed, custom text can be inserted, separators are one click, and component cards show descriptions plus live values while still persisting a plain template string. New strings were added to all locale files.
+- **OSC usability + SMBIOS hardware identity fallback.** `web/src/pages/OscTools.tsx` now defaults component cards to a recommended subset, adds search/category filters, explicit click-to-insert text, and robust drag payload handling for both the composer drop zone and raw textarea. Avatar parameter scan now explains it creates OSC control cards rather than unpacking models. `src/core/hw/HwTelemetry.cpp` now reads raw SMBIOS via `GetSystemFirmwareTable('RSMB')` after CIM/WMI, filling motherboard and RAM module identity when WMI is empty or slow. A local RSMB probe on this machine returned 4736 bytes for `0x52534D42` and 0 for the reversed signature, confirming the provider constant.
+- **About dialog acknowledgement removal.** `web/src/components/AboutDialog.tsx` no longer renders the extra acknowledgement card; `web/src/lib/assets.ts`, all locale JSON files, and `docs/gh-pages/index.html` no longer carry that removed personal avatar/text reference. Keep it removed unless the user explicitly asks to restore it.
+- **Why VRCX feels faster, verified from local reference.** `D:\Reference\VRCX\Dotnet\LogWatcher.cs` keeps a per-log `LogContext.Position` and resumes reading from that offset, while `src\stores\location.js` keeps `lastLocation.playerList/friendList` as running UI state. VRCSM still has several full-scan surfaces; the next serious performance step is a persisted incremental scan index and live state store instead of more page-level full scans.
 
 ## What Changed Since 0.14.3
 
@@ -22,17 +45,166 @@ Last updated: 2026-05-09
 
 ### New Features
 
-- **VRChat recently encountered players API.** `visits.list` IPC → `GET /api/1/visits`. Frontend `ipc.visitsList()` available.
-- **Hardware recommendation tab.** Settings → Hardware: WMI GPU/CPU/RAM/HMD detection, hardware score, recommended SteamVR parameters. GPU table covers RTX 50-series, AMD RX 9000/7000/6000, Intel Arc.
-- **Plugin market hero SVG.** `PluginHero.tsx` — widescreen banner with robot mascot and floating plugin cards.
+- **VRChat recently encountered players API.** `visits.list` IPC -> `GET /api/1/visits`. Frontend `ipc.visitsList()` available.
+- **Hardware recommendation tab.** Settings -> Hardware: WMI GPU/CPU/RAM/HMD detection, hardware score, recommended SteamVR parameters. GPU table covers RTX 50-series, AMD RX 9000/7000/6000, Intel Arc.
+- **Plugin market hero SVG.** `PluginHero.tsx` - widescreen banner with robot mascot and floating plugin cards.
 - **Plugin install dialog.** shadcn Dialog replaces `window.confirm()`, shows manifest permissions.
-- **BoopCard emoji-only.** No more message type tabs or slot buttons — just emoji wheel + send.
+- **BoopCard emoji-only.** No more message type tabs or slot buttons - just emoji wheel + send.
 - **Calendar & Bundles moved to Lab** sidebar.
 
 ### Data Changes
 
-- `world_visits` now has `CREATE UNIQUE INDEX uq_world_visits ON world_visits(world_id, instance_id, joined_at)`. If a DB from ≤0.14.4 has duplicates, the unique index creation will fail. Handle migration by deleting duplicates first.
-- Log scan limits raised: `kMaxLogFiles` 5→20, `kMaxEventsPerKind` 500→2000.
+- `world_visits` now has `CREATE UNIQUE INDEX uq_world_visits ON world_visits(world_id, instance_id, joined_at)`. As of 2026-06-22, `InitSchema()` dedupes old rows before creating this index, so DBs from <=0.14.4 with duplicate visits should open and self-repair instead of failing schema init.
+- Log scan limits raised: `kMaxLogFiles` 5->20, `kMaxEventsPerKind` 500->2000.
+
+## Last Verified Build (2026-06-23 local full)
+
+- `web\node_modules\.bin\tsc.cmd -b web\tsconfig.json --pretty false`: passed.
+- `web\node_modules\.bin\vitest.cmd run src/__tests__/pages-smoke.test.tsx`: passed, 22/22.
+- `corepack pnpm --dir web build`: passed after project-local pnpm build-script approvals in `web/pnpm-workspace.yaml`.
+- Debug native: `cmake --build --preset x64-debug --target VRCSM_Tests` passed; `ctest --test-dir build\x64-debug --output-on-failure` passed 44/44.
+- Release native: `cmake --build --preset x64-release` passed; `ctest --test-dir build\x64-release --output-on-failure` passed 44/44.
+- `git diff --check`: no whitespace errors; only line-ending warnings for `package_release.ps1` and `scripts/build-msi.bat`.
+- Packaging: `powershell -ExecutionPolicy Bypass -File .\package_release.ps1` passed using repo-local WiX.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched hidden, process was alive/responding after 8 seconds, then the smoke-started process was stopped.
+
+## Last Verified Build (2026-06-23 OSC Studio interaction slice)
+
+- `web\node_modules\.bin\tsc.cmd -b web\tsconfig.json --pretty false`: passed.
+- `node_modules\.bin\vitest.cmd run src/__tests__/pages-smoke.test.tsx -t "/tools/osc"` from `web\`: passed, 1/1 selected.
+- `node_modules\.bin\vitest.cmd run src/__tests__/pages-smoke.test.tsx` from `web\`: passed, 23/23.
+- `node_modules\.bin\vite.cmd build` from `web\`: passed; emitted existing large-chunk warnings.
+- Release host web bundle was synced with `cmake -DSOURCE=... -DDEST=... -P cmake/sync-web-dist.cmake` through the VS2026 environment because `ninja: no work to do` does not rerun POST_BUILD copy.
+- `git diff --check`: no whitespace errors; only line-ending warnings for existing files.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched, PID 41500, responding after 8 seconds.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - Size: 18,623,855 bytes
+  - SHA256: `A3EA9A6F8CD814CEB50D6CCC3EF0C04C56F626AE6EE85590627D0B87CFA3BA4B`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - Size: 8,617,984 bytes
+  - SHA256: `221AB16CE892D475BCAC4D2DD681F1FDD74C5E7A4B79B0660A45F5E8DAD7308F`
+
+## Last Verified Build (2026-06-23 About cleanup slice)
+
+- Full residual search for the removed acknowledgement key/title/name/avatar id across `web`, `src`, `docs`, `README.md`, and `CHANGELOG.md`: no matches outside this handoff note.
+- `web\node_modules\.bin\tsc.cmd -b web\tsconfig.json --pretty false`: passed.
+- `node .\node_modules\vitest\vitest.mjs run src/__tests__/pages-smoke.test.tsx` from `web\`: passed, 23/23.
+- `.\node_modules\.bin\vite.cmd build` from `web\`: passed; emitted existing empty `react-vendor` chunk and large-chunk warnings.
+- Release host web bundle was synced with `cmake -DSOURCE=... -DDEST=... -P cmake/sync-web-dist.cmake` through the VS2026 environment.
+- `git diff --check -- web/src/components/AboutDialog.tsx web/src/lib/assets.ts web/src/i18n/locales/... docs/gh-pages/index.html CHANGELOG.md`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched, PID 42420, responding after 8 seconds.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - SHA256: `75DFC858FE1245547565D05AC7C680003F625FE48B7FE1A7882D3DC1E3559706`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - SHA256: `767E874F0A3DE6C35699EA37510864486BEEE2E28F64EBDF5682601EC0274449`
+
+## Last Verified Build (2026-06-23 OSC usability + SMBIOS fallback slice)
+
+- `web\node_modules\.bin\tsc.cmd -b web\tsconfig.json --pretty false`: passed.
+- Locale integrity script over `web/src/i18n/locales/*.json`: passed; no `???` in new OSC Studio keys.
+- `cmd.exe /c ... cmake --build --preset x64-release --target vrcsm_core --parallel 1`: passed after adding SMBIOS parser.
+- Local RSMB probe: `GetSystemFirmwareTable(0x52534D42, 0, nullptr, 0)` returned 4736 bytes; reversed signature returned 0.
+- `node .\node_modules\vitest\vitest.mjs run src/__tests__/pages-smoke.test.tsx -t "/tools/osc"` from `web\`: passed, 1/1 selected.
+- `node .\node_modules\vitest\vitest.mjs run src/__tests__/pages-smoke.test.tsx` from `web\`: passed, 23/23.
+- `.\node_modules\.bin\vite.cmd build` from `web\`: passed; emitted existing large-chunk warnings.
+- First release host relink failed with `LNK1104 cannot open file src\host\VRCSM.exe` because the prior smoke-started VRCSM process was still running. The process was stopped and the same build command then passed.
+- `cmd.exe /c ... cmake --build --preset x64-release --target vrcsm --parallel 1`: passed and synced `web/dist` into release host output.
+- `ctest --test-dir build\x64-release --output-on-failure`: passed, 48/48.
+- `git diff --check -- web/src/pages/OscTools.tsx ... src/core/hw/HwTelemetry.cpp`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched, PID 40016, responding after 8 seconds.
+- Codex subagent research attempt was launched via `codex.cmd exec ... -o %TEMP%\vrcsm-hw-telemetry-research.txt`, but did not produce useful output during this turn; direct official-source verification and local probes were used instead.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - SHA256: `19CDD54EDAC35D2B3C7338CF0D987805ECBDB885A01FF6145374A062FE019B28`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - SHA256: `EED97B6C009D1C1A41078CD27688FC9BDD07C196C4ED2A00CC51A12B9B5EEB89`
+
+## Last Verified Build (2026-06-23 social lazy + OSC DIY composer slice)
+
+- `web\node_modules\.bin\tsc.cmd -b web\tsconfig.json --pretty false`: passed.
+- Locale integrity script over `web/src/i18n/locales/*.json`: passed; no `???` in new Social Analytics / OSC Studio keys.
+- `node .\node_modules\vitest\vitest.mjs run src/__tests__/pages-smoke.test.tsx -t "/social|/tools/osc"` from `web\`: passed, 1/1 selected.
+- `node .\node_modules\vitest\vitest.mjs run src/__tests__/pages-smoke.test.tsx` from `web\`: passed, 23/23.
+- `.\node_modules\.bin\vite.cmd build` from `web\`: passed; emitted existing large-chunk warnings.
+- Release host web bundle was synced with `cmake -DSOURCE=... -DDEST=... -P cmake/sync-web-dist.cmake` through the VS2026 environment.
+- `git diff --check -- web/src/pages/SocialGraph.tsx web/src/pages/OscTools.tsx ...locales`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched, PID 26284, responding after 8 seconds.
+- Note: the first targeted vitest attempt used a stale path from inside `web\`; direct `node .\node_modules\vitest\vitest.mjs` was used successfully because the pnpm shim reported "The system cannot find the path specified" in that context.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - SHA256: `EFE502EA77005C0582FF1E0F79336DCDAEF34987499F33A70E9CC0AA8DA8C520`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - SHA256: `11C1742EE35315D6DA350970511A64BDA04C7EFAEDDA6A96909C6255A7EFCA59`
+
+## Last Verified Build (2026-06-23 OSC Studio card-builder slice)
+
+- `web\node_modules\.bin\tsc.cmd -b web\tsconfig.json --pretty false`: passed.
+- Locale integrity script over `web/src/i18n/locales/*.json`: passed; no `???` in new OSC Studio keys.
+- `node_modules\.bin\vitest.cmd run src/__tests__/pages-smoke.test.tsx -t "/tools/osc"` from `web\`: passed, 1/1 selected.
+- `node_modules\.bin\vitest.cmd run src/__tests__/pages-smoke.test.tsx` from `web\`: passed, 23/23.
+- `node_modules\.bin\vite.cmd build` from `web\`: passed; emitted existing large-chunk warnings.
+- Release host web bundle was synced with `cmake -DSOURCE=... -DDEST=... -P cmake/sync-web-dist.cmake` through the VS2026 environment.
+- `git diff --check`: no whitespace errors; only line-ending warnings for existing files.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched, PID 44228, responding after 8 seconds.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - Size: 18,625,983 bytes
+  - SHA256: `83B29EEB3CD39C2C5C8B1391D0AB62365AA0B999E3A41353313AA235C7F3A5C2`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - Size: 8,617,984 bytes
+  - SHA256: `BC75F32652FE6A1C7DF0859ED9F63D6F55ED46E87992364AD3212C77DB225A2F`
+
+## Last Verified Build (2026-06-23 friends/i18n/scan responsiveness slice)
+
+- `web\node_modules\.bin\tsc.cmd -b web\tsconfig.json --pretty false`: passed.
+- `node_modules\.bin\vitest.cmd run src/__tests__/pages-smoke.test.tsx` from `web\`: passed, 23/23.
+- `node_modules\.bin\vite.cmd build` from `web\`: passed; emitted existing large-chunk warnings.
+- `cmd.exe /c 'call "D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release --target vrcsm --parallel 1'`: passed and synced `web/dist` into the release host output. Warnings were existing `std::filesystem::u8path` deprecation in `PluginBridge.cpp` plus googletest CMake deprecation warnings.
+- `cmd.exe /c 'call "D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && ctest --test-dir build\x64-release --output-on-failure'`: passed, 48/48.
+- `git diff --check`: no whitespace errors; only line-ending warnings for `package_release.ps1`, `scripts/build-msi.bat`, and `web/src/pages/Worlds.tsx`.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - Size: 18,621,561 bytes
+  - SHA256: `3D5FCE3543DAF15C5F0EA9EAF50E2A34B7C218A8A7D1AEB19EEB7FA62E4A33AA`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - Size: 8,622,080 bytes
+  - SHA256: `E9147718B0632E206FE0057836525D365B6C4CC66DDD788ADB7D6332087BDC71`
+
+## Last Verified Build (2026-06-23 OSC telemetry slice)
+
+- `web\node_modules\.bin\tsc.cmd -b web\tsconfig.json --pretty false`: passed.
+- `node_modules\.bin\vite.cmd build` from `web\`: passed; emitted existing large-chunk warnings.
+- `cmd.exe /s /c 'call "D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-debug --target vrcsm_core_hw --parallel 1'`: passed.
+- `cmd.exe /s /c 'call "D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-debug --target vrcsm --parallel 1'`: passed and synced `web/dist` into the debug host output.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - Size: 18,525,688 bytes
+  - SHA256: `CF3C001901C40B1515FCBDB315704EE3329CA375C0B1608A0708179E1BC6A747`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - Size: 8,568,832 bytes
+  - SHA256: `528B95E1C4D83E8CF9FA680274704737046B7D2D101619A52E588719E2D77C63`
 
 ## Last Verified Build (2026-05-09)
 
@@ -47,10 +219,10 @@ Last updated: 2026-05-09
 
 ```powershell
 # 1. Build frontend
-pnpm --prefix web build
-pnpm --prefix web test:smoke
+corepack pnpm --dir web build
+web\node_modules\.bin\vitest.cmd run src/__tests__/pages-smoke.test.tsx
 # 2. Build C++ (VS2026)
-cmd.exe /s /c '"D:\Software\Microsoft\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
+cmd.exe /s /c '"D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
 ctest --test-dir build\x64-release --output-on-failure
 # 3. Package MSI + ZIP
 powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
@@ -64,11 +236,13 @@ gh release upload v0.14.5 "build\release\VRCSM_v0.14.5_x64_Installer.msi" "build
 ## Known Watch Points
 
 - Stop `VRCSM.exe` before C++ build or linker may fail with file lock.
-- `D:\Software\Microsoft\Microsoft Visual Studio\18` is the correct VS path (CLAUDE.md has the old `D:\Software\MS` path which is wrong).
+- `D:\Software\Microsoft Visual Studio\18` is the correct VS path on this machine.
+- WiX can be repo-local at `build\tools\wix.exe`; the packaging scripts now find it automatically. A local install command that worked here was `D:\Software\dotnet\dotnet.exe tool install --tool-path build\tools wix --version 6.*`.
 - Ninja and cmake may need reinstall after system updates (use `pip install ninja cmake`).
 - `react-router-dom` must stay at v6 (v7 breaks the app); `pnpm-lock.yaml` was updated.
 - Do not commit `web/dist`, `build/`, or MSI artifacts.
-- `stripUnresolvedHashSuffix()` uses regex `_[0-9a-f]{4,}$` — legitimate names ending in 4+ hex chars after underscore will be incorrectly trimmed. This is a known tradeoff.
+- `stripUnresolvedHashSuffix()` uses regex `_[0-9a-f]{4,}$` - legitimate names ending in 4+ hex chars after underscore will be incorrectly trimmed. This is a known tradeoff.
+- Before adding VRCX-inspired UI features, read `docs/UI-REPAIR-VRCX-PARITY-PLAN.md`; prefer library wrappers such as `social.ts`, `history-api.ts`, `vrchat-api.ts`, `media-api.ts`, and `shell-api.ts` over raw `ipc.call` in pages.
 
 ## If The User Says "Continue"
 

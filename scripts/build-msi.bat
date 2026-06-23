@@ -5,7 +5,12 @@ set REPO=%~dp0..
 set BUILD_DIR=%REPO%\build\x64-release\src\host
 set ICON_FILE=%REPO%\resources\icons\vrcsm.ico
 set OUT_DIR=%REPO%\build\msi
-set WIX=%USERPROFILE%\.dotnet\tools\wix.exe
+if defined VRCSM_WIX (
+    set "WIX=%VRCSM_WIX%"
+) else (
+    set "WIX=%USERPROFILE%\.dotnet\tools\wix.exe"
+)
+if not exist "%WIX%" if exist "%REPO%\build\tools\wix.exe" set "WIX=%REPO%\build\tools\wix.exe"
 
 set /p APP_VERSION=<"%REPO%\VERSION"
 for /f "tokens=* delims= " %%A in ("%APP_VERSION%") do set "APP_VERSION=%%A"
@@ -27,8 +32,9 @@ if not exist "%BUILD_DIR%\web\index.html" (
     exit /b 1
 )
 if not exist "%WIX%" (
-    echo [build-msi] ERROR: wix.exe not found at %WIX%
-    echo [build-msi] Run: dotnet tool install -g wix
+    echo [build-msi] ERROR: wix.exe not found.
+    echo [build-msi] Set VRCSM_WIX, run: dotnet tool install -g wix
+    echo [build-msi] Or install locally: dotnet tool install --tool-path "%REPO%\build\tools" wix --version 6.*
     exit /b 1
 )
 

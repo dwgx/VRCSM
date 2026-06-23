@@ -28,6 +28,15 @@ import {
   useLayoutMode,
   type LayoutMode,
 } from "@/components/LayoutModeSwitcher";
+import { useReport } from "@/lib/report-context";
+import {
+  prefetchThumbnails,
+  prefetchThumbnailsLowPriority,
+  useThumbnail,
+} from "@/lib/thumbnails";
+import { type WorldSwitchEvent, type PlayerEvent } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronRight, Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff, Heart, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 const WORLDS_LAYOUT_CLASS: Record<LayoutMode, string> = {
   "default": "grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
@@ -36,11 +45,9 @@ const WORLDS_LAYOUT_CLASS: Record<LayoutMode, string> = {
   "row": "flex flex-col gap-2",
   "list": "flex flex-col divide-y divide-[hsl(var(--border))] rounded-[var(--radius-md)] border border-[hsl(var(--border))]",
 };
-import { useReport } from "@/lib/report-context";
-import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
-import { type WorldSwitchEvent, type PlayerEvent } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff, Heart, PanelRightClose, PanelRightOpen } from "lucide-react";
+
+const WORLD_THUMB_VISIBLE_COUNT = 24;
+const WORLD_THUMB_LOOKAHEAD_COUNT = 96;
 
 interface DbWorldVisit {
   id: number;
@@ -188,15 +195,19 @@ function WorldThumb({
   label,
   isFavorited,
   onToggleFavorite,
+  visible = true,
+  priority = "lazy",
 }: {
   id: string;
   className?: string;
   label?: boolean;
   isFavorited?: boolean;
   onToggleFavorite?: (thumbnailUrl: string | null) => void;
+  visible?: boolean;
+  priority?: "eager" | "lazy";
 }) {
   const { t } = useTranslation();
-  const { url } = useThumbnail(id);
+  const { url } = useThumbnail(id, visible);
   const hue = hueFor(id);
   return (
     <div
@@ -234,6 +245,7 @@ function WorldThumb({
           className="absolute inset-0 h-full w-full border-0"
           aspect=""
           rounded=""
+          priority={priority}
         />
       ) : null}
       {label ? (
@@ -272,6 +284,8 @@ function WorldTile({
   isFavorited,
   onSelect,
   onToggleFavorite,
+  visible,
+  priority,
 }: {
   id: string;
   name: string | null;
@@ -279,6 +293,8 @@ function WorldTile({
   isFavorited: boolean;
   onSelect: () => void;
   onToggleFavorite: (thumbnailUrl: string | null) => void;
+  visible: boolean;
+  priority: "eager" | "lazy";
 }) {
   const display = name ?? shortenId(id);
   return (
@@ -297,6 +313,8 @@ function WorldTile({
         label
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
+        visible={visible}
+        priority={priority}
       />
       <div className="flex flex-col gap-0.5 px-2.5 py-2">
         <div className="truncate text-[12px] font-medium text-[hsl(var(--foreground))]">
@@ -632,14 +650,28 @@ function Worlds() {
     return hits;
   }, [selected, logs?.world_switches]);
 
-  // Warm the thumbnail cache for the full world list as soon as it lands —
-  // batches into a single IPC call and kicks the C++ side to fetch
-  // everything over one WinHTTP session.
+  // Warm the first screen immediately, then let the thumbnail queue pull
+  // nearby rows in small delayed batches.
+  const visibleWorldIds = useMemo(
+    () => filtered.slice(0, WORLD_THUMB_VISIBLE_COUNT),
+    [filtered],
+  );
+  const lookaheadWorldIds = useMemo(
+    () => filtered.slice(WORLD_THUMB_VISIBLE_COUNT, WORLD_THUMB_VISIBLE_COUNT + WORLD_THUMB_LOOKAHEAD_COUNT),
+    [filtered],
+  );
+
   useEffect(() => {
-    if (ids.length > 0) {
-      prefetchThumbnails(ids);
+    if (visibleWorldIds.length > 0) {
+      prefetchThumbnails([...new Set(visibleWorldIds)]);
     }
-  }, [ids]);
+  }, [visibleWorldIds]);
+
+  useEffect(() => {
+    if (lookaheadWorldIds.length > 0) {
+      prefetchThumbnailsLowPriority([...new Set(lookaheadWorldIds)]);
+    }
+  }, [lookaheadWorldIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -792,7 +824,7 @@ function Worlds() {
           </div>
         ) : (
           <div className={WORLDS_LAYOUT_CLASS[layoutMode]}>
-            {filtered.map((id) => (
+            {filtered.map((id, index) => (
               <WorldTile
                 key={id}
                 id={id}
@@ -803,6 +835,8 @@ function Worlds() {
                 onToggleFavorite={(thumbnailUrl) =>
                   handleToggleFavorite(id, thumbnailUrl)
                 }
+                visible={index < WORLD_THUMB_VISIBLE_COUNT}
+                priority={index < 12 ? "eager" : "lazy"}
               />
             ))}
           </div>
@@ -834,6 +868,7 @@ function Worlds() {
                       className="h-10 w-10 shrink-0"
                       aspect=""
                       rounded="rounded"
+                      priority="lazy"
                     />
                   ) : (
                     <div className="w-10 h-10 rounded bg-[hsl(var(--muted))] shrink-0" />
@@ -877,6 +912,7 @@ function Worlds() {
             onToggleFavorite={(thumbnailUrl) =>
               handleToggleFavorite(selected, thumbnailUrl)
             }
+            priority="eager"
           />
         </div>
 

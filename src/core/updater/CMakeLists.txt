@@ -3,6 +3,7 @@ add_library(vrcsm_core_updater STATIC
     UpdateDownloader.cpp
     UpdateApplier.cpp
     UpdateState.cpp
+    UpdatePackage.cpp
 )
 
 target_include_directories(vrcsm_core_updater PUBLIC

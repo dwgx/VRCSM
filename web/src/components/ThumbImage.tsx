@@ -23,10 +23,8 @@ export interface ThumbImageProps {
   /** Tailwind radius. Default small. */
   rounded?: string;
   /**
-   * "eager" on above-fold first-screen tiles so the browser fetches
-   * them with high priority; "lazy" elsewhere. React 19 forwards
-   * `fetchPriority` so high-priority tiles also skip the low-priority
-   * queue on Chromium.
+   * Use "eager" only for above-fold first-screen tiles. Dense lists and
+   * grids should stay lazy so WebView2 does not starve visible IPC/image work.
    */
   priority?: "eager" | "lazy";
   alt?: string;
@@ -48,8 +46,8 @@ export interface ThumbImageProps {
  *     retransition never flashes white.
  *   • Initials render only until the real image is up and decoded,
  *     avoiding a text-on-image flash.
- *   • <img> defaults to eager loading because WebView2 can miss native
- *     lazy-load triggers inside nested app scroll containers.
+ *   • Callers opt into eager loading for the first visible rows only; the
+ *     default stays lazy to keep large grids responsive.
  */
 export function ThumbImage({
   src,
@@ -58,7 +56,7 @@ export function ThumbImage({
   aspect = "aspect-square",
   className,
   rounded = "rounded-[var(--radius-sm)]",
-  priority = "eager",
+  priority = "lazy",
   alt = "",
   fallbackClassName,
   style,

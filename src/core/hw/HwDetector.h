@@ -19,6 +19,10 @@ struct HwReport
     std::string gpuName;
     std::uint64_t gpuVramBytes{0};
     std::string gpuDriver;
+    std::string gpuVendor;
+    std::string gpuPnpId;
+    std::string gpuSource;
+    bool gpuVirtual{false};
     std::uint64_t ramBytes{0};
     std::string hmdModel;
     std::string hmdManufacturer;

@@ -1,9 +1,9 @@
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IdBadge } from "./IdBadge";
-import { ipc } from "@/lib/ipc";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import type { WorldDetails } from "@/lib/types";
+import { openVrchatWorldPage } from "@/lib/shell-api";
 import {
   Dialog,
   DialogContent,
@@ -142,7 +142,7 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({
                   <div className="flex gap-2">
                      <button
                        className="flex flex-1 items-center justify-center gap-2 rounded bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.9)] text-primary-foreground h-8 text-[11.5px] font-semibold transition-colors"
-                       onClick={() => ipc.call("shell.openUrl", { url: `https://vrchat.com/home/world/${worldId}` })}
+                       onClick={() => void openVrchatWorldPage(worldId)}
                      >
                         <Play className="size-3.5 fill-current" />
                         {t("common.openInBrowser", { defaultValue: "Open in browser" })}

@@ -7,10 +7,15 @@ $outDir    = "$repo\build\release"
 $zipOut    = "$outDir\VRCSM_v${version}_x64.zip"
 $msiOut    = "$outDir\VRCSM_v${version}_x64_Installer.msi"
 $stagingDir = Join-Path $outDir "portable-staging"
-$wix       = "$env:USERPROFILE\.dotnet\tools\wix.exe"
 $icon      = "$repo\resources\icons\vrcsm.ico"
 $wxs       = "$repo\installer\vrcsm.wxs"
 $msiVer    = "$version.0"
+
+$wixCandidates = @()
+if ($env:VRCSM_WIX) { $wixCandidates += $env:VRCSM_WIX }
+$wixCandidates += "$env:USERPROFILE\.dotnet\tools\wix.exe"
+$wixCandidates += "$repo\build\tools\wix.exe"
+$wix = $wixCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 
 Write-Host "[package] Version : $version"
 Write-Host "[package] BuildDir: $buildDir"
@@ -19,7 +24,10 @@ Write-Host "[package] OutDir  : $outDir"
 # Validate
 if (-not (Test-Path "$buildDir\VRCSM.exe"))       { Write-Error "VRCSM.exe not found"; exit 1 }
 if (-not (Test-Path "$buildDir\web\index.html"))  { Write-Error "web\index.html not found"; exit 1 }
-if (-not (Test-Path $wix))                        { Write-Error "wix.exe not found at $wix"; exit 1 }
+if (-not $wix) {
+    Write-Error "wix.exe not found. Set VRCSM_WIX, install with 'dotnet tool install -g wix', or install locally with 'dotnet tool install --tool-path build\tools wix --version 6.*'."
+    exit 1
+}
 
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
 

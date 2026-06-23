@@ -1,5 +1,7 @@
 #include "LogTailer.h"
 
+#include "LogAtoms.h"
+
 #include <algorithm>
 #include <chrono>
 #include <regex>
@@ -22,12 +24,6 @@ constexpr auto kPollInterval = std::chrono::milliseconds(1000);
 constexpr std::size_t kMaxCarryoverBytes = 1u * 1024u * 1024u;
 
 const std::regex kLogFileRe(R"(^output_log_.*\.txt$)");
-// Matches VRChat's per-line prefix: `YYYY.MM.DD HH:MM:SS Log        -  `.
-// The padding after "Log"/"Warning"/"Error" is variable (VRChat right-pads
-// the severity to align the `-` column), so `+` it.
-const std::regex kLinePrefixRe(
-    R"((\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}) +(Log|Warning|Error) +- +)");
-
 HANDLE OpenShared(const std::filesystem::path& path)
 {
     // FILE_SHARE_WRITE is the critical flag — VRChat holds the log open for
@@ -260,30 +256,12 @@ void LogTailer::EmitLine(std::string_view raw)
     // `string_view` still isn't portable with gcc/msvc in C++17, so we
     // promote to `std::string` here — the dock never sees more than a few
     // hundred lines per second so the copy is cheap.
-    std::string text(raw);
-    std::smatch match;
-    if (std::regex_search(text, match, kLinePrefixRe) && match.position(0) == 0)
+    const auto parsed = ParseVrchatLogLine(raw);
+    out.level = parsed.level;
+    out.line = parsed.body;
+    if (parsed.iso_time)
     {
-        out.iso_time = match[1].str();
-        const std::string severity = match[2].str();
-        if (severity == "Warning")
-        {
-            out.level = "warn";
-        }
-        else if (severity == "Error")
-        {
-            out.level = "error";
-        }
-        else
-        {
-            out.level = "info";
-        }
-        out.line = text.substr(static_cast<std::size_t>(match.length(0)));
-    }
-    else
-    {
-        out.level = "info";
-        out.line = std::move(text);
+        out.iso_time = *parsed.iso_time;
     }
 
     if (m_callback)

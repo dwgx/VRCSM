@@ -6,6 +6,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 but entries are written in the voice of the person who actually landed
 them rather than as a terse bullet list. Dates are UTC.
 
+## [Unreleased]
+
+- **Friends filters and i18n cleanup.** The Friends page no longer exposes the misleading "has avatar/model" smart view. The remaining Friends view labels, OSC Studio strings, and Social Analytics empty/help text are now wired through i18n for English, Simplified Chinese, Japanese, Korean, Russian, Thai, and Hindi.
+- **Social Analytics excludes yourself.** Encounter rankings now filter out the signed-in user id from `player_events`, so the local player no longer appears as their own most-encountered player.
+- **Scan responsiveness tightened.** `scan` reuses the log report already parsed for avatar-history backfill instead of parsing the same VRChat logs a second time for the report payload.
+- **World thumbnail loading is less aggressive.** The Worlds page still warms the first visible rows immediately, but low-priority lookahead is capped so a large world history no longer queues every thumbnail at once.
+- **OSC Studio interaction pass.** Templates now preview against a live one-second clock, auto-send uses the latest host/port/hardware snapshot, waits through the Chatbox 2-second limit instead of erroring, refreshes telemetry while running, and exposes grouped variables with current values that can be clicked into the selected card. Default cards were reset to more useful clock, compact PC status, hardware names, and thermal/power lines.
+- **OSC Studio card builder.** The studio now opens on four concrete Chatbox templates and adds a drag/click component palette for time, CPU, GPU, RAM, motherboard, sensor-count, and hardware-name fragments. The selected template has a larger edit area where users can type normal text, drop hardware cards into the message, and see the exact 144-character Chatbox preview before manual or automatic send.
+- **Social Analytics lazy world rows.** The "Most Visited Worlds" list now lazy-mounts world badges with `IntersectionObserver`, so world detail badges and thumbnails are not constructed until the row is visible or opened.
+- **OSC Studio DIY composer.** The selected Chatbox template now has a visual composer layer: template chunks can be reordered or removed, custom text can be inserted, pipe/newline separators are one click, component cards show descriptions plus live values, and the underlying profile still stores a plain template string for compatibility.
+- **OSC Studio usability pass.** Component cards are now searchable and filterable, default to a smaller recommended set, expose an explicit click-to-insert affordance, and write both custom and plain drag payloads so dropping onto the raw template textarea works reliably. The avatar-parameter scanner now explains that it turns local Avatar OSC parameters into control cards, not unpacked models.
+- **Hardware identity fallback.** `hw.telemetry` now reads raw SMBIOS (`GetSystemFirmwareTable('RSMB')`) as a fallback for motherboard and RAM module identity when CIM/WMI is slow, empty, or broken. Live temperature/fan/power values still require real sensor sources such as NVML, LibreHardwareMonitor/OpenHardwareMonitor WMI, HWiNFO shared memory, or vendor SDKs; VRCSM does not fabricate missing sensor values.
+- **About dialog cleanup.** Removed the extra acknowledgement card, its remote avatar asset, related i18n strings, and matching static GitHub Pages references.
+
 ## [0.14.5] — 2026-05-09
 
 After v0.14.4 shipped, the focus moved to correctness: fixing stale data,

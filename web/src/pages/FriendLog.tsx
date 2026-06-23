@@ -1,4 +1,3 @@
-import { ipc } from "@/lib/ipc";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -26,29 +25,12 @@ import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { clearHistory, listFriendLog, listPlayerEvents } from "@/lib/history-api";
+import { getFriendNote, setFriendNote } from "@/lib/social";
+import type { DbPlayerEvent, FriendLogEvent, PagedItems } from "@/lib/types";
 
-interface SessionEvent {
-  id: number;
-  kind: string;
-  display_name: string;
-  user_id?: string | null;
-  world_id?: string | null;
-  occurred_at: string;
-}
-
-interface SocialEvent {
-  id: number;
-  user_id: string | null;
-  display_name: string | null;
-  event_type: string | null;
-  old_value: string | null;
-  new_value: string | null;
-  occurred_at: string | null;
-}
-
-interface Page<T> {
-  items: T[];
-}
+type SessionEvent = DbPlayerEvent;
+type SocialEvent = FriendLogEvent;
 
 type FeedTab = "session" | "social";
 
@@ -160,6 +142,18 @@ function sessionKindLabel(kind: string, t: ReturnType<typeof useTranslation>["t"
   }
 }
 
+function sessionDisplayName(event: SessionEvent): string {
+  return event.display_name ?? event.user_id ?? "Unknown";
+}
+
+function sessionKind(event: SessionEvent): string {
+  return event.kind ?? "event";
+}
+
+function sessionOccurredAt(event: SessionEvent): string {
+  return event.occurred_at ?? "";
+}
+
 function NoteEditor({
   userId,
   onClose,
@@ -175,7 +169,7 @@ function NoteEditor({
 
   useEffect(() => {
     let alive = true;
-    ipc.friendNoteGet(userId).then((r) => {
+    getFriendNote(userId).then((r) => {
       if (!alive) return;
       setNote(r?.note ?? "");
       setLoading(false);
@@ -190,7 +184,7 @@ function NoteEditor({
   async function save() {
     setSaving(true);
     try {
-      await ipc.friendNoteSet(userId, note);
+      await setFriendNote(userId, note);
       toast.success(t("friendLog.note.saved"));
       onClose();
     } catch (e) {
@@ -257,18 +251,18 @@ function SessionEventRow({ event }: { event: SessionEvent }) {
   return (
     <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.65)] bg-[hsl(var(--surface))] p-3">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5">{sessionKindIcon(event.kind)}</div>
+        <div className="mt-0.5">{sessionKindIcon(sessionKind(event))}</div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {event.user_id?.startsWith("usr_") ? (
-              <UserPopupBadge userId={event.user_id} displayName={event.display_name} />
+              <UserPopupBadge userId={event.user_id} displayName={sessionDisplayName(event)} />
             ) : (
               <span className="truncate text-[13px] font-medium text-[hsl(var(--foreground))]">
-                {event.display_name}
+                {sessionDisplayName(event)}
               </span>
             )}
-            <Badge variant="outline" className={cn("h-5 border text-[10px] font-mono", sessionKindTone(event.kind))}>
-              {sessionKindLabel(event.kind, t)}
+            <Badge variant="outline" className={cn("h-5 border text-[10px] font-mono", sessionKindTone(sessionKind(event)))}>
+              {sessionKindLabel(sessionKind(event), t)}
             </Badge>
             <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
               {relativeTime(event.occurred_at)}
@@ -281,7 +275,7 @@ function SessionEventRow({ event }: { event: SessionEvent }) {
             ) : event.world_id ? (
               <span className="font-mono">{event.world_id}</span>
             ) : null}
-            <span>{parseTime(event.occurred_at)?.toLocaleString() ?? event.occurred_at}</span>
+            <span>{parseTime(event.occurred_at)?.toLocaleString() ?? sessionOccurredAt(event)}</span>
           </div>
         </div>
 
@@ -369,9 +363,9 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
   // (critically) keeps the first-page data hot across page navigations so
   // re-entering /radar doesn't re-fetch. Matches the rest of the app's
   // staleTime convention.
-  const sessionQuery = useInfiniteQuery<Page<SessionEvent>>({
+  const sessionQuery = useInfiniteQuery<PagedItems<SessionEvent>>({
     queryKey: ["db.playerEvents.list", pageSize],
-    queryFn: ({ pageParam }) => ipc.dbPlayerEvents(pageSize, (pageParam as number) ?? 0),
+    queryFn: ({ pageParam }) => listPlayerEvents(pageSize, (pageParam as number) ?? 0),
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
       if (lastPage.items.length < pageSize) return undefined;
@@ -380,9 +374,9 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
     staleTime: 5 * 60_000,
   });
 
-  const socialQuery = useInfiniteQuery<Page<SocialEvent>>({
+  const socialQuery = useInfiniteQuery<PagedItems<SocialEvent>>({
     queryKey: ["friendLog.recent", pageSize],
-    queryFn: ({ pageParam }) => ipc.friendLogRecent(pageSize, (pageParam as number) ?? 0),
+    queryFn: ({ pageParam }) => listFriendLog(pageSize, (pageParam as number) ?? 0),
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
       if (lastPage.items.length < pageSize) return undefined;
@@ -417,7 +411,7 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
   async function handleClearHistory() {
     setClearingHistory(true);
     try {
-      await ipc.dbHistoryClear(false);
+      await clearHistory(false);
       await queryClient.invalidateQueries({ queryKey: ["db.playerEvents.list"] });
       await queryClient.invalidateQueries({ queryKey: ["friendLog.recent"] });
       toast.success(t("friendLog.clearHistorySuccess", {
@@ -440,7 +434,7 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
     const query = debouncedSearch.trim().toLowerCase();
     if (!query) return sessionEvents;
     return sessionEvents.filter((event) =>
-      event.display_name.toLowerCase().includes(query) ||
+      sessionDisplayName(event).toLowerCase().includes(query) ||
       (event.user_id?.toLowerCase().includes(query) ?? false) ||
       (event.world_id?.toLowerCase().includes(query) ?? false),
     );
@@ -461,7 +455,7 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
     const set = new Set<string>();
     sessionEvents.forEach((event) => {
       if (event.user_id) set.add(event.user_id);
-      else set.add(event.display_name);
+      else set.add(sessionDisplayName(event));
     });
     return set.size;
   }, [sessionEvents]);

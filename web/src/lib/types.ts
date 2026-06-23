@@ -491,6 +491,44 @@ export type AuthUserPayload = Record<string, unknown> & {
   tags?: string[];
 };
 
+export type VrcStatus = "active" | "join me" | "ask me" | "busy" | "offline";
+
+export interface VrcUserProfile {
+  id: string;
+  displayName: string;
+  bio?: string;
+  bioLinks?: string[];
+  tags?: string[];
+  pronouns?: string;
+  userIcon?: string;
+  date_joined?: string;
+  ageVerificationStatus?: string;
+  status: VrcStatus;
+  statusDescription?: string;
+  currentAvatarImageUrl?: string;
+  currentAvatarThumbnailImageUrl?: string;
+  profilePicOverride?: string;
+  currentAvatarName?: string;
+  currentAvatarId?: string;
+  worldName?: string;
+  worldId?: string;
+  location?: string;
+  last_login?: string;
+  last_activity?: string;
+  developerType?: string;
+  isFriend?: boolean;
+  googleId?: string;
+  steamId?: string;
+  oculusId?: string;
+  picoId?: string;
+  viveId?: string;
+  hasEmail?: boolean;
+  emailVerified?: boolean;
+  twoFactorAuthEnabled?: boolean;
+  allowAvatarCopying?: boolean;
+  hasLoggedInFromClient?: boolean;
+}
+
 export interface AuthUserDetailsResult {
   authed: boolean;
   user: AuthUserPayload | null;
@@ -571,6 +609,39 @@ export interface WorkspaceModerationsResult {
   items: WorkspaceModerationItem[];
 }
 
+export interface VrcVisitEntry {
+  userId?: string;
+  displayName?: string;
+  userIcon?: string;
+  instanceId?: string;
+  worldId?: string;
+  worldName?: string;
+  joinTime?: string;
+  timesSeen?: number;
+}
+
+export interface VrcVisitsResult {
+  visits: VrcVisitEntry[];
+}
+
+export type VrcSavedMessageType =
+  | "invite"
+  | "inviteResponse"
+  | "requestInvite"
+  | "requestInviteResponse";
+
+export interface VrcSavedMessage {
+  id?: string;
+  slot?: number;
+  message?: string;
+  messageType?: string;
+  remainingCooldownMinutes?: number;
+}
+
+export interface VrcSavedMessagesResult {
+  messages: VrcSavedMessage[];
+}
+
 export interface AvatarHistoryItem {
   avatar_id: string;
   avatar_name: string | null;
@@ -589,6 +660,76 @@ export interface AvatarHistoryItem {
 
 export interface AvatarHistoryResult {
   items: AvatarHistoryItem[];
+}
+
+export interface AvatarHistoryResolveRequest {
+  avatar_id: string;
+  resolved_avatar_id?: string | null;
+  resolved_thumbnail_url?: string | null;
+  resolved_image_url?: string | null;
+  resolution_source?: string | null;
+  resolution_status: "resolved" | "miss";
+  resolved_at?: string;
+}
+
+export interface DbWorldVisit {
+  id: number;
+  world_id: string | null;
+  instance_id: string | null;
+  access_type: string | null;
+  owner_id: string | null;
+  region: string | null;
+  joined_at: string | null;
+  left_at: string | null;
+  player_count?: number;
+  player_event_count?: number;
+  last_player_seen_at?: string | null;
+}
+
+export interface DbPlayerEvent {
+  id: number;
+  kind: string | null;
+  user_id: string | null;
+  display_name: string | null;
+  world_id: string | null;
+  instance_id: string | null;
+  occurred_at: string | null;
+}
+
+export interface FriendLogEvent {
+  id: number;
+  user_id: string | null;
+  display_name: string | null;
+  event_type: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  occurred_at: string | null;
+}
+
+export interface PagedItems<T> {
+  items: T[];
+}
+
+export interface DbPlayerEventsFilter {
+  worldId?: string;
+  instanceId?: string;
+  occurredAfter?: string;
+  occurredBefore?: string;
+}
+
+export interface NotificationEntry {
+  id: string;
+  senderUserId?: string;
+  senderUsername?: string;
+  type: string;
+  message?: string;
+  details?: Record<string, unknown> | string | null;
+  seen?: boolean;
+  created_at?: string;
+}
+
+export interface NotificationsResult {
+  notifications: NotificationEntry[];
 }
 
 // ─── Avatar Details (v0.5.0) ──────────────────────────────────────────

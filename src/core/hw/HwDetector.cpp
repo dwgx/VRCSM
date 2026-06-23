@@ -1,6 +1,7 @@
 #include "HwDetector.h"
 
 #include "../SteamVrConfig.h"
+#include "GpuProbe.h"
 
 #include <Windows.h>
 #include <oleauto.h>
@@ -36,6 +37,10 @@ void to_json(nlohmann::json& j, const HwReport& report)
         {"gpuName", report.gpuName},
         {"gpuVramBytes", report.gpuVramBytes},
         {"gpuDriver", report.gpuDriver},
+        {"gpuVendor", report.gpuVendor},
+        {"gpuPnpId", report.gpuPnpId},
+        {"gpuSource", report.gpuSource},
+        {"gpuVirtual", report.gpuVirtual},
         {"ramBytes", report.ramBytes},
         {"hmdModel", report.hmdModel},
         {"hmdManufacturer", report.hmdManufacturer},
@@ -48,6 +53,7 @@ namespace
 
 constexpr const wchar_t* kWmiNamespace = L"ROOT\\CIMV2";
 constexpr std::string_view kMicrosoftBasicDisplay = "microsoft basic";
+constexpr long kWmiNextTimeoutMs = 2500;
 
 std::string ToLower(std::string_view text)
 {
@@ -375,7 +381,7 @@ void ProbeCpuViaWmi(IWbemServices* services, HwReport& report)
 
     ULONG returned = 0;
     wil::com_ptr<IWbemClassObject> object;
-    if (FAILED(enumerator->Next(WBEM_INFINITE, 1, object.put(), &returned)) || returned == 0)
+    if (FAILED(enumerator->Next(kWmiNextTimeoutMs, 1, object.put(), &returned)) || returned == 0)
     {
         return;
     }
@@ -406,7 +412,8 @@ void ProbeGpuViaWmi(IWbemServices* services, HwReport& report)
 {
     wil::com_ptr<IEnumWbemClassObject> enumerator;
     wil::unique_bstr language(::SysAllocString(L"WQL"));
-    wil::unique_bstr query(::SysAllocString(L"SELECT Name, AdapterRAM, DriverVersion FROM Win32_VideoController"));
+    wil::unique_bstr query(::SysAllocString(
+        L"SELECT Name, AdapterRAM, DriverVersion, PNPDeviceID, AdapterCompatibility, VideoProcessor FROM Win32_VideoController"));
     const HRESULT hr = services->ExecQuery(
         language.get(),
         query.get(),
@@ -418,45 +425,121 @@ void ProbeGpuViaWmi(IWbemServices* services, HwReport& report)
         return;
     }
 
+    std::vector<GpuAdapterInfo> candidates;
     while (true)
     {
         ULONG returned = 0;
         wil::com_ptr<IWbemClassObject> object;
-        if (FAILED(enumerator->Next(WBEM_INFINITE, 1, object.put(), &returned)) || returned == 0)
+        if (FAILED(enumerator->Next(kWmiNextTimeoutMs, 1, object.put(), &returned)) || returned == 0)
         {
             break;
         }
 
-        std::string name;
-        std::uint64_t adapterRam = 0;
-        std::string driverVersion;
+        GpuAdapterInfo candidate;
+        candidate.source = "wmi";
 
         if (auto value = GetWmiProperty(object.get(), L"Name"))
         {
-            name = VariantToString(*value);
+            candidate.name = VariantToString(*value);
             VariantClear(&*value);
         }
         if (auto value = GetWmiProperty(object.get(), L"AdapterRAM"))
         {
-            adapterRam = VariantToUInt64(*value);
+            candidate.adapterRamBytes = VariantToUInt64(*value);
+            candidate.dedicatedVideoMemoryBytes = candidate.adapterRamBytes;
             VariantClear(&*value);
         }
         if (auto value = GetWmiProperty(object.get(), L"DriverVersion"))
         {
-            driverVersion = VariantToString(*value);
+            candidate.driverVersion = VariantToString(*value);
             VariantClear(&*value);
         }
-
-        if (name.empty() || IContains(name, kMicrosoftBasicDisplay))
+        if (auto value = GetWmiProperty(object.get(), L"PNPDeviceID"))
         {
-            continue;
+            candidate.pnpId = VariantToString(*value);
+            VariantClear(&*value);
+        }
+        if (auto value = GetWmiProperty(object.get(), L"AdapterCompatibility"))
+        {
+            candidate.vendor = GpuVendorFromText(VariantToString(*value));
+            VariantClear(&*value);
+        }
+        if (candidate.vendor.empty())
+        {
+            if (auto value = GetWmiProperty(object.get(), L"VideoProcessor"))
+            {
+                candidate.vendor = GpuVendorFromText(VariantToString(*value));
+                VariantClear(&*value);
+            }
+        }
+        if (candidate.vendor.empty())
+        {
+            candidate.vendor = GpuVendorFromText(candidate.name + " " + candidate.pnpId);
         }
 
-        report.gpuName = name;
-        report.gpuVramBytes = adapterRam;
-        report.gpuDriver = driverVersion;
+        candidate.virtualAdapter = IsVirtualDisplayAdapter(candidate.name, candidate.pnpId, candidate.software)
+            || IContains(candidate.name, kMicrosoftBasicDisplay);
+        candidate.score = ScoreGpuAdapter(candidate);
+        if (!candidate.name.empty())
+        {
+            candidates.push_back(std::move(candidate));
+        }
+    }
+
+    auto best = ChooseBestGpuAdapter(std::move(candidates));
+    if (!best || best->virtualAdapter)
+    {
         return;
     }
+
+    report.gpuName = best->name;
+    report.gpuVramBytes = best->dedicatedVideoMemoryBytes != 0 ? best->dedicatedVideoMemoryBytes : best->adapterRamBytes;
+    report.gpuDriver = best->driverVersion;
+    report.gpuVendor = best->vendor;
+    report.gpuPnpId = best->pnpId;
+    report.gpuSource = best->source;
+    report.gpuVirtual = best->virtualAdapter;
+}
+
+void ProbeGpuViaDxgi(HwReport& report)
+{
+    auto best = ChooseBestGpuAdapter(EnumerateDxgiAdapters());
+    if (!best || best->virtualAdapter)
+    {
+        return;
+    }
+
+    GpuAdapterInfo current;
+    current.name = report.gpuName;
+    current.vendor = report.gpuVendor;
+    current.pnpId = report.gpuPnpId;
+    current.driverVersion = report.gpuDriver;
+    current.source = report.gpuSource;
+    current.dedicatedVideoMemoryBytes = report.gpuVramBytes;
+    current.adapterRamBytes = report.gpuVramBytes;
+    current.virtualAdapter = report.gpuVirtual;
+    current.score = ScoreGpuAdapter(current);
+
+    const bool shouldReplace = report.gpuName.empty()
+        || best->score >= current.score
+        || best->dedicatedVideoMemoryBytes > report.gpuVramBytes;
+    if (!shouldReplace)
+    {
+        return;
+    }
+
+    const auto previousDriver = report.gpuDriver;
+    const auto previousPnpId = report.gpuPnpId;
+    const auto previousVendor = !report.gpuVendor.empty()
+        ? report.gpuVendor
+        : GpuVendorFromText(report.gpuName + " " + report.gpuPnpId);
+    report.gpuName = best->name;
+    report.gpuVramBytes = best->dedicatedVideoMemoryBytes != 0 ? best->dedicatedVideoMemoryBytes : best->adapterRamBytes;
+    report.gpuVendor = best->vendor;
+    report.gpuSource = best->source;
+    report.gpuVirtual = best->virtualAdapter;
+    report.gpuDriver = previousVendor == best->vendor ? previousDriver : "";
+    report.gpuPnpId = previousVendor == best->vendor ? previousPnpId : "";
 }
 
 void ProbeCpuFallback(HwReport& report)
@@ -623,6 +706,7 @@ Result<HwReport> Detect()
             ProbeCpuViaWmi(connection->services.get(), report);
             ProbeGpuViaWmi(connection->services.get(), report);
         }
+        ProbeGpuViaDxgi(report);
 
         if (report.cpuName.empty() || report.cpuCores == 0 || report.cpuThreads == 0)
         {

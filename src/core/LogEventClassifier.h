@@ -9,12 +9,13 @@ namespace vrcsm::core
 
 /// Streaming classifier: given one tailed line from `LogTailer`, produce a
 /// JSON event object if the line's body matches one of the known VRChat
-/// event patterns (player join/leave, avatar switch, screenshot taken).
+/// event patterns (player join/leave, avatar switch, screenshot taken, world
+/// instance switch).
 /// Returns `null` if the line is uninteresting (most are — only a few
 /// percent of lines carry structured events).
 ///
 /// Event shape:
-///   { "kind": "player" | "avatarSwitch" | "screenshot",
+///   { "kind": "player" | "avatarSwitch" | "screenshot" | "worldSwitch",
 ///     "data": { ...same layout as the batch LogParser emits... } }
 ///
 /// The frontend can cast the `data` field straight to the existing

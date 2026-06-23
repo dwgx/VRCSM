@@ -109,6 +109,7 @@ private:
     nlohmann::json HandleHwApplyPreset(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwDetect(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwRecommend(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleHwTelemetry(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleModerationsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarDiscover(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -117,6 +118,7 @@ private:
     nlohmann::json HandleJamDetail(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarBundleDownload(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarParametersLocal(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleWorldDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarSelect(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarSearch(const nlohmann::json& params, const std::optional<std::string>& id);

@@ -4,27 +4,17 @@ import { toast } from "sonner";
 import { BadgeCheck, Calendar, ExternalLink, Gamepad2, Globe2, Glasses, KeyRound, Languages, Link2, Loader2, LogIn, Mail, Monitor, RefreshCcw, Shield, ShieldCheck, Shirt, Sword, Users, LibraryBig, Orbit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProfileCard, type VrcUserProfile, type VrcStatus } from "@/components/ProfileCard";
+import { ProfileCard, type VrcUserProfile } from "@/components/ProfileCard";
 import { LoginForm } from "@/components/LoginForm";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { updateProfile, type UpdateProfileRequest } from "@/lib/vrchat-api";
 import { useNavigate } from "react-router-dom";
 
 interface MyProfileResponse {
   profile: VrcUserProfile | null;
   error?: string;
-}
-
-interface UpdateProfileRequest {
-  bio?: string;
-  statusDescription?: string;
-  status?: VrcStatus;
-  bioLinks?: string[];
-  pronouns?: string;
-  userIcon?: string;
-  profilePicOverride?: string;
-  tags?: string[];
 }
 
 function ProfileStatsStrip({ profile }: { profile: VrcUserProfile }) {
@@ -418,7 +408,7 @@ export default function Profile() {
     if (patch.profilePicOverride !== undefined) payload.profilePicOverride = patch.profilePicOverride;
     if (patch.bioLinks !== undefined) payload.bioLinks = patch.bioLinks;
     if (patch.tags !== undefined) payload.tags = patch.tags;
-    await ipc.call<UpdateProfileRequest, void>("user.updateProfile", payload);
+    await updateProfile(payload);
     load();
   }
 

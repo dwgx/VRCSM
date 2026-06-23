@@ -28,6 +28,7 @@ std::string LogOnlyAvatarKey(const std::string& name, const std::optional<std::s
 nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<std::string>&)
 {
     const auto probe = vrcsm::core::PathProbe::Probe();
+    std::optional<vrcsm::core::LogReport> parsedLogs;
 
     // Side-effect: backfill avatar_history from the VRChat logs. LogTailer
     // only captures lines written *after* VRCSM started, so avatar switches
@@ -40,9 +41,9 @@ nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<
     {
         try
         {
-            auto report = vrcsm::core::LogParser::parse(probe.baseDir);
+            parsedLogs = vrcsm::core::LogParser::parse(probe.baseDir);
             int inserted = 0;
-            for (const auto& ev : report.avatar_switches)
+            for (const auto& ev : parsedLogs->avatar_switches)
             {
                 if (ev.avatar_name.empty()) continue;
                 vrcsm::core::Database::AvatarSeenInsert a;
@@ -66,6 +67,10 @@ nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<
         }
     }
 
+    if (parsedLogs.has_value())
+    {
+        return ToJson(vrcsm::core::CacheScanner::buildReport(probe.baseDir, std::move(*parsedLogs)));
+    }
     return ToJson(vrcsm::core::CacheScanner::buildReport(probe.baseDir));
 }
 

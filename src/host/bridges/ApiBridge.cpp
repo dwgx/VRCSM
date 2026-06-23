@@ -2,6 +2,7 @@
 #include "BridgeCommon.h"
 
 #include "../../core/AuthStore.h"
+#include "../../core/AvatarData.h"
 #include "../../core/AvatarPreview.h"
 #include "../../core/PathProbe.h"
 #include "../../core/TaskQueue.h"
@@ -472,6 +473,26 @@ nlohmann::json IpcBridge::HandleAvatarDetails(const nlohmann::json& params, cons
         return nlohmann::json{{"details", nullptr}};
     }
     return nlohmann::json{{"details", unwrapResult(vrcsm::core::VrcApi::fetchAvatarDetails(*idField))}};
+}
+
+nlohmann::json IpcBridge::HandleAvatarParametersLocal(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto avatarId = JsonStringField(params, "avatarId");
+    if (!avatarId.has_value() || avatarId->empty())
+    {
+        throw IpcException(vrcsm::core::Error{"missing_param", "avatar.parameters.local requires avatarId", 0});
+    }
+    const auto userId = JsonStringField(params, "userId").value_or("");
+    const int requestedLimit = ParamInt(params, "limit", 256);
+    const auto limit = static_cast<std::size_t>(std::clamp(requestedLimit, 1, 1024));
+
+    const auto probe = vrcsm::core::PathProbe::Probe();
+    auto result = vrcsm::core::AvatarData::readParameters(probe.baseDir, *avatarId, userId, limit);
+    if (vrcsm::core::isOk(result))
+    {
+        return std::get<vrcsm::core::LocalAvatarParametersReport>(std::move(result));
+    }
+    throw IpcException(std::get<vrcsm::core::Error>(std::move(result)));
 }
 
 nlohmann::json IpcBridge::HandleWorldDetails(const nlohmann::json& params, const std::optional<std::string>&)

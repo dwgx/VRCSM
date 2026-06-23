@@ -1,11 +1,11 @@
 #include "../../pch.h"
 
 #include "UpdateDownloader.h"
+#include "UpdatePackage.h"
 
-#include <bcrypt.h>
 #include <winhttp.h>
 
-#include <array>
+#include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <system_error>
@@ -45,42 +45,6 @@ struct WinHttpHandleDeleter
 
 using UniqueWinHttpHandle = std::unique_ptr<void, WinHttpHandleDeleter>;
 
-std::string ToLowerAscii(std::string value)
-{
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch)
-    {
-        return static_cast<char>(std::tolower(ch));
-    });
-    return value;
-}
-
-bool EqualsIgnoreCase(std::string_view lhs, std::string_view rhs)
-{
-    if (lhs.size() != rhs.size())
-    {
-        return false;
-    }
-
-    for (std::size_t i = 0; i < lhs.size(); ++i)
-    {
-        if (std::tolower(static_cast<unsigned char>(lhs[i]))
-            != std::tolower(static_cast<unsigned char>(rhs[i])))
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool IsMsiFileName(std::string_view value)
-{
-    if (value.size() < 4)
-    {
-        return false;
-    }
-    return EqualsIgnoreCase(value.substr(value.size() - 4), ".msi");
-}
-
 std::optional<CrackedUrl> CrackUrl(const std::string& url)
 {
     URL_COMPONENTSW components{};
@@ -110,20 +74,6 @@ std::optional<CrackedUrl> CrackUrl(const std::string& url)
         cracked.path = L"/";
     }
     return cracked;
-}
-
-std::filesystem::path UpdatesDirectory()
-{
-    std::filesystem::path dir = getAppDataRoot() / L"updates";
-    std::error_code ec;
-    std::filesystem::create_directories(dir, ec);
-    return dir;
-}
-
-std::filesystem::path BuildTargetPath(std::string_view targetFileName)
-{
-    const std::filesystem::path requested = utf8Path(targetFileName);
-    return UpdatesDirectory() / requested.filename();
 }
 
 void DeleteOldMsis(const std::filesystem::path& updatesDir, const std::filesystem::path& keepPath)
@@ -161,157 +111,9 @@ void DeleteOldMsis(const std::filesystem::path& updatesDir, const std::filesyste
     }
 }
 
-std::optional<std::uint64_t> FileSize(const std::filesystem::path& path)
-{
-    std::error_code ec;
-    if (!std::filesystem::is_regular_file(path, ec))
-    {
-        return std::nullopt;
-    }
-
-    const auto size = std::filesystem::file_size(path, ec);
-    if (ec)
-    {
-        return std::nullopt;
-    }
-    return size;
-}
-
-Result<std::string> ComputeSha256(
-    const std::filesystem::path& path,
-    const std::function<void(std::uint64_t, std::uint64_t)>& onProgress)
-{
-    const auto total = FileSize(path);
-    if (!total.has_value())
-    {
-        return Error{"update_io", "file missing before hash verification", 0};
-    }
-
-    std::ifstream input(path, std::ios::binary);
-    if (!input)
-    {
-        return Error{"update_io", "failed to open file for hash verification", 0};
-    }
-
-    BCRYPT_ALG_HANDLE algorithm = nullptr;
-    BCRYPT_HASH_HANDLE hash = nullptr;
-    std::vector<UCHAR> objectBuffer;
-    std::vector<UCHAR> hashBuffer;
-
-    auto cleanup = wil::scope_exit([&]()
-    {
-        if (hash != nullptr)
-        {
-            BCryptDestroyHash(hash);
-        }
-        if (algorithm != nullptr)
-        {
-            BCryptCloseAlgorithmProvider(algorithm, 0);
-        }
-    });
-
-    if (BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) < 0)
-    {
-        return Error{"update_hash", "BCryptOpenAlgorithmProvider failed", 0};
-    }
-
-    DWORD objectSize = 0;
-    DWORD cbResult = 0;
-    if (BCryptGetProperty(
-            algorithm,
-            BCRYPT_OBJECT_LENGTH,
-            reinterpret_cast<PUCHAR>(&objectSize),
-            sizeof(objectSize),
-            &cbResult,
-            0) < 0)
-    {
-        return Error{"update_hash", "BCryptGetProperty(object length) failed", 0};
-    }
-
-    DWORD hashSize = 0;
-    if (BCryptGetProperty(
-            algorithm,
-            BCRYPT_HASH_LENGTH,
-            reinterpret_cast<PUCHAR>(&hashSize),
-            sizeof(hashSize),
-            &cbResult,
-            0) < 0)
-    {
-        return Error{"update_hash", "BCryptGetProperty(hash length) failed", 0};
-    }
-
-    objectBuffer.resize(objectSize);
-    hashBuffer.resize(hashSize);
-
-    if (BCryptCreateHash(
-            algorithm,
-            &hash,
-            objectBuffer.data(),
-            static_cast<ULONG>(objectBuffer.size()),
-            nullptr,
-            0,
-            0) < 0)
-    {
-        return Error{"update_hash", "BCryptCreateHash failed", 0};
-    }
-
-    std::vector<char> buffer(256 * 1024);
-    std::uint64_t processed = 0;
-    if (onProgress)
-    {
-        onProgress(0, *total);
-    }
-
-    while (input)
-    {
-        input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
-        const auto got = input.gcount();
-        if (got <= 0)
-        {
-            break;
-        }
-
-        if (BCryptHashData(
-                hash,
-                reinterpret_cast<PUCHAR>(buffer.data()),
-                static_cast<ULONG>(got),
-                0) < 0)
-        {
-            return Error{"update_hash", "BCryptHashData failed", 0};
-        }
-
-        processed += static_cast<std::uint64_t>(got);
-        if (onProgress)
-        {
-            onProgress(processed, *total);
-        }
-    }
-
-    if (!input.eof() && input.fail())
-    {
-        return Error{"update_io", "failed while reading file for hash verification", 0};
-    }
-
-    if (BCryptFinishHash(hash, hashBuffer.data(), static_cast<ULONG>(hashBuffer.size()), 0) < 0)
-    {
-        return Error{"update_hash", "BCryptFinishHash failed", 0};
-    }
-
-    static constexpr char kHex[] = "0123456789abcdef";
-    std::string hex;
-    hex.reserve(hashBuffer.size() * 2);
-    for (unsigned char byte : hashBuffer)
-    {
-        hex.push_back(kHex[(byte >> 4) & 0x0F]);
-        hex.push_back(kHex[byte & 0x0F]);
-    }
-
-    return hex;
-}
-
 Result<std::monostate> VerifyExistingFile(const std::filesystem::path& path, const DownloadOptions& options)
 {
-    const auto size = FileSize(path);
+    const auto size = UpdateFileSize(path);
     if (!size.has_value() || *size != options.expectedSize)
     {
         return Error{"update_size", "existing file size does not match expected size", 0};
@@ -324,7 +126,15 @@ Result<std::monostate> VerifyExistingFile(const std::filesystem::path& path, con
         {
             return std::get<Error>(std::move(actualSha));
         }
-        if (ToLowerAscii(value(actualSha)) != ToLowerAscii(*options.expectedSha256))
+        std::string actual = value(actualSha);
+        std::string expected = *options.expectedSha256;
+        std::transform(actual.begin(), actual.end(), actual.begin(), [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+        std::transform(expected.begin(), expected.end(), expected.begin(), [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+        if (actual != expected)
         {
             return Error{"update_hash", "existing file SHA256 does not match expected hash", 0};
         }
@@ -503,11 +313,11 @@ Result<std::filesystem::path> UpdateDownloader::Download(const DownloadOptions& 
         return Error{"update_invalid", "targetFileName is required", 0};
     }
 
-    const std::filesystem::path targetPath = BuildTargetPath(options.targetFileName);
+    const std::filesystem::path targetPath = BuildUpdateTargetPath(options.targetFileName);
     const std::string normalizedTargetName = toUtf8(targetPath.filename().wstring());
-    if (!IsMsiFileName(normalizedTargetName))
+    if (!IsSafeMsiFileName(options.targetFileName) || normalizedTargetName != options.targetFileName)
     {
-        return Error{"update_invalid", "targetFileName must end with .msi", 0};
+        return Error{"update_invalid", "targetFileName must be a single .msi file name", 0};
     }
 
     const std::filesystem::path partPath = targetPath.native() + L".part";
@@ -526,7 +336,7 @@ Result<std::filesystem::path> UpdateDownloader::Download(const DownloadOptions& 
     std::error_code ec;
     std::filesystem::remove(targetPath, ec);
 
-    std::uint64_t resumeBytes = FileSize(partPath).value_or(0);
+    std::uint64_t resumeBytes = UpdateFileSize(partPath).value_or(0);
     if (resumeBytes > options.expectedSize)
     {
         std::filesystem::remove(partPath, ec);
@@ -564,7 +374,7 @@ Result<std::filesystem::path> UpdateDownloader::Download(const DownloadOptions& 
         break;
     }
 
-    const auto finalPartSize = FileSize(partPath);
+    const auto finalPartSize = UpdateFileSize(partPath);
     if (!finalPartSize.has_value() || *finalPartSize != options.expectedSize)
     {
         return Error{"update_size", "downloaded file size does not match expected size", 0};
@@ -578,7 +388,15 @@ Result<std::filesystem::path> UpdateDownloader::Download(const DownloadOptions& 
             std::filesystem::remove(partPath, ec);
             return std::get<Error>(std::move(actualSha));
         }
-        if (ToLowerAscii(value(actualSha)) != ToLowerAscii(*options.expectedSha256))
+        std::string actual = value(actualSha);
+        std::string expected = *options.expectedSha256;
+        std::transform(actual.begin(), actual.end(), actual.begin(), [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+        std::transform(expected.begin(), expected.end(), expected.begin(), [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+        if (actual != expected)
         {
             std::filesystem::remove(partPath, ec);
             return Error{"update_hash", "downloaded file SHA256 does not match expected hash", 0};

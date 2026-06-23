@@ -7,6 +7,8 @@
 namespace vrcsm::core
 {
 
+struct LogReport;
+
 // Aggregates results from every scanner module into the top-level report
 // JSON consumed by the host's IpcBridge (matches the Python prototype's
 // report.json schema).
@@ -16,5 +18,6 @@ namespace vrcsm::core
 // pull in every module header without polluting the scanner translation
 // unit.
 nlohmann::json BuildFullReport(const std::filesystem::path& baseDir);
+nlohmann::json BuildFullReport(const std::filesystem::path& baseDir, LogReport parsedLogs);
 
 } // namespace vrcsm::core

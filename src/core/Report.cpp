@@ -21,17 +21,18 @@ constexpr std::size_t kLargestEntriesLimit = 10;
 
 nlohmann::json BuildFullReport(const std::filesystem::path& baseDir)
 {
+    return BuildFullReport(baseDir, LogParser::parse(baseDir));
+}
+
+nlohmann::json BuildFullReport(const std::filesystem::path& baseDir, LogReport parsedLogs)
+{
     nlohmann::json report;
     report["generated_at"] = nowIso();
     report["base_dir"] = toUtf8(baseDir.wstring());
 
-    // Kick all four heavy walkers off in parallel. Previously they
-    // ran strictly sequentially: scanAll → scanCacheWindowsPlayer →
-    // AvatarData::scan → LogParser::parse. scanAll itself already
-    // fans out per category (see CacheScanner.cpp), and
-    // scanCacheWindowsPlayer fans out per hash dir (see
-    // BundleSniff.cpp) — running them concurrently means the big
-    // walks overlap instead of stacking.
+    // Kick the remaining filesystem walkers off in parallel. Callers such as
+    // HandleScan may pass logs already parsed for DB backfill, avoiding a
+    // second cold read of the same output_log_*.txt files.
     const auto cwpDir = baseDir / L"Cache-WindowsPlayer";
     auto summariesFut = std::async(std::launch::async, [&baseDir]() {
         return CacheScanner::scanAll(baseDir);
@@ -41,9 +42,6 @@ nlohmann::json BuildFullReport(const std::filesystem::path& baseDir)
     });
     auto avatarDataFut = std::async(std::launch::async, [&baseDir]() {
         return AvatarData::scan(baseDir);
-    });
-    auto logsFut = std::async(std::launch::async, [&baseDir]() {
-        return LogParser::parse(baseDir);
     });
 
     auto summaries = summariesFut.get();
@@ -141,7 +139,7 @@ nlohmann::json BuildFullReport(const std::filesystem::path& baseDir)
     report["cache_windows_player"] = cwpJson;
 
     report["local_avatar_data"] = avatarDataFut.get();
-    report["logs"] = logsFut.get();
+    report["logs"] = std::move(parsedLogs);
 
     return report;
 }
@@ -149,6 +147,11 @@ nlohmann::json BuildFullReport(const std::filesystem::path& baseDir)
 nlohmann::json CacheScanner::buildReport(const std::filesystem::path& baseDir)
 {
     return BuildFullReport(baseDir);
+}
+
+nlohmann::json CacheScanner::buildReport(const std::filesystem::path& baseDir, LogReport parsedLogs)
+{
+    return BuildFullReport(baseDir, std::move(parsedLogs));
 }
 
 } // namespace vrcsm::core

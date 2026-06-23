@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { LoginForm } from "@/components/LoginForm";
 import { FriendDetailDialog } from "@/components/FriendDetailDialog";
 import { SmartWearButton } from "@/components/SmartWearButton";
-import { ImageZoom } from "@/components/ImageZoom";
 import { IdBadge } from "@/components/IdBadge";
 import { ThumbImage } from "@/components/ThumbImage";
 
@@ -43,6 +42,18 @@ import {
   type StatusBucket,
 } from "@/lib/vrcFriends";
 import { useSelfLocation } from "@/lib/useSelfLocation";
+import { inviteSelf, inviteUser, requestInvite } from "@/lib/social";
+import {
+  LIBRARY_LIST_NAME,
+  normalizeFavoriteType,
+  useFavoriteActions,
+  useFavoriteItems,
+} from "@/lib/library";
+import {
+  openVrchatLocation,
+  openVrchatUserProfile,
+  openVrchatWorldPage,
+} from "@/lib/shell-api";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -60,11 +71,16 @@ import {
 import {
   ChevronDown,
   ChevronRight,
+  Clipboard,
+  ExternalLink,
+  Heart,
   LogIn,
   MailPlus,
+  MapPin,
   MoreHorizontal,
   RefreshCcw,
   Search,
+  Shirt,
   Shield,
   Users,
   Globe2,
@@ -73,8 +89,18 @@ import {
   Smartphone,
   UserRound,
   Play,
+  Radio,
+  Send,
   UserSearch,
 } from "lucide-react";
+
+type FriendSmartView =
+  | "all"
+  | "favorites"
+  | "sameInstance"
+  | "joinable"
+  | "online"
+  | "offline";
 
 function statusColor(
   bucket: StatusBucket,
@@ -111,11 +137,16 @@ function FriendAvatar({ friend }: { friend: Friend }) {
         className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--canvas))]"
         style={{ boxShadow: `0 0 0 2px ${dotColor}` }}
       >
-        {thumb ? (
-          <ImageZoom src={thumb} className="h-full w-full" imgClassName="h-full w-full object-cover rounded-full" />
-        ) : (
-          <Users className="size-5 text-[hsl(var(--muted-foreground))]" />
-        )}
+        <ThumbImage
+          src={thumb}
+          seedKey={friend.id}
+          label={friend.displayName}
+          alt=""
+          className="h-full w-full border-0"
+          aspect=""
+          rounded=""
+          fallbackClassName="text-[9px]"
+        />
       </div>
       {/* Trust rank status dot */}
       <span
@@ -135,16 +166,13 @@ function useFriendActions(friend: Friend, onOpenDetail: (f: Friend) => void) {
   const loc = parseLocation(friend.location);
 
   const doJoin = useCallback(() => {
-    ipc
-      .call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-        url: `vrchat://launch?ref=vrchat.com&id=${friend.location}`,
-      })
-      .catch(console.error);
+    if (!friend.location) return;
+    openVrchatLocation(friend.location).catch(console.error);
   }, [friend.location]);
 
   const doRequestInvite = useCallback(async () => {
     try {
-      await ipc.requestInvite(friend.id);
+      await requestInvite(friend.id);
       toast.success(
         t("friends.actions.requestInviteSent", {
           defaultValue: "向 {{name}} 发送了加入请求",
@@ -159,7 +187,7 @@ function useFriendActions(friend: Friend, onOpenDetail: (f: Friend) => void) {
   const doInviteToMyRoom = useCallback(async () => {
     if (!self.raw || !self.isInWorld) return;
     try {
-      await ipc.inviteUser(friend.id, self.raw);
+      await inviteUser(friend.id, self.raw);
       toast.success(
         t("friends.actions.inviteSent", {
           defaultValue: "已邀请 {{name}} 到你的房间",
@@ -171,15 +199,114 @@ function useFriendActions(friend: Friend, onOpenDetail: (f: Friend) => void) {
     }
   }, [friend.id, friend.displayName, self.raw, self.isInWorld, t]);
 
+  const doInviteSelf = useCallback(async () => {
+    if (!friend.location) return;
+    try {
+      await inviteSelf(friend.location);
+      toast.success(
+        t("friends.actions.selfInviteSent", {
+          defaultValue: "已请求 {{name}} 当前房间的邀请",
+          name: friend.displayName,
+        }),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [friend.id, friend.displayName, friend.location, t]);
+
+  const doOpenProfile = useCallback(() => {
+    openVrchatUserProfile(friend.id).catch(console.error);
+  }, [friend.id]);
+
+  const doOpenWorldPage = useCallback(() => {
+    if (!loc.worldId) return;
+    openVrchatWorldPage(loc.worldId).catch(console.error);
+  }, [loc.worldId]);
+
+  const copyText = useCallback(
+    async (text: string | null | undefined, label: string) => {
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success(
+          t("friends.actions.copied", {
+            defaultValue: "已复制{{label}}",
+            label,
+          }),
+        );
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [t],
+  );
+
+  const copyUserId = useCallback(
+    () =>
+      copyText(
+        friend.id,
+        t("friends.copyLabels.userId", { defaultValue: "用户 ID" }),
+      ),
+    [copyText, friend.id, t],
+  );
+
+  const copyDisplayName = useCallback(
+    () =>
+      copyText(
+        friend.displayName,
+        t("friends.copyLabels.displayName", { defaultValue: "显示名称" }),
+      ),
+    [copyText, friend.displayName, t],
+  );
+
+  const copyLocation = useCallback(
+    () =>
+      copyText(
+        friend.location,
+        t("friends.copyLabels.location", { defaultValue: "位置" }),
+      ),
+    [copyText, friend.location, t],
+  );
+
+  const copyWorldId = useCallback(
+    () =>
+      copyText(
+        loc.worldId,
+        t("friends.copyLabels.worldId", { defaultValue: "世界 ID" }),
+      ),
+    [copyText, loc.worldId, t],
+  );
+
+  const copyAvatarId = useCallback(
+    () =>
+      copyText(
+        friend.currentAvatarId,
+        t("friends.copyLabels.avatarId", { defaultValue: "模型 ID" }),
+      ),
+    [copyText, friend.currentAvatarId, t],
+  );
+
   const openDetail = useCallback(() => onOpenDetail(friend), [onOpenDetail, friend]);
 
   return {
     canJoin: loc.kind === "world" && !!loc.worldId,
-    canRequestInvite: loc.kind === "world" && !!loc.worldId,
+    canRequestInvite: friend.status !== "offline" && loc.kind !== "offline",
     canInviteToMyRoom: self.isInWorld,
+    canInviteSelf: loc.kind === "world" && !!loc.worldId,
+    canOpenWorldPage: loc.kind === "world" && !!loc.worldId,
+    hasLocation: !!friend.location && loc.kind === "world",
+    hasAvatar: !!friend.currentAvatarId,
     doJoin,
     doRequestInvite,
     doInviteToMyRoom,
+    doInviteSelf,
+    doOpenProfile,
+    doOpenWorldPage,
+    copyUserId,
+    copyDisplayName,
+    copyLocation,
+    copyWorldId,
+    copyAvatarId,
     openDetail,
   };
 }
@@ -202,10 +329,21 @@ function FriendMenuItems({
         <UserSearch className="size-3.5" />
         {t("friendDetail.title", { defaultValue: "好友详情" })}
       </MenuItem>
+      <MenuItem onSelect={actions.doOpenProfile}>
+        <ExternalLink className="size-3.5" />
+        {t("friendDetail.openVrchatProfile", { defaultValue: "在 vrchat.com 打开资料" })}
+      </MenuItem>
       <MenuSeparator />
       <MenuItem disabled={!actions.canJoin} onSelect={actions.canJoin ? actions.doJoin : undefined}>
         <Play className="size-3.5" />
         {t("friends.actions.joinRoom", { defaultValue: "加入房间" })}
+      </MenuItem>
+      <MenuItem
+        disabled={!actions.canInviteSelf}
+        onSelect={actions.canInviteSelf ? actions.doInviteSelf : undefined}
+      >
+        <Radio className="size-3.5" />
+        {t("friends.actions.inviteSelf", { defaultValue: "请求发我邀请" })}
       </MenuItem>
       <MenuItem
         disabled={!actions.canRequestInvite}
@@ -221,6 +359,35 @@ function FriendMenuItems({
         <Home className="size-3.5" />
         {t("friends.actions.inviteToMyRoom", { defaultValue: "邀请到我的房间" })}
       </MenuItem>
+      <MenuSeparator />
+      <MenuItem
+        disabled={!actions.canOpenWorldPage}
+        onSelect={actions.canOpenWorldPage ? actions.doOpenWorldPage : undefined}
+      >
+        <Globe2 className="size-3.5" />
+        {t("friends.actions.openWorldPage", { defaultValue: "打开世界页面" })}
+      </MenuItem>
+      <MenuItem disabled={!actions.hasAvatar} onSelect={actions.copyAvatarId}>
+        <Shirt className="size-3.5" />
+        {t("friends.actions.copyAvatarId", { defaultValue: "复制当前模型 ID" })}
+      </MenuItem>
+      <MenuSeparator />
+      <MenuItem onSelect={actions.copyDisplayName}>
+        <Send className="size-3.5" />
+        {t("friends.actions.copyDisplayName", { defaultValue: "复制显示名称" })}
+      </MenuItem>
+      <MenuItem onSelect={actions.copyUserId}>
+        <Clipboard className="size-3.5" />
+        {t("friends.actions.copyUserId", { defaultValue: "复制用户 ID" })}
+      </MenuItem>
+      <MenuItem disabled={!actions.hasLocation} onSelect={actions.copyLocation}>
+        <Clipboard className="size-3.5" />
+        {t("friends.actions.copyLocation", { defaultValue: "复制位置" })}
+      </MenuItem>
+      <MenuItem disabled={!actions.canOpenWorldPage} onSelect={actions.copyWorldId}>
+        <Clipboard className="size-3.5" />
+        {t("friends.actions.copyWorldId", { defaultValue: "复制世界 ID" })}
+      </MenuItem>
     </>
   );
 }
@@ -229,10 +396,14 @@ const FriendRow = memo(function FriendRow({
   friend,
   colocatedFriends = [],
   onOpenDetail,
+  onSelect,
+  selected = false,
 }: {
   friend: Friend;
   colocatedFriends?: Friend[];
   onOpenDetail: (friend: Friend) => void;
+  onSelect: (friend: Friend) => void;
+  selected?: boolean;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -277,24 +448,41 @@ const FriendRow = memo(function FriendRow({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] hover:border-[hsl(var(--border-strong))]">
+        <div
+          className={`rounded-[var(--radius-sm)] border bg-[hsl(var(--surface-raised))] ${
+            selected
+              ? "border-[hsl(var(--primary))] shadow-[0_0_0_1px_hsl(var(--primary)/0.35)]"
+              : "border-[hsl(var(--border))] hover:border-[hsl(var(--border-strong))]"
+          }`}
+        >
           <div
             role="button"
             tabIndex={0}
-            onClick={() => setExpanded((v) => !v)}
+            aria-selected={selected}
+            onClick={() => onSelect(friend)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                setExpanded((v) => !v);
+                onSelect(friend);
               }
             }}
             className="flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left"
           >
-        {expanded ? (
-          <ChevronDown className="size-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
-        ) : (
-          <ChevronRight className="size-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
-        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          className="flex size-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+          aria-label={t("friends.actions.expand", { defaultValue: "展开" })}
+        >
+          {expanded ? (
+            <ChevronDown className="size-3" />
+          ) : (
+            <ChevronRight className="size-3" />
+          )}
+        </button>
         <FriendAvatar friend={friend} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-2">
@@ -513,9 +701,7 @@ const FriendRow = memo(function FriendRow({
                 className="bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.25)]"
                 onClick={(e) => {
                   e.stopPropagation();
-                  ipc.call<{ url: string }, { ok: boolean }>("shell.openUrl", {
-                    url: `vrchat://launch?id=${friend.location}`,
-                  }).catch(console.error);
+                  if (friend.location) openVrchatLocation(friend.location).catch(console.error);
                 }}
               >
                 <Play className="mr-1 size-3 shrink-0" />
@@ -548,6 +734,213 @@ const FriendRow = memo(function FriendRow({
     </ContextMenu>
   );
 });
+
+function FriendQuickPanel({
+  friend,
+  isFavorite,
+  favoritePending,
+  onOpenDetail,
+  onToggleFavorite,
+}: {
+  friend: Friend | null;
+  isFavorite: boolean;
+  favoritePending: boolean;
+  onOpenDetail: (friend: Friend) => void;
+  onToggleFavorite: (friend: Friend) => void;
+}) {
+  const { t } = useTranslation();
+  const self = useSelfLocation();
+  const loc = parseLocation(friend?.location ?? null);
+  const rank = friend ? trustRank(friend.tags) : "visitor";
+  const thumb = friend
+    ? friend.profilePicOverride ||
+      friend.currentAvatarThumbnailImageUrl ||
+      friend.currentAvatarImageUrl
+    : null;
+  const canJoin = !!friend?.location && loc.kind === "world" && !!loc.worldId;
+  const canInviteToMe = !!friend && self.isInWorld && !!self.raw;
+
+  const runAction = async (action: () => Promise<unknown>, success: string) => {
+    try {
+      await action();
+      toast.success(success);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  if (!friend) {
+    return (
+      <Card elevation="flat" className="hidden w-[320px] shrink-0 self-start p-0 xl:flex xl:flex-col">
+        <div className="unity-panel-header">
+          {t("friends.inspector.title", { defaultValue: "好友速览" })}
+        </div>
+        <div className="flex min-h-[240px] flex-col items-center justify-center gap-2 p-4 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
+          <UserSearch className="size-8 opacity-50" />
+          <p>{t("friends.inspector.empty", { defaultValue: "选择一个好友查看位置、模型和快捷操作。" })}</p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card elevation="flat" className="hidden w-[320px] shrink-0 self-start overflow-hidden p-0 xl:flex xl:flex-col">
+      <div className="unity-panel-header flex items-center justify-between">
+        <span>{t("friends.inspector.title", { defaultValue: "好友速览" })}</span>
+        <Badge variant={statusColor(statusBucket(friend.status))} className="h-4 px-1.5 text-[9px]">
+          {t(`friends.bucket.${statusBucket(friend.status)}`, {
+            defaultValue: friend.status ?? "unknown",
+          })}
+        </Badge>
+      </div>
+      <div className="flex flex-col gap-3 p-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="size-14 shrink-0 overflow-hidden rounded-full bg-[hsl(var(--canvas))]"
+            style={{ boxShadow: `0 0 0 2px ${trustDotColor(rank)}` }}
+          >
+            <ThumbImage
+              src={thumb}
+              seedKey={friend.id}
+              label={friend.displayName}
+              alt=""
+              className="size-full border-0"
+              aspect=""
+              rounded=""
+            />
+          </div>
+          <div className="min-w-0">
+            <div className={`truncate text-[14px] font-semibold ${trustColorClass(rank)}`}>
+              {friend.displayName}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
+              <Badge variant="muted" className="h-4 px-1.5 text-[9px]">
+                {t(trustLabelKey(rank))}
+              </Badge>
+              {friend.last_platform ? (
+                <span className="truncate">{friend.last_platform}</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {friend.statusDescription ? (
+          <div className="rounded-[var(--radius-sm)] bg-[hsl(var(--surface-raised))] px-2 py-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
+            {friend.statusDescription}
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-[76px_1fr] gap-x-2 gap-y-1.5 text-[11px]">
+          <span className="text-[hsl(var(--muted-foreground))]">
+            {t("friends.fields.location", { defaultValue: "位置" })}
+          </span>
+          <span className="min-w-0 truncate">
+            {loc.kind === "world"
+              ? [instanceTypeLabel(loc.instanceType), regionLabel(loc.region)]
+                  .filter(Boolean)
+                  .join(" · ") ||
+                t("friends.location.world", { defaultValue: "In world" })
+              : t(`friends.location.${loc.kind}`)}
+          </span>
+
+          {loc.kind === "world" && loc.worldId ? (
+            <>
+              <span className="text-[hsl(var(--muted-foreground))]">
+                {t("friends.fields.world")}
+              </span>
+              <IdBadge id={loc.worldId} size="xs" />
+            </>
+          ) : null}
+
+          {friend.currentAvatarName || friend.currentAvatarId ? (
+            <>
+              <span className="text-[hsl(var(--muted-foreground))]">
+                {t("friends.fields.avatar", { defaultValue: "Avatar" })}
+              </span>
+              <span className="min-w-0 truncate">
+                {friend.currentAvatarName ?? friend.currentAvatarId}
+              </span>
+            </>
+          ) : null}
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button
+            variant="tonal"
+            size="sm"
+            disabled={!canJoin}
+            onClick={() => {
+              if (friend.location) void openVrchatLocation(friend.location);
+            }}
+          >
+            <Play className="size-3" />
+            {t("friends.actions.joinRoom", { defaultValue: "加入房间" })}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canJoin}
+            onClick={() =>
+              runAction(
+                () => inviteSelf(friend.location!),
+                t("friends.actions.selfInviteSent", {
+                  defaultValue: "已请求 {{name}} 当前房间的邀请",
+                  name: friend.displayName,
+                }),
+              )
+            }
+          >
+            <Radio className="size-3" />
+            {t("friends.actions.inviteSelf", { defaultValue: "请求发我邀请" })}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canInviteToMe}
+            onClick={() =>
+              runAction(
+                () => inviteUser(friend.id, self.raw!),
+                t("friends.actions.inviteSent", {
+                  defaultValue: "已邀请 {{name}} 到你的房间",
+                  name: friend.displayName,
+                }),
+              )
+            }
+          >
+            <Home className="size-3" />
+            {t("friends.actions.inviteToMyRoom", { defaultValue: "邀请到我的房间" })}
+          </Button>
+          <Button
+            variant={isFavorite ? "tonal" : "outline"}
+            size="sm"
+            disabled={favoritePending}
+            onClick={() => onToggleFavorite(friend)}
+          >
+            <Heart className="size-3" fill={isFavorite ? "currentColor" : "none"} />
+            {isFavorite
+              ? t("library.unfavorite", { defaultValue: "取消收藏" })
+              : t("library.favorite", { defaultValue: "收藏" })}
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => onOpenDetail(friend)}>
+            <UserSearch className="size-3" />
+            {t("friendDetail.title", { defaultValue: "好友详情" })}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void openVrchatUserProfile(friend.id)}
+          >
+            <ExternalLink className="size-3" />
+            {t("friends.actions.openProfile", { defaultValue: "打开资料" })}
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 const FRIENDS_CACHE_KEY = "vrcsm.friends.cache.v1";
 
@@ -582,15 +975,69 @@ export default function Friends() {
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, 150);
   const [showOffline, setShowOffline] = useState(false);
+  const [smartView, setSmartView] = useState<FriendSmartView>("all");
   const [loginOpen, setLoginOpen] = useState(false);
   const [dialogFriend, setDialogFriend] = useState<Friend | null>(null);
+  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
   const [collapsedBuckets, setCollapsedBuckets] = useState<Set<StatusBucket>>(
     new Set(),
   );
 
+  const { items: favoriteItems } = useFavoriteItems(LIBRARY_LIST_NAME, status.authed);
+  const favoriteUserIds = useMemo(
+    () =>
+      new Set(
+        favoriteItems
+          .filter((item) => normalizeFavoriteType(item.type) === "user")
+          .map((item) => item.target_id),
+      ),
+    [favoriteItems],
+  );
+  const { toggleFavorite, pending: favoritePending } =
+    useFavoriteActions(LIBRARY_LIST_NAME);
+
   const openDetail = useCallback((friend: Friend) => {
     setDialogFriend(friend);
   }, []);
+
+  const selectFriend = useCallback((friend: Friend) => {
+    setSelectedFriendId(friend.id);
+  }, []);
+
+  const toggleFavoriteFriend = useCallback(
+    async (friend: Friend) => {
+      const thumb =
+        friend.profilePicOverride ||
+        friend.currentAvatarThumbnailImageUrl ||
+        friend.currentAvatarImageUrl;
+      const isFavorite = favoriteUserIds.has(friend.id);
+      try {
+        await toggleFavorite(
+          {
+            type: "user",
+            target_id: friend.id,
+            display_name: friend.displayName,
+            thumbnail_url: thumb,
+          },
+          isFavorite,
+        );
+        toast.success(
+          isFavorite
+            ? t("friends.actions.unfavorited", {
+                defaultValue: "已取消收藏 {{name}}",
+                name: friend.displayName,
+              })
+            : t("friends.actions.favorited", {
+                defaultValue: "已收藏 {{name}}",
+                name: friend.displayName,
+              }),
+        );
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [favoriteUserIds, t, toggleFavorite],
+  );
 
   const refresh = () => {
     if (!status.authed) return;
@@ -683,14 +1130,73 @@ export default function Friends() {
     };
   }, [status.authed, showOffline]);
 
+  const locationGroups = useMemo(() => {
+    const groups: Record<string, Friend[]> = {};
+    for (const f of data?.friends ?? []) {
+      if (!f.location || f.location === "offline" || f.location === "private") continue;
+      const loc = parseLocation(f.location);
+      if (loc.kind === "world") {
+        if (!groups[f.location]) groups[f.location] = [];
+        groups[f.location].push(f);
+      }
+    }
+    return groups;
+  }, [data?.friends]);
+
+  const viewCounts = useMemo(() => {
+    const friends = data?.friends ?? [];
+    let sameInstance = 0;
+    let joinable = 0;
+    let online = 0;
+    let offline = 0;
+    for (const f of friends) {
+      const loc = parseLocation(f.location);
+      if (f.location && loc.kind === "world" && (locationGroups[f.location]?.length ?? 0) > 1) {
+        sameInstance += 1;
+      }
+      if (loc.kind === "world" && loc.worldId) joinable += 1;
+      if (loc.kind === "offline" || f.status === "offline") offline += 1;
+      else online += 1;
+    }
+    return {
+      all: friends.length,
+      favorites: friends.filter((f) => favoriteUserIds.has(f.id)).length,
+      sameInstance,
+      joinable,
+      online,
+      offline,
+    } satisfies Record<FriendSmartView, number>;
+  }, [data?.friends, favoriteUserIds, locationGroups]);
+
   // Filter first, then group — doing filter-post-group wastes work rebuilding
   // every bucket when the query changes, and it also breaks the "total count"
   // on the header which expects the filtered view.
-  const filtered = useMemo(() => {
+  const friendsWithComputed = useMemo(() => {
     if (!data) return [];
-    const q = debouncedFilter.trim().toLowerCase();
-    if (!q) return data.friends;
     return data.friends.filter((f) => {
+      const loc = parseLocation(f.location);
+      switch (smartView) {
+        case "favorites":
+          return favoriteUserIds.has(f.id);
+        case "sameInstance":
+          return !!f.location && loc.kind === "world" && (locationGroups[f.location]?.length ?? 0) > 1;
+        case "joinable":
+          return loc.kind === "world" && !!loc.worldId;
+        case "online":
+          return loc.kind !== "offline" && f.status !== "offline";
+        case "offline":
+          return loc.kind === "offline" || f.status === "offline";
+        default:
+          return true;
+      }
+    });
+  }, [data, favoriteUserIds, locationGroups, smartView]);
+
+  const filtered = useMemo(() => {
+    const source = friendsWithComputed;
+    const q = debouncedFilter.trim().toLowerCase();
+    if (!q) return source;
+    return source.filter((f) => {
       // Display name, status description, bio (original filters)
       if (f.displayName.toLowerCase().includes(q)) return true;
       if (f.statusDescription?.toLowerCase().includes(q)) return true;
@@ -709,7 +1215,7 @@ export default function Friends() {
       if (f.currentAvatarName?.toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [data, debouncedFilter, t]);
+  }, [friendsWithComputed, debouncedFilter, t]);
 
   // Group filtered friends into status buckets. Sort within each bucket by
   // display name so the order stays stable across refreshes (VRChat's list
@@ -731,19 +1237,6 @@ export default function Friends() {
     return buckets;
   }, [filtered]);
 
-  const locationGroups = useMemo(() => {
-    const groups: Record<string, Friend[]> = {};
-    for (const f of data?.friends ?? []) {
-      if (!f.location || f.location === "offline" || f.location === "private") continue;
-      const loc = parseLocation(f.location);
-      if (loc.kind === "world") {
-        if (!groups[f.location]) groups[f.location] = [];
-        groups[f.location].push(f);
-      }
-    }
-    return groups;
-  }, [data?.friends]);
-
   const toggleBucket = (bucket: StatusBucket) => {
     setCollapsedBuckets((prev) => {
       const next = new Set(prev);
@@ -755,6 +1248,28 @@ export default function Friends() {
       return next;
     });
   };
+
+  const selectedFriend = useMemo(() => {
+    const friends = data?.friends ?? [];
+    if (selectedFriendId) {
+      const existing = friends.find((f) => f.id === selectedFriendId);
+      if (existing) return existing;
+    }
+    return filtered[0] ?? null;
+  }, [data?.friends, filtered, selectedFriendId]);
+
+  const smartViews: Array<{
+    id: FriendSmartView;
+    label: string;
+    icon: typeof Users;
+  }> = [
+    { id: "all", label: t("friends.views.all", { defaultValue: "全部" }), icon: Users },
+    { id: "favorites", label: t("friends.views.favorites", { defaultValue: "收藏" }), icon: Heart },
+    { id: "sameInstance", label: t("friends.views.sameInstance", { defaultValue: "同房" }), icon: MapPin },
+    { id: "joinable", label: t("friends.views.joinable", { defaultValue: "可加入" }), icon: Play },
+    { id: "online", label: t("friends.views.online", { defaultValue: "在线" }), icon: Radio },
+    { id: "offline", label: t("friends.views.offline", { defaultValue: "离线" }), icon: Monitor },
+  ];
 
   // Not signed in — show a single "Sign in with VRChat" button that
   // spawns the native LoginForm dialog. The C++ host calls the real
@@ -865,6 +1380,28 @@ export default function Friends() {
             {t("common.refresh")}
           </Button>
         </div>
+        <div className="flex gap-1 overflow-x-auto border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 py-1.5">
+          {smartViews.map((view) => {
+            const Icon = view.icon;
+            const active = smartView === view.id;
+            return (
+              <Button
+                key={view.id}
+                type="button"
+                variant={active ? "tonal" : "ghost"}
+                size="sm"
+                className="h-7 shrink-0 gap-1.5 px-2 text-[11px]"
+                onClick={() => setSmartView(view.id)}
+              >
+                <Icon className="size-3" />
+                <span>{view.label}</span>
+                <Badge variant={active ? "secondary" : "muted"} className="h-4 px-1 text-[9px]">
+                  {viewCounts[view.id]}
+                </Badge>
+              </Button>
+            );
+          })}
+        </div>
         <div className="scrollbar-thin max-h-[600px] flex-1 overflow-y-auto p-2">
           {error ? (
             <div className="py-6 text-center text-[12px] text-[hsl(var(--warn-foreground,var(--destructive)))]">
@@ -916,6 +1453,8 @@ export default function Friends() {
                               friend={f}
                               colocatedFriends={colocated}
                               onOpenDetail={openDetail}
+                              onSelect={selectFriend}
+                              selected={selectedFriend?.id === f.id}
                             />
                           );
                         })}
@@ -928,6 +1467,14 @@ export default function Friends() {
           )}
         </div>
       </Card>
+
+      <FriendQuickPanel
+        friend={selectedFriend}
+        isFavorite={selectedFriend ? favoriteUserIds.has(selectedFriend.id) : false}
+        favoritePending={favoritePending}
+        onOpenDetail={openDetail}
+        onToggleFavorite={toggleFavoriteFriend}
+      />
 
       <FriendDetailDialog friend={dialogFriend} onClose={() => setDialogFriend(null)} />
       </div>

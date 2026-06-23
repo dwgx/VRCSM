@@ -356,6 +356,7 @@ Result<UpdateInfo> FetchLatest()
                 continue;
             }
 
+            info.fileName = name;
             info.downloadUrl = JsonStringField(asset, "browser_download_url");
             info.downloadSize = JsonUInt64Field(asset, "size");
             break;

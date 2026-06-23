@@ -185,6 +185,55 @@
       "send": "보내기",
       "sent": "채팅창 메시지를 보냈습니다",
       "rateLimit": "메시지 사이에 2초간 기다려 주세요 (VRChat 속도 제한)"
+    },
+    "studio": {
+      "title": "OSC Studio",
+      "subtitle": "드래그할 수 있는 하드웨어 카드, 4개 템플릿, 실시간 미리보기, 제어된 자동 전송으로 OSC를 구성합니다.",
+      "refreshHardware": "하드웨어",
+      "cards": "카드",
+      "addScene": "장면 추가",
+      "exported": "프로필 복사됨",
+      "exportReady": "프로필 준비됨",
+      "imported": "프로필 가져옴",
+      "avatarMissing": "아바타 ID를 선택하거나 입력하세요",
+      "avatarLoaded": "{{count}}개 매개변수 로드됨",
+      "preview": "미리보기 및 전송",
+      "autoRunning": "자동",
+      "noPreview": "출력을 미리 보려면 카드를 선택하세요.",
+      "sendSelected": "선택 항목 전송",
+      "stopAuto": "자동 전송 중지",
+      "startAuto": "자동 전송",
+      "hardware": "하드웨어 변수",
+      "profile": "프로필 가져오기/내보내기",
+      "variables": "템플릿 변수",
+      "avatarParams": "아바타 매개변수 스캔",
+      "noAvatarParams": "이 로컬 아바타 파일에서 매개변수를 찾지 못했습니다.",
+      "interval": "간격",
+      "type": "유형",
+      "insertVariable": "변수 삽입",
+      "autoStarted": "자동 전송을 시작했습니다",
+      "templatePresets": "템플릿",
+      "builder": "템플릿 빌더",
+      "editArea": "편집 영역",
+      "dropHint": "여기에 텍스트를 입력하거나 오른쪽의 하드웨어 카드를 드래그하세요.",
+      "chatboxPreview": "채팅창 미리보기",
+      "componentCards": "구성 카드",
+      "dragComponent": "편집기로 드래그하거나 클릭해 삽입",
+      "composer": "컴포저",
+      "emptyComposer": "오른쪽 구성 카드를 여기로 드래그하거나 아래에서 사용자 텍스트를 추가하세요.",
+      "customText": "사용자 텍스트...",
+      "addText": "텍스트 추가",
+      "insertNewline": "줄바꿈",
+      "rawTemplate": "원본 템플릿",
+      "blockMoveUp": "블록을 왼쪽으로 이동",
+      "blockMoveDown": "블록을 오른쪽으로 이동",
+      "blockRemove": "블록 삭제",
+      "recommended": "추천",
+      "searchComponents": "CPU, GPU, RAM 검색...",
+      "componentHint": "먼저 안정적인 카드로 시작하세요. 온도, 팬, 보드 카드는 센서 제공자에 의존하므로 각 탭에 있습니다.",
+      "clickToInsert": "클릭해 삽입",
+      "noComponents": "이 필터와 일치하는 구성요소가 없습니다.",
+      "avatarParamsHint": "로컬 아바타 OSC 설정을 스캔하고 파라미터를 제어 카드로 만듭니다. 아바타 모델 언팩기가 아닙니다."
     }
   },
   "auth": {
@@ -353,6 +402,14 @@
       "inviteSent": "{{name}}을(를) 방으로 초대했습니다",
       "sendMessage": "메시지 보내기",
       "viewProfile": "프로필 보기"
+    },
+    "views": {
+      "all": "전체",
+      "favorites": "즐겨찾기",
+      "sameInstance": "같은 인스턴스",
+      "joinable": "참가 가능",
+      "online": "온라인",
+      "offline": "오프라인"
     }
   },
   "layout": {
@@ -580,7 +637,10 @@
     "first": "처음",
     "previous": "이전",
     "last": "마지막",
-    "jumpTo": "이동"
+    "jumpTo": "이동",
+    "seconds": "초",
+    "ready": "준비됨",
+    "partial": "일부"
   },
   "about": {
     "title": "VRCSM 정보",
@@ -590,8 +650,6 @@
     "build": "빌드",
     "developer": "개발자",
     "developerBody": "커피 한 잔 들고 혼자 새벽까지 코딩중~ 네이티브 호스트·UI·패키징 전부 한 코드베이스에서 직접 만들었어요. 편하게 써주세요 (｡•ㅅ•｡)♡",
-    "specialThanks": "특별한 감사",
-    "specialThanksBody": "VRChat 에서 처음 만난 소중한 친구— 지금도 이 프로젝트 안에 살며시 함께 있어요~",
     "links": "링크",
     "footer": "로컬 우선 VRChat 계정, 캐시, 세션 관리를 위해 제작되었습니다."
   },
@@ -1554,9 +1612,11 @@
     "topWorlds": "가장 많이 방문한 월드",
     "topEncounters": "가장 많이 만난 플레이어",
     "noVisits": "아직 방문 데이터가 없습니다.",
-    "noEncounters": "아직 만남 데이터가 없습니다.",
+    "noEncounters": "아직 만남 데이터가 없습니다. 플레이어 만남은 VRChat 출력 로그에서 기록됩니다.",
     "guide": "VRChat 로그 기록에서 월드 방문 및 플레이어 만남 데이터를 집계합니다. VRCSM이 로그를 분석할 때 데이터가 축적되므로, 플레이하는 동안 앱을 실행 상태로 유지하여 분석 데이터를 쌓으세요.",
-    "noWorlds": "아직 방문 데이터가 없습니다. VRCSM이 VRChat 로그를 분석하면 월드 방문 기록이 저장됩니다."
+    "noWorlds": "아직 방문 데이터가 없습니다. VRCSM이 VRChat 로그를 분석하면 월드 방문 기록이 저장됩니다.",
+    "selfFiltered": "만남 순위에서 내 플레이어 ID를 제외합니다.",
+    "lazyWorlds": "월드 배지와 썸네일은 보이거나 열었을 때만 로드됩니다."
   },
   "benchmark": {
     "title": "아바타 성능 벤치마크",

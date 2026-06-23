@@ -185,6 +185,55 @@
       "send": "भेजें",
       "sent": "चैटबॉक्स भेजा गया",
       "rateLimit": "संदेशों के बीच 2 सेकंड प्रतीक्षा करें (VRChat दर सीमा)"
+    },
+    "studio": {
+      "title": "OSC Studio",
+      "subtitle": "ड्रैग किए जा सकने वाले हार्डवेयर कार्ड, 4 टेम्प्लेट, लाइव प्रीव्यू और नियंत्रित ऑटो-सेंड से OSC बनाएं.",
+      "refreshHardware": "Hardware",
+      "cards": "Cards",
+      "addScene": "Scene जोड़ें",
+      "exported": "Profile copied",
+      "exportReady": "Profile ready",
+      "imported": "Profile imported",
+      "avatarMissing": "Avatar ID चुनें या दर्ज करें",
+      "avatarLoaded": "{{count}} parameters loaded",
+      "preview": "Preview और Send",
+      "autoRunning": "AUTO",
+      "noPreview": "Output preview करने के लिए कोई card चुनें।",
+      "sendSelected": "Selected भेजें",
+      "stopAuto": "Auto रोकें",
+      "startAuto": "Auto send",
+      "hardware": "Hardware variables",
+      "profile": "Profile import/export",
+      "variables": "Template variables",
+      "avatarParams": "Avatar parameter scan",
+      "noAvatarParams": "इस local avatar file में कोई parameter नहीं मिला।",
+      "interval": "हर",
+      "type": "Type",
+      "insertVariable": "Variable डालें",
+      "autoStarted": "Auto send शुरू हुआ",
+      "templatePresets": "टेम्प्लेट",
+      "builder": "टेम्प्लेट बिल्डर",
+      "editArea": "एडिट क्षेत्र",
+      "dropHint": "यहां टेक्स्ट लिखें, या दाईं तरफ से हार्डवेयर कार्ड ड्रैग करें.",
+      "chatboxPreview": "Chatbox प्रीव्यू",
+      "componentCards": "कंपोनेंट कार्ड",
+      "dragComponent": "एडिटर में ड्रैग करें या क्लिक करके जोड़ें",
+      "composer": "कंपोजर",
+      "emptyComposer": "दाईं ओर से कंपोनेंट कार्ड यहां खींचें या नीचे कस्टम टेक्स्ट जोड़ें।",
+      "customText": "कस्टम टेक्स्ट...",
+      "addText": "टेक्स्ट जोड़ें",
+      "insertNewline": "लाइन",
+      "rawTemplate": "रॉ टेम्पलेट",
+      "blockMoveUp": "ब्लॉक को बाएं ले जाएं",
+      "blockMoveDown": "ब्लॉक को दाएं ले जाएं",
+      "blockRemove": "ब्लॉक हटाएं",
+      "recommended": "अनुशंसित",
+      "searchComponents": "CPU, GPU, RAM खोजें...",
+      "componentHint": "पहले इन स्थिर कार्डों से शुरू करें। तापमान, फैन और बोर्ड कार्ड अपने टैब में हैं क्योंकि वे सेंसर स्रोतों पर निर्भर हैं।",
+      "clickToInsert": "जोड़ने के लिए क्लिक करें",
+      "noComponents": "इस फ़िल्टर से कोई घटक मेल नहीं खाता।",
+      "avatarParamsHint": "लोकल अवतार OSC कॉन्फिग स्कैन करता है और पैरामीटरों को कंट्रोल कार्ड में बदलता है। यह अवतार मॉडल अनपैकर नहीं है।"
     }
   },
   "auth": {
@@ -353,6 +402,14 @@
       "inviteSent": "{{name}} को आपके कमरे में आमंत्रित किया गया",
       "sendMessage": "संदेश भेजें",
       "viewProfile": "प्रोफ़ाइल देखें"
+    },
+    "views": {
+      "all": "सभी",
+      "favorites": "Favorites",
+      "sameInstance": "Same instance",
+      "joinable": "Joinable",
+      "online": "Online",
+      "offline": "Offline"
     }
   },
   "layout": {
@@ -580,7 +637,10 @@
     "first": "पहला",
     "previous": "पिछला",
     "last": "अंतिम",
-    "jumpTo": "यहाँ जाएँ"
+    "jumpTo": "यहाँ जाएँ",
+    "seconds": "s",
+    "ready": "तैयार",
+    "partial": "आंशिक"
   },
   "about": {
     "title": "VRCSM के बारे में",
@@ -590,8 +650,6 @@
     "build": "बिल्ड",
     "developer": "डेवलपर",
     "developerBody": "अकेला डेवलपर, कॉफी हाथ में लिए~ native host, UI और packaging सब एक ही प्यारी सी codebase में लिखे हैं। आशा है VRChat थोड़ा और cozy हो जाए (｡•ㅅ•｡)♡",
-    "specialThanks": "विशेष धन्यवाद",
-    "specialThanksBody": "VRChat में मिला पहला दोस्त — अब भी चुपचाप इस project के अंदर रहता है~",
     "links": "लिंक",
     "footer": "लोकल-फर्स्ट VRChat अकाउंट, कैश और सेशन प्रबंधन के लिए बनाया गया।"
   },
@@ -1554,9 +1612,11 @@
     "topWorlds": "सबसे ज़्यादा देखे गए वर्ल्ड्स",
     "topEncounters": "सबसे ज़्यादा मिले खिलाड़ी",
     "noVisits": "अभी तक कोई विज़िट डेटा नहीं है।",
-    "noEncounters": "अभी तक कोई मुठभेड़ डेटा नहीं है।",
+    "noEncounters": "अभी encounter data नहीं है। Player encounters VRChat output logs से रिकॉर्ड होते हैं।",
     "guide": "आपकी VRChat लॉग हिस्ट्री से वर्ल्ड विज़िट और खिलाड़ियों से मुलाकात का डेटा एकत्र करता है। VRCSM लॉग पार्स करते समय डेटा जमा होता रहता है — एनालिटिक्स बनाने के लिए खेलते समय ऐप चालू रखें।",
-    "noWorlds": "अभी तक कोई विज़िट डेटा नहीं है। जब VRCSM आपके VRChat लॉग पार्स करता है तब वर्ल्ड हिस्ट्री रिकॉर्ड होती है।"
+    "noWorlds": "अभी तक कोई विज़िट डेटा नहीं है। जब VRCSM आपके VRChat लॉग पार्स करता है तब वर्ल्ड हिस्ट्री रिकॉर्ड होती है।",
+    "selfFiltered": "Encounter rankings से आपका अपना player ID हटाया गया है।",
+    "lazyWorlds": "विश्व बैज और थंबनेल सिर्फ दिखने या खुलने पर लोड होते हैं।"
   },
   "benchmark": {
     "title": "अवतार प्रदर्शन बेंचमार्क",

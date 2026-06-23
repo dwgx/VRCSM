@@ -6,6 +6,7 @@ add_library(vrcsm_core STATIC
     CacheScanner.cpp
     BundleSniff.cpp
     Database.cpp
+    LogAtoms.cpp
     LogParser.cpp
     LogTailer.cpp
     LogEventClassifier.cpp

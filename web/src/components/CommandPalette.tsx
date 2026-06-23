@@ -26,10 +26,11 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { ipc } from "@/lib/ipc";
 import type { GlobalSearchResult } from "@/lib/types";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { useInstalledPanelPlugins } from "@/lib/plugin-context";
+import { listPlayerEvents, searchGlobal } from "@/lib/history-api";
+import { openExternalUrlQuietly } from "@/lib/shell-api";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -142,8 +143,8 @@ export function CommandPalette({
       { id: "act-toggle-sidebar", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.viewToggleSidebar"), icon: <PanelLeftClose className="size-3.5" />, shortcut: "Ctrl+B", action: () => setSidebarHidden((v) => !v), keywords: "sidebar toggle hide" },
       { id: "act-toggle-dock", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.viewToggleDock"), icon: <PanelBottomClose className="size-3.5" />, action: () => setDockHidden((v) => !v), keywords: "dock bottom toggle" },
       { id: "act-about", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.helpAbout"), icon: <Info className="size-3.5" />, action: () => onOpenAbout?.(), keywords: "about version" },
-      { id: "act-docs", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.helpDocs"), icon: <ExternalLink className="size-3.5" />, action: () => void ipc.call("shell.openUrl", { url: "https://github.com/dwgx/vrcsm" }), keywords: "docs github help" },
-      { id: "act-issues", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.helpReportIssue"), icon: <ExternalLink className="size-3.5" />, action: () => void ipc.call("shell.openUrl", { url: "https://github.com/dwgx/vrcsm/issues/new" }), keywords: "report issue bug github" },
+      { id: "act-docs", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.helpDocs"), icon: <ExternalLink className="size-3.5" />, action: () => openExternalUrlQuietly("https://github.com/dwgx/vrcsm"), keywords: "docs github help" },
+      { id: "act-issues", section: t("cmd.sections.actions", { defaultValue: "Actions" }), label: t("menu.helpReportIssue"), icon: <ExternalLink className="size-3.5" />, action: () => openExternalUrlQuietly("https://github.com/dwgx/vrcsm/issues/new"), keywords: "report issue bug github" },
 
       // Dynamic: one entry per enabled panel plugin.
       ...panelPlugins.map((p) => ({
@@ -162,8 +163,7 @@ export function CommandPalette({
     if (!open) return;
     setLoadingLogs(true);
     let alive = true;
-    void ipc
-      .dbPlayerEvents(MAX_LOGS, 0)
+    void listPlayerEvents(MAX_LOGS, 0)
       .then((res) => {
         if (!alive) return;
         const items = (res.items ?? []) as Array<{
@@ -214,8 +214,7 @@ export function CommandPalette({
     setLoadingSearch(true);
     let alive = true;
     const timer = window.setTimeout(() => {
-      void ipc
-        .searchGlobal({
+      void searchGlobal({
           query: q,
           limit: MAX_GLOBAL_RESULTS,
           includeRemote: "never",

@@ -1023,11 +1023,14 @@ AvatarPreviewResult runNativeExtractor(
             "AvatarPreview: native extract failed ({}): {}",
             err.code, err.message);
 
-        // Map UnityPreview error codes into AvatarPreviewResult taxonomy.
-        // Keep the code stable because the React side keys off of it.
-        if (err.code == "encrypted")
+        // Preserve known UnityPreview failure codes so the UI and support
+        // logs can tell a malformed bundle from an unsupported mesh layout.
+        if (err.code == "encrypted"
+            || err.code == "bundle_invalid"
+            || err.code == "typetree_unsupported"
+            || err.code == "no_meshes")
         {
-            result.code = "encrypted";
+            result.code = err.code;
         }
         else
         {

@@ -33,9 +33,21 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageZoom } from "@/components/ImageZoom";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
-import { ipc } from "@/lib/ipc";
 import type { Friend, WorldDetails } from "@/lib/types";
 import type { VrcUserProfile } from "@/components/ProfileCard";
+import {
+  blockUser,
+  inviteSelf,
+  muteUser,
+  removeFriend,
+  requestInvite,
+  setFriendNote,
+} from "@/lib/social";
+import {
+  openExternalUrlQuietly,
+  openVrchatLocation,
+  openVrchatUserProfile,
+} from "@/lib/shell-api";
 import {
   trustRank,
   trustColorClass,
@@ -186,11 +198,7 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
     if (!friend) return;
     setNoteSaving(true);
     try {
-      await ipc.call("friendNote.set", {
-        user_id: friend.id,
-        note: noteText,
-        updated_at: new Date().toISOString(),
-      });
+      await setFriendNote(friend.id, noteText);
       toast.success(t("friendDetail.noteSaved", { defaultValue: "Note saved" }));
       void refetchNote();
     } catch (e) {
@@ -360,7 +368,7 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                     <button
                       key={i}
                       type="button"
-                      onClick={() => void ipc.call("shell.openUrl", { url })}
+                      onClick={() => openExternalUrlQuietly(url)}
                       className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--border)/0.6)] bg-[hsl(var(--canvas))] px-2.5 py-1 text-[10px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--border-strong))] transition-colors"
                     >
                       {iconSvg ? (
@@ -420,9 +428,7 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                       size="sm"
                       className="h-6 text-[10px] gap-1"
                       onClick={() => {
-                        void ipc.call("shell.openUrl", {
-                          url: `vrchat://launch?ref=vrchat.com&id=${friend?.location}`,
-                        });
+                        if (friend?.location) void openVrchatLocation(friend.location);
                       }}
                     >
                       <Play className="size-3" />
@@ -433,8 +439,9 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                       size="sm"
                       className="h-6 text-[10px] gap-1"
                       onClick={async () => {
+                        if (!friend?.location) return;
                         try {
-                          await ipc.call("user.invite", { location: friend?.location });
+                          await inviteSelf(friend.location);
                           toast.success(t("friendDetail.inviteSent", { defaultValue: "Invite sent" }));
                         } catch (e) {
                           toast.error(e instanceof Error ? e.message : String(e));
@@ -501,8 +508,9 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
             cancelLabel={t("common.cancel", { defaultValue: "Cancel" })}
             tone="destructive"
             onConfirm={async () => {
+              if (!friend?.id) return;
               try {
-                await ipc.call("user.mute", { userId: friend?.id });
+                await muteUser(friend.id);
                 toast.success(t("friendDetail.muted", { defaultValue: "User muted" }));
                 setMuteConfirmOpen(false);
               } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
@@ -517,8 +525,9 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
             cancelLabel={t("common.cancel", { defaultValue: "Cancel" })}
             tone="destructive"
             onConfirm={async () => {
+              if (!friend?.id) return;
               try {
-                await ipc.call("user.block", { userId: friend?.id });
+                await blockUser(friend.id);
                 toast.success(t("friendDetail.blocked", { defaultValue: "User blocked" }));
                 setBlockConfirmOpen(false);
                 onClose();
@@ -544,8 +553,9 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
             cancelLabel={t("friendDetail.unfriendNevermind", { defaultValue: "Never mind..." })}
             tone="destructive"
             onConfirm={async () => {
+              if (!friend?.id) return;
               try {
-                await ipc.friendsUnfriend(friend!.id);
+                await removeFriend(friend.id);
                 toast.success(t("friendDetail.unfriended", { defaultValue: "Unfriended {{name}}", name: friend?.displayName }));
                 setUnfriendStep(0);
                 onClose();
@@ -572,9 +582,7 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                 size="sm"
                 className="h-7 text-[11px] gap-1.5 ml-auto"
                 onClick={() => {
-                  void ipc.call("shell.openUrl", {
-                    url: `https://vrchat.com/home/user/${friend?.id}`,
-                  });
+                  if (friend?.id) void openVrchatUserProfile(friend.id);
                 }}
               >
                 <ExternalLink className="size-3.5" />
@@ -726,7 +734,7 @@ function BoopCard({
     if (!friend?.id) return;
     try {
       setBooping(true);
-      await ipc.requestInvite(friend.id, 0);
+      await requestInvite(friend.id, 0);
       toast.success(t("friendDetail.boopSent", {
         defaultValue: "Boop sent — {{name}} will see a notification.",
         name: friend.displayName ?? "",
@@ -741,7 +749,7 @@ function BoopCard({
   async function joinTheirWorld() {
     if (!friend?.location) return;
     try {
-      await ipc.call("user.invite", { location: friend.location });
+      await inviteSelf(friend.location);
       toast.success(t("friendDetail.inviteSent", { defaultValue: "Joining..." }));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -810,9 +818,7 @@ function BoopCard({
             size="sm"
             className="h-7 text-[11px] gap-1.5"
             onClick={() => {
-              void ipc.call("shell.openUrl", {
-                url: `https://vrchat.com/home/user/${friend?.id}`,
-              });
+              if (friend?.id) void openVrchatUserProfile(friend.id);
             }}
           >
             <ExternalLink className="size-3" />
@@ -823,4 +829,3 @@ function BoopCard({
     </div>
   );
 }
-

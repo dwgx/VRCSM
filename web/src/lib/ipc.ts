@@ -419,6 +419,47 @@ class IpcClient {
     switch (method) {
       case "app.version":
         return { version: "0.5.0", build: "mock" } as unknown as TResult;
+      case "update.check":
+        return {
+          available: false,
+          current: "0.14.5",
+          currentVersion: "0.14.5",
+          latest: "0.14.5",
+          latestVersion: "0.14.5",
+          fileName: null,
+          downloadUrl: undefined,
+          size: undefined,
+          downloadSize: undefined,
+          sha256: null,
+          releaseNotes: "",
+          releaseNotesMarkdown: "",
+          releaseUrl: "https://github.com/dwgx/VRCSM/releases/tag/v0.14.5",
+          skipped: false,
+          currentMsiPath: undefined,
+        } as unknown as TResult;
+      case "update.getState":
+        return {
+          autoCheck: true,
+          checkIntervalHours: 24,
+          skippedVersions: [],
+          lastChecked: nowIso(),
+        } as unknown as TResult;
+      case "update.skipVersion":
+      case "update.unskipVersion":
+        return {
+          autoCheck: true,
+          checkIntervalHours: 24,
+          skippedVersions: [],
+          lastChecked: nowIso(),
+        } as unknown as TResult;
+      case "update.download": {
+        const p = (params ?? {}) as { fileName?: string | null; version?: string };
+        return {
+          path: `C:/Users/dev/AppData/Local/VRCSM/updates/${p.fileName ?? `VRCSM-${p.version ?? "0.14.5"}.msi`}`,
+        } as unknown as TResult;
+      }
+      case "update.install":
+        return { ok: true } as unknown as TResult;
       case "scan":
         return buildMockReport() as unknown as TResult;
       case "bundle.preview":
@@ -433,6 +474,109 @@ class IpcClient {
         return { deleted: 2 } satisfies DeleteResult as unknown as TResult;
       case "process.vrcRunning":
         return { running: false } satisfies ProcessStatus as unknown as TResult;
+      case "hw.recommend":
+        return {
+          report: {
+            cpu_name: "AMD Ryzen 9 9950X3D (Mock)",
+            cpu_cores: 16,
+            cpu_threads: 32,
+            cpu_clock_mhz: 5700,
+            gpu_name: "NVIDIA GeForce RTX 5090 (Mock)",
+            gpu_vram_bytes: 32 * 1024 ** 3,
+            gpu_driver: "mock-driver",
+            ram_bytes: 64 * 1024 ** 3,
+            hmd_model: "Quest 3",
+            hmd_manufacturer: "Meta",
+            os_build: "10.0.26200",
+          },
+          recommendation: {
+            tier: "ultra",
+            score: 205,
+            cpu_score: 100,
+            gpu_score: 105,
+            gpu_vram_multiplier: 1.15,
+            ram_bonus: 10,
+            hmd_profile_name: "Quest 3",
+            target_bandwidth: 200,
+            supersample_scale: 1.5,
+            preferred_refresh_rate: 120,
+            motion_smoothing: false,
+            allow_filtering: true,
+            ffr_level: 1,
+            rationale: "Mock hardware recommendation.",
+          },
+        } as unknown as TResult;
+      case "hw.telemetry":
+        return {
+          generated_at: nowIso(),
+          motherboard: {
+            manufacturer: "ASUS",
+            product: "ROG CROSSHAIR X870E HERO (Mock)",
+            version: "Rev 1.xx",
+            serial_number: "MOCK",
+          },
+          memory: {
+            total_bytes: 64 * 1024 ** 3,
+            available_bytes: 41 * 1024 ** 3,
+            used_bytes: 23 * 1024 ** 3,
+            used_pct: 36,
+          },
+          ram_modules: [
+            {
+              bank_label: "BANK 0",
+              device_locator: "DIMM_A2",
+              manufacturer: "G.Skill",
+              part_number: "F5-6000J3038F16G",
+              serial_number: "MOCK",
+              capacity_bytes: 32 * 1024 ** 3,
+              speed_mhz: 6000,
+              configured_clock_mhz: 6000,
+              memory_type_label: "DDR5",
+              form_factor_label: "DIMM",
+            },
+            {
+              bank_label: "BANK 1",
+              device_locator: "DIMM_B2",
+              manufacturer: "G.Skill",
+              part_number: "F5-6000J3038F16G",
+              serial_number: "MOCK",
+              capacity_bytes: 32 * 1024 ** 3,
+              speed_mhz: 6000,
+              configured_clock_mhz: 6000,
+              memory_type_label: "DDR5",
+              form_factor_label: "DIMM",
+            },
+          ],
+          cpu: {
+            temperature_c: 62,
+            load_pct: 21,
+            power_watts: 88,
+          },
+          gpu: {
+            name: "NVIDIA GeForce RTX 5090 (Mock)",
+            temperature_c: 58,
+            load_pct: 47,
+            fan_speed_pct: 34,
+            power_watts: 260,
+            memory_used_bytes: 11 * 1024 ** 3,
+            memory_total_bytes: 32 * 1024 ** 3,
+            primary_source: "mock",
+          },
+          fans: [
+            { id: "/gpu/0/fan/0", name: "GPU Fan", sensor_type: "Fan", source: "mock", unit: "RPM", value: 1240 },
+            { id: "/mainboard/fan/0", name: "Chassis Fan", sensor_type: "Fan", source: "mock", unit: "RPM", value: 820 },
+          ],
+          power: [
+            { id: "/cpu/package/power", name: "CPU Package", sensor_type: "Power", source: "mock", unit: "W", value: 88 },
+            { id: "/gpu/0/power", name: "GPU Power", sensor_type: "Power", source: "mock", unit: "W", value: 260 },
+          ],
+          sensors: [],
+          sources: [
+            { name: "wmi_cimv2", available: true, message: "mock static hardware inventory" },
+            { name: "nvml", available: true, message: "mock NVIDIA telemetry" },
+            { name: "librehardwaremonitor_wmi", available: false, message: "not running in mock mode" },
+          ],
+        } as unknown as TResult;
       case "logs.stream.start":
         this.startMockLogStream();
         return { ok: true } as unknown as TResult;
@@ -486,6 +630,12 @@ class IpcClient {
       case "shell.openUrl":
         // Mock branch: no side effect, just echo success so the UI can be
         // exercised in browser-only dev mode without shelling out.
+        return { ok: true } as unknown as TResult;
+      case "discord.clearActivity":
+        return { ok: true } as unknown as TResult;
+      case "osc.send":
+      case "osc.listen.start":
+      case "osc.listen.stop":
         return { ok: true } as unknown as TResult;
       case "junction.repair":
         return { ok: true } as unknown as TResult;
@@ -1274,7 +1424,13 @@ class IpcClient {
       }
       case "screenshots.open":
       case "screenshots.folder":
+      case "screenshots.watcher.stop":
         return { ok: true } as unknown as TResult;
+      case "screenshots.watcher.start":
+        return {
+          ok: true,
+          folder: "C:/Users/dev/Pictures/VRChat",
+        } as unknown as TResult;
       case "screenshots.delete": {
         const p = (params ?? {}) as { paths?: string[] };
         const paths = p.paths ?? [];

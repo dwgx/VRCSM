@@ -15,6 +15,7 @@ struct UpdateInfo
     std::string currentVersion;
     std::string latestVersion;
     std::optional<std::string> downloadUrl;
+    std::optional<std::string> fileName;
     std::optional<std::uint64_t> downloadSize;
     std::optional<std::string> sha256;
     std::string releaseNotesMarkdown;

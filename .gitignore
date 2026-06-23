@@ -7,6 +7,7 @@ vcpkg_installed/
 third_party/vcpkg/buildtrees/
 downloads/
 packages/
+node_modules/
 web/node_modules/
 web/dist/
 web/.vite/
@@ -33,6 +34,7 @@ web/fix*.mjs
 dist/
 *.wixpdb
 *.wixobj
+*.obj
 *.zip
 VRCSM_v*_Installer.msi
 tools/extractor/*.exe
@@ -57,3 +59,4 @@ tools/build-*-force.bat
 tools/build-test-extract.bat
 
 .playwright-mcp/
+.codegraph/

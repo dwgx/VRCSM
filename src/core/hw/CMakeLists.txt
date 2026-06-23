@@ -1,7 +1,9 @@
 find_package(WIL CONFIG REQUIRED)
 
 add_library(vrcsm_core_hw STATIC
+    GpuProbe.cpp
     HwDetector.cpp
+    HwTelemetry.cpp
     HwProfiler.cpp
     HwProfileFeed.cpp
 )
@@ -29,6 +31,7 @@ if(MSVC)
         wbemuuid.lib
         oleaut32.lib
         ole32.lib
+        dxgi.lib
         winhttp.lib
         advapi32.lib
     )

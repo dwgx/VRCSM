@@ -3,11 +3,16 @@ import { ipc } from "./ipc";
 export interface UpdateCheckResult {
   available: boolean;
   current: string;
+  currentVersion?: string;
   latest?: string;
+  latestVersion?: string;
+  fileName?: string | null;
   downloadUrl?: string;
   size?: number;
+  downloadSize?: number;
   sha256?: string | null;
   releaseNotes?: string;
+  releaseNotesMarkdown?: string;
   releaseUrl?: string;
   skipped: boolean;
   currentMsiPath?: string;
@@ -62,12 +67,19 @@ export async function downloadUpdate(params: {
   size: number;
   sha256?: string | null;
   version: string;
+  fileName?: string | null;
 }): Promise<{ path: string }> {
   return ipc.call<typeof params, { path: string }>("update.download", params);
 }
 
-export async function installUpdate(path: string): Promise<{ ok: boolean }> {
-  return ipc.call<{ path: string }, { ok: boolean }>("update.install", { path });
+export async function installUpdate(params: {
+  path: string;
+  version: string;
+  size: number;
+  sha256?: string | null;
+  fileName?: string | null;
+}): Promise<{ ok: boolean }> {
+  return ipc.call<typeof params, { ok: boolean }>("update.install", params);
 }
 
 export async function skipVersion(version: string): Promise<UpdateState> {

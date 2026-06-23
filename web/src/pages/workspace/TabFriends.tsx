@@ -13,7 +13,7 @@ import { ThumbImage } from "@/components/ThumbImage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { useAuth } from "@/lib/auth-context";
-import { ipc } from "@/lib/ipc";
+import { requestInvite } from "@/lib/social";
 import {
   LIBRARY_LIST_NAME,
   normalizeFavoriteType,
@@ -217,7 +217,7 @@ function JoinFriendRow({ friend }: { friend: Friend }) {
           })}
           onClick={async () => {
             try {
-              await ipc.requestInvite(friend.id);
+              await requestInvite(friend.id);
               toast.success(
                 t("friends.actions.requestInviteSent", {
                   defaultValue: "向 {{name}} 发送了加入请求",

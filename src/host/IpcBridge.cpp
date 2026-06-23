@@ -135,6 +135,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "jams.detail",
         "avatar.bundle.download",
         "avatar.details",
+        "avatar.parameters.local",
         "world.details",
         "avatar.preview",
         "avatar.preview.status",
@@ -225,6 +226,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "hw.applyPreset",
         "hw.detect",
         "hw.recommend",
+        "hw.telemetry",
         "update.check",
         "update.download",
         "update.install",
@@ -668,6 +670,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("hw.applyPreset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwApplyPreset(p, id); });
     m_handlers.emplace("hw.detect", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwDetect(p, id); });
     m_handlers.emplace("hw.recommend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwRecommend(p, id); });
+    m_handlers.emplace("hw.telemetry", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwTelemetry(p, id); });
     m_handlers.emplace("moderations.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleModerationsList(p, id); });
     m_handlers.emplace("calendar.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarList(p, id); });
     m_handlers.emplace("calendar.discover", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarDiscover(p, id); });
@@ -676,6 +679,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("jams.detail", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleJamDetail(p, id); });
     m_handlers.emplace("avatar.bundle.download", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarBundleDownload(p, id); });
     m_handlers.emplace("avatar.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarDetails(p, id); });
+    m_handlers.emplace("avatar.parameters.local", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarParametersLocal(p, id); });
     m_handlers.emplace("world.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldDetails(p, id); });
     m_handlers.emplace("avatar.select", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSelect(p, id); });
     m_handlers.emplace("avatar.search", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSearch(p, id); });

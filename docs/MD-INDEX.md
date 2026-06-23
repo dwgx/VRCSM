@@ -1,6 +1,6 @@
 # VRCSM Markdown Index
 
-Last updated: 2026-04-29
+Last updated: 2026-06-23
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
@@ -44,6 +44,22 @@ This file maps the repo's Markdown documents so the next agent can start from th
   - Older but still useful product roadmap: VRCX comparison, auth layer plan, social/avatar/world/history feature mapping, and explicit non-goals.
   - Treat as strategic context, not a current implementation contract.
 
+- `docs/UI-REPAIR-VRCX-PARITY-PLAN.md`
+  - Current execution plan for fixing visible UI issues, sequencing VRCX-parity work, and keeping new frontend API/IPC calls centralized in `web/src/lib` domain modules.
+  - Read before adding Notification Center, Quick Search, My Avatars, social analytics, table behavior, or other VRCX-inspired UI features.
+
+- `docs/FRIENDS-RELATIONSHIP-REDESIGN-RESEARCH.md`
+  - Current 2026-06-23 research baseline for rebuilding Friends into a VRCX-class social/relationship workspace.
+  - Maps VRCX Friends Locations, Friend List, mutual graph, relationship feed, local stats, public VRChat API boundaries, proposed Social/Relationship modules, data model, UI target, and phased implementation order.
+
+- `docs/FRIENDS-PAGE-OPTIMIZATION-PLAN.md`
+  - Focused execution plan for improving `web/src/pages/Friends.tsx` without turning the page into a large mixed-responsibility component.
+  - Defines the target Friends workspace layout, state/data-flow cleanup, virtualized list strategy, smart groups, inspector extraction, VRCX-inspired view modes, phased implementation order, and acceptance tests.
+
+- `docs/OSC-STUDIO-PLAN.md`
+  - Current 2026-06-23 execution plan for turning the raw OSC sender/listener into a modular OSC Studio.
+  - Defines draggable card composition, template variables, hardware/system telemetry cards, Chatbox safety rules, existing OSC bridge boundaries, first-slice implementation and future sensor backends.
+
 - `docs/v0.2.0-auth-findings.md`
   - Auth sprint decision log.
   - Covers VRChat registry persistence, Steam ticket login, and auth/security decisions.
@@ -51,6 +67,11 @@ This file maps the repo's Markdown documents so the next agent can start from th
 - `docs/v0.5.0-3d-preview-research.md`
   - Real 3D avatar preview research.
   - Relevant when touching UnityFS parsing, bundle decoding, GLB generation, or preview cache.
+  - Older R&D note; re-check against `docs/AVATAR-PREVIEW-UNPACKING-RESEARCH.md` before assuming an external extractor CLI is still the preferred path.
+
+- `docs/AVATAR-PREVIEW-UNPACKING-RESEARCH.md`
+  - Current 2026-06-23 research refresh for local VRChat bundle unpacking and preview.
+  - Maps current native UnityFS/Mesh-only pipeline, `vrchat-il2cpp-re` cache/log learnings, VRCX cache behavior, external parser options, and the modular implementation slices for full preview work.
 
 - `docs/unity-ide-skeleton.md`
   - UI shell design note for a Unity-like IDE layout.

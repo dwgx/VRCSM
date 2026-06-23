@@ -215,6 +215,55 @@
       "send": "发送",
       "sent": "聊天框消息已发送",
       "rateLimit": "请在两条消息之间等待 2 秒 (VRChat 速率限制)"
+    },
+    "studio": {
+      "title": "OSC 工作室",
+      "subtitle": "用可拖拽的硬件卡片、4 个模板、实时预览和可控自动发送组合 OSC。",
+      "refreshHardware": "硬件",
+      "cards": "卡片",
+      "addScene": "添加场景",
+      "exported": "配置已复制",
+      "exportReady": "配置已准备",
+      "imported": "配置已导入",
+      "avatarMissing": "请选择或输入模型 ID",
+      "avatarLoaded": "已载入 {{count}} 个参数",
+      "preview": "预览与发送",
+      "autoRunning": "自动",
+      "noPreview": "选择一张卡片以预览输出。",
+      "sendSelected": "发送所选",
+      "stopAuto": "停止自动发送",
+      "startAuto": "自动发送",
+      "hardware": "硬件变量",
+      "profile": "配置导入/导出",
+      "variables": "模板变量",
+      "avatarParams": "模型参数扫描",
+      "noAvatarParams": "在这个本地模型文件中没有找到参数。",
+      "interval": "每",
+      "type": "类型",
+      "insertVariable": "插入变量",
+      "autoStarted": "已开始自动发送",
+      "templatePresets": "模板",
+      "builder": "模板编辑器",
+      "editArea": "编辑区",
+      "dropHint": "在这里输入文字，或把右侧硬件卡片拖进来。",
+      "chatboxPreview": "聊天框预览",
+      "componentCards": "组件卡片",
+      "dragComponent": "拖到编辑区，或点击插入",
+      "composer": "组合器",
+      "emptyComposer": "把右侧组件卡拖到这里，或在下方添加自定义文字。",
+      "customText": "自定义文字...",
+      "addText": "添加文字",
+      "insertNewline": "换行",
+      "rawTemplate": "原始模板",
+      "blockMoveUp": "向左移动块",
+      "blockMoveDown": "向右移动块",
+      "blockRemove": "删除块",
+      "recommended": "推荐",
+      "searchComponents": "搜索 CPU、GPU、RAM...",
+      "componentHint": "先用这些稳定卡片开始。温度、风扇和主板卡片放在各自分类，因为它们依赖传感器来源。",
+      "clickToInsert": "点击插入",
+      "noComponents": "没有匹配的组件。",
+      "avatarParamsHint": "扫描本地模型 OSC 配置，并把参数变成控制卡片。它不是模型解包器。"
     }
   },
   "auth": {
@@ -384,6 +433,14 @@
       "inviteSent": "已邀请 {{name}} 到你的房间",
       "sendMessage": "发送消息",
       "viewProfile": "查看详情"
+    },
+    "views": {
+      "all": "全部",
+      "favorites": "收藏",
+      "sameInstance": "同房",
+      "joinable": "可加入",
+      "online": "在线",
+      "offline": "离线"
     }
   },
   "layout": {
@@ -640,7 +697,10 @@
     "first": "首页",
     "previous": "上一页",
     "last": "末页",
-    "jumpTo": "跳转到"
+    "jumpTo": "跳转到",
+    "seconds": "秒",
+    "ready": "可用",
+    "partial": "部分"
   },
   "about": {
     "title": "关于 VRCSM",
@@ -650,8 +710,6 @@
     "build": "构建",
     "developer": "开发者",
     "developerBody": "一个人从夜里肝到天亮～原生宿主、前端界面、打包发布全都自己抱着写的，希望你用得开心 (｡•ㅅ•｡)♡",
-    "specialThanks": "特别感谢",
-    "specialThanksBody": "在 VRChat 里最先认识的人",
     "links": "链接",
     "footer": "围绕本地优先的 VRChat 账号、缓存和会话管理而构建。"
   },
@@ -3643,9 +3701,11 @@
     "topWorlds": "访问最多的世界",
     "topEncounters": "遇到最多的玩家",
     "noVisits": "尚无访问数据。",
-    "noEncounters": "尚无相遇数据。",
+    "noEncounters": "尚无相遇数据。玩家相遇记录来自 VRChat 输出日志。",
     "guide": "汇总你 VRChat 日志中的世界访问记录和玩家相遇数据。VRCSM 解析日志时数据会持续积累——在游戏时保持应用运行以获得完整分析。",
-    "noWorlds": "尚无访问数据。当 VRCSM 解析你的 VRChat 日志时，世界历史会自动记录。"
+    "noWorlds": "尚无访问数据。当 VRCSM 解析你的 VRChat 日志时，世界历史会自动记录。",
+    "selfFiltered": "遇见排行已排除你自己的玩家 ID。",
+    "lazyWorlds": "世界标签和缩略图只在进入可见区或打开详情时加载。"
   },
   "benchmark": {
     "title": "虚拟形象性能基准测试",

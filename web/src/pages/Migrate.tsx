@@ -36,6 +36,13 @@ import type {
   MigrateProgress,
 } from "@/lib/types";
 
+interface MigrateSummary {
+  ok: boolean;
+  bytesCopied?: number;
+  filesCopied?: number;
+  message?: string;
+}
+
 /* ================================================================== */
 /*  Constants                                                         */
 /* ================================================================== */
@@ -118,6 +125,7 @@ function Migrate() {
   // ── Migration progress ──────────────────────────────────────────
   const [progress, setProgress] = useState<MigrateProgress | null>(null);
   const [running, setRunning] = useState(false);
+  const migrationCompletionNotified = useRef(false);
 
   // ── Junction repair ─────────────────────────────────────────────
   const [repairing, setRepairing] = useState(false);
@@ -180,6 +188,21 @@ function Migrate() {
     [t],
   );
 
+  const finishMigration = useCallback(
+    (ok: boolean, message?: string) => {
+      setRunning(false);
+      if (migrationCompletionNotified.current) return;
+      migrationCompletionNotified.current = true;
+
+      if (ok) {
+        toast.success(message ?? t("migrate.complete", { defaultValue: "Migration complete" }));
+      } else {
+        toast.error(message ?? t("migrate.failed", { defaultValue: "Migration failed" }));
+      }
+    },
+    [t],
+  );
+
   const onPickCategory = useCallback(
     (key: string) => {
       setCategoryKey(key);
@@ -214,24 +237,22 @@ function Migrate() {
   /* ─── Progress event subscription ───────────────────────────────── */
 
   useEffect(() => {
-    const off = ipc.on<MigrateProgress>("migrate.progress", (data) => {
+    const offProgress = ipc.on<MigrateProgress>("migrate.progress", (data) => {
       setProgress(data);
       if (data.phase === "done") {
-        setRunning(false);
-        toast.success(
-          data.message ??
-            t("migrate.complete", { defaultValue: "Migration complete" }),
-        );
+        finishMigration(true, data.message);
       } else if (data.phase === "error") {
-        setRunning(false);
-        toast.error(
-          data.message ??
-            t("migrate.failed", { defaultValue: "Migration failed" }),
-        );
+        finishMigration(false, data.message);
       }
     });
-    return off;
-  }, [t]);
+    const offDone = ipc.on<MigrateSummary>("migrate.done", (data) => {
+      finishMigration(data.ok, data.message);
+    });
+    return () => {
+      offProgress();
+      offDone();
+    };
+  }, [finishMigration]);
 
   /* ─── IPC actions ───────────────────────────────────────────────── */
 
@@ -285,11 +306,17 @@ function Migrate() {
       }
       setPlanLoading(false);
       setRunning(true);
+      migrationCompletionNotified.current = false;
       setProgress({ phase: "copy", bytesDone: 0, bytesTotal: res.sourceBytes, filesDone: 0, filesTotal: 0 });
-      await ipc.call<{ source: string; target: string }, { ok: true }>(
+      const result = await ipc.call<{ source: string; target: string }, MigrateSummary>(
         "migrate.execute",
         { source: res.source, target: res.target },
       );
+      if (!result.ok) {
+        finishMigration(false, result.message);
+      } else {
+        finishMigration(true, result.message);
+      }
     } catch (e: unknown) {
       setRunning(false);
       setPlanLoading(false);

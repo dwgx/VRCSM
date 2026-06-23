@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ipc } from "@/lib/ipc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,7 @@ interface FriendEncounter {
 
 export default function SocialGraph() {
   const { t } = useTranslation();
-  useAuth();
+  const { status } = useAuth();
   const [topWorlds, setTopWorlds] = useState<WorldVisitStat[]>([]);
   const [topFriends, setTopFriends] = useState<FriendEncounter[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,8 +58,10 @@ export default function SocialGraph() {
       const events = await ipc.dbPlayerEvents(500, 0);
       const playerItems = (events.items ?? []) as Array<{ user_id?: string; display_name?: string; kind?: string; occurred_at?: string }>;
       const friendMap = new Map<string, { name: string; count: number; lastSeen: string }>();
+      const selfUserId = status.userId ?? "";
       for (const e of playerItems) {
         if (!e.user_id || e.kind !== "joined") continue;
+        if (selfUserId && e.user_id === selfUserId) continue;
         const existing = friendMap.get(e.user_id) ?? { name: e.display_name ?? "", count: 0, lastSeen: "" };
         existing.count += 1;
         if (e.display_name) existing.name = e.display_name;
@@ -75,7 +77,7 @@ export default function SocialGraph() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [status.userId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -96,6 +98,8 @@ export default function SocialGraph() {
       <Card className="unity-panel">
         <CardContent className="p-3 text-[11px] text-[hsl(var(--muted-foreground))] space-y-1">
           <p>{t("socialGraph.guide", { defaultValue: "Aggregates world visits and player encounters from your VRChat log history. Data accumulates as VRCSM parses logs — keep the app running while you play to build up analytics." })}</p>
+          <p>{t("socialGraph.selfFiltered", { defaultValue: "Your own player id is excluded from encounter rankings." })}</p>
+          <p>{t("socialGraph.lazyWorlds", { defaultValue: "World badges and thumbnails are loaded only when visible or opened." })}</p>
         </CardContent>
       </Card>
 
@@ -122,7 +126,7 @@ export default function SocialGraph() {
                 <span className="w-5 text-[hsl(var(--muted-foreground))] text-right font-mono">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   {w.world_id.startsWith("wrld_") ? (
-                    <WorldPopupBadge worldId={w.world_id} />
+                    <LazyWorldPopupBadge worldId={w.world_id} />
                   ) : (
                     <span className="truncate font-mono">{w.world_id}</span>
                   )}
@@ -167,6 +171,43 @@ export default function SocialGraph() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function LazyWorldPopupBadge({ worldId }: { worldId: string }) {
+  const [visible, setVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (visible || !worldId.startsWith("wrld_")) return;
+    const node = containerRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "180px 0px" });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible, worldId]);
+
+  return (
+    <div ref={containerRef} className="min-h-6 min-w-0">
+      {visible ? (
+        <WorldPopupBadge worldId={worldId} />
+      ) : (
+        <span className="block truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+          {worldId.slice(0, 18)}...
+        </span>
+      )}
     </div>
   );
 }

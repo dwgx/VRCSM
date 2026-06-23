@@ -1,6 +1,7 @@
 #include "LogParser.h"
 
 #include "Common.h"
+#include "LogAtoms.h"
 
 #include <algorithm>
 #include <cctype>
@@ -365,6 +366,30 @@ void maybeApplyLegacyClearCache(const std::string& value, LogReport& report)
 void handleNormalLine(const std::string& line, LogReport& report, ParseState& st)
 {
     std::smatch m;
+
+    if (const auto atom = ParseVrchatLogAtom(line);
+        atom && atom->kind == LogAtomKind::WorldInstance)
+    {
+        const std::string worldId = atom->getOr("world_id");
+        const std::string fullInstanceId = atom->getOr("instance_id");
+        if (!worldId.empty() && !fullInstanceId.empty())
+        {
+            if (report.world_switches.size() < kMaxEventsPerKind)
+            {
+                WorldSwitchEvent ev;
+                ev.iso_time = st.lastTimestamp;
+                ev.world_id = worldId;
+                ev.instance_id = fullInstanceId;
+                ev.access_type = atom->getOr("access_type", "public");
+                ev.owner_id = atom->get("owner_id");
+                ev.region = atom->get("region");
+                report.world_switches.push_back(std::move(ev));
+            }
+            st.currentWorldId = worldId;
+            st.currentInstanceId = fullInstanceId;
+        }
+        return;
+    }
 
     // User auth — captures local player identity.
     if (!report.local_user_name && std::regex_search(line, m, kUserAuthRe))
