@@ -108,4 +108,6 @@ void to_json(nlohmann::json& j, const TelemetrySnapshot& snapshot);
 
 Result<TelemetrySnapshot> CollectTelemetry();
 
+std::vector<SensorReading> ParseAida64SensorValuesForTest(const std::string& xml);
+
 } // namespace vrcsm::core::hw

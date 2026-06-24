@@ -235,8 +235,15 @@
       "clickToInsert": "คลิกเพื่อแทรก",
       "noComponents": "ไม่มีองค์ประกอบที่ตรงกับตัวกรองนี้",
       "avatarParamsHint": "สแกนคอนฟิก OSC ของอวตาร์ในเครื่องแล้วแปลงพารามิเตอร์เป็นการ์ดควบคุม ไม่ใช่ตัวแกะโมเดลอวตาร์",
-      "emptyRendered": "เทมเพลตไม่มีค่าที่ใช้ได้"
-    }
+      "emptyRendered": "เทมเพลตไม่มีค่าที่ใช้ได้",
+      "cardDisabled": "ปิดใช้การ์ดนี้อยู่",
+      "autoCardMissing": "การ์ดส่งอัตโนมัติถูกลบแล้ว",
+      "autoStats": "ส่ง {{sent}} / ข้าม {{skipped}}",
+      "nextSendIn": "ส่งถัดไปใน {{seconds}}วิ",
+      "stopAutoShort": "หยุด",
+      "startAutoShort": "อัตโนมัติ"
+    },
+    "sendFailed": "OSC ส่งไม่สำเร็จ"
   },
   "auth": {
     "signIn": "เข้าสู่ระบบ",

@@ -37,29 +37,37 @@ Last updated: 2026-06-24
 - **Frontend asset-cache integration.** `web/src/lib/assets-cache.ts` is the shared frontend cache. `WorldPopupBadge`, `AvatarPopupBadge`, `UserPopupBadge`, and `Worlds.tsx` now use it. `UserPopupBadge` no longer calls `user.getProfile` merely because it mounted; full profile fetch happens only when the dialog opens. Worlds warms visible rows and queues lookahead rows through `prefetchAssets` / `prefetchAssetsLowPriority`, reusing log names as hints.
 - **OSC Studio cleanup after in-VR bad-value report.** `TemplateBuilderPanel` now has a localized clear-editor button. `renderOscTemplate()` drops pipe-separated template segments containing `--`, so unavailable CPU temperature/fan/board/sensor values do not get sent into VRChat Chatbox when other segments are valid. This is a UI/rendering guard, not a substitute for deeper sensor-source work.
 - **OSC auto-send timing and stale-message fix.** `web/src/pages/OscTools.tsx` now renders Chatbox templates through a callback after telemetry refresh and after any 2-second Chatbox rate-limit wait, so `{time.short}` seconds reflect the actual send moment instead of the moment the async task started. Auto-send is a single cancellable `setTimeout` loop keyed by `autoRunIdRef`; it no longer overlaps async `setInterval` sends, and `stopAutoSend()` cancels in-flight waits before an old message can be sent. `web/src/lib/osc-studio.ts` now removes missing-value placeholders inside segments, drops CPU/fan-only segments when the values are missing, and treats a lone category label like `Thermal` as an empty message.
+- **OSC auto-send visibility + AIDA64 sensors.** `OscTools` now exposes per-card Auto/Stop buttons and an active auto-send status panel with sent/skipped counters, next-send countdown, last message, and last error. `HwTelemetry` now reads the public AIDA64 `AIDA64_SensorValues` shared-memory feed, parses XML-ish sensor rows, classifies T/F/P/U/V/C style rows into temperature/fan/power/load/voltage/clock, and folds them into the same source-status contract as LibreHardwareMonitor/OpenHardwareMonitor/NVML. The OSC hardware panel now lists the first live sensor readings, and old/default thermal templates migrate from `Fan {gpu.fanPct}` to `{fan.0}` so RPM-style fan sensors can render. HWiNFO shared memory is still **not** implemented; add it only with a clear legal/SDK boundary.
 
-## Last Verified Build (2026-06-24 OSC auto-send timing slice)
+## Last Verified Build (2026-06-24 OSC auto-send visibility + AIDA64 sensor slice)
 
 - Official VRChat docs checked during this slice:
   - `https://docs.vrchat.com/docs/osc-overview.md`: VRChat receives OSC on `9000` and sends on `9001` by default.
   - `https://docs.vrchat.com/docs/osc-as-input-controller.md`: Chatbox text is limited to 144 characters and 9 displayed lines; `/chatbox/input` takes string, send-immediately bool, and notification-SFX bool.
-- `cmd /c node_modules\.bin\vitest.CMD run src/lib/__tests__/osc-studio.test.ts --reporter verbose --testTimeout 15000` from `web\`: passed, 4/4.
+- Sensor-source references checked during this slice:
+  - `https://www.aida64.com/user-manual/hardware-monitoring/external-applications?language_content_entity=en`: AIDA64 external applications can publish sensor values via shared memory; `AIDA64_SensorValues` is the sensor-value mapping.
+  - `https://docs.nvidia.com/deploy/nvml-api/group__nvmlDeviceQueries.html`: NVML exposes NVIDIA device temperature, fan speed, power usage, memory, and utilization APIs.
+  - `https://github.com/LibreHardwareMonitor/LibreHardwareMonitor`: upstream sensor monitor used as the WMI source for temperature/fan/power/load-style readings when running.
+- `cmd /c node_modules\.bin\vitest.CMD run src/lib/__tests__/osc-studio.test.ts --reporter verbose --testTimeout 20000` from `web\`: passed, 6/6.
 - `cmd /c node_modules\.bin\tsc.CMD -b --pretty false` from `web\`: passed.
 - Locale integrity script over `web/src/i18n/locales/*.json`: passed.
 - `cmd /c node_modules\.bin\vitest.CMD run src/__tests__/pages-smoke.test.tsx --reporter verbose --testTimeout 20000` from `web\`: passed, 23/23; only existing mock IPC / React Router / Three.js warnings.
+- `build\x64-release\tests\VRCSM_Tests.exe --gtest_filter=CommonTests.Aida64SensorValuesParserAcceptsCommonXmlRows`: passed.
+- `build\x64-release\tests\VRCSM_Tests.exe`: passed, 50/50.
+- `git diff --check`: passed.
 - `cmd /c node_modules\.bin\vite.CMD build` from `web\`: passed; emitted existing empty `react-vendor` and large-chunk warnings.
-- `cmake -DSOURCE=web/dist -DDEST=build/x64-release/src/host/web -P cmake/sync-web-dist.cmake`: passed after using the VS2026 bundled CMake absolute path; confirmed host output contains `OscTools-DsKOAM1B.js`.
+- `cmake --build --preset x64-release --target vrcsm` through the VS2026 bundled CMake: passed; `web/dist` was synced into the host output and the host output contains `OscTools-2buEcSyc.js`.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed after syncing frontend dist.
-- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched visibly, PID 31912, window title `VRC Settings Manager`, responding after 8 seconds.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched visibly, PID 26100, window title `VRC Settings Manager`, responding after 8 seconds.
 
 Final local artifacts from this verification:
 
 - `build\release\VRCSM_v0.14.5_x64.zip`
-  - Size: 18,729,410 bytes
-  - SHA256: `BC117951E6397DD626A08DA801ABCDECAB1DB26373FB726478E9219F0A0962F2`
+  - Size: 18,745,290 bytes
+  - SHA256: `608DCCA1F601699A9067885ADEC827E5967CE65E92B83B882270AB1F999E152F`
 - `build\release\VRCSM_v0.14.5_x64_Installer.msi`
-  - Size: 8,638,464 bytes
-  - SHA256: `A76F6FD7D91F2903349B2EE0DC1A23C1B3DFA9104A933D4A7B8FFFBF05A7EB99`
+  - Size: 8,654,848 bytes
+  - SHA256: `B872157CB2E39AF348936E76758C292EDC00B35C8016770DF239244DF7683A42`
 
 ## What Changed Since 0.14.3
 

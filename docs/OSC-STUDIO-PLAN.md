@@ -1,6 +1,6 @@
 # OSC Studio Plan
 
-Last updated: 2026-06-23
+Last updated: 2026-06-24
 
 VRCSM already has the low-level OSC bridge: `OscBridge`, `osc.send`,
 `osc.listen.start`, `osc.listen.stop`, and the `/tools/osc` page. The next step
@@ -93,6 +93,21 @@ Resolved in the 2026-06-23 usability + SMBIOS slice:
   static identity fallback for motherboard and RAM modules when WMI/CIM is slow
   or empty.
 
+Resolved in the 2026-06-24 auto-send + sensor visibility slice:
+
+- Every card in the OSC Studio card list has its own Auto/Stop button. The
+  selected-template panel shows the active auto-send card, sent/skipped counts,
+  next-send countdown, last rendered message, and last error.
+- `hw.telemetry` reads AIDA64's public `AIDA64_SensorValues` shared memory when
+  AIDA64 External Applications publishing is enabled, parses its XML-ish sensor
+  rows, and folds temperature/fan/power/load/voltage/clock rows into the same
+  source-status model as WMI monitor providers and NVML.
+- The hardware variable panel now lists the first live sensor readings instead
+  of only showing aggregate sensor counts.
+- Thermal defaults and saved old `Fan {gpu.fanPct}` templates migrate to
+  `{fan.0}`, because many machines expose fans as RPM sensors rather than a GPU
+  fan percentage.
+
 Current gaps:
 
 - Sensor support depends on what the machine exposes. VRCSM reads real values
@@ -162,6 +177,8 @@ Telemetry source order:
     video memory
 - `ROOT\LibreHardwareMonitor` WMI, if LibreHardwareMonitor is already running.
 - `ROOT\OpenHardwareMonitor` WMI, if OpenHardwareMonitor is already running.
+- `AIDA64_SensorValues` shared memory, if AIDA64 External Applications sensor
+  publishing is enabled.
 - NVIDIA NVML loaded dynamically from `nvml.dll` / NVIDIA NVSMI path.
 
 If none of the sensor providers is available, the UI shows unavailable source
@@ -178,8 +195,9 @@ Important accuracy boundary:
   source. It must never invent values to make a card look complete.
 - Next vendor-specific sensor backends should be added behind the same
   `HwTelemetry` source-status contract: AMD ADLX, Intel Level Zero Sysman or
-  Graphics Control Library, HWiNFO shared memory if present, and embedded
-  LibreHardwareMonitor if licensing/distribution is acceptable.
+  Graphics Control Library, HWiNFO shared memory only with a clear legal/SDK
+  boundary, and embedded LibreHardwareMonitor if licensing/distribution is
+  acceptable.
 
 ## Card Types
 

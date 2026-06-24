@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cardPreview,
+  importOscStudioProfile,
   renderOscTemplate,
   type HardwareSnapshot,
   type OscStudioCard,
@@ -40,6 +41,44 @@ describe("osc-studio templates", () => {
 
   it("does not treat a lone category label as a valid chatbox preview", () => {
     expect(renderOscTemplate("Thermal | CPU {cpu.tempC} | Fan {gpu.fanPct}", { now: fixedNow })).toBe("");
+  });
+
+  it("renders first detected fan sensor for thermal templates", () => {
+    const hardware: HardwareSnapshot = {
+      telemetry: {
+        generated_at: fixedNow.toISOString(),
+        fans: [
+          {
+            source: "aida64_shared_memory",
+            id: "FGPU",
+            name: "GPU Fan",
+            sensor_type: "Fan",
+            value: 1330,
+            unit: "RPM",
+          },
+        ],
+      },
+    };
+
+    expect(renderOscTemplate("Thermal | {fan.0}", { hardware, now: fixedNow })).toBe("Thermal | GPU Fan 1330RPM");
+  });
+
+  it("migrates old GPU fan percent templates to detected fan sensors", () => {
+    const cards = importOscStudioProfile(JSON.stringify([
+      {
+        id: "thermal",
+        kind: "sensor-temperature",
+        title: "Thermal",
+        group: "telemetry",
+        enabled: true,
+        address: "/chatbox/input",
+        valueType: "string",
+        value: "",
+        template: "Thermal | GPU {gpu.tempC} | Fan {gpu.fanPct}",
+      },
+    ]));
+
+    expect(cards[0].template).toBe("Thermal | GPU {gpu.tempC} | {fan.0}");
   });
 
   it("limits chatbox card previews to VRChat's visible chatbox length", () => {

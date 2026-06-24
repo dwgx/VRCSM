@@ -14,8 +14,10 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <charconv>
 #include <functional>
 #include <limits>
+#include <regex>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -137,6 +139,7 @@ constexpr const wchar_t* kLibreHardwareMonitorNamespace = L"ROOT\\LibreHardwareM
 constexpr const wchar_t* kOpenHardwareMonitorNamespace = L"ROOT\\OpenHardwareMonitor";
 constexpr long kWmiQueryTimeoutMs = 2500;
 constexpr DWORD kRawSmbiosProvider = 0x52534D42; // 'RSMB'
+constexpr const wchar_t* kAida64SensorValuesMap = L"AIDA64_SensorValues";
 
 struct SmbiosHeader
 {
@@ -192,6 +195,63 @@ std::string CleanHardwareString(std::string value)
         }
     }
     return value;
+}
+
+std::string DecodeXmlEntities(std::string value)
+{
+    const std::array<std::pair<std::string_view, std::string_view>, 5> entities{{
+        {"&amp;", "&"},
+        {"&lt;", "<"},
+        {"&gt;", ">"},
+        {"&quot;", "\""},
+        {"&apos;", "'"},
+    }};
+    for (const auto& [from, to] : entities)
+    {
+        std::size_t pos = 0;
+        while ((pos = value.find(from, pos)) != std::string::npos)
+        {
+            value.replace(pos, from.size(), to);
+            pos += to.size();
+        }
+    }
+    return value;
+}
+
+std::optional<double> ParseLooseDouble(std::string value)
+{
+    value = Trim(std::move(value));
+    std::replace(value.begin(), value.end(), ',', '.');
+    std::string numeric;
+    numeric.reserve(value.size());
+    bool seenDigit = false;
+    for (char ch : value)
+    {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isdigit(uch) || ch == '.' || ch == '-' || ch == '+')
+        {
+            numeric.push_back(ch);
+            if (std::isdigit(uch))
+            {
+                seenDigit = true;
+            }
+        }
+        else if (seenDigit)
+        {
+            break;
+        }
+    }
+    if (!seenDigit)
+    {
+        return std::nullopt;
+    }
+    double parsed = 0.0;
+    const auto result = std::from_chars(numeric.data(), numeric.data() + numeric.size(), parsed);
+    if (result.ec != std::errc{})
+    {
+        return std::nullopt;
+    }
+    return parsed;
 }
 
 std::string CleanSmbiosString(std::string value)
@@ -829,6 +889,50 @@ std::optional<double> PickSensorValue(const std::vector<SensorReading>& sensors,
     return best ? best->value : std::nullopt;
 }
 
+void ApplySensorCollection(const std::vector<SensorReading>& collected, const std::string& sourceName, TelemetrySnapshot& snapshot)
+{
+    for (const auto& sensor : collected)
+    {
+        if (IContains(sensor.sensorType, "fan"))
+        {
+            snapshot.fans.push_back(sensor);
+        }
+        if (IContains(sensor.sensorType, "power"))
+        {
+            snapshot.power.push_back(sensor);
+        }
+    }
+
+    if (!snapshot.cpu.temperatureC.has_value())
+    {
+        snapshot.cpu.temperatureC = PickSensorValue(collected, "temperature", false);
+    }
+    if (!snapshot.cpu.loadPct.has_value())
+    {
+        snapshot.cpu.loadPct = PickSensorValue(collected, "load", false);
+    }
+    if (!snapshot.cpu.powerWatts.has_value())
+    {
+        snapshot.cpu.powerWatts = PickSensorValue(collected, "power", false);
+    }
+    if (!snapshot.gpu.temperatureC.has_value())
+    {
+        snapshot.gpu.temperatureC = PickSensorValue(collected, "temperature", true);
+        if (snapshot.gpu.temperatureC.has_value() && snapshot.gpu.primarySource.empty())
+        {
+            snapshot.gpu.primarySource = sourceName;
+        }
+    }
+    if (!snapshot.gpu.loadPct.has_value())
+    {
+        snapshot.gpu.loadPct = PickSensorValue(collected, "load", true);
+    }
+    if (!snapshot.gpu.powerWatts.has_value())
+    {
+        snapshot.gpu.powerWatts = PickSensorValue(collected, "power", true);
+    }
+}
+
 void ProbeMonitorSensors(const wchar_t* namespaceName, std::string sourceName, TelemetrySnapshot& snapshot)
 {
     std::string errorMessage;
@@ -872,48 +976,159 @@ void ProbeMonitorSensors(const wchar_t* namespaceName, std::string sourceName, T
         collected.empty() ? "Sensor WMI namespace is present but has no Sensor rows" : fmt::format("{} sensors", collected.size()),
     });
 
-    for (const auto& sensor : collected)
-    {
-        if (IContains(sensor.sensorType, "fan"))
-        {
-            snapshot.fans.push_back(sensor);
-        }
-        if (IContains(sensor.sensorType, "power"))
-        {
-            snapshot.power.push_back(sensor);
-        }
-    }
-
-    if (!snapshot.cpu.temperatureC.has_value())
-    {
-        snapshot.cpu.temperatureC = PickSensorValue(collected, "temperature", false);
-    }
-    if (!snapshot.cpu.loadPct.has_value())
-    {
-        snapshot.cpu.loadPct = PickSensorValue(collected, "load", false);
-    }
-    if (!snapshot.cpu.powerWatts.has_value())
-    {
-        snapshot.cpu.powerWatts = PickSensorValue(collected, "power", false);
-    }
-    if (!snapshot.gpu.temperatureC.has_value())
-    {
-        snapshot.gpu.temperatureC = PickSensorValue(collected, "temperature", true);
-        if (snapshot.gpu.temperatureC.has_value() && snapshot.gpu.primarySource.empty())
-        {
-            snapshot.gpu.primarySource = sourceName;
-        }
-    }
-    if (!snapshot.gpu.loadPct.has_value())
-    {
-        snapshot.gpu.loadPct = PickSensorValue(collected, "load", true);
-    }
-    if (!snapshot.gpu.powerWatts.has_value())
-    {
-        snapshot.gpu.powerWatts = PickSensorValue(collected, "power", true);
-    }
+    ApplySensorCollection(collected, sourceName, snapshot);
 
     snapshot.sensors.insert(snapshot.sensors.end(), collected.begin(), collected.end());
+}
+
+std::string XmlTagText(const std::string& block, std::string_view tag)
+{
+    const std::string open = fmt::format("<{}>", tag);
+    const std::string close = fmt::format("</{}>", tag);
+    const auto start = block.find(open);
+    if (start == std::string::npos)
+    {
+        return {};
+    }
+    const auto textStart = start + open.size();
+    const auto end = block.find(close, textStart);
+    if (end == std::string::npos)
+    {
+        return {};
+    }
+    return CleanHardwareString(DecodeXmlEntities(block.substr(textStart, end - textStart)));
+}
+
+std::string AidaSensorType(std::string_view id, std::string_view label)
+{
+    const auto idLower = ToLower(std::string(id));
+    const auto haystack = ToLower(fmt::format("{} {}", id, label));
+    if (haystack.find("fan") != std::string::npos || haystack.find("rpm") != std::string::npos)
+    {
+        return "Fan";
+    }
+    if (!idLower.empty() && idLower.front() == 'f')
+    {
+        return "Fan";
+    }
+    if (haystack.find("power") != std::string::npos || haystack.find("watt") != std::string::npos)
+    {
+        return "Power";
+    }
+    if (!idLower.empty() && idLower.front() == 'p')
+    {
+        return "Power";
+    }
+    if (haystack.find("load") != std::string::npos || haystack.find("util") != std::string::npos)
+    {
+        return "Load";
+    }
+    if (!idLower.empty() && idLower.front() == 'u')
+    {
+        return "Load";
+    }
+    if (haystack.find("volt") != std::string::npos)
+    {
+        return "Voltage";
+    }
+    if (!idLower.empty() && idLower.front() == 'v')
+    {
+        return "Voltage";
+    }
+    if (haystack.find("clock") != std::string::npos)
+    {
+        return "Clock";
+    }
+    if (!idLower.empty() && idLower.front() == 'c')
+    {
+        return "Clock";
+    }
+    if (haystack.find("temp") != std::string::npos || haystack.find("diode") != std::string::npos)
+    {
+        return "Temperature";
+    }
+    if (!idLower.empty() && idLower.front() == 't')
+    {
+        return "Temperature";
+    }
+    return "Sensor";
+}
+
+std::vector<SensorReading> ParseAida64SensorValues(const std::string& xml)
+{
+    std::vector<SensorReading> sensors;
+    static const std::regex itemRe(R"(<(item|sensor)>\s*([\s\S]*?)\s*</\1>)", std::regex::icase);
+    for (std::sregex_iterator it(xml.begin(), xml.end(), itemRe), end; it != end; ++it)
+    {
+        const auto block = (*it)[2].str();
+        SensorReading sensor;
+        sensor.id = XmlTagText(block, "id");
+        sensor.name = XmlTagText(block, "label");
+        if (sensor.name.empty())
+        {
+            sensor.name = XmlTagText(block, "name");
+        }
+        sensor.sensorType = XmlTagText(block, "type");
+        auto valueText = XmlTagText(block, "value");
+        if (valueText.empty())
+        {
+            valueText = XmlTagText(block, "temp");
+        }
+        sensor.value = ParseLooseDouble(valueText);
+        sensor.source = "aida64_shared_memory";
+        if (sensor.sensorType.empty())
+        {
+            sensor.sensorType = AidaSensorType(sensor.id, sensor.name);
+        }
+        sensor.unit = SensorUnit(sensor.sensorType);
+        if (!sensor.name.empty() && sensor.value.has_value())
+        {
+            sensors.push_back(std::move(sensor));
+        }
+    }
+    return sensors;
+}
+
+void ProbeAida64SharedMemory(TelemetrySnapshot& snapshot)
+{
+    wil::unique_handle mapping(OpenFileMappingW(FILE_MAP_READ, FALSE, kAida64SensorValuesMap));
+    if (!mapping)
+    {
+        snapshot.sources.push_back(TelemetrySourceStatus{"aida64_shared_memory", false, "AIDA64_SensorValues mapping not found"});
+        return;
+    }
+
+    void* view = MapViewOfFile(mapping.get(), FILE_MAP_READ, 0, 0, 0);
+    if (!view)
+    {
+        snapshot.sources.push_back(TelemetrySourceStatus{"aida64_shared_memory", false, "MapViewOfFile failed"});
+        return;
+    }
+    auto unmap = wil::scope_exit([&]() { UnmapViewOfFile(view); });
+
+    // AIDA64 publishes a null-terminated XML-ish sensor list in this mapping.
+    // Cap the scan to 1 MiB so a malformed mapping cannot make us walk arbitrary memory forever.
+    constexpr std::size_t kMaxAidaBytes = 1024 * 1024;
+    const auto* bytes = static_cast<const char*>(view);
+    std::size_t length = 0;
+    while (length < kMaxAidaBytes && bytes[length] != '\0')
+    {
+        ++length;
+    }
+    if (length == 0 || length == kMaxAidaBytes)
+    {
+        snapshot.sources.push_back(TelemetrySourceStatus{"aida64_shared_memory", false, "SensorValues payload missing terminator"});
+        return;
+    }
+
+    const auto sensors = ParseAida64SensorValues(std::string(bytes, length));
+    snapshot.sources.push_back(TelemetrySourceStatus{
+        "aida64_shared_memory",
+        !sensors.empty(),
+        sensors.empty() ? "AIDA64 shared memory present but no sensor rows parsed" : fmt::format("{} sensors", sensors.size()),
+    });
+    ApplySensorCollection(sensors, "aida64_shared_memory", snapshot);
+    snapshot.sensors.insert(snapshot.sensors.end(), sensors.begin(), sensors.end());
 }
 
 std::filesystem::path NvmlDefaultPath()
@@ -1199,6 +1414,11 @@ void ProbeNvml(TelemetrySnapshot& snapshot)
 
 } // namespace
 
+std::vector<SensorReading> ParseAida64SensorValuesForTest(const std::string& xml)
+{
+    return ParseAida64SensorValues(xml);
+}
+
 Result<TelemetrySnapshot> CollectTelemetry()
 {
     try
@@ -1253,6 +1473,7 @@ Result<TelemetrySnapshot> CollectTelemetry()
         ProbeDxgiGpuAdapters(snapshot);
         ProbeMonitorSensors(kLibreHardwareMonitorNamespace, "librehardwaremonitor_wmi", snapshot);
         ProbeMonitorSensors(kOpenHardwareMonitorNamespace, "openhardwaremonitor_wmi", snapshot);
+        ProbeAida64SharedMemory(snapshot);
         ProbeNvml(snapshot);
 
         return snapshot;

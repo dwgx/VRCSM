@@ -235,8 +235,15 @@
       "clickToInsert": "Нажмите, чтобы вставить",
       "noComponents": "Нет компонентов для этого фильтра.",
       "avatarParamsHint": "Сканирует локальную OSC-конфигурацию аватара и делает параметры картами управления. Это не распаковщик моделей.",
-      "emptyRendered": "В шаблоне нет доступных значений"
-    }
+      "emptyRendered": "В шаблоне нет доступных значений",
+      "cardDisabled": "Карта отключена",
+      "autoCardMissing": "Карта автоотправки удалена",
+      "autoStats": "Отпр. {{sent}} / проп. {{skipped}}",
+      "nextSendIn": "Через {{seconds}} с",
+      "stopAutoShort": "Стоп",
+      "startAutoShort": "Авто"
+    },
+    "sendFailed": "OSC не отправлен"
   },
   "auth": {
     "signIn": "Войти",

@@ -235,8 +235,15 @@
       "clickToInsert": "जोड़ने के लिए क्लिक करें",
       "noComponents": "इस फ़िल्टर से कोई घटक मेल नहीं खाता।",
       "avatarParamsHint": "लोकल अवतार OSC कॉन्फिग स्कैन करता है और पैरामीटरों को कंट्रोल कार्ड में बदलता है। यह अवतार मॉडल अनपैकर नहीं है।",
-      "emptyRendered": "टेम्पलेट में उपलब्ध मान नहीं हैं"
-    }
+      "emptyRendered": "टेम्पलेट में उपलब्ध मान नहीं हैं",
+      "cardDisabled": "कार्ड बंद है",
+      "autoCardMissing": "ऑटो-सेंड कार्ड हटा दिया गया",
+      "autoStats": "भेजे {{sent}} / छोड़े {{skipped}}",
+      "nextSendIn": "{{seconds}}s में अगला",
+      "stopAutoShort": "रोकें",
+      "startAutoShort": "ऑटो"
+    },
+    "sendFailed": "OSC भेजना विफल रहा"
   },
   "auth": {
     "signIn": "साइन इन",

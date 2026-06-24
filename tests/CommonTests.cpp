@@ -22,6 +22,7 @@
 #include "core/UnityBundle.h"
 #include "core/VrcApi.h"
 #include "core/VrDiagnostics.h"
+#include "core/hw/HwTelemetry.h"
 #include "core/plugins/PluginRegistry.h"
 #include "core/updater/UpdatePackage.h"
 
@@ -139,6 +140,28 @@ TEST(CommonTests, EnsureWithinBaseIsCaseInsensitiveOnWindows)
     EXPECT_TRUE(vrcsm::core::ensureWithinBase(
         L"c:\\vrchat\\cache",
         L"C:\\VRChat\\Cache\\HTTPCache-WindowsPlayer"));
+}
+
+TEST(CommonTests, Aida64SensorValuesParserAcceptsCommonXmlRows)
+{
+    const std::string xml = R"(
+<AIDA64>
+  <sensor><id>TCPU</id><label>CPU Package</label><value>62 C</value></sensor>
+  <sensor><id>TGPU</id><label>GPU Diode</label><value>56 C</value></sensor>
+  <sensor><id>PGPU</id><label>GPU Power</label><value>40.7 W</value></sensor>
+  <sensor><id>FGPU</id><label>GPU Fan</label><value>1330 RPM</value></sensor>
+</AIDA64>)";
+
+    const auto sensors = vrcsm::core::hw::ParseAida64SensorValuesForTest(xml);
+
+    ASSERT_EQ(sensors.size(), 4u);
+    EXPECT_EQ(sensors[0].sensorType, "Temperature");
+    EXPECT_EQ(sensors[0].unit, "C");
+    ASSERT_TRUE(sensors[2].value.has_value());
+    EXPECT_NEAR(*sensors[2].value, 40.7, 0.01);
+    EXPECT_EQ(sensors[2].sensorType, "Power");
+    EXPECT_EQ(sensors[3].sensorType, "Fan");
+    EXPECT_EQ(sensors[3].unit, "RPM");
 }
 
 TEST(CommonTests, DeleteExecuteRejectsPreservedCwpRootTargets)

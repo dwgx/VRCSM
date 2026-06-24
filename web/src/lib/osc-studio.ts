@@ -191,7 +191,7 @@ export const OSC_STUDIO_DEFAULT_CARDS: OscStudioCard[] = [
     address: "/chatbox/input",
     valueType: "string",
     value: "",
-    template: "Thermal | CPU {cpu.tempC} {cpu.powerW} | GPU {gpu.tempC} {gpu.powerW} | Fan {gpu.fanPct}",
+    template: "Thermal | CPU {cpu.tempC} {cpu.powerW} | GPU {gpu.tempC} {gpu.powerW} | {fan.0}",
     autoIntervalSec: 20,
   },
 ];
@@ -273,8 +273,8 @@ export const OSC_TEMPLATE_CARDS: OscTemplateComponentCard[] = [
     id: "gpu-power-fan",
     group: "gpu",
     label: "GPU power + fan",
-    description: "Power draw and fan percentage",
-    template: "GPU {gpu.powerW} Fan {gpu.fanPct}",
+    description: "Power draw and first detected fan sensor",
+    template: "GPU {gpu.powerW} {fan.0}",
   },
   {
     id: "memory-usage",
@@ -389,7 +389,7 @@ export const OSC_STUDIO_SCENES: Array<{ id: string; label: string; cards: OscStu
         address: "/chatbox/input",
         valueType: "string",
         value: "",
-        template: "Thermal | CPU {cpu.tempC} {cpu.powerW} | GPU {gpu.tempC} {gpu.powerW} | Fan {gpu.fanPct}",
+        template: "Thermal | CPU {cpu.tempC} {cpu.powerW} | GPU {gpu.tempC} {gpu.powerW} | {fan.0}",
         autoIntervalSec: 20,
       },
     ],
@@ -644,7 +644,12 @@ function normalizeCard(card: OscStudioCard): OscStudioCard {
   return {
     ...card,
     group: card.group ?? groupForKind(card.kind),
+    template: normalizeTemplateText(card.template),
   };
+}
+
+function normalizeTemplateText(template: string | undefined): string | undefined {
+  return template?.replaceAll("Fan {gpu.fanPct}", "{fan.0}");
 }
 
 function groupForKind(kind: OscCardKind): OscCardGroup {

@@ -235,8 +235,15 @@
       "clickToInsert": "クリックで挿入",
       "noComponents": "このフィルターに一致するコンポーネントはありません。",
       "avatarParamsHint": "ローカルアバターの OSC 設定を読み取り、パラメーターを操作カードに変換します。アバターモデルの解包機能ではありません。",
-      "emptyRendered": "テンプレートに利用可能な値がありません"
-    }
+      "emptyRendered": "テンプレートに利用可能な値がありません",
+      "cardDisabled": "カードは無効です",
+      "autoCardMissing": "自動送信カードが削除されました",
+      "autoStats": "送信 {{sent}} / スキップ {{skipped}}",
+      "nextSendIn": "次の送信まで {{seconds}}秒",
+      "stopAutoShort": "停止",
+      "startAutoShort": "自動"
+    },
+    "sendFailed": "OSC送信に失敗しました"
   },
   "auth": {
     "signIn": "サインイン",

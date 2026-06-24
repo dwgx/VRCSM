@@ -61,6 +61,7 @@ import {
   type OscStudioCard,
   type OscTemplateComponentCard,
   type OscValueType,
+  type SensorReading,
 } from "@/lib/osc-studio";
 import type { LocalAvatarItem } from "@/lib/types";
 
@@ -118,6 +119,24 @@ interface SendCardOptions {
 
 type ChatboxMessageSource = string | (() => string);
 
+interface SendOutcome {
+  status: "sent" | "skipped" | "cancelled";
+  message?: string;
+  reason?: string;
+}
+
+interface AutoSendStatus {
+  cardId: string;
+  title: string;
+  state: "running" | "waiting" | "sent" | "skipped" | "error";
+  sendCount: number;
+  skipCount: number;
+  lastMessage?: string;
+  lastSentAt?: number;
+  lastError?: string;
+  nextSendAt?: number;
+}
+
 interface OscTemplateBlock {
   id: string;
   text: string;
@@ -149,8 +168,10 @@ export default function OscTools() {
   const [clockTick, setClockTick] = useState(() => Date.now());
   const [componentFilter, setComponentFilter] = useState<OscTemplateComponentFilter>("recommended");
   const [componentSearch, setComponentSearch] = useState("");
+  const [autoStatus, setAutoStatus] = useState<AutoSendStatus | null>(null);
   const autoTimerRef = useRef<number | null>(null);
   const autoRunIdRef = useRef(0);
+  const autoStatsRef = useRef({ sendCount: 0, skipCount: 0 });
   const latestCardsRef = useRef(cards);
   const hardwareRef = useRef<HardwareSnapshot | null>(hardware);
   const hostRef = useRef(host);
@@ -328,32 +349,37 @@ export default function OscTools() {
     }
   }
 
-  async function sendCard(card: OscStudioCard, options: SendCardOptions = {}) {
-    if (!card.enabled) return;
-    if (options.shouldContinue && !options.shouldContinue()) return;
+  async function sendCard(card: OscStudioCard, options: SendCardOptions = {}): Promise<SendOutcome> {
+    if (!card.enabled) {
+      return { status: "skipped", reason: t("osc.studio.cardDisabled", { defaultValue: "Card is disabled" }) };
+    }
+    if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
     if (!card.address.startsWith("/")) {
       toast.error(t("osc.invalidAddress", { defaultValue: "Address must start with /" }));
-      return;
+      return { status: "skipped", reason: t("osc.invalidAddress", { defaultValue: "Address must start with /" }) };
     }
 
     if (isChatboxCard(card)) {
-      await sendChatboxWithLimit(
+      return await sendChatboxWithLimit(
         () => cardPreview(card, { hardware: hardwareRef.current, now: new Date() }),
         options,
       );
-      return;
     }
 
     const value = coerceOscValue(card.valueType, card.value);
     if (value === null) {
       toast.error(t("osc.invalidValue", { defaultValue: "Value can't be parsed" }));
-      return;
+      return { status: "skipped", reason: t("osc.invalidValue", { defaultValue: "Value can't be parsed" }) };
     }
-    if (options.shouldContinue && !options.shouldContinue()) return;
-    await sendOscMessage(card.address, [value], { host: hostRef.current, port: sendPortRef.current });
+    if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
+    const result = await sendOscMessage(card.address, [value], { host: hostRef.current, port: sendPortRef.current });
+    if (!result.ok) {
+      throw new Error(t("osc.sendFailed", { defaultValue: "OSC send failed" }));
+    }
     if (!options.silentSuccess) {
       toast.success(t("osc.sent", { defaultValue: "Sent" }));
     }
+    return { status: "sent", message: `${card.address} ${card.value}`.trim() };
   }
 
   async function sendSelectedCard() {
@@ -365,44 +391,59 @@ export default function OscTools() {
     }
   }
 
-  async function sendChatboxWithLimit(messageSource: ChatboxMessageSource, options: SendCardOptions = {}) {
-    if (options.shouldContinue && !options.shouldContinue()) return;
+  async function sendChatboxWithLimit(messageSource: ChatboxMessageSource, options: SendCardOptions = {}): Promise<SendOutcome> {
+    if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
     const now = Date.now();
     const elapsed = now - lastChatboxSentRef.current;
     if (elapsed < CHATBOX_RATE_LIMIT_MS) {
       if (options.waitForRateLimit) {
         await wait(CHATBOX_RATE_LIMIT_MS - elapsed + 50);
-        if (options.shouldContinue && !options.shouldContinue()) return;
+        if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
       } else {
         toast.error(t("osc.chatbox.rateLimit", { defaultValue: "Wait 2 seconds between messages (VRChat rate limit)" }));
-        return;
+        return { status: "skipped", reason: t("osc.chatbox.rateLimit", { defaultValue: "Wait 2 seconds between messages (VRChat rate limit)" }) };
       }
     }
     const message = typeof messageSource === "function" ? messageSource() : messageSource;
     const trimmed = message.trim().slice(0, 144);
     if (!trimmed) {
+      const reason = t("osc.studio.emptyRendered", { defaultValue: "Template has no available values" });
       if (!options.silentSuccess) {
-        toast.error(t("osc.studio.emptyRendered", { defaultValue: "Template has no available values" }));
+        toast.error(reason);
       }
-      return;
+      return { status: "skipped", reason };
     }
-    if (options.shouldContinue && !options.shouldContinue()) return;
-    await sendChatbox(trimmed, { host: hostRef.current, port: sendPortRef.current });
+    if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
+    const result = await sendChatbox(trimmed, { host: hostRef.current, port: sendPortRef.current });
+    if (!result.ok) {
+      throw new Error(t("osc.sendFailed", { defaultValue: "OSC send failed" }));
+    }
     lastChatboxSentRef.current = Date.now();
     if (!options.silentSuccess) {
       toast.success(t("osc.chatbox.sent", { defaultValue: "Chatbox sent" }));
     }
+    return { status: "sent", message: trimmed };
   }
 
-  function startAutoSend() {
-    if (!selectedCard) return;
+  function startAutoSend(cardOverride?: OscStudioCard) {
+    const targetCard = cardOverride ?? selectedCard;
+    if (!targetCard) return;
     stopAutoSend();
-    const intervalSec = Math.max(2, selectedCard.autoIntervalSec ?? 20);
+    const intervalSec = Math.max(2, targetCard.autoIntervalSec ?? 20);
     const intervalMs = intervalSec * 1000;
-    const cardId = selectedCard.id;
+    const cardId = targetCard.id;
     const runId = autoRunIdRef.current + 1;
     autoRunIdRef.current = runId;
+    autoStatsRef.current = { sendCount: 0, skipCount: 0 };
     setActiveAutoId(cardId);
+    setAutoStatus({
+      cardId,
+      title: targetCard.title,
+      state: "running",
+      sendCount: 0,
+      skipCount: 0,
+      nextSendAt: Date.now(),
+    });
     toast.success(t("osc.studio.autoStarted", { defaultValue: "Auto send started" }));
     let nextRunAt = Date.now();
     const isCurrentRun = () => autoRunIdRef.current === runId;
@@ -412,21 +453,64 @@ export default function OscTools() {
       const current = latestCardsRef.current.find((card) => card.id === cardId);
       if (!current) {
         setActiveAutoId(null);
+        setAutoStatus((prev) => prev && prev.cardId === cardId
+          ? { ...prev, state: "error", lastError: t("osc.studio.autoCardMissing", { defaultValue: "Auto-send card was removed" }) }
+          : prev);
         return false;
       }
+      setAutoStatus((prev) => prev && prev.cardId === cardId
+        ? {
+            ...prev,
+            title: current.title,
+            state: "running",
+            lastError: undefined,
+          }
+        : prev);
       if (!hardwareRef.current || Date.now() - lastHardwareRefreshRef.current >= AUTO_TELEMETRY_REFRESH_MS) {
         await refreshHardware(true);
       }
       if (!isCurrentRun()) return false;
-      await sendCard(current, {
+      const outcome = await sendCard(current, {
         silentSuccess: true,
         waitForRateLimit: true,
         shouldContinue: isCurrentRun,
       });
-      return isCurrentRun();
+      if (!isCurrentRun()) return false;
+      if (outcome.status === "sent") {
+        autoStatsRef.current.sendCount += 1;
+        setAutoStatus((prev) => prev && prev.cardId === cardId
+          ? {
+              ...prev,
+              title: current.title,
+              state: "sent",
+              sendCount: autoStatsRef.current.sendCount,
+              skipCount: autoStatsRef.current.skipCount,
+              lastMessage: outcome.message,
+              lastSentAt: Date.now(),
+              lastError: undefined,
+            }
+          : prev);
+      } else if (outcome.status === "skipped") {
+        autoStatsRef.current.skipCount += 1;
+        setAutoStatus((prev) => prev && prev.cardId === cardId
+          ? {
+              ...prev,
+              title: current.title,
+              state: "skipped",
+              sendCount: autoStatsRef.current.sendCount,
+              skipCount: autoStatsRef.current.skipCount,
+              lastError: outcome.reason,
+            }
+          : prev);
+      }
+      return outcome.status !== "cancelled" && isCurrentRun();
     };
 
     const scheduleNext = (delayMs: number) => {
+      const scheduledAt = Date.now() + Math.max(0, delayMs);
+      setAutoStatus((prev) => prev && prev.cardId === cardId
+        ? { ...prev, state: delayMs > 0 ? "waiting" : prev.state, nextSendAt: scheduledAt }
+        : prev);
       autoTimerRef.current = window.setTimeout(() => {
         autoTimerRef.current = null;
         void (async () => {
@@ -440,7 +524,11 @@ export default function OscTools() {
           scheduleNext(nextRunAt - nowMs);
         })().catch((err) => {
           if (autoRunIdRef.current === runId) {
-            toast.error(err instanceof Error ? err.message : String(err));
+            const message = err instanceof Error ? err.message : String(err);
+            toast.error(message);
+            setAutoStatus((prev) => prev && prev.cardId === cardId
+              ? { ...prev, state: "error", lastError: message }
+              : prev);
             nextRunAt = Date.now() + intervalMs;
             scheduleNext(intervalMs);
           }
@@ -458,6 +546,7 @@ export default function OscTools() {
       autoTimerRef.current = null;
     }
     setActiveAutoId(null);
+    setAutoStatus(null);
   }
 
   async function sendRaw() {
@@ -625,6 +714,8 @@ export default function OscTools() {
             selectedPreview={selectedPreview}
             draggingTemplate={draggedTemplate !== null}
             activeAutoId={activeAutoId}
+            autoStatus={autoStatus}
+            nowMs={clockTick}
             onTemplateChange={setSelectedTemplateText}
             onPatchSelected={(patch) => {
               if (selectedCard) patchCard(selectedCard.id, patch);
@@ -651,6 +742,7 @@ export default function OscTools() {
                     key={card.id}
                     card={card}
                     active={selectedCard?.id === card.id}
+                    autoActive={activeAutoId === card.id}
                     preview={cardPreview(card, { hardware, now: new Date(clockTick) })}
                     canMoveUp={realIndex > 0}
                     canMoveDown={realIndex < cards.length - 1}
@@ -660,6 +752,8 @@ export default function OscTools() {
                     onMoveUp={() => moveCard(card.id, -1)}
                     onMoveDown={() => moveCard(card.id, 1)}
                     onSend={() => void sendCard(card)}
+                    onStartAuto={() => startAutoSend(card)}
+                    onStopAuto={stopAutoSend}
                     onDragStart={() => dragStart(card.id)}
                     onDragOver={dragOver}
                     onDrop={() => dropOnCard(card.id)}
@@ -803,6 +897,7 @@ function StudioToolbar({
 function OscCardEditor({
   card,
   active,
+  autoActive,
   preview,
   canMoveUp,
   canMoveDown,
@@ -812,6 +907,8 @@ function OscCardEditor({
   onMoveUp,
   onMoveDown,
   onSend,
+  onStartAuto,
+  onStopAuto,
   onDragStart,
   onDragOver,
   onDrop,
@@ -819,6 +916,7 @@ function OscCardEditor({
 }: {
   card: OscStudioCard;
   active: boolean;
+  autoActive: boolean;
   preview: string;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -828,6 +926,8 @@ function OscCardEditor({
   onMoveUp: () => void;
   onMoveDown: () => void;
   onSend: () => void;
+  onStartAuto: () => void;
+  onStopAuto: () => void;
   onDragStart: () => void;
   onDragOver: (event: DragEvent<HTMLDivElement>) => void;
   onDrop: () => void;
@@ -918,7 +1018,7 @@ function OscCardEditor({
             />
           </div>
         )}
-        <div className="grid grid-cols-[1fr_88px] gap-2">
+        <div className="grid grid-cols-[1fr_88px_88px] gap-2">
           <label className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-2 text-[10px] text-[hsl(var(--muted-foreground))]">
             <span>{t("osc.studio.interval", { defaultValue: "Every" })}</span>
             <Input
@@ -935,6 +1035,20 @@ function OscCardEditor({
             <Send className="size-3" />
             {t("osc.sendButton", { defaultValue: "Send" })}
           </Button>
+          <Button
+            variant={autoActive ? "default" : "outline"}
+            size="sm"
+            className="h-7"
+            onClick={(e) => {
+              e.stopPropagation();
+              autoActive ? onStopAuto() : onStartAuto();
+            }}
+          >
+            {autoActive ? <Pause className="size-3" /> : <Play className="size-3" />}
+            {autoActive
+              ? t("osc.studio.stopAutoShort", { defaultValue: "Stop" })
+              : t("osc.studio.startAutoShort", { defaultValue: "Auto" })}
+          </Button>
         </div>
         <div className="line-clamp-2 min-h-8 rounded-[var(--radius-sm)] bg-[hsl(var(--canvas))] px-2 py-1 font-mono text-[10px] text-[hsl(var(--muted-foreground))]" title={preview}>
           {preview || "--"}
@@ -949,6 +1063,8 @@ function TemplateBuilderPanel({
   selectedPreview,
   draggingTemplate,
   activeAutoId,
+  autoStatus,
+  nowMs,
   onTemplateChange,
   onPatchSelected,
   onDropTemplate,
@@ -961,6 +1077,8 @@ function TemplateBuilderPanel({
   selectedPreview: string;
   draggingTemplate: boolean;
   activeAutoId: string | null;
+  autoStatus: AutoSendStatus | null;
+  nowMs: number;
   onTemplateChange: (template: string) => void;
   onPatchSelected: (patch: Partial<OscStudioCard>) => void;
   onDropTemplate: (template: string) => void;
@@ -973,6 +1091,9 @@ function TemplateBuilderPanel({
   const templateText = templateTextForCard(selectedCard);
   const [customText, setCustomText] = useState("");
   const blocks = useMemo(() => templateBlocksFromText(templateText), [templateText]);
+  const nextSendInSec = autoStatus?.nextSendAt
+    ? Math.max(0, Math.ceil((autoStatus.nextSendAt - nowMs) / 1000))
+    : null;
   const replaceBlocks = (nextBlocks: OscTemplateBlock[]) => {
     onTemplateChange(templateTextFromBlocks(nextBlocks));
   };
@@ -994,6 +1115,40 @@ function TemplateBuilderPanel({
         ) : null}
       </div>
       <CardContent className="grid gap-3 p-3">
+        {autoStatus ? (
+          <div className="grid gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate text-[12px] font-semibold">
+                  {autoStatus.title}
+                </div>
+                <div className="font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                  {t("osc.studio.autoStats", {
+                    defaultValue: "Sent {{sent}} / skipped {{skipped}}",
+                    sent: autoStatus.sendCount,
+                    skipped: autoStatus.skipCount,
+                  })}
+                  {nextSendInSec !== null
+                    ? ` · ${t("osc.studio.nextSendIn", { defaultValue: "Next in {{seconds}}s", seconds: nextSendInSec })}`
+                    : ""}
+                </div>
+              </div>
+              <Badge variant={autoStatus.state === "error" ? "destructive" : autoStatus.state === "skipped" ? "warning" : "success"} className="h-5 px-2 text-[10px]">
+                {autoStatus.state.toUpperCase()}
+              </Badge>
+            </div>
+            {autoStatus.lastMessage ? (
+              <div className="line-clamp-2 rounded-[var(--radius-sm)] bg-[hsl(var(--surface-raised))] px-2 py-1 font-mono text-[10px]" title={autoStatus.lastMessage}>
+                {autoStatus.lastMessage}
+              </div>
+            ) : null}
+            {autoStatus.lastError ? (
+              <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--warning)/0.35)] bg-[hsl(var(--warning)/0.08)] px-2 py-1 text-[11px] text-[hsl(var(--warning-foreground))]">
+                {autoStatus.lastError}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div
           className={`grid gap-2 rounded-[var(--radius-sm)] border p-2 ${
             draggingTemplate
@@ -1214,6 +1369,11 @@ function HardwarePanel({ hardware, loading }: { hardware: HardwareSnapshot | nul
   const primaryAdapter = telemetry?.gpu_adapters?.find((adapter) => adapter.primary_candidate)
     ?? telemetry?.gpu_adapters?.[0]
     ?? null;
+  const liveSensors = [
+    ...(telemetry?.fans ?? []),
+    ...(telemetry?.power ?? []),
+    ...(telemetry?.sensors ?? []).filter((sensor) => /temperature/i.test(sensor.sensor_type)),
+  ].slice(0, 6);
   const sensorHint = t("osc.studio.sensorProviderNeeded", { defaultValue: "Needs sensor provider" });
   return (
     <Card elevation="flat" className="overflow-hidden p-0">
@@ -1249,6 +1409,18 @@ function HardwarePanel({ hardware, loading }: { hardware: HardwareSnapshot | nul
           <Fact label="GPU Temp" value={formatCelsius(telemetry?.gpu?.temperature_c) ?? sensorHint} muted={!telemetry?.gpu?.temperature_c} />
           <Fact label="GPU Power" value={formatWatts(telemetry?.gpu?.power_watts) ?? sensorHint} muted={!telemetry?.gpu?.power_watts} />
           <Fact label="Fans" value={telemetry?.fans?.length ? `${telemetry.fans.length} sensors` : sensorHint} muted={!telemetry?.fans?.length} />
+          {liveSensors.length ? (
+            <div className="mt-1 grid gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] p-1.5">
+              {liveSensors.map((sensor, index) => (
+                <div key={`${sensor.source}-${sensor.id}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 font-mono text-[10px]">
+                  <span className="truncate text-[hsl(var(--muted-foreground))]" title={`${sensor.source} ${sensor.id}`}>
+                    {sensor.name || sensor.id}
+                  </span>
+                  <span className="text-[hsl(var(--foreground))]">{formatSensorReading(sensor)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="mt-1 flex flex-wrap gap-1">
           {(telemetry?.sources ?? []).map((source) => (
@@ -1731,6 +1903,12 @@ function formatRamModule(module?: RamModuleInfo | null): string | null {
     module.configured_clock_mhz || module.speed_mhz ? `${module.configured_clock_mhz || module.speed_mhz}MHz` : null,
   ].filter(Boolean);
   return parts.length ? parts.join(" ") : null;
+}
+
+function formatSensorReading(sensor: SensorReading): string {
+  if (typeof sensor.value !== "number" || !Number.isFinite(sensor.value)) return "--";
+  const rounded = Math.abs(sensor.value) >= 100 ? sensor.value.toFixed(0) : sensor.value.toFixed(1);
+  return `${rounded}${sensor.unit}`;
 }
 
 function createTemplateCard(template: string): OscStudioCard {

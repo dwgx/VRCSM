@@ -265,8 +265,15 @@
       "componentHint": "Start with these stable cards. Temperature, fan and board cards appear in their own tabs because they depend on sensor providers.",
       "clickToInsert": "Click to insert",
       "noComponents": "No components match this filter.",
-      "avatarParamsHint": "Scans local avatar OSC config and turns parameters into control cards. It is not an avatar model unpacker."
-    }
+      "avatarParamsHint": "Scans local avatar OSC config and turns parameters into control cards. It is not an avatar model unpacker.",
+      "cardDisabled": "Card is disabled",
+      "autoCardMissing": "Auto-send card was removed",
+      "autoStats": "Sent {{sent}} / skipped {{skipped}}",
+      "nextSendIn": "Next in {{seconds}}s",
+      "stopAutoShort": "Stop",
+      "startAutoShort": "Auto"
+    },
+    "sendFailed": "OSC send failed"
   },
   "auth": {
     "signIn": "Sign in",

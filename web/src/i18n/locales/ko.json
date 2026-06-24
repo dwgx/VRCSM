@@ -235,8 +235,15 @@
       "clickToInsert": "클릭해 삽입",
       "noComponents": "이 필터와 일치하는 구성요소가 없습니다.",
       "avatarParamsHint": "로컬 아바타 OSC 설정을 스캔하고 파라미터를 제어 카드로 만듭니다. 아바타 모델 언팩기가 아닙니다.",
-      "emptyRendered": "템플릿에 사용할 수 있는 값이 없습니다"
-    }
+      "emptyRendered": "템플릿에 사용할 수 있는 값이 없습니다",
+      "cardDisabled": "카드가 비활성화되었습니다",
+      "autoCardMissing": "자동 전송 카드가 삭제되었습니다",
+      "autoStats": "전송 {{sent}} / 건너뜀 {{skipped}}",
+      "nextSendIn": "{{seconds}}초 후 다음 전송",
+      "stopAutoShort": "정지",
+      "startAutoShort": "자동"
+    },
+    "sendFailed": "OSC 전송에 실패했습니다"
   },
   "auth": {
     "signIn": "로그인",

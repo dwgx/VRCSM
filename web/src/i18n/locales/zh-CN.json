@@ -265,8 +265,15 @@
       "componentHint": "先用这些稳定卡片开始。温度、风扇和主板卡片放在各自分类，因为它们依赖传感器来源。",
       "clickToInsert": "点击插入",
       "noComponents": "没有匹配的组件。",
-      "avatarParamsHint": "扫描本地模型 OSC 配置，并把参数变成控制卡片。它不是模型解包器。"
-    }
+      "avatarParamsHint": "扫描本地模型 OSC 配置，并把参数变成控制卡片。它不是模型解包器。",
+      "cardDisabled": "卡片已禁用",
+      "autoCardMissing": "自动发送的卡片已被删除",
+      "autoStats": "已发 {{sent}} / 跳过 {{skipped}}",
+      "nextSendIn": "{{seconds}}秒后再发",
+      "stopAutoShort": "停止",
+      "startAutoShort": "自动"
+    },
+    "sendFailed": "OSC 发送失败"
   },
   "auth": {
     "signIn": "登录",
