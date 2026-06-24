@@ -184,7 +184,8 @@
       "placeholder": "एक संदेश टाइप करें...",
       "send": "भेजें",
       "sent": "चैटबॉक्स भेजा गया",
-      "rateLimit": "संदेशों के बीच 2 सेकंड प्रतीक्षा करें (VRChat दर सीमा)"
+      "rateLimit": "संदेशों के बीच 2 सेकंड प्रतीक्षा करें (VRChat दर सीमा)",
+      "rateLimitBurst": "संदेशों के बीच 2 सेकंड प्रतीक्षा करें (VRChat दर सीमा)"
     },
     "studio": {
       "title": "OSC Studio",
@@ -241,7 +242,8 @@
       "autoStats": "भेजे {{sent}} / छोड़े {{skipped}}",
       "nextSendIn": "{{seconds}}s में अगला",
       "stopAutoShort": "रोकें",
-      "startAutoShort": "ऑटो"
+      "startAutoShort": "ऑटो",
+      "noCardSelected": "Select a card first"
     },
     "sendFailed": "OSC भेजना विफल रहा"
   },

@@ -184,7 +184,8 @@
       "placeholder": "메시지 입력...",
       "send": "보내기",
       "sent": "채팅창 메시지를 보냈습니다",
-      "rateLimit": "메시지 사이에 2초간 기다려 주세요 (VRChat 속도 제한)"
+      "rateLimit": "메시지 사이에 2초간 기다려 주세요 (VRChat 속도 제한)",
+      "rateLimitBurst": "메시지 사이에 2초간 기다려 주세요 (VRChat 속도 제한)"
     },
     "studio": {
       "title": "OSC Studio",
@@ -241,7 +242,8 @@
       "autoStats": "전송 {{sent}} / 건너뜀 {{skipped}}",
       "nextSendIn": "{{seconds}}초 후 다음 전송",
       "stopAutoShort": "정지",
-      "startAutoShort": "자동"
+      "startAutoShort": "자동",
+      "noCardSelected": "Select a card first"
     },
     "sendFailed": "OSC 전송에 실패했습니다"
   },

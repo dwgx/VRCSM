@@ -109,12 +109,14 @@ interface AvatarParametersResponse {
 
 const MAX_LOG_ENTRIES = 200;
 const AUTO_TELEMETRY_REFRESH_MS = 5000;
-const CHATBOX_RATE_LIMIT_MS = 2000;
+const CHATBOX_MANUAL_RATE_WINDOW_MS = 5000;
+const CHATBOX_MANUAL_RATE_BURST = 5;
 
 interface SendCardOptions {
   silentSuccess?: boolean;
-  waitForRateLimit?: boolean;
   shouldContinue?: () => boolean;
+  chatboxRateMode?: "manual" | "auto" | "none";
+  chatboxNotify?: boolean;
 }
 
 type ChatboxMessageSource = string | (() => string);
@@ -169,6 +171,7 @@ export default function OscTools() {
   const [componentFilter, setComponentFilter] = useState<OscTemplateComponentFilter>("recommended");
   const [componentSearch, setComponentSearch] = useState("");
   const [autoStatus, setAutoStatus] = useState<AutoSendStatus | null>(null);
+  const [manualSendingId, setManualSendingId] = useState<string | null>(null);
   const autoTimerRef = useRef<number | null>(null);
   const autoRunIdRef = useRef(0);
   const autoStatsRef = useRef({ sendCount: 0, skipCount: 0 });
@@ -176,7 +179,7 @@ export default function OscTools() {
   const hardwareRef = useRef<HardwareSnapshot | null>(hardware);
   const hostRef = useRef(host);
   const sendPortRef = useRef(sendPort);
-  const lastChatboxSentRef = useRef(0);
+  const manualChatboxSentRef = useRef<number[]>([]);
   const lastHardwareRefreshRef = useRef(0);
 
   const [address, setAddress] = useState("/avatar/parameters/MuteSelf");
@@ -383,25 +386,31 @@ export default function OscTools() {
   }
 
   async function sendSelectedCard() {
-    if (!selectedCard) return;
-    try {
-      await sendCard(selectedCard);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+    if (!selectedCard) {
+      toast.error(t("osc.studio.noCardSelected", { defaultValue: "Select a card first" }));
+      return;
     }
+    await sendCardManually(selectedCard);
   }
 
   async function sendChatboxWithLimit(messageSource: ChatboxMessageSource, options: SendCardOptions = {}): Promise<SendOutcome> {
     if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
-    const now = Date.now();
-    const elapsed = now - lastChatboxSentRef.current;
-    if (elapsed < CHATBOX_RATE_LIMIT_MS) {
-      if (options.waitForRateLimit) {
-        await wait(CHATBOX_RATE_LIMIT_MS - elapsed + 50);
-        if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
-      } else {
-        toast.error(t("osc.chatbox.rateLimit", { defaultValue: "Wait 2 seconds between messages (VRChat rate limit)" }));
-        return { status: "skipped", reason: t("osc.chatbox.rateLimit", { defaultValue: "Wait 2 seconds between messages (VRChat rate limit)" }) };
+    if (options.chatboxRateMode !== "none" && options.chatboxRateMode !== "auto") {
+      const now = Date.now();
+      manualChatboxSentRef.current = manualChatboxSentRef.current.filter(
+        (ts) => now - ts < CHATBOX_MANUAL_RATE_WINDOW_MS,
+      );
+      if (manualChatboxSentRef.current.length >= CHATBOX_MANUAL_RATE_BURST) {
+        const oldest = manualChatboxSentRef.current[0] ?? now;
+        const waitMs = Math.max(0, CHATBOX_MANUAL_RATE_WINDOW_MS - (now - oldest));
+        const reason = t("osc.chatbox.rateLimitBurst", {
+          defaultValue: "Chatbox allows 5 manual messages per 5 seconds. Wait {{seconds}}s.",
+          seconds: Math.max(1, Math.ceil(waitMs / 1000)),
+        });
+        if (!options.silentSuccess) {
+          toast.error(reason);
+        }
+        return { status: "skipped", reason };
       }
     }
     const message = typeof messageSource === "function" ? messageSource() : messageSource;
@@ -414,11 +423,17 @@ export default function OscTools() {
       return { status: "skipped", reason };
     }
     if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
-    const result = await sendChatbox(trimmed, { host: hostRef.current, port: sendPortRef.current });
+    const result = await sendChatbox(
+      trimmed,
+      { host: hostRef.current, port: sendPortRef.current },
+      options.chatboxNotify ?? true,
+    );
     if (!result.ok) {
       throw new Error(t("osc.sendFailed", { defaultValue: "OSC send failed" }));
     }
-    lastChatboxSentRef.current = Date.now();
+    if (options.chatboxRateMode !== "none" && options.chatboxRateMode !== "auto") {
+      manualChatboxSentRef.current.push(Date.now());
+    }
     if (!options.silentSuccess) {
       toast.success(t("osc.chatbox.sent", { defaultValue: "Chatbox sent" }));
     }
@@ -427,9 +442,12 @@ export default function OscTools() {
 
   function startAutoSend(cardOverride?: OscStudioCard) {
     const targetCard = cardOverride ?? selectedCard;
-    if (!targetCard) return;
+    if (!targetCard) {
+      toast.error(t("osc.studio.noCardSelected", { defaultValue: "Select a card first" }));
+      return;
+    }
     stopAutoSend();
-    const intervalSec = Math.max(2, targetCard.autoIntervalSec ?? 20);
+    const intervalSec = Math.max(1, targetCard.autoIntervalSec ?? 1);
     const intervalMs = intervalSec * 1000;
     const cardId = targetCard.id;
     const runId = autoRunIdRef.current + 1;
@@ -472,8 +490,9 @@ export default function OscTools() {
       if (!isCurrentRun()) return false;
       const outcome = await sendCard(current, {
         silentSuccess: true,
-        waitForRateLimit: true,
         shouldContinue: isCurrentRun,
+        chatboxRateMode: "auto",
+        chatboxNotify: false,
       });
       if (!isCurrentRun()) return false;
       if (outcome.status === "sent") {
@@ -584,10 +603,36 @@ export default function OscTools() {
     }
   }
 
-  function addScene(sceneId = selectedSceneId) {
-    const next = appendOscScene(cards, sceneId);
-    setCards(next);
-    setSelectedId(next[next.length - 1]?.id ?? selectedId);
+  function applyScenePreset(sceneId = selectedSceneId) {
+    const scene = OSC_STUDIO_SCENES.find((item) => item.id === sceneId);
+    if (!scene) return;
+    setSelectedSceneId(scene.id);
+    const sceneCard = scene.cards[0];
+    if (!sceneCard) return;
+    if (!selectedCard) {
+      const next = appendOscScene(cards, scene.id);
+      setCards(next);
+      setSelectedId(next[next.length - 1]?.id ?? selectedId);
+      return;
+    }
+    patchCard(selectedCard.id, {
+      ...templatePatchForCard(selectedCard, sceneCard.template ?? ""),
+      title: sceneCard.title,
+      enabled: true,
+      autoIntervalSec: sceneCard.autoIntervalSec ?? 1,
+    });
+  }
+
+  async function sendCardManually(card: OscStudioCard) {
+    if (manualSendingId === card.id) return;
+    setManualSendingId(card.id);
+    try {
+      await sendCard(card, { chatboxRateMode: "manual", chatboxNotify: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setManualSendingId((current) => current === card.id ? null : current);
+    }
   }
 
   async function copyProfile() {
@@ -701,7 +746,7 @@ export default function OscTools() {
             setActiveGroup={setActiveGroup}
             selectedSceneId={selectedSceneId}
             setSelectedSceneId={setSelectedSceneId}
-            onAddScene={addScene}
+            onApplyScene={applyScenePreset}
             onReset={() => {
               const next = resetOscStudioCards();
               setCards(next);
@@ -751,7 +796,7 @@ export default function OscTools() {
                     onPatch={(patch) => patchCard(card.id, patch)}
                     onMoveUp={() => moveCard(card.id, -1)}
                     onMoveDown={() => moveCard(card.id, 1)}
-                    onSend={() => void sendCard(card)}
+                    onSend={() => void sendCardManually(card)}
                     onStartAuto={() => startAutoSend(card)}
                     onStopAuto={stopAutoSend}
                     onDragStart={() => dragStart(card.id)}
@@ -828,14 +873,14 @@ function StudioToolbar({
   setActiveGroup,
   selectedSceneId,
   setSelectedSceneId,
-  onAddScene,
+  onApplyScene,
   onReset,
 }: {
   activeGroup: OscCardGroup | "all";
   setActiveGroup: (group: OscCardGroup | "all") => void;
   selectedSceneId: string;
   setSelectedSceneId: (sceneId: string) => void;
-  onAddScene: (sceneId?: string) => void;
+  onApplyScene: (sceneId?: string) => void;
   onReset: () => void;
 }) {
   const { t } = useTranslation();
@@ -876,10 +921,10 @@ function StudioToolbar({
               className="h-7 px-2 text-[11px]"
               onClick={() => {
                 setSelectedSceneId(scene.id);
-                onAddScene(scene.id);
+                onApplyScene(scene.id);
               }}
             >
-              <Plus className="size-3" />
+              <Square className="size-3" />
               {scene.label}
             </Button>
           ))}
@@ -2030,8 +2075,4 @@ function templateGroupLabel(group: OscTemplateComponentCard["group"]): string {
     default:
       return "System";
   }
-}
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, Math.max(0, ms)));
 }

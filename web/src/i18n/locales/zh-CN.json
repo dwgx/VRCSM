@@ -214,7 +214,8 @@
       "placeholder": "输入消息...",
       "send": "发送",
       "sent": "聊天框消息已发送",
-      "rateLimit": "请在两条消息之间等待 2 秒 (VRChat 速率限制)"
+      "rateLimit": "请在两条消息之间等待 2 秒 (VRChat 速率限制)",
+      "rateLimitBurst": "请在两条消息之间等待 2 秒 (VRChat 速率限制)"
     },
     "studio": {
       "title": "OSC 工作室",
@@ -271,7 +272,8 @@
       "autoStats": "已发 {{sent}} / 跳过 {{skipped}}",
       "nextSendIn": "{{seconds}}秒后再发",
       "stopAutoShort": "停止",
-      "startAutoShort": "自动"
+      "startAutoShort": "自动",
+      "noCardSelected": "Select a card first"
     },
     "sendFailed": "OSC 发送失败"
   },

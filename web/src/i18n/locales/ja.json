@@ -184,7 +184,8 @@
       "placeholder": "メッセージを入力...",
       "send": "送信",
       "sent": "チャットボックスに送信しました",
-      "rateLimit": "メッセージ間は2秒待ってください (VRChatのレート制限)"
+      "rateLimit": "メッセージ間は2秒待ってください (VRChatのレート制限)",
+      "rateLimitBurst": "メッセージ間は2秒待ってください (VRChatのレート制限)"
     },
     "studio": {
       "title": "OSC スタジオ",
@@ -241,7 +242,8 @@
       "autoStats": "送信 {{sent}} / スキップ {{skipped}}",
       "nextSendIn": "次の送信まで {{seconds}}秒",
       "stopAutoShort": "停止",
-      "startAutoShort": "自動"
+      "startAutoShort": "自動",
+      "noCardSelected": "Select a card first"
     },
     "sendFailed": "OSC送信に失敗しました"
   },

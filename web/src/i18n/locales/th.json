@@ -184,7 +184,8 @@
       "placeholder": "พิมพ์ข้อความ...",
       "send": "ส่ง",
       "sent": "ส่งข้อความในกล่องแชทแล้ว",
-      "rateLimit": "รอ 2 วินาทีระหว่างส่งข้อความ (จำกัดอัตราของ VRChat)"
+      "rateLimit": "รอ 2 วินาทีระหว่างส่งข้อความ (จำกัดอัตราของ VRChat)",
+      "rateLimitBurst": "รอ 2 วินาทีระหว่างส่งข้อความ (จำกัดอัตราของ VRChat)"
     },
     "studio": {
       "title": "OSC Studio",
@@ -241,7 +242,8 @@
       "autoStats": "ส่ง {{sent}} / ข้าม {{skipped}}",
       "nextSendIn": "ส่งถัดไปใน {{seconds}}วิ",
       "stopAutoShort": "หยุด",
-      "startAutoShort": "อัตโนมัติ"
+      "startAutoShort": "อัตโนมัติ",
+      "noCardSelected": "Select a card first"
     },
     "sendFailed": "OSC ส่งไม่สำเร็จ"
   },

@@ -210,11 +210,12 @@
     "invalidAddress": "Address must start with /",
     "chatbox": {
       "title": "Chatbox Quick Send",
-      "desc": "Send text to VRChat chatbox via OSC. Max 144 chars, 2-second cooldown.",
+      "desc": "Send text to VRChat chatbox via OSC. Max 144 chars.",
       "placeholder": "Type a message...",
       "send": "Send",
       "sent": "Chatbox sent",
-      "rateLimit": "Wait 2 seconds between messages (VRChat rate limit)"
+      "rateLimit": "Wait before sending another chatbox message",
+      "rateLimitBurst": "Chatbox allows 5 manual messages per 5 seconds. Wait {{seconds}}s."
     },
     "studio": {
       "title": "OSC Studio",
@@ -271,7 +272,8 @@
       "autoStats": "Sent {{sent}} / skipped {{skipped}}",
       "nextSendIn": "Next in {{seconds}}s",
       "stopAutoShort": "Stop",
-      "startAutoShort": "Auto"
+      "startAutoShort": "Auto",
+      "noCardSelected": "Select a card first"
     },
     "sendFailed": "OSC send failed"
   },

@@ -184,7 +184,8 @@
       "placeholder": "Введите сообщение...",
       "send": "Отправить",
       "sent": "Сообщение в чат отправлено",
-      "rateLimit": "Подождите 2 секунды между сообщениями (ограничение VRChat)"
+      "rateLimit": "Подождите 2 секунды между сообщениями (ограничение VRChat)",
+      "rateLimitBurst": "Подождите 2 секунды между сообщениями (ограничение VRChat)"
     },
     "studio": {
       "title": "OSC Studio",
@@ -241,7 +242,8 @@
       "autoStats": "Отпр. {{sent}} / проп. {{skipped}}",
       "nextSendIn": "Через {{seconds}} с",
       "stopAutoShort": "Стоп",
-      "startAutoShort": "Авто"
+      "startAutoShort": "Авто",
+      "noCardSelected": "Select a card first"
     },
     "sendFailed": "OSC не отправлен"
   },
