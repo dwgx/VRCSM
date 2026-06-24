@@ -63,16 +63,14 @@ Last updated: 2026-06-24
 - `cmd /c node_modules\.bin\vite.CMD build` from `web\`: passed; emitted existing empty `react-vendor` and large-chunk warnings.
 - `cmake --build --preset x64-release --target vrcsm` through the VS2026 bundled CMake: passed; `web/dist` was synced into the host output and the host output contains `OscTools-2buEcSyc.js`.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed after syncing frontend dist.
-- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched visibly, PID 40752, window title `VRC Settings Manager`, responding after 8 seconds.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched visibly, PID 39720, window title `VRC Settings Manager`, responding after 8 seconds.
 
 Final local artifacts from this verification:
 
 - `build\release\VRCSM_v0.14.5_x64.zip`
-  - Size: 18,747,582 bytes
-  - SHA256: `3CE45E358F194F3EAA077A61558B804DA9EB412BC752D1858A126161A601A072`
+  - SHA256: `2BE96A70894E2C077E5E2B0EF58DAA3085FD42C1559BAB281D270771F5EB633A`
 - `build\release\VRCSM_v0.14.5_x64_Installer.msi`
-  - Size: 8,654,848 bytes
-  - SHA256: `D2BDF730DC8E6E98BA07970F8B789AD25CFB567800F5EF0D55E52658A8EBF444`
+  - SHA256: `2EC6837ADF1224F97C8A2560B390AD4B3627380FAB572C255D035A89EB21F6CB`
 
 ## What Changed Since 0.14.3
 
