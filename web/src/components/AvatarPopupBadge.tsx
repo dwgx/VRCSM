@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { IdBadge } from "./IdBadge";
 import { AvatarPreview3D } from "./AvatarPreview3D";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { assetImageUrl, useAsset } from "@/lib/assets-cache";
 import type { AvatarDetails, UnityPackage } from "@/lib/types";
 import {
   Dialog,
@@ -26,6 +27,11 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
     { staleTime: 120_000, enabled: open && !!avatarId && avatarId.startsWith("avtr_") },
   );
   const details = data?.details ?? null;
+  const { asset } = useAsset("avatar", avatarId, {
+    enabled: !!avatarId && avatarId.startsWith("avtr_"),
+  });
+  const badgeName = details?.name ?? asset?.displayName ?? `${avatarId.slice(0, 12)}...`;
+  const badgeThumb = details?.thumbnailImageUrl ?? assetImageUrl(asset);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -38,11 +44,11 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
           className="flex w-fit items-center gap-1.5 rounded bg-[hsl(var(--surface-raised))] hover:bg-[hsl(var(--primary)/0.1)] px-2 py-0.5 border border-[hsl(var(--border))] transition-colors group"
         >
           <div className="relative size-[18px] shrink-0 overflow-hidden rounded-[2px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
-            {details?.thumbnailImageUrl ? (
+            {badgeThumb ? (
                 <ThumbImage
-                  src={details.thumbnailImageUrl}
+                  src={badgeThumb}
                   seedKey={avatarId}
-                  label={details.name}
+                  label={badgeName}
                   alt=""
                   className="h-full w-full border-0"
                   aspect=""
@@ -56,7 +62,7 @@ export const AvatarPopupBadge = memo(function AvatarPopupBadge({ avatarId }: { a
              AVTR
           </span>
           <span className="text-[11.5px] font-medium text-[hsl(var(--foreground))]">
-            {details?.name || `${avatarId.slice(0, 12)}…`}
+            {badgeName}
           </span>
         </button>
       </DialogTrigger>

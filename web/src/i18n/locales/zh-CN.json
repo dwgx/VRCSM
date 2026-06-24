@@ -254,6 +254,7 @@
       "customText": "自定义文字...",
       "addText": "添加文字",
       "insertNewline": "换行",
+      "clearEditor": "清空编辑区",
       "rawTemplate": "原始模板",
       "blockMoveUp": "向左移动块",
       "blockMoveDown": "向右移动块",

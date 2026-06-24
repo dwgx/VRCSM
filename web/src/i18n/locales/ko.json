@@ -224,6 +224,7 @@
       "customText": "사용자 텍스트...",
       "addText": "텍스트 추가",
       "insertNewline": "줄바꿈",
+      "clearEditor": "편집기 지우기",
       "rawTemplate": "원본 템플릿",
       "blockMoveUp": "블록을 왼쪽으로 이동",
       "blockMoveDown": "블록을 오른쪽으로 이동",

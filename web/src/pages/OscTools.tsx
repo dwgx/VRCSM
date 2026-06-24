@@ -581,6 +581,7 @@ export default function OscTools() {
               if (selectedCard) patchCard(selectedCard.id, patch);
             }}
             onDropTemplate={insertTemplateComponent}
+            onClearTemplate={() => setSelectedTemplateText("")}
             onSend={() => void sendSelectedCard()}
             onStartAuto={startAutoSend}
             onStopAuto={stopAutoSend}
@@ -902,6 +903,7 @@ function TemplateBuilderPanel({
   onTemplateChange,
   onPatchSelected,
   onDropTemplate,
+  onClearTemplate,
   onSend,
   onStartAuto,
   onStopAuto,
@@ -913,6 +915,7 @@ function TemplateBuilderPanel({
   onTemplateChange: (template: string) => void;
   onPatchSelected: (patch: Partial<OscStudioCard>) => void;
   onDropTemplate: (template: string) => void;
+  onClearTemplate: () => void;
   onSend: () => void;
   onStartAuto: () => void;
   onStopAuto: () => void;
@@ -973,9 +976,22 @@ function TemplateBuilderPanel({
               <div className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
                 {t("osc.studio.composer", { defaultValue: "Composer" })}
               </div>
-              <Badge variant="muted" className="h-4 px-1.5 text-[9px]">
-                {blocks.length}
-              </Badge>
+              <div className="flex items-center gap-1">
+                <Badge variant="muted" className="h-4 px-1.5 text-[9px]">
+                  {blocks.length}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-[10px]"
+                  disabled={!selectedCard || templateText.length === 0}
+                  onClick={onClearTemplate}
+                  title={t("osc.studio.clearEditor", { defaultValue: "Clear editor" })}
+                >
+                  <Trash2 className="size-3" />
+                  {t("osc.studio.clearEditor", { defaultValue: "Clear" })}
+                </Button>
+              </div>
             </div>
             <div
               className="flex min-h-[46px] flex-wrap gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[hsl(var(--border-strong))] bg-[hsl(var(--canvas))] p-2"

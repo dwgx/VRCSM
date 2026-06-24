@@ -4,6 +4,7 @@
 #include "../../core/AuthStore.h"
 #include "../../core/AvatarData.h"
 #include "../../core/AvatarPreview.h"
+#include "../../core/Database.h"
 #include "../../core/PathProbe.h"
 #include "../../core/TaskQueue.h"
 #include "../../core/VrcApi.h"
@@ -89,6 +90,85 @@ nlohmann::json FilterFriend(const nlohmann::json& friendJson)
     out["tags"] = std::move(tags);
 
     return out;
+}
+
+std::optional<std::string> FirstNonEmptyString(
+    const nlohmann::json& obj,
+    std::initializer_list<const char*> keys)
+{
+    for (const auto* key : keys)
+    {
+        auto value = JsonStringField(obj, key);
+        if (value.has_value() && !value->empty())
+        {
+            return value;
+        }
+    }
+    return std::nullopt;
+}
+
+void UpsertAssetCacheBestEffort(const vrcsm::core::Database::AssetCacheUpsert& item)
+{
+    auto res = vrcsm::core::Database::Instance().UpsertAssetCache(item);
+    if (!vrcsm::core::isOk(res))
+    {
+        const auto& err = vrcsm::core::error(res);
+        spdlog::debug("asset cache upsert skipped for {}/{}: {}", item.type, item.id, err.message);
+    }
+}
+
+void CacheUserAsset(const nlohmann::json& user, std::string_view source)
+{
+    const auto userId = FirstNonEmptyString(user, {"id", "userId"});
+    if (!userId.has_value()) return;
+
+    vrcsm::core::Database::AssetCacheUpsert item;
+    item.type = "user";
+    item.id = *userId;
+    item.display_name = FirstNonEmptyString(user, {"displayName", "username"});
+    item.thumbnail_url = FirstNonEmptyString(
+        user,
+        {"profilePicOverride", "userIcon", "currentAvatarThumbnailImageUrl", "currentAvatarImageUrl"});
+    item.image_url = FirstNonEmptyString(user, {"currentAvatarImageUrl", "profilePicOverride", "userIcon"});
+    item.source = std::string(source);
+    item.confidence = "verified_api";
+    item.fetched_at = vrcsm::core::nowIso();
+    item.payload_json = user.is_object() ? user : nlohmann::json::object();
+    UpsertAssetCacheBestEffort(item);
+}
+
+void CacheAvatarAsset(const std::string& avatarId, const nlohmann::json& details, std::string_view source)
+{
+    if (avatarId.empty()) return;
+    vrcsm::core::Database::AssetCacheUpsert item;
+    item.type = "avatar";
+    item.id = avatarId;
+    item.display_name = FirstNonEmptyString(details, {"name", "avatarName"});
+    item.subtitle = FirstNonEmptyString(details, {"authorName", "author_name"});
+    item.thumbnail_url = FirstNonEmptyString(details, {"thumbnailImageUrl", "thumbnailUrl"});
+    item.image_url = FirstNonEmptyString(details, {"imageUrl", "assetUrl"});
+    item.source = std::string(source);
+    item.confidence = "verified_api";
+    item.fetched_at = vrcsm::core::nowIso();
+    item.payload_json = details.is_object() ? details : nlohmann::json::object();
+    UpsertAssetCacheBestEffort(item);
+}
+
+void CacheWorldAsset(const std::string& worldId, const nlohmann::json& details, std::string_view source)
+{
+    if (worldId.empty()) return;
+    vrcsm::core::Database::AssetCacheUpsert item;
+    item.type = "world";
+    item.id = worldId;
+    item.display_name = FirstNonEmptyString(details, {"name", "worldName"});
+    item.subtitle = FirstNonEmptyString(details, {"authorName", "author_name"});
+    item.thumbnail_url = FirstNonEmptyString(details, {"thumbnailImageUrl", "thumbnailUrl"});
+    item.image_url = FirstNonEmptyString(details, {"imageUrl"});
+    item.source = std::string(source);
+    item.confidence = "verified_api";
+    item.fetched_at = vrcsm::core::nowIso();
+    item.payload_json = details.is_object() ? details : nlohmann::json::object();
+    UpsertAssetCacheBestEffort(item);
 }
 
 nlohmann::json FilterUserProfile(const nlohmann::json& user)
@@ -325,7 +405,9 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
     nlohmann::json out = nlohmann::json::array();
     for (const auto& item : friends)
     {
-        out.push_back(FilterFriend(item));
+        auto filtered = FilterFriend(item);
+        CacheUserAsset(filtered, offline ? "friends.list.offline" : "friends.list");
+        out.push_back(std::move(filtered));
     }
 
     return nlohmann::json{{"friends", std::move(out)}};
@@ -472,7 +554,9 @@ nlohmann::json IpcBridge::HandleAvatarDetails(const nlohmann::json& params, cons
     {
         return nlohmann::json{{"details", nullptr}};
     }
-    return nlohmann::json{{"details", unwrapResult(vrcsm::core::VrcApi::fetchAvatarDetails(*idField))}};
+    auto details = unwrapResult(vrcsm::core::VrcApi::fetchAvatarDetails(*idField));
+    CacheAvatarAsset(*idField, details, "avatar.details");
+    return nlohmann::json{{"details", std::move(details)}};
 }
 
 nlohmann::json IpcBridge::HandleAvatarParametersLocal(const nlohmann::json& params, const std::optional<std::string>&)
@@ -502,7 +586,9 @@ nlohmann::json IpcBridge::HandleWorldDetails(const nlohmann::json& params, const
     {
         return nlohmann::json{{"details", nullptr}};
     }
-    return nlohmann::json{{"details", unwrapResult(vrcsm::core::VrcApi::fetchWorldDetails(*idField))}};
+    auto details = unwrapResult(vrcsm::core::VrcApi::fetchWorldDetails(*idField));
+    CacheWorldAsset(*idField, details, "world.details");
+    return nlohmann::json{{"details", std::move(details)}};
 }
 
 nlohmann::json IpcBridge::HandleAvatarSelect(const nlohmann::json& params, const std::optional<std::string>&)
@@ -615,7 +701,9 @@ nlohmann::json IpcBridge::HandleUserUnblock(const nlohmann::json& params, const 
 nlohmann::json IpcBridge::HandleUserMe(const nlohmann::json&, const std::optional<std::string>&)
 {
     auto user = unwrapResult(vrcsm::core::VrcApi::fetchCurrentUser());
-    return nlohmann::json{{"profile", FilterUserProfile(user)}};
+    auto filtered = FilterUserProfile(user);
+    CacheUserAsset(filtered, "user.me");
+    return nlohmann::json{{"profile", std::move(filtered)}};
 }
 
 nlohmann::json IpcBridge::HandleUserSearch(const nlohmann::json& params, const std::optional<std::string>&)
@@ -644,7 +732,9 @@ nlohmann::json IpcBridge::HandleUserGetProfile(const nlohmann::json& params, con
         return nlohmann::json{{"profile", nullptr}};
     }
     auto user = unwrapResult(vrcsm::core::VrcApi::fetchUser(*userId));
-    return nlohmann::json{{"profile", FilterUserProfile(user)}};
+    auto filtered = FilterUserProfile(user);
+    CacheUserAsset(filtered, "user.getProfile");
+    return nlohmann::json{{"profile", std::move(filtered)}};
 }
 
 nlohmann::json IpcBridge::HandleUserUpdateProfile(const nlohmann::json& params, const std::optional<std::string>&)
@@ -715,7 +805,9 @@ nlohmann::json IpcBridge::HandleUserUpdateProfile(const nlohmann::json& params, 
     }
 
     auto updated = unwrapResult(vrcsm::core::VrcApi::updateAuthUser(patch));
-    return nlohmann::json{{"profile", FilterUserProfile(updated)}};
+    auto filtered = FilterUserProfile(updated);
+    CacheUserAsset(filtered, "user.updateProfile");
+    return nlohmann::json{{"profile", std::move(filtered)}};
 }
 
 nlohmann::json IpcBridge::HandleAvatarPreviewStatus(const nlohmann::json& params, const std::optional<std::string>&)

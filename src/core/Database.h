@@ -231,6 +231,35 @@ public:
     // and no destructive/account-changing actions.
     Result<nlohmann::json> GlobalSearch(const nlohmann::json& request);
 
+    // ─── asset_cache ─────────────────────────────────────────────
+    //
+    // Stable, cross-page metadata cache for VRChat worlds, avatars, and users.
+    // It stores names, image URLs, local cached image URLs, provenance, and
+    // confidence so UI pages can render fast local data while background refresh
+    // gently improves it. Lower-confidence hints never overwrite higher-
+    // confidence data.
+    struct AssetCacheUpsert
+    {
+        std::string type; // "world" | "avatar" | "user"
+        std::string id;
+        std::optional<std::string> display_name;
+        std::optional<std::string> subtitle;
+        std::optional<std::string> thumbnail_url;
+        std::optional<std::string> image_url;
+        std::optional<std::string> local_thumbnail_url;
+        nlohmann::json payload_json = nlohmann::json::object();
+        std::string source{"hint"};
+        std::string confidence{"placeholder"};
+        std::string fetched_at;
+        std::optional<std::string> expires_at;
+        std::optional<std::string> negative_until;
+    };
+    Result<std::monostate> UpsertAssetCache(const AssetCacheUpsert& item);
+    Result<nlohmann::json> ResolveAssetCache(const nlohmann::json& request);
+    Result<std::monostate> TouchAssetCache(const std::string& type, const std::vector<std::string>& ids);
+    Result<std::monostate> InvalidateAssetCache(std::optional<std::string> type = std::nullopt,
+                                                std::optional<std::string> id = std::nullopt);
+
     // ─── avatar_embeddings (v0.11 experimental visual search) ────
     //
     // `avatar_embeddings_meta` is a plain table (avatar_id + model +
@@ -314,6 +343,7 @@ private:
     // Helpers (all called with m_mutex held).
     Result<std::monostate> InitSchema();
     Result<std::monostate> ExecSimple(const char* sql);
+    Result<std::monostate> UpsertAssetCacheLocked(const AssetCacheUpsert& item);
 
     // Prepares a statement, binds args via a supplied lambda, and
     // runs it to completion. Used for one-shot writes where we don't

@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { assetImageUrl, useAsset } from "@/lib/assets-cache";
 import { trustRank, trustColorClass, trustLabelKey } from "@/lib/vrcFriends";
 
 interface UserPopupBadgeProps {
@@ -23,13 +24,17 @@ export function UserPopupBadge({ userId, displayName, compact = false }: UserPop
   const { data } = useIpcQuery<{ userId: string }, { profile: VrcUserProfile | null }>(
     "user.getProfile",
     { userId },
-    { staleTime: 5 * 60_000, enabled: !!userId && userId.startsWith("usr_") },
+    { staleTime: 5 * 60_000, enabled: open && !!userId && userId.startsWith("usr_") },
   );
   const profile = data?.profile ?? null;
+  const { asset } = useAsset("user", userId, {
+    enabled: !!userId && userId.startsWith("usr_"),
+    hintName: displayName,
+  });
 
   const rank = profile ? trustRank(profile.tags || []) : null;
-  const name = profile?.displayName ?? displayName ?? userId.slice(0, 12) + "…";
-  const thumb = profile?.profilePicOverride || profile?.currentAvatarThumbnailImageUrl;
+  const name = profile?.displayName ?? asset?.displayName ?? displayName ?? userId.slice(0, 12) + "…";
+  const thumb = profile?.profilePicOverride || profile?.userIcon || profile?.currentAvatarThumbnailImageUrl || assetImageUrl(asset);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

@@ -37,7 +37,149 @@ std::optional<std::string> FirstStringField(
     return std::nullopt;
 }
 
+bool IsAssetType(std::string_view type)
+{
+    return type == "world" || type == "avatar" || type == "user";
+}
+
+std::string AssetTypeFromId(std::string_view id)
+{
+    if (id.rfind("wrld_", 0) == 0) return "world";
+    if (id.rfind("avtr_", 0) == 0) return "avatar";
+    if (id.rfind("usr_", 0) == 0) return "user";
+    return {};
+}
+
+std::string AssetTypeForThumbnailId(std::string_view id)
+{
+    if (id.rfind("wrld_", 0) == 0) return "world";
+    if (id.rfind("avtr_", 0) == 0) return "avatar";
+    return {};
+}
+
+std::string StringFieldOrEmpty(const nlohmann::json& obj, const char* key)
+{
+    return JsonStringField(obj, key).value_or("");
+}
+
 } // namespace
+
+nlohmann::json IpcBridge::HandleAssetsResolve(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    if (!params.is_object() || !params.contains("items") || !params["items"].is_array())
+    {
+        throw IpcException(vrcsm::core::Error{"invalid_argument", "assets.resolve requires items array", 0});
+    }
+
+    nlohmann::json normalizedParams = params;
+    nlohmann::json normalizedItems = nlohmann::json::array();
+    std::unordered_set<std::string> seen;
+    const bool refresh = params.value("refresh", false);
+
+    for (const auto& raw : params["items"])
+    {
+        if (!raw.is_object()) continue;
+        auto id = JsonStringField(raw, "id").value_or("");
+        if (id.empty()) continue;
+
+        auto type = JsonStringField(raw, "type").value_or("");
+        if (type.empty())
+        {
+            type = AssetTypeFromId(id);
+        }
+        if (!IsAssetType(type)) continue;
+
+        const auto key = type + "|" + id;
+        if (!seen.insert(key).second) continue;
+
+        nlohmann::json item = raw;
+        item["type"] = type;
+        item["id"] = id;
+        normalizedItems.push_back(item);
+
+        if (normalizedItems.size() >= 256) break;
+    }
+    normalizedParams["items"] = normalizedItems;
+
+    auto resolved = vrcsm::core::Database::Instance().ResolveAssetCache(normalizedParams);
+    if (!vrcsm::core::isOk(resolved))
+    {
+        throw IpcException(vrcsm::core::error(resolved));
+    }
+
+    std::vector<std::string> missingThumbnailIds;
+    const auto& firstPass = vrcsm::core::value(resolved);
+    if (firstPass.contains("results") && firstPass["results"].is_array())
+    {
+        for (const auto& row : firstPass["results"])
+        {
+            const auto id = StringFieldOrEmpty(row, "id");
+            if (id.empty() || AssetTypeForThumbnailId(id).empty()) continue;
+            const auto localThumbnail = StringFieldOrEmpty(row, "localThumbnailUrl");
+            const auto thumbnail = StringFieldOrEmpty(row, "thumbnailUrl");
+            const bool stale = row.value("stale", false);
+            if (refresh || localThumbnail.empty() || (thumbnail.empty() && stale))
+            {
+                missingThumbnailIds.push_back(id);
+            }
+            if (missingThumbnailIds.size() >= 64) break;
+        }
+    }
+
+    if (!missingThumbnailIds.empty())
+    {
+        const auto thumbResults = vrcsm::core::VrcApi::fetchThumbnails(missingThumbnailIds, true);
+        for (const auto& thumb : thumbResults)
+        {
+            auto type = AssetTypeForThumbnailId(thumb.id);
+            if (type.empty()) continue;
+            vrcsm::core::Database::AssetCacheUpsert item;
+            item.type = std::move(type);
+            item.id = thumb.id;
+            item.thumbnail_url = thumb.url;
+            item.local_thumbnail_url = thumb.localUrl;
+            item.source = thumb.source.empty() ? "thumbnails.fetch" : thumb.source;
+            item.confidence = "verified_api";
+            item.fetched_at = vrcsm::core::nowIso();
+
+            if (thumb.url.has_value() || thumb.localUrl.has_value())
+            {
+                auto upsert = vrcsm::core::Database::Instance().UpsertAssetCache(item);
+                if (!vrcsm::core::isOk(upsert))
+                {
+                    throw IpcException(vrcsm::core::error(upsert));
+                }
+            }
+        }
+
+        resolved = vrcsm::core::Database::Instance().ResolveAssetCache(normalizedParams);
+        if (!vrcsm::core::isOk(resolved))
+        {
+            throw IpcException(vrcsm::core::error(resolved));
+        }
+    }
+
+    return vrcsm::core::value(resolved);
+}
+
+nlohmann::json IpcBridge::HandleAssetsPrefetch(const nlohmann::json& params, const std::optional<std::string>& id)
+{
+    auto out = HandleAssetsResolve(params, id);
+    out["ok"] = true;
+    return out;
+}
+
+nlohmann::json IpcBridge::HandleAssetsInvalidate(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto type = JsonStringField(params, "type");
+    const auto id = JsonStringField(params, "id");
+    auto res = vrcsm::core::Database::Instance().InvalidateAssetCache(type, id);
+    if (!vrcsm::core::isOk(res))
+    {
+        throw IpcException(vrcsm::core::error(res));
+    }
+    return nlohmann::json{{"ok", true}};
+}
 
 nlohmann::json IpcBridge::HandleDbWorldVisits(const nlohmann::json& params, const std::optional<std::string>&)
 {

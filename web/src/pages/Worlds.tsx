@@ -30,10 +30,11 @@ import {
 } from "@/components/LayoutModeSwitcher";
 import { useReport } from "@/lib/report-context";
 import {
-  prefetchThumbnails,
-  prefetchThumbnailsLowPriority,
-  useThumbnail,
-} from "@/lib/thumbnails";
+  assetImageUrl,
+  prefetchAssets,
+  prefetchAssetsLowPriority,
+  useAsset,
+} from "@/lib/assets-cache";
 import { type WorldSwitchEvent, type PlayerEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight, Copy, ExternalLink, Globe2, Play, Search, Clock, Lock, Users, EyeOff, Heart, PanelRightClose, PanelRightOpen } from "lucide-react";
@@ -193,6 +194,7 @@ function WorldThumb({
   id,
   className,
   label,
+  hintName,
   isFavorited,
   onToggleFavorite,
   visible = true,
@@ -201,13 +203,15 @@ function WorldThumb({
   id: string;
   className?: string;
   label?: boolean;
+  hintName?: string | null;
   isFavorited?: boolean;
   onToggleFavorite?: (thumbnailUrl: string | null) => void;
   visible?: boolean;
   priority?: "eager" | "lazy";
 }) {
   const { t } = useTranslation();
-  const { url } = useThumbnail(id, visible);
+  const { asset } = useAsset("world", id, { enabled: visible, hintName });
+  const url = assetImageUrl(asset);
   const hue = hueFor(id);
   return (
     <div
@@ -237,10 +241,10 @@ function WorldThumb({
         </div>
       ) : null}
       {url ? (
-        <ThumbImage
-          src={url}
-          seedKey={id}
-          label={id}
+          <ThumbImage
+            src={url}
+            seedKey={id}
+          label={asset?.displayName ?? hintName ?? id}
           alt=""
           className="absolute inset-0 h-full w-full border-0"
           aspect=""
@@ -296,7 +300,8 @@ function WorldTile({
   visible: boolean;
   priority: "eager" | "lazy";
 }) {
-  const display = name ?? shortenId(id);
+  const { asset } = useAsset("world", id, { enabled: visible, hintName: name });
+  const display = asset?.displayName ?? name ?? shortenId(id);
   return (
     <button
       type="button"
@@ -311,6 +316,7 @@ function WorldTile({
       <WorldThumb
         id={id}
         label
+        hintName={name}
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
         visible={visible}
@@ -663,15 +669,23 @@ function Worlds() {
 
   useEffect(() => {
     if (visibleWorldIds.length > 0) {
-      prefetchThumbnails([...new Set(visibleWorldIds)]);
+      prefetchAssets([...new Set(visibleWorldIds)].map((id) => ({
+        type: "world",
+        id,
+        hintName: logs?.world_names[id] ?? null,
+      })));
     }
-  }, [visibleWorldIds]);
+  }, [visibleWorldIds, logs?.world_names]);
 
   useEffect(() => {
     if (lookaheadWorldIds.length > 0) {
-      prefetchThumbnailsLowPriority([...new Set(lookaheadWorldIds)]);
+      prefetchAssetsLowPriority([...new Set(lookaheadWorldIds)].map((id) => ({
+        type: "world",
+        id,
+        hintName: logs?.world_names[id] ?? null,
+      })));
     }
-  }, [lookaheadWorldIds]);
+  }, [lookaheadWorldIds, logs?.world_names]);
 
   useEffect(() => {
     let cancelled = false;
@@ -908,6 +922,7 @@ function Worlds() {
             id={selected}
             className="h-36 w-full"
             label
+            hintName={logs?.world_names[selected] ?? null}
             isFavorited={favoriteIds.world.has(selected)}
             onToggleFavorite={(thumbnailUrl) =>
               handleToggleFavorite(selected, thumbnailUrl)

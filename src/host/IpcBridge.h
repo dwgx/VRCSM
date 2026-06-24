@@ -95,6 +95,9 @@ private:
     nlohmann::json HandleFsAppDataDir(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleThumbnailsFetch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleImagesCache(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAssetsResolve(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAssetsPrefetch(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAssetsInvalidate(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAuthStatus(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAuthLogin(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAuthVerify2FA(const nlohmann::json& params, const std::optional<std::string>& id);

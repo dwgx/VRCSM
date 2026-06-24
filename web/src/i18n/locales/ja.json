@@ -224,6 +224,7 @@
       "customText": "カスタムテキスト...",
       "addText": "テキスト追加",
       "insertNewline": "改行",
+      "clearEditor": "エディターをクリア",
       "rawTemplate": "生テンプレート",
       "blockMoveUp": "ブロックを左へ移動",
       "blockMoveDown": "ブロックを右へ移動",

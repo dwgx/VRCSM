@@ -619,7 +619,7 @@ export function renderOscTemplate(
     (text, [token, value]) => text.replaceAll(token, value),
     template,
   );
-  return rendered.replace(/\{[a-zA-Z0-9_.-]+\}/g, "--");
+  return cleanRenderedTemplate(rendered.replace(/\{[a-zA-Z0-9_.-]+\}/g, "--"));
 }
 
 export function cardPreview(card: OscStudioCard, context: OscTemplateContext): string {
@@ -698,6 +698,21 @@ function formatSensor(sensor: SensorReading | null | undefined): string {
   if (!sensor || typeof sensor.value !== "number" || !Number.isFinite(sensor.value)) return "--";
   const rounded = Math.abs(sensor.value) >= 100 ? sensor.value.toFixed(0) : sensor.value.toFixed(1);
   return `${sensor.name} ${rounded}${sensor.unit}`;
+}
+
+function cleanRenderedTemplate(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .map((line) => {
+      const parts = line
+        .split("|")
+        .map((part) => part.replace(/\s+/g, " ").trim())
+        .filter((part) => part.length > 0 && !part.includes("--"));
+      return parts.join(" | ");
+    })
+    .filter((line) => line.length > 0)
+    .join("\n")
+    .trim();
 }
 
 function shortenHardwareName(value: string | null | undefined): string {

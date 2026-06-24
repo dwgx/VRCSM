@@ -1,6 +1,6 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-06-23
+Last updated: 2026-06-24
 
 ## Current State
 
@@ -33,6 +33,9 @@ Last updated: 2026-06-23
 - **OSC usability + SMBIOS hardware identity fallback.** `web/src/pages/OscTools.tsx` now defaults component cards to a recommended subset, adds search/category filters, explicit click-to-insert text, and robust drag payload handling for both the composer drop zone and raw textarea. Avatar parameter scan now explains it creates OSC control cards rather than unpacking models. `src/core/hw/HwTelemetry.cpp` now reads raw SMBIOS via `GetSystemFirmwareTable('RSMB')` after CIM/WMI, filling motherboard and RAM module identity when WMI is empty or slow. A local RSMB probe on this machine returned 4736 bytes for `0x52534D42` and 0 for the reversed signature, confirming the provider constant.
 - **About dialog acknowledgement removal.** `web/src/components/AboutDialog.tsx` no longer renders the extra acknowledgement card; `web/src/lib/assets.ts`, all locale JSON files, and `docs/gh-pages/index.html` no longer carry that removed personal avatar/text reference. Keep it removed unless the user explicitly asks to restore it.
 - **Why VRCX feels faster, verified from local reference.** `D:\Reference\VRCX\Dotnet\LogWatcher.cs` keeps a per-log `LogContext.Position` and resumes reading from that offset, while `src\stores\location.js` keeps `lastLocation.playerList/friendList` as running UI state. VRCSM still has several full-scan surfaces; the next serious performance step is a persisted incremental scan index and live state store instead of more page-level full scans.
+- **Unified asset cache + lazy metadata slice.** `src/core/Database.cpp` schema v12 adds `asset_cache` for world/avatar/user names, remote image URLs, local thumbnail URLs, payload, source, confidence, expiry, and negative-cache timestamps. `assets.resolve`, `assets.prefetch`, and `assets.invalidate` are registered as async IPC handlers; resolve seeds from hints/local favorites/avatar history/player encounters, then uses the existing thumbnail resolver only for missing world/avatar covers. `ApiBridge` now backfills verified user/world/avatar cache rows from friends list, user profile, world details, and avatar details.
+- **Frontend asset-cache integration.** `web/src/lib/assets-cache.ts` is the shared frontend cache. `WorldPopupBadge`, `AvatarPopupBadge`, `UserPopupBadge`, and `Worlds.tsx` now use it. `UserPopupBadge` no longer calls `user.getProfile` merely because it mounted; full profile fetch happens only when the dialog opens. Worlds warms visible rows and queues lookahead rows through `prefetchAssets` / `prefetchAssetsLowPriority`, reusing log names as hints.
+- **OSC Studio cleanup after in-VR bad-value report.** `TemplateBuilderPanel` now has a localized clear-editor button. `renderOscTemplate()` drops pipe-separated template segments containing `--`, so unavailable CPU temperature/fan/board/sensor values do not get sent into VRChat Chatbox when other segments are valid. This is a UI/rendering guard, not a substitute for deeper sensor-source work.
 
 ## What Changed Since 0.14.3
 
@@ -118,6 +121,27 @@ Final local artifacts from this verification:
 - First release host relink failed with `LNK1104 cannot open file src\host\VRCSM.exe` because the prior smoke-started VRCSM process was still running. The process was stopped and the same build command then passed.
 - `cmd.exe /c ... cmake --build --preset x64-release --target vrcsm --parallel 1`: passed and synced `web/dist` into release host output.
 - `ctest --test-dir build\x64-release --output-on-failure`: passed, 48/48.
+
+## Last Verified Build (2026-06-24 asset-cache/lazy metadata slice)
+
+- `web\node_modules\.bin\tsc.CMD -b --pretty false` from `web\`: passed.
+- `cmd.exe /c ... cmake --build --preset x64-release --target VRCSM_Tests --parallel 1`: passed.
+- `build\x64-release\tests\VRCSM_Tests.exe --gtest_filter=CommonTests.AssetCacheKeepsVerifiedDataOverHints:CommonTests.GlobalSearchMergesFavoriteAndVisitEvidence:CommonTests.DatabaseOpenDedupesWorldVisitsBeforeUniqueIndex`: passed, 3/3.
+- `cmd.exe /c ... cmake --build --preset x64-release --target vrcsm --parallel 1`: passed; only pre-existing `std::filesystem::u8path` warning in `PluginBridge.cpp`.
+- `web\node_modules\.bin\vite.CMD build`: passed; emitted existing empty `react-vendor` and large-chunk warnings.
+- First `vitest run src/__tests__/pages-smoke.test.tsx` attempt timed out on `/bundles` and left later assertions with an empty DOM; rerun with verbose reporter and 15s timeout passed 23/23. Treat the verbose full pass as current smoke evidence.
+- Release host web bundle was synced with `cmake -DSOURCE=D:/Project/VRCSM/web/dist -DDEST=D:/Project/VRCSM/build/x64-release/src/host/web -P cmake/sync-web-dist.cmake` because `ninja: no work to do` did not rerun POST_BUILD copy.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched, PID 20916, responding after 8 seconds.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - Size: 18,728,928 bytes
+  - SHA256: `3421E29ADCCF6B0DC660C4665C9348DED49EF556A8B7037158DCB46E7B0D75C9`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - Size: 8,642,560 bytes
+  - SHA256: `A89AEDA07E900FB05C14B364872251FBAF8F45857C1F62D670E9008A692CC78D`
 - `git diff --check -- web/src/pages/OscTools.tsx ... src/core/hw/HwTelemetry.cpp`: passed.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
 - Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched, PID 40016, responding after 8 seconds.

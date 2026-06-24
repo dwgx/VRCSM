@@ -254,6 +254,7 @@
       "customText": "Custom text...",
       "addText": "Add text",
       "insertNewline": "Line",
+      "clearEditor": "Clear editor",
       "rawTemplate": "Raw template",
       "blockMoveUp": "Move block left",
       "blockMoveDown": "Move block right",

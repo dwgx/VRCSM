@@ -675,6 +675,40 @@ class IpcClient {
         });
         return { results } as unknown as TResult;
       }
+      case "assets.resolve":
+      case "assets.prefetch": {
+        const p = (params ?? {}) as {
+          items?: Array<{ type?: string; id?: string; hintName?: string | null; hintImageUrl?: string | null }>;
+        };
+        const results = (p.items ?? []).map((item) => {
+          const id = item.id ?? "";
+          const type = item.type ?? (id.startsWith("wrld_") ? "world" : id.startsWith("avtr_") ? "avatar" : "user");
+          const worldThumb = id.startsWith("wrld_")
+            ? `https://picsum.photos/seed/${encodeURIComponent(id.slice(0, 16))}/256/144`
+            : null;
+          return {
+            type,
+            id,
+            displayName: item.hintName ?? (id ? `${type} ${id.slice(0, 8)}` : null),
+            subtitle: null,
+            thumbnailUrl: item.hintImageUrl ?? worldThumb,
+            imageUrl: item.hintImageUrl ?? worldThumb,
+            localThumbnailUrl: null,
+            source: "mock",
+            confidence: item.hintName || item.hintImageUrl ? "reference" : "placeholder",
+            fetchedAt: new Date().toISOString(),
+            lastUsedAt: new Date().toISOString(),
+            expiresAt: null,
+            negativeUntil: null,
+            stale: false,
+            negative: false,
+            payload: {},
+          };
+        });
+        return { results, resolvedAt: new Date().toISOString(), ok: true } as unknown as TResult;
+      }
+      case "assets.invalidate":
+        return { ok: true } as unknown as TResult;
       case "auth.status":
         return { ...this.mockAuthStatus } satisfies AuthStatus as unknown as TResult;
       case "auth.login": {

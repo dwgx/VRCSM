@@ -224,6 +224,7 @@
       "customText": "कस्टम टेक्स्ट...",
       "addText": "टेक्स्ट जोड़ें",
       "insertNewline": "लाइन",
+      "clearEditor": "एडिटर साफ़ करें",
       "rawTemplate": "रॉ टेम्पलेट",
       "blockMoveUp": "ब्लॉक को बाएं ले जाएं",
       "blockMoveDown": "ब्लॉक को दाएं ले जाएं",

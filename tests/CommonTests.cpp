@@ -242,6 +242,49 @@ TEST(CommonTests, AvatarPreviewCacheKeyDiffersAcrossAvatarIds)
     EXPECT_NE(key1, key2);
 }
 
+TEST(CommonTests, AssetCacheKeepsVerifiedDataOverHints)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-asset-cache");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    vrcsm::core::Database::AssetCacheUpsert verified;
+    verified.type = "world";
+    verified.id = "wrld_asset_cache_test";
+    verified.display_name = "Verified World";
+    verified.thumbnail_url = "https://cdn.example/verified.jpg";
+    verified.source = "world.details";
+    verified.confidence = "verified_api";
+    verified.fetched_at = "2026-06-24T00:00:00Z";
+
+    auto upsertVerified = vrcsm::core::Database::Instance().UpsertAssetCache(verified);
+    ASSERT_TRUE(vrcsm::core::isOk(upsertVerified)) << vrcsm::core::error(upsertVerified).message;
+
+    const nlohmann::json request = {
+        {"items", nlohmann::json::array({
+            {
+                {"type", "world"},
+                {"id", "wrld_asset_cache_test"},
+                {"hintName", "Bad Hint"},
+                {"hintImageUrl", "https://cdn.example/hint.jpg"},
+            },
+        })},
+    };
+
+    auto resolved = vrcsm::core::Database::Instance().ResolveAssetCache(request);
+    ASSERT_TRUE(vrcsm::core::isOk(resolved)) << vrcsm::core::error(resolved).message;
+    const auto& payload = vrcsm::core::value(resolved);
+    ASSERT_TRUE(payload.contains("results"));
+    ASSERT_EQ(payload["results"].size(), 1u);
+    EXPECT_EQ(payload["results"][0]["displayName"], "Verified World");
+    EXPECT_EQ(payload["results"][0]["thumbnailUrl"], "https://cdn.example/verified.jpg");
+    EXPECT_EQ(payload["results"][0]["confidence"], "verified_api");
+
+    vrcsm::core::Database::Instance().Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
 TEST(CommonTests, AvatarPreviewCacheKeyDiffersAcrossSourceSignatures)
 {
     constexpr const char* avatarId = "avtr_164034fd-61d6-410d-892f-9ecc3964817e";

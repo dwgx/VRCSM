@@ -224,6 +224,7 @@
       "customText": "ข้อความกำหนดเอง...",
       "addText": "เพิ่มข้อความ",
       "insertNewline": "ขึ้นบรรทัด",
+      "clearEditor": "ล้างตัวแก้ไข",
       "rawTemplate": "แม่แบบดิบ",
       "blockMoveUp": "ย้ายบล็อกไปซ้าย",
       "blockMoveDown": "ย้ายบล็อกไปขวา",

@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IdBadge } from "./IdBadge";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { assetImageUrl, useAsset } from "@/lib/assets-cache";
 import type { WorldDetails } from "@/lib/types";
 import { openVrchatWorldPage } from "@/lib/shell-api";
 import {
@@ -33,6 +34,11 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({
     },
   );
   const details = data?.details ?? null;
+  const { asset } = useAsset("world", worldId, {
+    enabled: !!worldId && worldId.startsWith("wrld_"),
+  });
+  const badgeName = details?.name ?? asset?.displayName ?? `${worldId.slice(0, 12)}...`;
+  const badgeThumb = details?.thumbnailImageUrl ?? assetImageUrl(asset);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -45,11 +51,11 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({
           className="flex w-fit items-center gap-1.5 rounded bg-[hsl(var(--surface-raised))] hover:bg-[hsl(var(--primary)/0.1)] px-2 py-0.5 border border-[hsl(var(--border))] transition-colors group"
         >
           <div className="relative size-[18px] shrink-0 overflow-hidden rounded-[2px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
-            {details?.thumbnailImageUrl ? (
+            {badgeThumb ? (
                 <ThumbImage
-                  src={details.thumbnailImageUrl}
+                  src={badgeThumb}
                   seedKey={worldId}
-                  label={details.name}
+                  label={badgeName}
                   alt=""
                   className="h-full w-full border-0"
                   aspect=""
@@ -63,7 +69,7 @@ export const WorldPopupBadge = memo(function WorldPopupBadge({
              WRLD
           </span>
           <span className="text-[11.5px] font-medium text-[hsl(var(--foreground))]">
-            {details?.name || `${worldId.slice(0, 12)}…`}
+            {badgeName}
           </span>
         </button>
       </DialogTrigger>

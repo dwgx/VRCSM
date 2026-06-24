@@ -224,6 +224,7 @@
       "customText": "Свой текст...",
       "addText": "Добавить текст",
       "insertNewline": "Строка",
+      "clearEditor": "Очистить редактор",
       "rawTemplate": "Сырой шаблон",
       "blockMoveUp": "Сдвинуть блок влево",
       "blockMoveDown": "Сдвинуть блок вправо",
