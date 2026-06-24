@@ -1,6 +1,6 @@
 # VRCSM Markdown Index
 
-Last updated: 2026-06-23
+Last updated: 2026-06-24
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
@@ -33,6 +33,10 @@ This file maps the repo's Markdown documents so the next agent can start from th
 - `CHANGELOG.md`
   - Release history.
   - The `[Unreleased]` section currently carries avatar thumbnail semantics, Steam Link / Quest repair, plugin fixes, and preview/cache notes.
+
+- `docs/release-v0.14.6.md`
+  - Shipped release summary for the paused `v0.14.6` checkpoint.
+  - Use when checking the release URL, packaged artifacts, and user-facing notes for the latest published build.
 
 ## Planning / Research Docs
 

@@ -5,20 +5,20 @@ Last updated: 2026-06-24
 ## Current State
 
 - Branch: `main`
-- Working tree at handoff time: local fixes pending for migration IPC, `world_visits` dedupe, updater IPC/package validation, release asset filename sync, packaging scripts, avatar-preview diagnostics, and frontend API facade cleanup.
-- Latest remote commit at audit time: `42940a5` (chore: align release metadata version).
+- Working tree expectation: clean after the `v0.14.6` release checkpoint and post-release doc cleanup; re-check with `git status --short` before changing code.
+- Latest shipped release tag: `v0.14.6`
 - Remote: `origin https://github.com/dwgx/VRCSM.git`
 - Current app version: `0.14.6`
 - VS2026 path: `D:\Software\Microsoft Visual Studio\18` (current machine path).
 - Project status: release checkpoint shipped and active development paused after `v0.14.6`. Only critical bugfixes, packaging fixes, or security repairs should be assumed in-scope unless the user explicitly resumes feature work.
 
-## 2026-06-22/23 Local Fixes Pending
+## Fixes Included In v0.14.6
 
 - **Migration IPC single-response fix.** `migrate.execute` remains in `AsyncMethodSet()` and `MigrateBridge` no longer enqueues its own inner worker or posts a second result for the same request id. It still emits `migrate.progress` and `migrate.done`; the React page listens to both and guards against duplicate completion to avoid a stuck running state on failure.
 - **`world_visits` duplicate upgrade repair.** `Database::InitSchema()` now creates the table and normal indexes first, deletes duplicate `(world_id, instance_id, joined_at)` rows while preferring a row with `left_at`, and only then creates `uq_world_visits`.
 - **Updater IPC error semantics fixed.** `UpdateBridge` now throws `IpcException` instead of returning `{error}` as a successful JSON result, so frontend `try/catch` paths receive normal IPC errors.
 - **Updater install boundary tightened.** `update.install` now requires `path`, `version`, `size`, optional `sha256`, and optional `fileName`; validates that the installer is the expected MSI under the VRCSM updates directory with matching size/hash; and invokes `msiexec` with the canonical validated updates path.
-- **Updater release-asset filename sync fixed.** The current GitHub release asset is named `VRCSM_v0.14.5_x64_Installer.msi`, not the older assumed `VRCSM-<version>.msi`. `UpdateChecker` now carries the release asset `fileName`; `UpdateBridge` download/install passes and validates that filename; frontend `UpdateDialog` includes it in download/install IPC params. Tests cover accepting the real release asset name and rejecting a mismatched expected name.
+- **Updater release-asset filename sync fixed.** The shipped GitHub release asset is named `VRCSM_v0.14.6_x64_Installer.msi`, not the older assumed `VRCSM-<version>.msi`. `UpdateChecker` now carries the release asset `fileName`; `UpdateBridge` download/install passes and validates that filename; frontend `UpdateDialog` includes it in download/install IPC params. Tests cover accepting the real release asset name and rejecting a mismatched expected name.
 - **Packaging scripts no longer require global WiX only.** `package_release.ps1` and `scripts/build-msi.bat` now resolve WiX from `VRCSM_WIX`, user-global `%USERPROFILE%\.dotnet\tools\wix.exe`, or repo-local `build\tools\wix.exe`.
 - **pnpm 11 build-script approvals are project-local.** `web/pnpm-workspace.yaml` allows build scripts for `esbuild`, `onnxruntime-node`, `protobufjs`, and `sharp`; `corepack pnpm --dir web build` now completes.
 - **Avatar preview diagnostics improved.** Native avatar preview now preserves known UnityPreview failure codes (`bundle_invalid`, `typetree_unsupported`, `no_meshes`, `encrypted`) instead of folding them all into `preview_failed`. `CommonTests.AvatarPreviewPreservesBundleInvalidFailureCode` locks this behavior.
@@ -102,13 +102,6 @@ Final local artifacts from this verification:
   - SHA256: `E431C1CF2436C0A4F82D8C0C7988F39823FA6BBEA7CE6D0502D0CBB7B05CA50E`
 - `build\release\VRCSM_v0.14.6_x64_Installer.msi`
   - SHA256: `37C605FB3DCF75F07ED40DA5AF7FCEDF6FB33D94DA2FFC65D29DD3D9814A8614`
-
-Final local artifacts from this verification:
-
-- `build\release\VRCSM_v0.14.5_x64.zip`
-  - SHA256: `2BE96A70894E2C077E5E2B0EF58DAA3085FD42C1559BAB281D270771F5EB633A`
-- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
-  - SHA256: `2EC6837ADF1224F97C8A2560B390AD4B3627380FAB572C255D035A89EB21F6CB`
 
 ## What Changed Since 0.14.3
 
@@ -324,10 +317,10 @@ ctest --test-dir build\x64-release --output-on-failure
 # 3. Package MSI + ZIP
 powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
 # 4. Tag + Release
-git tag -a v0.14.5 -m "VRCSM v0.14.5"
+git tag -a v0.14.6 -m "VRCSM v0.14.6"
 git push origin main --tags
-gh release create v0.14.5 --title "VRCSM v0.14.5" --notes-file CHANGELOG.md
-gh release upload v0.14.5 "build\release\VRCSM_v0.14.5_x64_Installer.msi" "build\release\VRCSM_v0.14.5_x64.zip" --clobber
+gh release create v0.14.6 --title "VRCSM v0.14.6" --notes-file CHANGELOG.md
+gh release upload v0.14.6 "build\release\VRCSM_v0.14.6_x64_Installer.msi" "build\release\VRCSM_v0.14.6_x64.zip" --clobber
 ```
 
 ## Known Watch Points

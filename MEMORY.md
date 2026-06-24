@@ -1,13 +1,13 @@
 # VRCSM Agent Memory
 
-Last updated: 2026-05-09
+Last updated: 2026-06-24
 
 This is the repo-local handoff entrypoint. It exists because future agents should not have to rediscover the project state, document map, or the avatar/SteamVR decisions from chat history.
 
 ## Read First
 
 1. `AGENTS.md` or `CLAUDE.md` — operating rules, architecture, build commands, safety constraints.
-2. `docs/NEXT-AGENT-HANDOFF.md` — current repo state, last verified build, recent commits, open seams.
+2. `docs/NEXT-AGENT-HANDOFF.md` — current repo state, last verified build, release checkpoint, and open follow-ups.
 3. `docs/MD-INDEX.md` — all Markdown files and what each one is for.
 4. `CHANGELOG.md` — release history and user-visible behavior.
 5. Only then inspect code.
@@ -15,8 +15,8 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 ## Current Continuity Snapshot
 
 - Current branch: `main`.
-- Latest known pushed commit: `d0b16c9` (Add VRChat visits API, fix stale log backfill, add unique DB constraint).
-- Current user priority: correctness and data freshness over speculative features. Log data must reflect recent sessions.
+- Release status: `v0.14.6` shipped on 2026-06-24; active development is paused after this checkpoint unless the user explicitly resumes feature work.
+- Current user priority: repository hygiene, release stability, and critical fixes over speculative feature growth.
 - Last verified release artifact: `build\release\VRCSM_v0.14.6_x64_Installer.msi`.
 - Last verified runtime: `build\x64-release\src\host\VRCSM.exe`.
 - Current version: `0.14.6` (release checkpoint on 2026-06-24; development paused after this version unless a critical fix is explicitly requested).
@@ -26,7 +26,7 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 ```powershell
 # 1. Full build
 pnpm --prefix web build
-cmd.exe /s /c '"D:\Software\Microsoft\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
+cmd.exe /s /c '"D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
 ctest --test-dir build\x64-release --output-on-failure
 # 2. Package MSI + ZIP
 powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
@@ -34,7 +34,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
 gh release upload v0.14.6 "build\release\VRCSM_v0.14.6_x64_Installer.msi" "build\release\VRCSM_v0.14.6_x64.zip" --clobber
 ```
 
-Note: VS2026 path is `D:\Software\Microsoft\Microsoft Visual Studio\18` (not `D:\Software\MS`).
+Note: VS2026 path is `D:\Software\Microsoft Visual Studio\18` (not `D:\Software\MS`).
 
 ## High-Value Context
 
@@ -56,7 +56,7 @@ Use this sequence before claiming a release-facing change is done:
 ```powershell
 pnpm --prefix web build
 pnpm --prefix web test:smoke
-cmd.exe /s /c '"D:\Software\Microsoft\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
+cmd.exe /s /c '"D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release'
 ctest --test-dir build\x64-release --output-on-failure
 powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
 ```
@@ -70,4 +70,4 @@ If `VRCSM.exe` is already running, stop it before the C++ release build or the l
 - Preserve `__info` and `vrc-version` in `Cache-WindowsPlayer`.
 - Keep project docs and release notes aligned with actual shipped behavior.
 - Do not update global Codex memory files from inside this repo. This file is the repo-local memory artifact.
-- VERSION, web/package.json, and README artifact names must stay in sync.
+- VERSION, `web/package.json`, README artifact names, and release asset filenames must stay in sync.
