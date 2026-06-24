@@ -242,6 +242,7 @@
       "type": "Type",
       "insertVariable": "Insert variable",
       "autoStarted": "Auto send started",
+      "emptyRendered": "Template has no available values",
       "templatePresets": "Templates",
       "builder": "Template builder",
       "editArea": "Edit area",

@@ -242,6 +242,7 @@
       "type": "类型",
       "insertVariable": "插入变量",
       "autoStarted": "已开始自动发送",
+      "emptyRendered": "模板没有可用数值",
       "templatePresets": "模板",
       "builder": "模板编辑器",
       "editArea": "编辑区",

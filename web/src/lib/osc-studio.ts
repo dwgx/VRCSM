@@ -619,7 +619,7 @@ export function renderOscTemplate(
     (text, [token, value]) => text.replaceAll(token, value),
     template,
   );
-  return cleanRenderedTemplate(rendered.replace(/\{[a-zA-Z0-9_.-]+\}/g, "--"));
+  return cleanRenderedTemplate(rendered.replace(/\{[a-zA-Z0-9_.-]+\}/g, "--"), template);
 }
 
 export function cardPreview(card: OscStudioCard, context: OscTemplateContext): string {
@@ -700,19 +700,59 @@ function formatSensor(sensor: SensorReading | null | undefined): string {
   return `${sensor.name} ${rounded}${sensor.unit}`;
 }
 
-function cleanRenderedTemplate(value: string): string {
+function cleanRenderedTemplate(value: string, template: string): string {
+  const templateLines = template.split(/\r?\n/);
   return value
     .split(/\r?\n/)
-    .map((line) => {
+    .map((line, lineIndex) => {
+      const templateParts = (templateLines[lineIndex] ?? "")
+        .split("|")
+        .map((part) => part.trim());
       const parts = line
         .split("|")
-        .map((part) => part.replace(/\s+/g, " ").trim())
-        .filter((part) => part.length > 0 && !part.includes("--"));
-      return parts.join(" | ");
+        .map((part, index) => ({
+          text: cleanTemplatePart(part, templateParts[index] ?? ""),
+          template: templateParts[index] ?? "",
+        }))
+        .filter((part) => part.text.length > 0);
+      if (
+        parts.length === 1 &&
+        templateParts.length > 1 &&
+        !hasTemplateToken(parts[0].template) &&
+        templateParts.some(hasTemplateToken)
+      ) {
+        return "";
+      }
+      return parts.map((part) => part.text).join(" | ");
     })
     .filter((line) => line.length > 0)
     .join("\n")
     .trim();
+}
+
+function hasTemplateToken(value: string): boolean {
+  return /\{[a-zA-Z0-9_.-]+\}/.test(value);
+}
+
+function cleanTemplatePart(value: string, templatePart: string): string {
+  const cleaned = value
+    .replace(/\s*--\s*/g, " ")
+    .replace(/\s+([/:,])/g, "$1")
+    .replace(/([/:,])\s+/g, "$1")
+    .replace(/[/:,]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return "";
+  if (!hasTemplateToken(templatePart)) return cleaned;
+
+  const staticOnly = templatePart
+    .replace(/\{[a-zA-Z0-9_.-]+\}/g, " ")
+    .replace(/\s+([/:,])/g, "$1")
+    .replace(/([/:,])\s+/g, "$1")
+    .replace(/[/:,]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned === staticOnly ? "" : cleaned;
 }
 
 function shortenHardwareName(value: string | null | undefined): string {

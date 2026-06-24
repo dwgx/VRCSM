@@ -36,6 +36,30 @@ Last updated: 2026-06-24
 - **Unified asset cache + lazy metadata slice.** `src/core/Database.cpp` schema v12 adds `asset_cache` for world/avatar/user names, remote image URLs, local thumbnail URLs, payload, source, confidence, expiry, and negative-cache timestamps. `assets.resolve`, `assets.prefetch`, and `assets.invalidate` are registered as async IPC handlers; resolve seeds from hints/local favorites/avatar history/player encounters, then uses the existing thumbnail resolver only for missing world/avatar covers. `ApiBridge` now backfills verified user/world/avatar cache rows from friends list, user profile, world details, and avatar details.
 - **Frontend asset-cache integration.** `web/src/lib/assets-cache.ts` is the shared frontend cache. `WorldPopupBadge`, `AvatarPopupBadge`, `UserPopupBadge`, and `Worlds.tsx` now use it. `UserPopupBadge` no longer calls `user.getProfile` merely because it mounted; full profile fetch happens only when the dialog opens. Worlds warms visible rows and queues lookahead rows through `prefetchAssets` / `prefetchAssetsLowPriority`, reusing log names as hints.
 - **OSC Studio cleanup after in-VR bad-value report.** `TemplateBuilderPanel` now has a localized clear-editor button. `renderOscTemplate()` drops pipe-separated template segments containing `--`, so unavailable CPU temperature/fan/board/sensor values do not get sent into VRChat Chatbox when other segments are valid. This is a UI/rendering guard, not a substitute for deeper sensor-source work.
+- **OSC auto-send timing and stale-message fix.** `web/src/pages/OscTools.tsx` now renders Chatbox templates through a callback after telemetry refresh and after any 2-second Chatbox rate-limit wait, so `{time.short}` seconds reflect the actual send moment instead of the moment the async task started. Auto-send is a single cancellable `setTimeout` loop keyed by `autoRunIdRef`; it no longer overlaps async `setInterval` sends, and `stopAutoSend()` cancels in-flight waits before an old message can be sent. `web/src/lib/osc-studio.ts` now removes missing-value placeholders inside segments, drops CPU/fan-only segments when the values are missing, and treats a lone category label like `Thermal` as an empty message.
+
+## Last Verified Build (2026-06-24 OSC auto-send timing slice)
+
+- Official VRChat docs checked during this slice:
+  - `https://docs.vrchat.com/docs/osc-overview.md`: VRChat receives OSC on `9000` and sends on `9001` by default.
+  - `https://docs.vrchat.com/docs/osc-as-input-controller.md`: Chatbox text is limited to 144 characters and 9 displayed lines; `/chatbox/input` takes string, send-immediately bool, and notification-SFX bool.
+- `cmd /c node_modules\.bin\vitest.CMD run src/lib/__tests__/osc-studio.test.ts --reporter verbose --testTimeout 15000` from `web\`: passed, 4/4.
+- `cmd /c node_modules\.bin\tsc.CMD -b --pretty false` from `web\`: passed.
+- Locale integrity script over `web/src/i18n/locales/*.json`: passed.
+- `cmd /c node_modules\.bin\vitest.CMD run src/__tests__/pages-smoke.test.tsx --reporter verbose --testTimeout 20000` from `web\`: passed, 23/23; only existing mock IPC / React Router / Three.js warnings.
+- `cmd /c node_modules\.bin\vite.CMD build` from `web\`: passed; emitted existing empty `react-vendor` and large-chunk warnings.
+- `cmake -DSOURCE=web/dist -DDEST=build/x64-release/src/host/web -P cmake/sync-web-dist.cmake`: passed after using the VS2026 bundled CMake absolute path; confirmed host output contains `OscTools-DsKOAM1B.js`.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed after syncing frontend dist.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched visibly, PID 31912, window title `VRC Settings Manager`, responding after 8 seconds.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.5_x64.zip`
+  - Size: 18,729,410 bytes
+  - SHA256: `BC117951E6397DD626A08DA801ABCDECAB1DB26373FB726478E9219F0A0962F2`
+- `build\release\VRCSM_v0.14.5_x64_Installer.msi`
+  - Size: 8,638,464 bytes
+  - SHA256: `A76F6FD7D91F2903349B2EE0DC1A23C1B3DFA9104A933D4A7B8FFFBF05A7EB99`
 
 ## What Changed Since 0.14.3
 

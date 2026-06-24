@@ -113,7 +113,10 @@ const CHATBOX_RATE_LIMIT_MS = 2000;
 interface SendCardOptions {
   silentSuccess?: boolean;
   waitForRateLimit?: boolean;
+  shouldContinue?: () => boolean;
 }
+
+type ChatboxMessageSource = string | (() => string);
 
 interface OscTemplateBlock {
   id: string;
@@ -147,6 +150,7 @@ export default function OscTools() {
   const [componentFilter, setComponentFilter] = useState<OscTemplateComponentFilter>("recommended");
   const [componentSearch, setComponentSearch] = useState("");
   const autoTimerRef = useRef<number | null>(null);
+  const autoRunIdRef = useRef(0);
   const latestCardsRef = useRef(cards);
   const hardwareRef = useRef<HardwareSnapshot | null>(hardware);
   const hostRef = useRef(host);
@@ -326,13 +330,17 @@ export default function OscTools() {
 
   async function sendCard(card: OscStudioCard, options: SendCardOptions = {}) {
     if (!card.enabled) return;
+    if (options.shouldContinue && !options.shouldContinue()) return;
     if (!card.address.startsWith("/")) {
       toast.error(t("osc.invalidAddress", { defaultValue: "Address must start with /" }));
       return;
     }
 
-    if (card.address === "/chatbox/input" || card.kind === "chatbox-template" || card.kind === "hardware-summary" || card.kind === "sensor-temperature" || card.kind === "performance-overlay") {
-      await sendChatboxWithLimit(cardPreview(card, { hardware: hardwareRef.current, now: new Date() }), options);
+    if (isChatboxCard(card)) {
+      await sendChatboxWithLimit(
+        () => cardPreview(card, { hardware: hardwareRef.current, now: new Date() }),
+        options,
+      );
       return;
     }
 
@@ -341,6 +349,7 @@ export default function OscTools() {
       toast.error(t("osc.invalidValue", { defaultValue: "Value can't be parsed" }));
       return;
     }
+    if (options.shouldContinue && !options.shouldContinue()) return;
     await sendOscMessage(card.address, [value], { host: hostRef.current, port: sendPortRef.current });
     if (!options.silentSuccess) {
       toast.success(t("osc.sent", { defaultValue: "Sent" }));
@@ -356,19 +365,28 @@ export default function OscTools() {
     }
   }
 
-  async function sendChatboxWithLimit(message: string, options: SendCardOptions = {}) {
-    const trimmed = message.trim().slice(0, 144);
-    if (!trimmed) return;
+  async function sendChatboxWithLimit(messageSource: ChatboxMessageSource, options: SendCardOptions = {}) {
+    if (options.shouldContinue && !options.shouldContinue()) return;
     const now = Date.now();
     const elapsed = now - lastChatboxSentRef.current;
     if (elapsed < CHATBOX_RATE_LIMIT_MS) {
       if (options.waitForRateLimit) {
         await wait(CHATBOX_RATE_LIMIT_MS - elapsed + 50);
+        if (options.shouldContinue && !options.shouldContinue()) return;
       } else {
         toast.error(t("osc.chatbox.rateLimit", { defaultValue: "Wait 2 seconds between messages (VRChat rate limit)" }));
         return;
       }
     }
+    const message = typeof messageSource === "function" ? messageSource() : messageSource;
+    const trimmed = message.trim().slice(0, 144);
+    if (!trimmed) {
+      if (!options.silentSuccess) {
+        toast.error(t("osc.studio.emptyRendered", { defaultValue: "Template has no available values" }));
+      }
+      return;
+    }
+    if (options.shouldContinue && !options.shouldContinue()) return;
     await sendChatbox(trimmed, { host: hostRef.current, port: sendPortRef.current });
     lastChatboxSentRef.current = Date.now();
     if (!options.silentSuccess) {
@@ -380,32 +398,63 @@ export default function OscTools() {
     if (!selectedCard) return;
     stopAutoSend();
     const intervalSec = Math.max(2, selectedCard.autoIntervalSec ?? 20);
+    const intervalMs = intervalSec * 1000;
     const cardId = selectedCard.id;
+    const runId = autoRunIdRef.current + 1;
+    autoRunIdRef.current = runId;
     setActiveAutoId(cardId);
     toast.success(t("osc.studio.autoStarted", { defaultValue: "Auto send started" }));
-    void (async () => {
+    let nextRunAt = Date.now();
+    const isCurrentRun = () => autoRunIdRef.current === runId;
+
+    const runOnce = async (): Promise<boolean> => {
+      if (!isCurrentRun()) return false;
+      const current = latestCardsRef.current.find((card) => card.id === cardId);
+      if (!current) {
+        setActiveAutoId(null);
+        return false;
+      }
       if (!hardwareRef.current || Date.now() - lastHardwareRefreshRef.current >= AUTO_TELEMETRY_REFRESH_MS) {
         await refreshHardware(true);
       }
-      await sendCard(selectedCard, { silentSuccess: true, waitForRateLimit: true });
-    })().catch((err) => toast.error(err instanceof Error ? err.message : String(err)));
-    autoTimerRef.current = window.setInterval(() => {
-      const current = latestCardsRef.current.find((card) => card.id === cardId);
-      if (!current) return;
-      void (async () => {
-        if (Date.now() - lastHardwareRefreshRef.current >= AUTO_TELEMETRY_REFRESH_MS) {
-          await refreshHardware(true);
-        }
-        await sendCard(current, { silentSuccess: true, waitForRateLimit: true });
-      })().catch((err) =>
-        toast.error(err instanceof Error ? err.message : String(err)),
-      );
-    }, intervalSec * 1000);
+      if (!isCurrentRun()) return false;
+      await sendCard(current, {
+        silentSuccess: true,
+        waitForRateLimit: true,
+        shouldContinue: isCurrentRun,
+      });
+      return isCurrentRun();
+    };
+
+    const scheduleNext = (delayMs: number) => {
+      autoTimerRef.current = window.setTimeout(() => {
+        autoTimerRef.current = null;
+        void (async () => {
+          const shouldContinue = await runOnce();
+          if (!shouldContinue || autoRunIdRef.current !== runId) return;
+          nextRunAt += intervalMs;
+          const nowMs = Date.now();
+          while (nextRunAt <= nowMs) {
+            nextRunAt += intervalMs;
+          }
+          scheduleNext(nextRunAt - nowMs);
+        })().catch((err) => {
+          if (autoRunIdRef.current === runId) {
+            toast.error(err instanceof Error ? err.message : String(err));
+            nextRunAt = Date.now() + intervalMs;
+            scheduleNext(intervalMs);
+          }
+        });
+      }, Math.max(0, delayMs));
+    };
+
+    scheduleNext(0);
   }
 
   function stopAutoSend() {
-    if (autoTimerRef.current) {
-      window.clearInterval(autoTimerRef.current);
+    autoRunIdRef.current += 1;
+    if (autoTimerRef.current !== null) {
+      window.clearTimeout(autoTimerRef.current);
       autoTimerRef.current = null;
     }
     setActiveAutoId(null);
@@ -1697,6 +1746,16 @@ function createTemplateCard(template: string): OscStudioCard {
     template,
     autoIntervalSec: 20,
   };
+}
+
+function isChatboxCard(card: OscStudioCard): boolean {
+  return (
+    card.address === "/chatbox/input" ||
+    card.kind === "chatbox-template" ||
+    card.kind === "hardware-summary" ||
+    card.kind === "sensor-temperature" ||
+    card.kind === "performance-overlay"
+  );
 }
 
 function templatePatchForCard(card: OscStudioCard, template: string): Partial<OscStudioCard> {
