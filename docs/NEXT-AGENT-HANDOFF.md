@@ -8,8 +8,9 @@ Last updated: 2026-06-24
 - Working tree at handoff time: local fixes pending for migration IPC, `world_visits` dedupe, updater IPC/package validation, release asset filename sync, packaging scripts, avatar-preview diagnostics, and frontend API facade cleanup.
 - Latest remote commit at audit time: `42940a5` (chore: align release metadata version).
 - Remote: `origin https://github.com/dwgx/VRCSM.git`
-- Current app version: `0.14.5`
+- Current app version: `0.14.6`
 - VS2026 path: `D:\Software\Microsoft Visual Studio\18` (current machine path).
+- Project status: release checkpoint shipped and active development paused after `v0.14.6`. Only critical bugfixes, packaging fixes, or security repairs should be assumed in-scope unless the user explicitly resumes feature work.
 
 ## 2026-06-22/23 Local Fixes Pending
 
@@ -40,6 +41,8 @@ Last updated: 2026-06-24
 - **OSC auto-send visibility + AIDA64 sensors.** `OscTools` now exposes per-card Auto/Stop buttons and an active auto-send status panel with sent/skipped counters, next-send countdown, last message, and last error. `HwTelemetry` now reads the public AIDA64 `AIDA64_SensorValues` shared-memory feed, parses XML-ish sensor rows, classifies T/F/P/U/V/C style rows into temperature/fan/power/load/voltage/clock, and folds them into the same source-status contract as LibreHardwareMonitor/OpenHardwareMonitor/NVML. The OSC hardware panel now lists the first live sensor readings, and old/default thermal templates migrate from `Fan {gpu.fanPct}` to `{fan.0}` so RPM-style fan sensors can render. HWiNFO shared memory is still **not** implemented; add it only with a clear legal/SDK boundary.
 - **ACPI thermal-zone fallback added.** `HwTelemetry` now also queries `ROOT\WMI:MSAcpi_ThermalZoneTemperature`, converts tenths-Kelvin `CurrentTemperature` values to Celsius, validates the result range, exposes readings as `acpi_thermal_zone`, and uses the first one only as a CPU temperature fallback when no more specific provider produced a CPU temperature. This improves out-of-box coverage but must remain labeled as platform thermal-zone data, not exact CPU package/core telemetry.
 - **OSC send-flow behavior adjusted.** `StudioToolbar` preset buttons now apply the preset into the selected card/editor instead of always appending another card. Default OSC Studio card/scene `autoIntervalSec` values are now `1`. Manual Chatbox sends use a local `5 messages / 5 seconds` burst guard with a visible error string, while auto-send skips that local manual guard and sends with notification SFX disabled. `Send selected` / `Auto send` now toast a localized error if no card is selected.
+- **OSC auto-send hotfix landed.** `web/src/lib/osc-api.ts` now sends `/chatbox/input` args in VRChat's real order (`string`, `sendImmediately`, `playNotificationSound`) instead of treating the second bool like the SFX toggle. `web/src/pages/OscTools.tsx` now commits card-list mutations synchronously into both React state and `latestCardsRef`, which fixes the immediate-start race where a just-created or just-edited card could be reported as "Auto-send card was removed". The interval editors and new template cards also now default to and accept `1s` consistently instead of clamping the UI back to `2`.
+- **OSC send diagnostics + auto pacing repair.** `src/core/OscBridge.*` now returns structured send failures for invalid IPv4 host input, `socket()` failure, and `sendto()` failure; `src/host/bridges/PipelineBridge.cpp` converts them into real IPC errors so the frontend stops showing a bare generic `ERROR`. `web/src/pages/OscTools.tsx` also restored a dedicated Chatbox auto-send pacing gate (`2000ms`) so `1s` editor defaults still queue correctly against VRChat's practical Chatbox cadence instead of appearing to run while messages are skipped or race each other.
 
 ## Last Verified Build (2026-06-24 OSC auto-send visibility + AIDA64 sensor slice)
 
@@ -64,6 +67,41 @@ Last updated: 2026-06-24
 - `cmake --build --preset x64-release --target vrcsm` through the VS2026 bundled CMake: passed; `web/dist` was synced into the host output and the host output contains `OscTools-2buEcSyc.js`.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed after syncing frontend dist.
 - Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched visibly, PID 39720, window title `VRC Settings Manager`, responding after 8 seconds.
+
+## Last Verified Build (2026-06-24 OSC auto-send hotfix slice)
+
+- `cmd /c node_modules\.bin\tsc.CMD -b --pretty false` from `web\`: passed.
+- `cmd /c node_modules\.bin\vitest.CMD run src/lib/__tests__/osc-api.test.ts src/lib/__tests__/osc-studio.test.ts src/__tests__/pages-smoke.test.tsx --reporter verbose --testTimeout 20000` from `web\`: passed, 30/30.
+- `cmd /c node_modules\.bin\vite.CMD build` from `web\`: passed; emitted the existing empty `react-vendor` and large-chunk warnings.
+- New regression test `web/src/lib/__tests__/osc-api.test.ts` locks the `/chatbox/input` argument order so future refactors do not silently break auto-send again.
+
+## Last Verified Build (2026-06-24 OSC send diagnostics + pacing slice)
+
+- `cmd /c node_modules\.bin\tsc.CMD -b --pretty false` from `web\`: passed.
+- `cmd /c node_modules\.bin\vitest.CMD run src/lib/__tests__/osc-api.test.ts src/lib/__tests__/osc-studio.test.ts src/__tests__/pages-smoke.test.tsx --reporter verbose --testTimeout 20000` from `web\`: passed.
+- `cmd.exe /s /c '"D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release --target VRCSM_Tests --parallel 1'`: passed.
+- `build\x64-release\tests\VRCSM_Tests.exe --gtest_filter=CommonTests.OscBridgeRejectsInvalidIpv4Host`: passed.
+- `cmd.exe /s /c '"D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release --target vrcsm --parallel 1'`: passed and synced `web/dist` into the release host output; the host output contains `OscTools-C-BGdlaM.js`.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched visibly, PID 31600, window title `VRC Settings Manager`, responding after 8 seconds.
+
+## Last Verified Build (2026-06-24 v0.14.6 release checkpoint)
+
+- `cmd /c node_modules\.bin\tsc.CMD -b --pretty false` from `web\`: passed.
+- `cmd /c node_modules\.bin\vitest.CMD run src/lib/__tests__/osc-api.test.ts src/lib/__tests__/osc-studio.test.ts src/__tests__/pages-smoke.test.tsx --reporter verbose --testTimeout 20000` from `web\`: passed, 30/30.
+- `cmd /c node_modules\.bin\vite.CMD build` from `web\`: passed; emitted the existing empty `react-vendor` and large-chunk warnings.
+- `cmd.exe /s /c '"D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release --target VRCSM_Tests --parallel 1'`: passed.
+- `build\x64-release\tests\VRCSM_Tests.exe --gtest_filter=CommonTests.OscBridgeRejectsInvalidIpv4Host`: passed.
+- `cmd.exe /s /c '"D:\Software\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && cmake --build --preset x64-release --target vrcsm --parallel 1'`: passed and synced `web/dist` into the release host output.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1`: passed for `0.14.6`.
+- Startup smoke: `build\x64-release\src\host\VRCSM.exe` launched visibly, PID 31604, window title `VRC Settings Manager`, responding after 8 seconds.
+
+Final local artifacts from this verification:
+
+- `build\release\VRCSM_v0.14.6_x64.zip`
+  - SHA256: `E431C1CF2436C0A4F82D8C0C7988F39823FA6BBEA7CE6D0502D0CBB7B05CA50E`
+- `build\release\VRCSM_v0.14.6_x64_Installer.msi`
+  - SHA256: `37C605FB3DCF75F07ED40DA5AF7FCEDF6FB33D94DA2FFC65D29DD3D9814A8614`
 
 Final local artifacts from this verification:
 

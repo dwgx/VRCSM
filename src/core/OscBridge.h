@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <variant>
@@ -44,6 +45,19 @@ struct OscArgument
 class OscBridge
 {
 public:
+    struct SendError
+    {
+        std::string code;
+        std::string message;
+        int socketError{0};
+    };
+
+    struct SendResult
+    {
+        bool ok{false};
+        std::optional<SendError> error;
+    };
+
     using MessageCallback = std::function<void(
         const std::string& address,
         const std::vector<OscArgument>& args)>;
@@ -56,11 +70,12 @@ public:
 
     // Fires a single OSC message at `host:port` (defaults to
     // 127.0.0.1:9000 — VRChat's input socket). Synchronous; returns
-    // false if the socket setup or send fails.
-    bool Send(const std::string& address,
-              const std::vector<OscArgument>& args,
-              const std::string& host = "127.0.0.1",
-              std::uint16_t port = 9000);
+    // structured failure details when socket setup, host parsing, or
+    // sendto fails.
+    SendResult Send(const std::string& address,
+                    const std::vector<OscArgument>& args,
+                    const std::string& host = "127.0.0.1",
+                    std::uint16_t port = 9000);
 
     // Starts a listening UDP socket on `port` (defaults to 9001).
     // Incoming packets are parsed into `(address, args)` pairs and

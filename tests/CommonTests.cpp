@@ -17,6 +17,7 @@
 #include "core/LogEventClassifier.h"
 #include "core/LogParser.h"
 #include "core/Migrator.h"
+#include "core/OscBridge.h"
 #include "core/ProcessGuard.h"
 #include "core/SafeDelete.h"
 #include "core/UnityBundle.h"
@@ -162,6 +163,21 @@ TEST(CommonTests, Aida64SensorValuesParserAcceptsCommonXmlRows)
     EXPECT_EQ(sensors[2].sensorType, "Power");
     EXPECT_EQ(sensors[3].sensorType, "Fan");
     EXPECT_EQ(sensors[3].unit, "RPM");
+}
+
+TEST(CommonTests, OscBridgeRejectsInvalidIpv4Host)
+{
+    vrcsm::core::OscBridge bridge;
+    const auto result = bridge.Send(
+        "/chatbox/input",
+        {vrcsm::core::OscArgument::fromString("VRCSM")},
+        "not-a-valid-ipv4-host",
+        9000);
+
+    EXPECT_FALSE(result.ok);
+    ASSERT_TRUE(result.error.has_value());
+    EXPECT_EQ(result.error->code, "osc_invalid_host");
+    EXPECT_NE(result.error->message.find("valid IPv4 address"), std::string::npos);
 }
 
 TEST(CommonTests, AcpiThermalZoneConvertsTenthsKelvinToCelsius)

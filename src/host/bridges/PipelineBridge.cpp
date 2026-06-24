@@ -235,7 +235,11 @@ nlohmann::json IpcBridge::HandleOscSend(const nlohmann::json& params, const std:
     const auto address = JsonStringField(params, "address");
     if (!address.has_value() || address->empty() || (*address)[0] != '/')
     {
-        throw std::runtime_error("osc.send: 'address' must be an OSC address starting with '/'");
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument",
+            "osc.send: 'address' must be an OSC address starting with '/'",
+            400,
+        });
     }
 
     const std::string host = JsonStringField(params, "host").value_or("127.0.0.1");
@@ -247,8 +251,17 @@ nlohmann::json IpcBridge::HandleOscSend(const nlohmann::json& params, const std:
         args = vrcsm::core::OscArgumentsFromJson(params["args"]);
     }
 
-    const bool ok = m_osc->Send(*address, args, host, port);
-    return nlohmann::json{{"ok", ok}};
+    const auto result = m_osc->Send(*address, args, host, port);
+    if (!result.ok)
+    {
+        const auto& err = result.error.value();
+        throw IpcException(vrcsm::core::Error{
+            err.code,
+            err.message,
+            0,
+        });
+    }
+    return nlohmann::json{{"ok", true}};
 }
 
 nlohmann::json IpcBridge::HandleOscListenStart(const nlohmann::json& params, const std::optional<std::string>&)

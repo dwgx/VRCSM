@@ -17,9 +17,9 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 - Current branch: `main`.
 - Latest known pushed commit: `d0b16c9` (Add VRChat visits API, fix stale log backfill, add unique DB constraint).
 - Current user priority: correctness and data freshness over speculative features. Log data must reflect recent sessions.
-- Last verified release artifact: `build\release\VRCSM_v0.14.5_x64_Installer.msi`.
+- Last verified release artifact: `build\release\VRCSM_v0.14.6_x64_Installer.msi`.
 - Last verified runtime: `build\x64-release\src\host\VRCSM.exe`.
-- Current version: `0.14.5` (bumped from 0.14.4 on 2026-05-09).
+- Current version: `0.14.6` (release checkpoint on 2026-06-24; development paused after this version unless a critical fix is explicitly requested).
 
 ## Release Workflow
 
@@ -31,7 +31,7 @@ ctest --test-dir build\x64-release --output-on-failure
 # 2. Package MSI + ZIP
 powershell -NoProfile -ExecutionPolicy Bypass -File .\package_release.ps1
 # 3. Upload to GitHub
-gh release upload v0.14.5 "build\release\VRCSM_v0.14.5_x64_Installer.msi" "build\release\VRCSM_v0.14.5_x64.zip" --clobber
+gh release upload v0.14.6 "build\release\VRCSM_v0.14.6_x64_Installer.msi" "build\release\VRCSM_v0.14.6_x64.zip" --clobber
 ```
 
 Note: VS2026 path is `D:\Software\Microsoft\Microsoft Visual Studio\18` (not `D:\Software\MS`).

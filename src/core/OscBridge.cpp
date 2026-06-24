@@ -95,6 +95,11 @@ bool ReadOscString(const std::uint8_t* data, std::size_t size,
     return true;
 }
 
+std::string FormatSocketErrorMessage(const char* stage, int error, std::string_view host, std::uint16_t port)
+{
+    return fmt::format("OSC {} failed for {}:{} (WSA {})", stage, host, port, error);
+}
+
 } // namespace
 
 std::vector<std::uint8_t> EncodeOscMessage(
@@ -286,24 +291,42 @@ OscBridge::~OscBridge()
     StopListen();
 }
 
-bool OscBridge::Send(const std::string& address,
-                     const std::vector<OscArgument>& args,
-                     const std::string& host,
-                     std::uint16_t port)
+OscBridge::SendResult OscBridge::Send(const std::string& address,
+                                      const std::vector<OscArgument>& args,
+                                      const std::string& host,
+                                      std::uint16_t port)
 {
     EnsureWinsock();
 
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock == INVALID_SOCKET)
     {
-        spdlog::warn("OscBridge: socket() failed ({})", WSAGetLastError());
-        return false;
+        const int error = WSAGetLastError();
+        const std::string message = FormatSocketErrorMessage("socket", error, host, port);
+        spdlog::warn("OscBridge: {}", message);
+        return SendResult{
+            false,
+            SendError{"osc_socket_failed", message, error},
+        };
     }
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
-    inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
+    const int parseRc = inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
+    if (parseRc != 1)
+    {
+        closesocket(sock);
+        const int error = parseRc == 0 ? 0 : WSAGetLastError();
+        const std::string message = parseRc == 0
+            ? fmt::format("OSC host must be a valid IPv4 address: {}", host)
+            : FormatSocketErrorMessage("host parse", error, host, port);
+        spdlog::warn("OscBridge: {}", message);
+        return SendResult{
+            false,
+            SendError{parseRc == 0 ? "osc_invalid_host" : "osc_host_parse_failed", message, error},
+        };
+    }
 
     const auto bytes = EncodeOscMessage(address, args);
     const int rc = sendto(sock,
@@ -312,13 +335,19 @@ bool OscBridge::Send(const std::string& address,
                           0,
                           reinterpret_cast<sockaddr*>(&addr),
                           sizeof(addr));
-    const bool ok = rc == static_cast<int>(bytes.size());
-    if (!ok)
+    if (rc != static_cast<int>(bytes.size()))
     {
-        spdlog::warn("OscBridge: sendto failed ({})", WSAGetLastError());
+        const int error = WSAGetLastError();
+        const std::string message = FormatSocketErrorMessage("sendto", error, host, port);
+        spdlog::warn("OscBridge: {}", message);
+        closesocket(sock);
+        return SendResult{
+            false,
+            SendError{"osc_send_failed", message, error},
+        };
     }
     closesocket(sock);
-    return ok;
+    return SendResult{true, std::nullopt};
 }
 
 bool OscBridge::StartListen(MessageCallback onMessage, std::uint16_t port)

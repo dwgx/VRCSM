@@ -8,7 +8,7 @@
 
 一款用于扫描、预览、清理与迁移 VRChat 本地数据的 Windows 11 桌面工具
 
-[![Version](https://img.shields.io/badge/version-0.14.5-blue)](https://github.com/dwgx/VRCSM/releases/latest)
+[![Version](https://img.shields.io/badge/version-0.14.6-blue)](https://github.com/dwgx/VRCSM/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D6)](#)
 [![License](https://img.shields.io/badge/license-VSAL-red)](LICENSE)
 [![Stack](https://img.shields.io/badge/stack-C%2B%2B20%20%C2%B7%20WebView2%20%C2%B7%20React%2019-success)](#)

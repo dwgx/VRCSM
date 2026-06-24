@@ -111,6 +111,7 @@ const MAX_LOG_ENTRIES = 200;
 const AUTO_TELEMETRY_REFRESH_MS = 5000;
 const CHATBOX_MANUAL_RATE_WINDOW_MS = 5000;
 const CHATBOX_MANUAL_RATE_BURST = 5;
+const CHATBOX_AUTO_RATE_LIMIT_MS = 2000;
 
 interface SendCardOptions {
   silentSuccess?: boolean;
@@ -180,6 +181,7 @@ export default function OscTools() {
   const hostRef = useRef(host);
   const sendPortRef = useRef(sendPort);
   const manualChatboxSentRef = useRef<number[]>([]);
+  const lastChatboxAutoSentRef = useRef(0);
   const lastHardwareRefreshRef = useRef(0);
 
   const [address, setAddress] = useState("/avatar/parameters/MuteSelf");
@@ -203,11 +205,6 @@ export default function OscTools() {
     ? cardPreview(selectedCard, { hardware, now: new Date(clockTick) })
     : "";
   const localAvatars = report?.local_avatar_data.recent_items ?? [];
-
-  useEffect(() => {
-    latestCardsRef.current = cards;
-    saveOscStudioCards(cards);
-  }, [cards]);
 
   useEffect(() => {
     hardwareRef.current = hardware;
@@ -253,12 +250,23 @@ export default function OscTools() {
     }
   }, [avatarId, localAvatars]);
 
+  function commitCards(nextOrUpdater: OscStudioCard[] | ((prev: OscStudioCard[]) => OscStudioCard[])) {
+    setCards((prev) => {
+      const next = typeof nextOrUpdater === "function"
+        ? (nextOrUpdater as (prev: OscStudioCard[]) => OscStudioCard[])(prev)
+        : nextOrUpdater;
+      latestCardsRef.current = next;
+      saveOscStudioCards(next);
+      return next;
+    });
+  }
+
   function patchCard(cardId: string, patch: Partial<OscStudioCard>) {
-    setCards((prev) => updateOscCard(prev, cardId, patch));
+    commitCards((prev) => updateOscCard(prev, cardId, patch));
   }
 
   function moveCard(cardId: string, direction: -1 | 1) {
-    setCards((prev) => moveOscCard(prev, cardId, direction));
+    commitCards((prev) => moveOscCard(prev, cardId, direction));
   }
 
   function dragStart(cardId: string) {
@@ -273,14 +281,14 @@ export default function OscTools() {
   function dropOnCard(targetId: string) {
     if (!draggedId || draggedId === targetId) return;
     const targetIndex = cards.findIndex((card) => card.id === targetId);
-    setCards((prev) => moveOscCardToIndex(prev, draggedId, targetIndex));
+    commitCards((prev) => moveOscCardToIndex(prev, draggedId, targetIndex));
     setDraggedId(null);
   }
 
   function setSelectedTemplateText(template: string) {
     if (!selectedCard) {
       const card = createTemplateCard(template);
-      setCards((prev) => [...prev, card]);
+      commitCards((prev) => [...prev, card]);
       setSelectedId(card.id);
       return;
     }
@@ -395,6 +403,13 @@ export default function OscTools() {
 
   async function sendChatboxWithLimit(messageSource: ChatboxMessageSource, options: SendCardOptions = {}): Promise<SendOutcome> {
     if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
+    if (options.chatboxRateMode === "auto") {
+      const elapsed = Date.now() - lastChatboxAutoSentRef.current;
+      if (elapsed < CHATBOX_AUTO_RATE_LIMIT_MS) {
+        await wait(CHATBOX_AUTO_RATE_LIMIT_MS - elapsed);
+        if (options.shouldContinue && !options.shouldContinue()) return { status: "cancelled" };
+      }
+    }
     if (options.chatboxRateMode !== "none" && options.chatboxRateMode !== "auto") {
       const now = Date.now();
       manualChatboxSentRef.current = manualChatboxSentRef.current.filter(
@@ -426,10 +441,14 @@ export default function OscTools() {
     const result = await sendChatbox(
       trimmed,
       { host: hostRef.current, port: sendPortRef.current },
+      true,
       options.chatboxNotify ?? true,
     );
     if (!result.ok) {
       throw new Error(t("osc.sendFailed", { defaultValue: "OSC send failed" }));
+    }
+    if (options.chatboxRateMode === "auto") {
+      lastChatboxAutoSentRef.current = Date.now();
     }
     if (options.chatboxRateMode !== "none" && options.chatboxRateMode !== "auto") {
       manualChatboxSentRef.current.push(Date.now());
@@ -580,7 +599,10 @@ export default function OscTools() {
     }
     try {
       setSending(true);
-      await sendOscMessage(address, [value], { host, port: sendPort });
+      const result = await sendOscMessage(address, [value], { host, port: sendPort });
+      if (!result.ok) {
+        throw new Error(t("osc.sendFailed", { defaultValue: "OSC send failed" }));
+      }
       toast.success(t("osc.sent", { defaultValue: "Sent" }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
@@ -611,7 +633,7 @@ export default function OscTools() {
     if (!sceneCard) return;
     if (!selectedCard) {
       const next = appendOscScene(cards, scene.id);
-      setCards(next);
+      commitCards(next);
       setSelectedId(next[next.length - 1]?.id ?? selectedId);
       return;
     }
@@ -649,7 +671,7 @@ export default function OscTools() {
   function importProfile() {
     try {
       const next = importOscStudioProfile(profileText);
-      setCards(next);
+      commitCards(next);
       setSelectedId(next[0]?.id ?? null);
       toast.success(t("osc.studio.imported", { defaultValue: "Profile imported" }));
     } catch (err) {
@@ -688,7 +710,7 @@ export default function OscTools() {
 
   function addManualParameter() {
     const card = createAvatarParameterCard(manualParamName, avatarParamType);
-    setCards((prev) => [...prev, card]);
+    commitCards((prev) => [...prev, card]);
     setSelectedId(card.id);
   }
 
@@ -697,7 +719,7 @@ export default function OscTools() {
       ? type
       : "float";
     const card = createAvatarParameterCard(name, safeType);
-    setCards((prev) => [...prev, card]);
+    commitCards((prev) => [...prev, card]);
     setSelectedId(card.id);
   }
 
@@ -748,8 +770,9 @@ export default function OscTools() {
             setSelectedSceneId={setSelectedSceneId}
             onApplyScene={applyScenePreset}
             onReset={() => {
+              stopAutoSend();
               const next = resetOscStudioCards();
-              setCards(next);
+              commitCards(next);
               setSelectedId(next[0]?.id ?? null);
             }}
           />
@@ -1068,9 +1091,9 @@ function OscCardEditor({
             <span>{t("osc.studio.interval", { defaultValue: "Every" })}</span>
             <Input
               type="number"
-              min={2}
-              value={card.autoIntervalSec ?? 20}
-              onChange={(e) => onPatch({ autoIntervalSec: Math.max(2, parseInt(e.target.value, 10) || 20) })}
+              min={1}
+              value={card.autoIntervalSec ?? 1}
+              onChange={(e) => onPatch({ autoIntervalSec: Math.max(1, parseInt(e.target.value, 10) || 1) })}
               className="h-6 border-0 bg-transparent px-0 font-mono text-[11px] focus-visible:ring-0"
               onClick={(e) => e.stopPropagation()}
             />
@@ -1349,9 +1372,9 @@ function TemplateBuilderPanel({
               <span>{t("osc.studio.interval", { defaultValue: "Every" })}</span>
               <Input
                 type="number"
-                min={2}
-                value={selectedCard?.autoIntervalSec ?? 20}
-                onChange={(event) => onPatchSelected({ autoIntervalSec: Math.max(2, parseInt(event.target.value, 10) || 20) })}
+                min={1}
+                value={selectedCard?.autoIntervalSec ?? 1}
+                onChange={(event) => onPatchSelected({ autoIntervalSec: Math.max(1, parseInt(event.target.value, 10) || 1) })}
                 disabled={!selectedCard}
                 className="h-6 border-0 bg-transparent px-0 font-mono text-[11px] focus-visible:ring-0"
               />
@@ -1967,7 +1990,7 @@ function createTemplateCard(template: string): OscStudioCard {
     valueType: "string",
     value: "",
     template,
-    autoIntervalSec: 20,
+    autoIntervalSec: 1,
   };
 }
 
@@ -2075,4 +2098,8 @@ function templateGroupLabel(group: OscTemplateComponentCard["group"]): string {
     default:
       return "System";
   }
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, Math.max(0, ms)));
 }

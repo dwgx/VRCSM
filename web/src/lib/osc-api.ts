@@ -22,12 +22,12 @@ export function sendOscMessage(
 export function sendChatbox(
   message: string,
   options: OscSendOptions = {},
-  notify = true,
-  clearPrevious = true,
+  sendImmediately = true,
+  playNotificationSound = true,
 ): Promise<OscSendResult> {
   return sendOscMessage(
     "/chatbox/input",
-    [message.slice(0, 144), notify, clearPrevious],
+    [message.slice(0, 144), sendImmediately, playNotificationSound],
     options,
   );
 }

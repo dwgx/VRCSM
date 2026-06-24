@@ -422,10 +422,10 @@ class IpcClient {
       case "update.check":
         return {
           available: false,
-          current: "0.14.5",
-          currentVersion: "0.14.5",
-          latest: "0.14.5",
-          latestVersion: "0.14.5",
+          current: "0.14.6",
+          currentVersion: "0.14.6",
+          latest: "0.14.6",
+          latestVersion: "0.14.6",
           fileName: null,
           downloadUrl: undefined,
           size: undefined,
@@ -433,7 +433,7 @@ class IpcClient {
           sha256: null,
           releaseNotes: "",
           releaseNotesMarkdown: "",
-          releaseUrl: "https://github.com/dwgx/VRCSM/releases/tag/v0.14.5",
+          releaseUrl: "https://github.com/dwgx/VRCSM/releases/tag/v0.14.6",
           skipped: false,
           currentMsiPath: undefined,
         } as unknown as TResult;
@@ -455,7 +455,7 @@ class IpcClient {
       case "update.download": {
         const p = (params ?? {}) as { fileName?: string | null; version?: string };
         return {
-          path: `C:/Users/dev/AppData/Local/VRCSM/updates/${p.fileName ?? `VRCSM-${p.version ?? "0.14.5"}.msi`}`,
+          path: `C:/Users/dev/AppData/Local/VRCSM/updates/${p.fileName ?? `VRCSM-${p.version ?? "0.14.6"}.msi`}`,
         } as unknown as TResult;
       }
       case "update.install":
