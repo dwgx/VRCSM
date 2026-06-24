@@ -164,6 +164,16 @@ TEST(CommonTests, Aida64SensorValuesParserAcceptsCommonXmlRows)
     EXPECT_EQ(sensors[3].unit, "RPM");
 }
 
+TEST(CommonTests, AcpiThermalZoneConvertsTenthsKelvinToCelsius)
+{
+    const auto value = vrcsm::core::hw::AcpiTenthsKelvinToCelsiusForTest(3002.0);
+
+    ASSERT_TRUE(value.has_value());
+    EXPECT_NEAR(*value, 27.05, 0.001);
+    EXPECT_FALSE(vrcsm::core::hw::AcpiTenthsKelvinToCelsiusForTest(0.0).has_value());
+    EXPECT_FALSE(vrcsm::core::hw::AcpiTenthsKelvinToCelsiusForTest(5000.0).has_value());
+}
+
 TEST(CommonTests, DeleteExecuteRejectsPreservedCwpRootTargets)
 {
     if (vrcsm::core::ProcessGuard::IsVRChatRunning().running)

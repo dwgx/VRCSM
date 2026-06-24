@@ -135,6 +135,7 @@ namespace
 {
 
 constexpr const wchar_t* kCimV2Namespace = L"ROOT\\CIMV2";
+constexpr const wchar_t* kWmiNamespace = L"ROOT\\WMI";
 constexpr const wchar_t* kLibreHardwareMonitorNamespace = L"ROOT\\LibreHardwareMonitor";
 constexpr const wchar_t* kOpenHardwareMonitorNamespace = L"ROOT\\OpenHardwareMonitor";
 constexpr long kWmiQueryTimeoutMs = 2500;
@@ -252,6 +253,20 @@ std::optional<double> ParseLooseDouble(std::string value)
         return std::nullopt;
     }
     return parsed;
+}
+
+std::optional<double> AcpiTenthsKelvinToCelsius(double value)
+{
+    if (!std::isfinite(value) || value <= 0.0)
+    {
+        return std::nullopt;
+    }
+    const double celsius = (value / 10.0) - 273.15;
+    if (!std::isfinite(celsius) || celsius < -50.0 || celsius > 150.0)
+    {
+        return std::nullopt;
+    }
+    return celsius;
 }
 
 std::string CleanSmbiosString(std::string value)
@@ -981,6 +996,65 @@ void ProbeMonitorSensors(const wchar_t* namespaceName, std::string sourceName, T
     snapshot.sensors.insert(snapshot.sensors.end(), collected.begin(), collected.end());
 }
 
+void ProbeAcpiThermalZones(TelemetrySnapshot& snapshot)
+{
+    std::string errorMessage;
+    auto connection = ConnectWmi(kWmiNamespace, errorMessage);
+    if (!connection)
+    {
+        snapshot.sources.push_back(TelemetrySourceStatus{"acpi_thermal_zone", false, errorMessage});
+        return;
+    }
+
+    std::vector<SensorReading> collected;
+    std::string queryError;
+    const bool ok = ForEachWmiObject(
+        connection->services.get(),
+        L"SELECT InstanceName, CurrentTemperature FROM MSAcpi_ThermalZoneTemperature",
+        [&](IWbemClassObject* object)
+        {
+            const auto raw = ReadWmiDouble(object, L"CurrentTemperature");
+            if (!raw.has_value() || *raw <= 0.0)
+            {
+                return;
+            }
+
+            auto celsius = AcpiTenthsKelvinToCelsius(*raw);
+            if (!celsius.has_value())
+            {
+                return;
+            }
+
+            SensorReading sensor;
+            sensor.id = ReadWmiString(object, L"InstanceName");
+            sensor.name = sensor.id.empty() ? "ACPI Thermal Zone" : sensor.id;
+            sensor.sensorType = "Temperature";
+            sensor.source = "acpi_thermal_zone";
+            sensor.unit = "C";
+            sensor.value = celsius;
+            collected.push_back(std::move(sensor));
+        },
+        queryError);
+
+    if (!ok)
+    {
+        snapshot.sources.push_back(TelemetrySourceStatus{"acpi_thermal_zone", false, queryError});
+        return;
+    }
+
+    snapshot.sources.push_back(TelemetrySourceStatus{
+        "acpi_thermal_zone",
+        !collected.empty(),
+        collected.empty() ? "ACPI thermal zone class is present but returned no valid temperatures" : fmt::format("{} thermal zones", collected.size()),
+    });
+
+    if (!snapshot.cpu.temperatureC.has_value() && !collected.empty())
+    {
+        snapshot.cpu.temperatureC = collected.front().value;
+    }
+    snapshot.sensors.insert(snapshot.sensors.end(), collected.begin(), collected.end());
+}
+
 std::string XmlTagText(const std::string& block, std::string_view tag)
 {
     const std::string open = fmt::format("<{}>", tag);
@@ -1419,6 +1493,11 @@ std::vector<SensorReading> ParseAida64SensorValuesForTest(const std::string& xml
     return ParseAida64SensorValues(xml);
 }
 
+std::optional<double> AcpiTenthsKelvinToCelsiusForTest(double value)
+{
+    return AcpiTenthsKelvinToCelsius(value);
+}
+
 Result<TelemetrySnapshot> CollectTelemetry()
 {
     try
@@ -1471,6 +1550,7 @@ Result<TelemetrySnapshot> CollectTelemetry()
         ProbeSmbios(snapshot);
         ProbeMemory(snapshot);
         ProbeDxgiGpuAdapters(snapshot);
+        ProbeAcpiThermalZones(snapshot);
         ProbeMonitorSensors(kLibreHardwareMonitorNamespace, "librehardwaremonitor_wmi", snapshot);
         ProbeMonitorSensors(kOpenHardwareMonitorNamespace, "openhardwaremonitor_wmi", snapshot);
         ProbeAida64SharedMemory(snapshot);

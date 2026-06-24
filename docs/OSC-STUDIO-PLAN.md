@@ -107,6 +107,10 @@ Resolved in the 2026-06-24 auto-send + sensor visibility slice:
 - Thermal defaults and saved old `Fan {gpu.fanPct}` templates migrate to
   `{fan.0}`, because many machines expose fans as RPM sensors rather than a GPU
   fan percentage.
+- A Windows built-in fallback now reads `ROOT\WMI:MSAcpi_ThermalZoneTemperature`
+  and converts tenths-Kelvin values to Celsius. These are ACPI thermal-zone
+  readings, not guaranteed CPU package/core sensors, so they are labeled as
+  `acpi_thermal_zone`.
 
 Current gaps:
 
@@ -170,6 +174,10 @@ Telemetry source order:
   - `Win32_BaseBoard`
   - `Win32_PhysicalMemory`
   - `GlobalMemoryStatusEx`
+- Windows `ROOT\WMI` ACPI:
+  - `MSAcpi_ThermalZoneTemperature`
+  - Best-effort platform thermal-zone temperatures, converted from tenths
+    Kelvin to Celsius and labeled as `acpi_thermal_zone`.
 - DXGI:
   - `IDXGIFactory1::EnumAdapters1`
   - `DXGI_ADAPTER_DESC1`
@@ -193,6 +201,11 @@ Important accuracy boundary:
 - Temperature, fan, power and some utilization counters are not guaranteed by
   Windows alone. VRCSM must collect them from real providers only and label the
   source. It must never invent values to make a card look complete.
+- "Every computer reads every sensor" is not technically achievable from a
+  normal user-mode app. Many boards expose fan/VRM/EC values only through
+  vendor EC/Super I/O chips, ACPI methods, a monitoring-driver stack, BIOS
+  cooperation, or vendor SDKs. VRCSM's target is layered best-effort coverage
+  with explicit source badges and unavailable reasons, not fabricated values.
 - Next vendor-specific sensor backends should be added behind the same
   `HwTelemetry` source-status contract: AMD ADLX, Intel Level Zero Sysman or
   Graphics Control Library, HWiNFO shared memory only with a clear legal/SDK

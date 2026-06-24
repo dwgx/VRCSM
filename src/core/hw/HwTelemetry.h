@@ -109,5 +109,6 @@ void to_json(nlohmann::json& j, const TelemetrySnapshot& snapshot);
 Result<TelemetrySnapshot> CollectTelemetry();
 
 std::vector<SensorReading> ParseAida64SensorValuesForTest(const std::string& xml);
+std::optional<double> AcpiTenthsKelvinToCelsiusForTest(double value);
 
 } // namespace vrcsm::core::hw
