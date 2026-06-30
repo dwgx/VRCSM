@@ -144,6 +144,20 @@ public:
     Result<nlohmann::json> RecentAvatarHistory(int limit, int offset);
     Result<std::int64_t> AvatarHistoryCount();
 
+    // ─── avatar_benchmark (persisted parameter-count snapshots) ──────
+    // Survives VRChat evicting the live local-avatar cache, so the benchmark
+    // page can show previously measured avatars. UPSERT on avatar_id.
+    struct AvatarBenchmarkInsert
+    {
+        std::string avatar_id;
+        std::optional<std::string> user_id;
+        int parameter_count = 0;
+        std::optional<double> eye_height;
+        std::string seen_at;
+    };
+    Result<std::monostate> RecordAvatarBenchmark(const AvatarBenchmarkInsert& a);
+    Result<nlohmann::json> AvatarBenchmarks(int limit, int offset);
+
     // ─── friend_log + friend_notes ───────────────────────────────
 
     struct FriendLogInsert

@@ -148,6 +148,79 @@ export interface CalendarEvent {
   [key: string]: unknown;
 }
 
+// ── Track B1: durable presence events + unified feed read model ──────
+
+export interface FriendPresenceEventDto {
+  id: number;
+  user_id: string | null;
+  display_name: string | null;
+  event_type: string | null;
+  world_id: string | null;
+  instance_id: string | null;
+  location: string | null;
+  status: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  source: string | null;
+  occurred_at: string | null;
+}
+
+// Output of the friendPresence.predict analytic (no VRCX equivalent). Predicts
+// when a friend tends to be online from their observed presence history. See
+// docs/wave2-research/own-overlap-algorithm-design.md §4.
+export interface OnlineWindowDto {
+  day_of_week: number; // 0=Sun .. 6=Sat (local)
+  start_hour: number; // local, inclusive
+  end_hour: number; // local, exclusive
+  score: number; // normalized 0..1 (peak window = 1)
+  observation_days: number;
+  label_key: string;
+}
+
+export interface FriendOnlinePredictionDto {
+  user_id: string;
+  status: "ok" | "insufficient_data";
+  timezone_offset_minutes: number;
+  total_online_minutes: number;
+  observation_days: number;
+  half_life_weeks: number;
+  heatmap: number[]; // 168 normalized buckets, index = dayOfWeek*24 + hour
+  top_windows: OnlineWindowDto[];
+}
+
+// Persisted parameter-count snapshot for an avatar measured during a cache
+// scan. Survives VRChat evicting the live LocalAvatarData file so the
+// benchmark page can still show it. Backed by the avatar_benchmark table.
+export interface AvatarBenchmarkRow {
+  avatar_id: string;
+  user_id: string | null;
+  parameter_count: number;
+  eye_height: number | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+}
+
+// Discriminator emitted by the C++ UnifiedFeed read model. Each value maps to
+// one of the UNION ALL'd source tables.
+export type FeedSourceKind =
+  | "friend_log"
+  | "presence"
+  | "player_event"
+  | "avatar"
+  | "log_event";
+
+export interface FeedEntryDto {
+  source_kind: FeedSourceKind | null;
+  event_id: number;
+  user_id: string | null;
+  display_name: string | null;
+  event_type: string | null;
+  world_id: string | null;
+  instance_id: string | null;
+  detail: string | null;
+  occurred_at: string | null;
+}
+
 interface WebViewBridge {
   postMessage: (message: string) => void;
   addEventListener: (type: "message", listener: (event: { data: string }) => void) => void;
@@ -2055,6 +2128,12 @@ class IpcClient {
 
   async dbAvatarHistoryCount() {
     return this.call<undefined, { count: number }>("db.avatarHistory.count");
+  }
+
+  async dbAvatarBenchmarks(limit = 200, offset = 0) {
+    return this.call<{ limit: number; offset: number }, { items: AvatarBenchmarkRow[] }>(
+      "db.avatarBenchmarks.list", { limit, offset },
+    );
   }
 
   async dbAvatarHistoryResolve(params: {

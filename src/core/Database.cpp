@@ -17,7 +17,10 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <chrono>
+#include <cmath>
 #include <cstdint>
+#include <ctime>
 #include <limits>
 #include <set>
 #include <string_view>
@@ -966,6 +969,14 @@ Result<std::monostate> Database::Open(const std::filesystem::path& dbPath)
     m_db = db;
     m_path = normalizedPath;
     sqlite3_extended_result_codes(m_db, 1);
+    if (sqlite3_busy_timeout(m_db, 5000) != SQLITE_OK)
+    {
+        const std::string detail = sqlite3_errmsg(m_db);
+        sqlite3_close_v2(m_db);
+        m_db = nullptr;
+        m_path.clear();
+        return MakeError("db_open_failed", detail);
+    }
 
     const auto initResult = InitSchema();
     if (std::holds_alternative<Error>(initResult))
@@ -976,6 +987,10 @@ Result<std::monostate> Database::Open(const std::filesystem::path& dbPath)
         m_path.clear();
         return err;
     }
+
+    // Best-effort statistics maintenance. This keeps the planner fresh on
+    // long-lived user DBs but must not make startup fail if SQLite declines it.
+    (void)ExecSimple("PRAGMA optimize;");
 
     return std::monostate{};
 }
@@ -1241,6 +1256,207 @@ Result<std::monostate> Database::RecordPlayerEvent(const PlayerEventInsert& e)
     return std::monostate{};
 }
 
+Result<std::monostate> Database::RecordLogEvent(const LogEventInsert& e)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    const char* sql =
+        "INSERT INTO log_events (kind, user_id, display_name, world_id, instance_id, detail, occurred_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?);";
+
+    return RunOnce(sql, [this, &e](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, e.kind) != SQLITE_OK ||
+            BindOptionalText(stmt, 2, e.user_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 3, e.display_name) != SQLITE_OK ||
+            BindOptionalText(stmt, 4, e.world_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 5, e.instance_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 6, e.detail) != SQLITE_OK ||
+            BindText(stmt, 7, e.occurred_at) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
+Result<std::monostate> Database::RecordNotification(const NotificationInsert& n)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+    if (n.account_user_id.empty() || n.notification_id.empty())
+    {
+        return MakeError("db_invalid_argument", "account_user_id and notification_id are required");
+    }
+
+    const char* sql =
+        "INSERT OR IGNORE INTO notifications "
+        "(account_user_id, notification_id, type, sender_id, sender_name, detail, seen, occurred_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+
+    return RunOnce(sql, [this, &n](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, n.account_user_id) != SQLITE_OK ||
+            BindText(stmt, 2, n.notification_id) != SQLITE_OK ||
+            BindText(stmt, 3, n.type) != SQLITE_OK ||
+            BindOptionalText(stmt, 4, n.sender_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 5, n.sender_name) != SQLITE_OK ||
+            BindOptionalText(stmt, 6, n.detail) != SQLITE_OK ||
+            BindInt(stmt, 7, n.seen ? 1 : 0) != SQLITE_OK ||
+            BindText(stmt, 8, n.occurred_at) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
+Result<std::int64_t> Database::RecordSessionStart(const SessionStartInsert& s)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+    if (s.started_at.empty())
+    {
+        return MakeError("db_invalid_argument", "started_at is required");
+    }
+
+    const char* sql =
+        "INSERT INTO sessions (account_user_id, started_at, mode, hmd_model, log_file) "
+        "VALUES (?, ?, ?, ?, ?);";
+
+    const auto inserted = RunOnce(sql, [this, &s](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindOptionalText(stmt, 1, s.account_user_id) != SQLITE_OK ||
+            BindText(stmt, 2, s.started_at) != SQLITE_OK ||
+            BindOptionalText(stmt, 3, s.mode) != SQLITE_OK ||
+            BindOptionalText(stmt, 4, s.hmd_model) != SQLITE_OK ||
+            BindOptionalText(stmt, 5, s.log_file) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+    if (std::holds_alternative<Error>(inserted))
+    {
+        return std::get<Error>(inserted);
+    }
+    return static_cast<std::int64_t>(sqlite3_last_insert_rowid(m_db));
+}
+
+Result<std::monostate> Database::RecordSessionMode(
+    std::int64_t session_id,
+    const std::optional<std::string>& mode,
+    const std::optional<std::string>& hmd_model)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    // COALESCE keeps the existing column when a field is not supplied, so
+    // a mode-only update never clobbers a previously-detected hmd_model.
+    const char* sql =
+        "UPDATE sessions SET mode = COALESCE(?, mode), "
+        "hmd_model = COALESCE(?, hmd_model) WHERE id = ?;";
+
+    return RunOnce(sql, [&](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindOptionalText(stmt, 1, mode) != SQLITE_OK ||
+            BindOptionalText(stmt, 2, hmd_model) != SQLITE_OK ||
+            sqlite3_bind_int64(stmt, 3, session_id) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
+Result<std::monostate> Database::RecordSessionEnd(
+    std::int64_t session_id,
+    const std::string& ended_at,
+    bool closed_gracefully)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    const char* sql =
+        "UPDATE sessions SET ended_at = ?, closed_gracefully = ? WHERE id = ?;";
+
+    return RunOnce(sql, [&](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, ended_at) != SQLITE_OK ||
+            BindInt(stmt, 2, closed_gracefully ? 1 : 0) != SQLITE_OK ||
+            sqlite3_bind_int64(stmt, 3, session_id) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
+Result<std::monostate> Database::UpsertOwnedAvatar(const OwnedAvatarUpsert& a)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+    if (a.account_user_id.empty() || a.avatar_id.empty())
+    {
+        return MakeError("db_invalid_argument", "account_user_id and avatar_id are required");
+    }
+
+    const char* sql =
+        "INSERT OR REPLACE INTO owned_avatars "
+        "(account_user_id, avatar_id, name, description, image_url, release_status, version, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+
+    return RunOnce(sql, [this, &a](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, a.account_user_id) != SQLITE_OK ||
+            BindText(stmt, 2, a.avatar_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 3, a.name) != SQLITE_OK ||
+            BindOptionalText(stmt, 4, a.description) != SQLITE_OK ||
+            BindOptionalText(stmt, 5, a.image_url) != SQLITE_OK ||
+            BindOptionalText(stmt, 6, a.release_status) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        if (a.version.has_value())
+        {
+            if (BindInt(stmt, 7, *a.version) != SQLITE_OK) return MakeError("db_bind_failed");
+        }
+        else if (sqlite3_bind_null(stmt, 7) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        if (BindOptionalText(stmt, 8, a.updated_at) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
 Result<nlohmann::json> Database::RecentPlayerEvents(
     int limit,
     int offset,
@@ -1523,6 +1739,105 @@ Result<std::int64_t> Database::AvatarHistoryCount()
     return static_cast<std::int64_t>(sqlite3_column_int64(rawStmt, 0));
 }
 
+Result<std::monostate> Database::RecordAvatarBenchmark(const AvatarBenchmarkInsert& a)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (a.avatar_id.empty())
+    {
+        return MakeError("db_invalid_argument", "avatar_id is empty");
+    }
+
+    // UPSERT: refresh the parameter_count/eye_height/last_seen_at on every
+    // measurement, but preserve the earliest first_seen_at we ever recorded.
+    const char* sql =
+        "INSERT INTO avatar_benchmark "
+        "(avatar_id, user_id, parameter_count, eye_height, first_seen_at, last_seen_at) "
+        "VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(avatar_id) DO UPDATE SET "
+        "user_id = COALESCE(excluded.user_id, user_id), "
+        "parameter_count = excluded.parameter_count, "
+        "eye_height = COALESCE(excluded.eye_height, eye_height), "
+        "last_seen_at = excluded.last_seen_at;";
+
+    return RunOnce(sql, [this, &a](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, a.avatar_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 2, a.user_id) != SQLITE_OK ||
+            BindInt(stmt, 3, a.parameter_count) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        if (a.eye_height.has_value()
+                ? sqlite3_bind_double(stmt, 4, *a.eye_height) != SQLITE_OK
+                : sqlite3_bind_null(stmt, 4) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        if (BindText(stmt, 5, a.seen_at) != SQLITE_OK ||
+            BindText(stmt, 6, a.seen_at) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
+Result<nlohmann::json> Database::AvatarBenchmarks(int limit, int offset)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (limit < 0 || offset < 0)
+    {
+        return MakeError("db_invalid_argument", "limit and offset must be non-negative");
+    }
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    const char* sql =
+        "SELECT avatar_id, user_id, parameter_count, eye_height, first_seen_at, last_seen_at "
+        "FROM avatar_benchmark "
+        "ORDER BY parameter_count DESC, last_seen_at DESC "
+        "LIMIT ? OFFSET ?;";
+
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+
+    if (BindInt(rawStmt, 1, limit) != SQLITE_OK || BindInt(rawStmt, 2, offset) != SQLITE_OK)
+    {
+        return MakeError("db_bind_failed");
+    }
+
+    nlohmann::json rows = nlohmann::json::array();
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        nlohmann::json row = nlohmann::json::object();
+        row["avatar_id"] = ColumnTextOrNull(rawStmt, 0);
+        row["user_id"] = ColumnTextOrNull(rawStmt, 1);
+        row["parameter_count"] = sqlite3_column_int(rawStmt, 2);
+        row["eye_height"] = sqlite3_column_type(rawStmt, 3) == SQLITE_NULL
+            ? nlohmann::json(nullptr)
+            : nlohmann::json(sqlite3_column_double(rawStmt, 3));
+        row["first_seen_at"] = ColumnTextOrNull(rawStmt, 4);
+        row["last_seen_at"] = ColumnTextOrNull(rawStmt, 5);
+        rows.push_back(std::move(row));
+    }
+
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+
+    return rows;
+}
+
 Result<std::monostate> Database::InsertFriendLog(const FriendLogInsert& e)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -1659,6 +1974,563 @@ Result<nlohmann::json> Database::FriendLogForUser(const std::string& user_id,
     return rows;
 }
 
+Result<std::monostate> Database::RecordFriendPresenceEvent(const FriendPresenceEventInsert& e)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+    if (e.user_id.empty())
+    {
+        return MakeError("db_invalid_argument", "user_id is empty");
+    }
+    if (e.event_type.empty())
+    {
+        return MakeError("db_invalid_argument", "event_type is empty");
+    }
+
+    const char* sql =
+        "INSERT INTO friend_presence_events ("
+        "user_id, display_name, event_type, world_id, instance_id, location, "
+        "status, old_value, new_value, source, occurred_at"
+        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    return RunOnce(sql, [this, &e](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, e.user_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 2, e.display_name) != SQLITE_OK ||
+            BindText(stmt, 3, e.event_type) != SQLITE_OK ||
+            BindOptionalText(stmt, 4, e.world_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 5, e.instance_id) != SQLITE_OK ||
+            BindOptionalText(stmt, 6, e.location) != SQLITE_OK ||
+            BindOptionalText(stmt, 7, e.status) != SQLITE_OK ||
+            BindOptionalText(stmt, 8, e.old_value) != SQLITE_OK ||
+            BindOptionalText(stmt, 9, e.new_value) != SQLITE_OK ||
+            BindOptionalText(stmt, 10, e.source) != SQLITE_OK ||
+            BindText(stmt, 11, e.occurred_at) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
+Result<nlohmann::json> Database::RecentFriendPresenceEvents(
+    int limit,
+    int offset,
+    std::optional<std::string> user_id,
+    std::optional<std::string> event_type,
+    std::optional<std::string> occurred_after,
+    std::optional<std::string> occurred_before)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (limit < 0 || offset < 0)
+    {
+        return MakeError("db_invalid_argument", "limit and offset must be non-negative");
+    }
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    const char* sql =
+        "SELECT id, user_id, display_name, event_type, world_id, instance_id, "
+        "       location, status, old_value, new_value, source, occurred_at "
+        "FROM friend_presence_events "
+        "WHERE (?1 IS NULL OR user_id = ?2) "
+        "  AND (?3 IS NULL OR event_type = ?4) "
+        "  AND (?5 IS NULL OR occurred_at >= ?6) "
+        "  AND (?7 IS NULL OR occurred_at < ?8) "
+        "ORDER BY occurred_at DESC "
+        "LIMIT ?9 OFFSET ?10;";
+
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+
+    if (BindOptionalText(rawStmt, 1, user_id) != SQLITE_OK
+        || BindOptionalText(rawStmt, 2, user_id) != SQLITE_OK
+        || BindOptionalText(rawStmt, 3, event_type) != SQLITE_OK
+        || BindOptionalText(rawStmt, 4, event_type) != SQLITE_OK
+        || BindOptionalText(rawStmt, 5, occurred_after) != SQLITE_OK
+        || BindOptionalText(rawStmt, 6, occurred_after) != SQLITE_OK
+        || BindOptionalText(rawStmt, 7, occurred_before) != SQLITE_OK
+        || BindOptionalText(rawStmt, 8, occurred_before) != SQLITE_OK
+        || BindInt(rawStmt, 9, limit) != SQLITE_OK
+        || BindInt(rawStmt, 10, offset) != SQLITE_OK)
+    {
+        return MakeError("db_bind_failed");
+    }
+
+    nlohmann::json rows = nlohmann::json::array();
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        nlohmann::json row = nlohmann::json::object();
+        row["id"] = static_cast<std::int64_t>(sqlite3_column_int64(rawStmt, 0));
+        row["user_id"] = ColumnTextOrNull(rawStmt, 1);
+        row["display_name"] = ColumnTextOrNull(rawStmt, 2);
+        row["event_type"] = ColumnTextOrNull(rawStmt, 3);
+        row["world_id"] = ColumnTextOrNull(rawStmt, 4);
+        row["instance_id"] = ColumnTextOrNull(rawStmt, 5);
+        row["location"] = ColumnTextOrNull(rawStmt, 6);
+        row["status"] = ColumnTextOrNull(rawStmt, 7);
+        row["old_value"] = ColumnTextOrNull(rawStmt, 8);
+        row["new_value"] = ColumnTextOrNull(rawStmt, 9);
+        row["source"] = ColumnTextOrNull(rawStmt, 10);
+        row["occurred_at"] = ColumnTextOrNull(rawStmt, 11);
+        rows.push_back(std::move(row));
+    }
+
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+
+    return rows;
+}
+
+namespace
+{
+    // Parse a friend_presence_events.occurred_at string into an absolute UTC time_t.
+    // Three encodings are produced in the wild (see
+    // docs/wave2-research/own-overlap-algorithm-design.md §2):
+    //   - trailing 'Z'        → UTC wall-clock (frontend new Date().toISOString())
+    //   - trailing '±HH:MM'   → offset wall-clock (subtract offset to reach UTC)
+    //   - no designator       → already-local wall-clock (C++ nowIso fallback)
+    std::optional<std::time_t> ParsePresenceInstant(const std::string& s)
+    {
+        if (s.size() < 19)
+        {
+            return std::nullopt;
+        }
+        int year = 0, mon = 0, day = 0, hour = 0, minute = 0, sec = 0;
+        if (sscanf_s(s.c_str(), "%d-%d-%dT%d:%d:%d", &year, &mon, &day, &hour, &minute, &sec) != 6)
+        {
+            return std::nullopt;
+        }
+
+        std::tm tm{};
+        tm.tm_year = year - 1900;
+        tm.tm_mon = mon - 1;
+        tm.tm_mday = day;
+        tm.tm_hour = hour;
+        tm.tm_min = minute;
+        tm.tm_sec = sec;
+        tm.tm_isdst = -1; // let mktime resolve DST for the naive-local path
+
+        const bool isUtcZ = s.back() == 'Z' || s.back() == 'z';
+        int offsetMinutes = 0;
+        bool hasOffset = false;
+        if (!isUtcZ)
+        {
+            const std::size_t tpos = s.find('T');
+            if (tpos != std::string::npos)
+            {
+                for (std::size_t i = tpos + 1; i < s.size(); ++i)
+                {
+                    const char c = s[i];
+                    if (c == '+' || c == '-')
+                    {
+                        int oh = 0, om = 0;
+                        if (sscanf_s(s.c_str() + i + 1, "%d:%d", &oh, &om) >= 1)
+                        {
+                            offsetMinutes = oh * 60 + om;
+                            if (c == '-')
+                            {
+                                offsetMinutes = -offsetMinutes;
+                            }
+                            hasOffset = true;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (isUtcZ)
+        {
+            return _mkgmtime(&tm);
+        }
+        if (hasOffset)
+        {
+            const std::time_t asUtc = _mkgmtime(&tm);
+            if (asUtc == static_cast<std::time_t>(-1))
+            {
+                return std::nullopt;
+            }
+            return asUtc - static_cast<std::time_t>(offsetMinutes) * 60;
+        }
+        // Naive local wall-clock: mktime interprets tm as local time.
+        return mktime(&tm);
+    }
+}
+
+Result<nlohmann::json> Database::PredictFriendOnlineWindows(
+    const std::string& user_id,
+    int top_n,
+    int half_life_weeks)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+    if (user_id.empty())
+    {
+        return MakeError("db_invalid_argument", "user_id is empty");
+    }
+
+    // Tunables (kCamelCase per coding standards).
+    constexpr double kMaxSessionHours = 12.0;     // cap a missed-offline session
+    constexpr double kPulseMinutes = 5.0;         // liveness pulse for orphan location/status
+    constexpr int kMinObservationDays = 7;        // sufficiency gate (distinct days)
+    constexpr double kMinOnlineMinutes = 120.0;   // sufficiency gate (total minutes)
+    constexpr int kMinBucketObservations = 2;     // a slot needs ≥2 distinct days to rank
+    constexpr double kWindowJoinThreshold = 0.6;  // merge adjacent buckets ≥0.6 of peak
+    const double halfLifeWeeks = half_life_weeks > 0 ? static_cast<double>(half_life_weeks) : 4.0;
+    const int topN = top_n > 0 ? top_n : 3;
+
+    const char* sql =
+        "SELECT event_type, occurred_at "
+        "FROM friend_presence_events "
+        "WHERE user_id = ?1 "
+        "  AND event_type IN ('online','offline','location','status') "
+        "ORDER BY occurred_at ASC;";
+
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+    if (BindText(rawStmt, 1, user_id) != SQLITE_OK)
+    {
+        return MakeError("db_bind_failed");
+    }
+
+    struct Row
+    {
+        std::string event_type;
+        std::time_t instant;
+    };
+    std::vector<Row> rows;
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        const char* etRaw = reinterpret_cast<const char*>(sqlite3_column_text(rawStmt, 0));
+        const char* atRaw = reinterpret_cast<const char*>(sqlite3_column_text(rawStmt, 1));
+        if (etRaw == nullptr || atRaw == nullptr)
+        {
+            continue;
+        }
+        const auto inst = ParsePresenceInstant(atRaw);
+        if (!inst)
+        {
+            continue;
+        }
+        rows.push_back(Row{etRaw, *inst});
+    }
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+
+    const std::time_t nowTt = std::time(nullptr);
+
+    // 168 hour-of-week buckets: index = localDayOfWeek(0=Sun)*24 + localHour.
+    std::array<double, 168> weighted{};
+    std::array<std::set<int>, 168> bucketDays; // distinct local calendar days per bucket
+    std::set<int> observationDays;             // distinct local calendar days overall
+    double totalMinutes = 0.0;
+
+    // Attribute an online interval [startTt, endTt) across local hour buckets,
+    // weighting each minute by exponential recency decay on the session start.
+    auto attribute = [&](std::time_t startTt, std::time_t endTt)
+    {
+        if (endTt <= startTt)
+        {
+            return;
+        }
+        const double maxSeconds = kMaxSessionHours * 3600.0;
+        if (static_cast<double>(endTt - startTt) > maxSeconds)
+        {
+            endTt = startTt + static_cast<std::time_t>(maxSeconds);
+        }
+        const double ageWeeks = static_cast<double>(nowTt - startTt) / (7.0 * 86400.0);
+        const double weight = std::pow(0.5, (ageWeeks > 0 ? ageWeeks : 0.0) / halfLifeWeeks);
+
+        std::time_t t = startTt;
+        while (t < endTt)
+        {
+            std::tm lt{};
+            localtime_s(&lt, &t);
+            const int secsIntoHour = lt.tm_min * 60 + lt.tm_sec;
+            const std::time_t nextHour = t + (3600 - secsIntoHour);
+            const std::time_t segEnd = nextHour < endTt ? nextHour : endTt;
+            const double minutes = static_cast<double>(segEnd - t) / 60.0;
+            const int bucket = lt.tm_wday * 24 + lt.tm_hour;
+            const int dayKey = (lt.tm_year + 1900) * 1000 + lt.tm_yday;
+            if (bucket >= 0 && bucket < 168)
+            {
+                weighted[bucket] += minutes * weight;
+                bucketDays[bucket].insert(dayKey);
+            }
+            observationDays.insert(dayKey);
+            totalMinutes += minutes;
+            t = segEnd;
+        }
+    };
+
+    // Walk the ordered stream applying the session-bracketing rules (§1).
+    bool haveOpen = false;
+    std::time_t openStart = 0;
+    for (const auto& r : rows)
+    {
+        if (r.event_type == "online")
+        {
+            if (haveOpen)
+            {
+                attribute(openStart, r.instant); // duplicate online re-affirms; close prior
+            }
+            openStart = r.instant;
+            haveOpen = true;
+        }
+        else if (r.event_type == "offline")
+        {
+            if (haveOpen)
+            {
+                attribute(openStart, r.instant);
+                haveOpen = false;
+            }
+            // dangling offline (no preceding online): nothing to attribute.
+        }
+        else
+        {
+            // location / status: liveness only.
+            if (!haveOpen)
+            {
+                attribute(r.instant, r.instant + static_cast<std::time_t>(kPulseMinutes * 60.0));
+            }
+            // within an open online interval it is already covered.
+        }
+    }
+    if (haveOpen)
+    {
+        // Dangling open online: cap at now (attribute() also caps at kMaxSessionHours).
+        attribute(openStart, nowTt);
+    }
+
+    nlohmann::json out = nlohmann::json::object();
+    out["user_id"] = user_id;
+    out["half_life_weeks"] = static_cast<int>(halfLifeWeeks);
+    out["total_online_minutes"] = totalMinutes;
+    out["observation_days"] = static_cast<int>(observationDays.size());
+
+    // local offset (minutes) currently in effect, for display only.
+    {
+        TIME_ZONE_INFORMATION tz{};
+        GetTimeZoneInformation(&tz);
+        out["timezone_offset_minutes"] = -tz.Bias;
+    }
+
+    if (static_cast<int>(observationDays.size()) < kMinObservationDays
+        || totalMinutes < kMinOnlineMinutes)
+    {
+        out["status"] = "insufficient_data";
+        out["heatmap"] = nlohmann::json::array();
+        out["top_windows"] = nlohmann::json::array();
+        return out;
+    }
+
+    const double peak = *std::max_element(weighted.begin(), weighted.end());
+    nlohmann::json heatmap = nlohmann::json::array();
+    for (double w : weighted)
+    {
+        heatmap.push_back(peak > 0.0 ? w / peak : 0.0);
+    }
+    out["status"] = "ok";
+    out["heatmap"] = std::move(heatmap);
+
+    // Merge adjacent same-day hour buckets that clear the join threshold and have
+    // enough distinct-day observations, then rank merged windows by summed weight.
+    struct Window
+    {
+        int day;
+        int startHour;
+        int endHour; // exclusive
+        double score;
+        int observationDays;
+    };
+    std::vector<Window> windows;
+    for (int d = 0; d < 7; ++d)
+    {
+        int h = 0;
+        while (h < 24)
+        {
+            const int idx = d * 24 + h;
+            const double norm = peak > 0.0 ? weighted[idx] / peak : 0.0;
+            const bool eligible = norm >= kWindowJoinThreshold
+                && static_cast<int>(bucketDays[idx].size()) >= kMinBucketObservations;
+            if (!eligible)
+            {
+                ++h;
+                continue;
+            }
+            Window win{d, h, h, 0.0, 0};
+            while (h < 24)
+            {
+                const int j = d * 24 + h;
+                const double jn = peak > 0.0 ? weighted[j] / peak : 0.0;
+                const bool jEligible = jn >= kWindowJoinThreshold
+                    && static_cast<int>(bucketDays[j].size()) >= kMinBucketObservations;
+                if (!jEligible)
+                {
+                    break;
+                }
+                win.score += weighted[j];
+                win.observationDays = std::max(win.observationDays,
+                    static_cast<int>(bucketDays[j].size()));
+                ++h;
+            }
+            win.endHour = h;
+            windows.push_back(win);
+        }
+    }
+
+    std::sort(windows.begin(), windows.end(),
+        [](const Window& a, const Window& b) { return a.score > b.score; });
+
+    const double topScore = windows.empty() ? 0.0 : windows.front().score;
+    nlohmann::json topWindows = nlohmann::json::array();
+    for (int i = 0; i < topN && i < static_cast<int>(windows.size()); ++i)
+    {
+        const Window& w = windows[static_cast<std::size_t>(i)];
+        nlohmann::json jw = nlohmann::json::object();
+        jw["day_of_week"] = w.day;
+        jw["start_hour"] = w.startHour;
+        jw["end_hour"] = w.endHour;
+        jw["score"] = topScore > 0.0 ? w.score / topScore : 0.0;
+        jw["observation_days"] = w.observationDays;
+        jw["label_key"] = "predictor.window";
+        topWindows.push_back(std::move(jw));
+    }
+    out["top_windows"] = std::move(topWindows);
+
+    return out;
+}
+
+Result<nlohmann::json> Database::UnifiedFeed(
+    int limit,
+    int offset,
+    std::optional<std::string> user_id,
+    std::optional<std::string> source_kind,
+    std::optional<std::string> occurred_after,
+    std::optional<std::string> occurred_before)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (limit < 0 || offset < 0)
+    {
+        return MakeError("db_invalid_argument", "limit and offset must be non-negative");
+    }
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    // UNION ALL the event sources into one column shape:
+    //   source_kind, event_id, user_id, display_name, event_type,
+    //   world_id, instance_id, detail, occurred_at
+    // `detail` carries the source-specific payload (new_value, kind, location,
+    // avatar name) so the frontend can render without a second round-trip.
+    // The outer WHERE filters on the unified columns; named params are reused
+    // by position so each bound value maps to one ?N placeholder.
+    const char* sql =
+        "SELECT * FROM ("
+        "  SELECT 'friend_log' AS source_kind, fl.id AS event_id, fl.user_id AS user_id, "
+        "         fl.display_name AS display_name, fl.event_type AS event_type, "
+        "         NULL AS world_id, NULL AS instance_id, fl.new_value AS detail, "
+        "         fl.occurred_at AS occurred_at "
+        "  FROM friend_log fl "
+        "  UNION ALL "
+        "  SELECT 'presence', fpe.id, fpe.user_id, fpe.display_name, fpe.event_type, "
+        "         fpe.world_id, fpe.instance_id, "
+        "         COALESCE(fpe.new_value, fpe.status, fpe.location), fpe.occurred_at "
+        "  FROM friend_presence_events fpe "
+        "  UNION ALL "
+        "  SELECT 'player_event', pe.id, pe.user_id, pe.display_name, pe.kind, "
+        "         pe.world_id, pe.instance_id, NULL, pe.occurred_at "
+        "  FROM player_events pe "
+        "  UNION ALL "
+        "  SELECT 'avatar', ah.rowid, ah.first_seen_user_id, ah.first_seen_on, 'avatar', "
+        "         NULL, NULL, ah.avatar_name, ah.first_seen_at "
+        "  FROM avatar_history ah "
+        "  UNION ALL "
+        "  SELECT 'log_event', le.id, le.user_id, le.display_name, le.kind, "
+        "         le.world_id, le.instance_id, le.detail, le.occurred_at "
+        "  FROM log_events le "
+        ") feed "
+        "WHERE (?1 IS NULL OR feed.user_id = ?2) "
+        "  AND (?3 IS NULL OR feed.source_kind = ?4) "
+        "  AND (?5 IS NULL OR feed.occurred_at >= ?6) "
+        "  AND (?7 IS NULL OR feed.occurred_at < ?8) "
+        "ORDER BY feed.occurred_at DESC "
+        "LIMIT ?9 OFFSET ?10;";
+
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+
+    if (BindOptionalText(rawStmt, 1, user_id) != SQLITE_OK
+        || BindOptionalText(rawStmt, 2, user_id) != SQLITE_OK
+        || BindOptionalText(rawStmt, 3, source_kind) != SQLITE_OK
+        || BindOptionalText(rawStmt, 4, source_kind) != SQLITE_OK
+        || BindOptionalText(rawStmt, 5, occurred_after) != SQLITE_OK
+        || BindOptionalText(rawStmt, 6, occurred_after) != SQLITE_OK
+        || BindOptionalText(rawStmt, 7, occurred_before) != SQLITE_OK
+        || BindOptionalText(rawStmt, 8, occurred_before) != SQLITE_OK
+        || BindInt(rawStmt, 9, limit) != SQLITE_OK
+        || BindInt(rawStmt, 10, offset) != SQLITE_OK)
+    {
+        return MakeError("db_bind_failed");
+    }
+
+    nlohmann::json rows = nlohmann::json::array();
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        nlohmann::json row = nlohmann::json::object();
+        row["source_kind"] = ColumnTextOrNull(rawStmt, 0);
+        row["event_id"] = static_cast<std::int64_t>(sqlite3_column_int64(rawStmt, 1));
+        row["user_id"] = ColumnTextOrNull(rawStmt, 2);
+        row["display_name"] = ColumnTextOrNull(rawStmt, 3);
+        row["event_type"] = ColumnTextOrNull(rawStmt, 4);
+        row["world_id"] = ColumnTextOrNull(rawStmt, 5);
+        row["instance_id"] = ColumnTextOrNull(rawStmt, 6);
+        row["detail"] = ColumnTextOrNull(rawStmt, 7);
+        row["occurred_at"] = ColumnTextOrNull(rawStmt, 8);
+        rows.push_back(std::move(row));
+    }
+
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+
+    return rows;
+}
+
 Result<std::optional<std::string>> Database::GetFriendNote(const std::string& user_id)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -1692,6 +2564,45 @@ Result<std::optional<std::string>> Database::GetFriendNote(const std::string& us
     }
 
     return ColumnOptionalText(rawStmt, 0);
+}
+
+Result<nlohmann::json> Database::AllFriendNotes()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    // Only rows with a non-empty note are worth shipping — empties would just
+    // bloat the payload the list ignores anyway.
+    const char* sql =
+        "SELECT user_id, note FROM friend_notes "
+        "WHERE note IS NOT NULL AND note != '';";
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+
+    nlohmann::json rows = nlohmann::json::array();
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        nlohmann::json row = nlohmann::json::object();
+        row["user_id"] = ColumnTextOrNull(rawStmt, 0);
+        row["note"] = ColumnTextOrNull(rawStmt, 1);
+        rows.push_back(std::move(row));
+    }
+
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+
+    return rows;
 }
 
 Result<std::monostate> Database::SetFriendNote(const std::string& user_id,
@@ -3741,6 +4652,213 @@ CREATE INDEX IF NOT EXISTS idx_asset_cache_expiry ON asset_cache(expires_at);
     }
 
     if (const auto r = ExecSimple("PRAGMA user_version = 12;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v13: durable friend presence events (Track B1) ──────
+    // Superset of friend_log — captures location/status/avatar flips per
+    // instance so the unified feed can replay a friend's session. All
+    // CREATE IF NOT EXISTS, safe on every startup.
+    static const char* kSchemaV13Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS friend_presence_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    display_name TEXT,
+    event_type TEXT NOT NULL,
+    world_id TEXT,
+    instance_id TEXT,
+    location TEXT,
+    status TEXT,
+    old_value TEXT,
+    new_value TEXT,
+    source TEXT,
+    occurred_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_friend_presence_user ON friend_presence_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_friend_presence_time ON friend_presence_events(occurred_at);
+CREATE INDEX IF NOT EXISTS idx_friend_presence_type_time ON friend_presence_events(event_type, occurred_at);
+    )SQL";
+
+    if (const auto r = ExecSimple(kSchemaV13Sql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 13;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v14: Track L log events (video/portal/moderation/sticker) ──
+    // One generic table for all non-presence log atoms. `kind` discriminates;
+    // `detail` carries the source-specific payload (video URL, join reason,
+    // sticker inv_id) so the unified feed renders without a second lookup.
+    // CREATE IF NOT EXISTS — safe on every startup.
+    static const char* kSchemaV14Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS log_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    user_id TEXT,
+    display_name TEXT,
+    world_id TEXT,
+    instance_id TEXT,
+    detail TEXT,
+    occurred_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_log_events_time ON log_events(occurred_at);
+CREATE INDEX IF NOT EXISTS idx_log_events_kind_time ON log_events(kind, occurred_at);
+    )SQL";
+
+    if (const auto r = ExecSimple(kSchemaV14Sql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 14;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v15: notifications inbox + session segmentation ──
+    // Two account-scoped tables shipped as one version bump. `notifications`
+    // mirrors the VRChat inbox (idempotent on the unique notification id);
+    // `sessions` tracks one row per VRChat run for mode/hmd + graceful-quit.
+    // CREATE IF NOT EXISTS — safe on every startup.
+    static const char* kSchemaV15Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS notifications (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_user_id TEXT    NOT NULL,
+    notification_id TEXT    NOT NULL,
+    type            TEXT    NOT NULL,
+    sender_id       TEXT,
+    sender_name     TEXT,
+    detail          TEXT,
+    seen            INTEGER NOT NULL DEFAULT 0,
+    occurred_at     TEXT    NOT NULL,
+    UNIQUE(account_user_id, notification_id)
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_account_time
+    ON notifications(account_user_id, occurred_at DESC);
+CREATE TABLE IF NOT EXISTS sessions (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_user_id  TEXT,
+    started_at       TEXT NOT NULL,
+    ended_at         TEXT,
+    mode             TEXT,
+    hmd_model        TEXT,
+    closed_gracefully INTEGER NOT NULL DEFAULT 0,
+    log_file         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at DESC);
+    )SQL";
+
+    if (const auto r = ExecSimple(kSchemaV15Sql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 15;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v16: account-scoped online entity caches ──
+    // Thin REST-seed mirrors backing the model-management page (owned
+    // avatars) and the VRC+ surfaces (prints/inventory/files). All keyed
+    // by account_user_id; caches only, never feed sources — safe to drop
+    // and rebuild. CREATE IF NOT EXISTS — safe on every startup.
+    static const char* kSchemaV16Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS owned_avatars (
+    account_user_id TEXT NOT NULL,
+    avatar_id       TEXT NOT NULL,
+    name            TEXT,
+    description     TEXT,
+    image_url       TEXT,
+    release_status  TEXT,
+    version         INTEGER,
+    updated_at      TEXT,
+    PRIMARY KEY(account_user_id, avatar_id)
+);
+CREATE TABLE IF NOT EXISTS online_prints (
+    account_user_id TEXT NOT NULL,
+    print_id        TEXT NOT NULL,
+    note            TEXT,
+    world_id        TEXT,
+    world_name      TEXT,
+    image_url       TEXT,
+    timestamp       TEXT,
+    created_at      TEXT,
+    PRIMARY KEY(account_user_id, print_id)
+);
+CREATE TABLE IF NOT EXISTS online_inventory (
+    account_user_id TEXT NOT NULL,
+    item_id         TEXT NOT NULL,
+    item_type       TEXT,
+    name            TEXT,
+    description     TEXT,
+    image_url       TEXT,
+    is_archived     INTEGER,
+    created_at      TEXT,
+    PRIMARY KEY(account_user_id, item_id)
+);
+CREATE TABLE IF NOT EXISTS online_files (
+    account_user_id TEXT NOT NULL,
+    file_id         TEXT NOT NULL,
+    tag             TEXT,
+    name            TEXT,
+    url             TEXT,
+    created_at      TEXT,
+    PRIMARY KEY(account_user_id, file_id)
+);
+    )SQL";
+
+    if (const auto r = ExecSimple(kSchemaV16Sql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 16;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v17: persisted avatar benchmark snapshots ──
+    // The Avatar Benchmark page reads parameter counts from the *live* VRChat
+    // local-avatar cache (report.local_avatar_data.recent_items), which VRChat
+    // evicts over time. This table snapshots every avatar we've measured so the
+    // benchmark stays viewable after the source file is gone. Pure cache built
+    // from scans — safe to drop and rebuild. Keyed by avatar_id; last write of
+    // parameter_count/eye_height wins, first_seen_at is preserved.
+    static const char* kSchemaV17Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS avatar_benchmark (
+    avatar_id       TEXT PRIMARY KEY,
+    user_id         TEXT,
+    parameter_count INTEGER NOT NULL,
+    eye_height      REAL,
+    first_seen_at   TEXT,
+    last_seen_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_avatar_benchmark_params
+    ON avatar_benchmark(parameter_count DESC);
+    )SQL";
+
+    if (const auto r = ExecSimple(kSchemaV17Sql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 17;"); std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
         return std::get<Error>(r);

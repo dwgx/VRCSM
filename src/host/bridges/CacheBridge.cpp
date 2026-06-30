@@ -23,6 +23,47 @@ std::string LogOnlyAvatarKey(const std::string& name, const std::optional<std::s
     return "name:" + name;
 }
 
+// Snapshot every measured local avatar into avatar_benchmark so the benchmark
+// page keeps showing them after VRChat evicts the live LocalAvatarData files.
+// The report json carries local_avatar_data.recent_items with avatar_id /
+// parameter_count / eye_height / modified_at. Best-effort: log and continue.
+void PersistAvatarBenchmarks(const nlohmann::json& report)
+{
+    const auto avatarData = report.find("local_avatar_data");
+    if (avatarData == report.end() || !avatarData->is_object()) return;
+    const auto items = avatarData->find("recent_items");
+    if (items == avatarData->end() || !items->is_array()) return;
+
+    const auto now = vrcsm::core::nowIso();
+    int persisted = 0;
+    for (const auto& item : *items)
+    {
+        if (!item.is_object()) continue;
+        const auto id = item.value("avatar_id", std::string{});
+        const auto params = item.value("parameter_count", 0);
+        if (id.empty() || params <= 0) continue;
+
+        vrcsm::core::Database::AvatarBenchmarkInsert a;
+        a.avatar_id = id;
+        if (item.contains("user_id") && item["user_id"].is_string())
+        {
+            a.user_id = item["user_id"].get<std::string>();
+        }
+        a.parameter_count = params;
+        if (item.contains("eye_height") && item["eye_height"].is_number())
+        {
+            a.eye_height = item["eye_height"].get<double>();
+        }
+        a.seen_at = (item.contains("modified_at") && item["modified_at"].is_string())
+            ? item["modified_at"].get<std::string>()
+            : now;
+        if (a.seen_at.empty()) a.seen_at = now;
+        (void)vrcsm::core::Database::Instance().RecordAvatarBenchmark(a);
+        ++persisted;
+    }
+    spdlog::info("scan: persisted {} avatar_benchmark rows", persisted);
+}
+
 }
 
 nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<std::string>&)
@@ -69,9 +110,13 @@ nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<
 
     if (parsedLogs.has_value())
     {
-        return ToJson(vrcsm::core::CacheScanner::buildReport(probe.baseDir, std::move(*parsedLogs)));
+        auto report = vrcsm::core::CacheScanner::buildReport(probe.baseDir, std::move(*parsedLogs));
+        PersistAvatarBenchmarks(report);
+        return ToJson(report);
     }
-    return ToJson(vrcsm::core::CacheScanner::buildReport(probe.baseDir));
+    auto report = vrcsm::core::CacheScanner::buildReport(probe.baseDir);
+    PersistAvatarBenchmarks(report);
+    return ToJson(report);
 }
 
 nlohmann::json IpcBridge::HandleBundlePreview(const nlohmann::json& params, const std::optional<std::string>&)

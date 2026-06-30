@@ -291,16 +291,40 @@ export default function AvatarBenchmark() {
       .sort((a, b) => b.parameter_count - a.parameter_count);
   }, [report]);
 
-  const maxParams = useMemo(() => Math.max(1, ...avatars.map((a) => a.parameter_count)), [avatars]);
+  // Persisted snapshots survive VRChat evicting the live LocalAvatarData cache.
+  // Merge them in so the benchmark keeps showing avatars we measured before,
+  // with the live scan winning on parameter_count when both are present.
+  const benchmarkQuery = useQuery({
+    queryKey: ["db.avatarBenchmarks.list"],
+    queryFn: () => ipc.dbAvatarBenchmarks(500, 0),
+    staleTime: 10_000,
+  });
+
+  const mergedAvatars = useMemo(() => {
+    const byId = new Map<string, AvatarItem>();
+    for (const row of benchmarkQuery.data?.items ?? []) {
+      if (!row.avatar_id || row.parameter_count <= 0) continue;
+      byId.set(row.avatar_id, {
+        avatar_id: row.avatar_id,
+        parameter_count: row.parameter_count,
+        modified_at: row.last_seen_at ?? undefined,
+      });
+    }
+    // Live scan wins: overwrite persisted rows with the current measurement.
+    for (const a of avatars) byId.set(a.avatar_id, a);
+    return [...byId.values()].sort((a, b) => b.parameter_count - a.parameter_count);
+  }, [avatars, benchmarkQuery.data?.items]);
+
+  const maxParams = useMemo(() => Math.max(1, ...mergedAvatars.map((a) => a.parameter_count)), [mergedAvatars]);
 
   const histogram = useMemo(() => {
     const h = { S: 0, A: 0, B: 0, C: 0, D: 0 };
-    for (const a of avatars) {
+    for (const a of mergedAvatars) {
       const { tier } = perfRank(a.parameter_count);
       h[tier as keyof typeof h] += 1;
     }
     return h;
-  }, [avatars]);
+  }, [mergedAvatars]);
 
   const seenCountQuery = useQuery({
     queryKey: ["db.avatarHistory.count"],
@@ -360,7 +384,7 @@ export default function AvatarBenchmark() {
         >
           <Gauge className="size-3" />
           {t("benchmark.myAvatars", { defaultValue: "My Avatars" })}
-          <Badge variant="secondary" className="ml-1">{avatars.length}</Badge>
+          <Badge variant="secondary" className="ml-1">{mergedAvatars.length}</Badge>
         </Button>
         <Button
           variant={tab === "seen" ? "default" : "outline"}
@@ -385,7 +409,7 @@ export default function AvatarBenchmark() {
           <div className="grid gap-3 md:grid-cols-5">
             {(["S", "A", "B", "C", "D"] as const).map((tier) => {
               const r = perfRank(tier === "S" ? 1 : tier === "A" ? 10 : tier === "B" ? 20 : tier === "C" ? 40 : 80);
-              const total = avatars.length || 1;
+              const total = mergedAvatars.length || 1;
               const pct = Math.round((histogram[tier] / total) * 100);
               return (
                 <Card key={tier} className="unity-panel">
@@ -410,7 +434,7 @@ export default function AvatarBenchmark() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-0.5 max-h-[500px] overflow-y-auto">
-              {avatars.length === 0 && (
+              {mergedAvatars.length === 0 && (
                 <div className="py-8 text-center">
                   <Gauge className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
                   <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -418,7 +442,7 @@ export default function AvatarBenchmark() {
                   </p>
                 </div>
               )}
-              {avatars.map((a) => (
+              {mergedAvatars.map((a) => (
                 <MyAvatarRow
                   key={a.avatar_id}
                   avatar={a}

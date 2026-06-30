@@ -226,6 +226,14 @@ nlohmann::json IpcBridge::HandleDbAvatarHistory(const nlohmann::json& params, co
     return nlohmann::json{{"items", unwrapResult(std::move(res))}};
 }
 
+nlohmann::json IpcBridge::HandleDbAvatarBenchmarks(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const int limit = ParamInt(params, "limit", 200);
+    const int offset = ParamInt(params, "offset", 0);
+    auto res = vrcsm::core::Database::Instance().AvatarBenchmarks(limit, offset);
+    return nlohmann::json{{"items", unwrapResult(std::move(res))}};
+}
+
 nlohmann::json IpcBridge::HandleDbAvatarHistoryCount(const nlohmann::json&, const std::optional<std::string>&)
 {
     auto res = vrcsm::core::Database::Instance().AvatarHistoryCount();

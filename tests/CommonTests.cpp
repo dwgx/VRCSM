@@ -334,6 +334,258 @@ TEST(CommonTests, AssetCacheKeepsVerifiedDataOverHints)
     std::filesystem::remove_all(dir, ec);
 }
 
+TEST(CommonTests, AvatarBenchmarkUpsertPreservesFirstSeenAndRanksByParams)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-avatar-benchmark");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    auto& db = vrcsm::core::Database::Instance();
+
+    vrcsm::core::Database::AvatarBenchmarkInsert light;
+    light.avatar_id = "avtr_light";
+    light.user_id = "usr_a";
+    light.parameter_count = 8;
+    light.eye_height = 1.2;
+    light.seen_at = "2026-06-01T00:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordAvatarBenchmark(light)));
+
+    vrcsm::core::Database::AvatarBenchmarkInsert heavy;
+    heavy.avatar_id = "avtr_heavy";
+    heavy.parameter_count = 80;
+    heavy.seen_at = "2026-06-02T00:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordAvatarBenchmark(heavy)));
+
+    // Re-measure the light avatar with a higher count and a later timestamp.
+    // parameter_count must update; first_seen_at must stay at the original.
+    vrcsm::core::Database::AvatarBenchmarkInsert lightAgain;
+    lightAgain.avatar_id = "avtr_light";
+    lightAgain.parameter_count = 12;
+    lightAgain.seen_at = "2026-06-05T00:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordAvatarBenchmark(lightAgain)));
+
+    auto rows = db.AvatarBenchmarks(100, 0);
+    ASSERT_TRUE(vrcsm::core::isOk(rows)) << vrcsm::core::error(rows).message;
+    const auto& items = vrcsm::core::value(rows);
+    ASSERT_EQ(items.size(), 2u);
+
+    // Ordered by parameter_count DESC — heavy first.
+    EXPECT_EQ(items[0]["avatar_id"], "avtr_heavy");
+    EXPECT_EQ(items[0]["parameter_count"], 80);
+
+    EXPECT_EQ(items[1]["avatar_id"], "avtr_light");
+    EXPECT_EQ(items[1]["parameter_count"], 12);
+    EXPECT_EQ(items[1]["first_seen_at"], "2026-06-01T00:00:00Z");
+    EXPECT_EQ(items[1]["last_seen_at"], "2026-06-05T00:00:00Z");
+    EXPECT_EQ(items[1]["eye_height"], 1.2);
+    EXPECT_EQ(items[1]["user_id"], "usr_a");
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, UnifiedFeedMergesSourcesInTimeOrder)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-unified-feed");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    auto& db = vrcsm::core::Database::Instance();
+
+    // friend_log row (oldest).
+    vrcsm::core::Database::FriendLogInsert fl;
+    fl.user_id = "usr_feed_a";
+    fl.event_type = "online";
+    fl.new_value = "active";
+    fl.display_name = "Alice";
+    fl.occurred_at = "2026-06-24T10:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.InsertFriendLog(fl)));
+
+    // player_event row (middle).
+    vrcsm::core::Database::PlayerEventInsert pe;
+    pe.kind = "joined";
+    pe.user_id = "usr_feed_a";
+    pe.display_name = "Alice";
+    pe.world_id = "wrld_feed";
+    pe.instance_id = "12345";
+    pe.occurred_at = "2026-06-24T11:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordPlayerEvent(pe)));
+
+    // friend_presence_events row (newest).
+    vrcsm::core::Database::FriendPresenceEventInsert fpe;
+    fpe.user_id = "usr_feed_a";
+    fpe.display_name = "Alice";
+    fpe.event_type = "location";
+    fpe.world_id = "wrld_feed";
+    fpe.instance_id = "12345";
+    fpe.new_value = "wrld_feed:12345";
+    fpe.source = "pipeline";
+    fpe.occurred_at = "2026-06-24T12:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordFriendPresenceEvent(fpe)));
+
+    // Full feed: newest first, all three source kinds present.
+    auto feed = db.UnifiedFeed(50, 0);
+    ASSERT_TRUE(vrcsm::core::isOk(feed)) << vrcsm::core::error(feed).message;
+    const auto& items = vrcsm::core::value(feed);
+    ASSERT_GE(items.size(), 3u);
+    EXPECT_EQ(items[0]["source_kind"], "presence");
+    EXPECT_EQ(items[0]["occurred_at"], "2026-06-24T12:00:00Z");
+    EXPECT_EQ(items[1]["source_kind"], "player_event");
+    EXPECT_EQ(items[2]["source_kind"], "friend_log");
+
+    // Filter by source_kind narrows to one stream.
+    auto presenceOnly = db.UnifiedFeed(50, 0, std::nullopt, "presence");
+    ASSERT_TRUE(vrcsm::core::isOk(presenceOnly));
+    const auto& presenceItems = vrcsm::core::value(presenceOnly);
+    ASSERT_EQ(presenceItems.size(), 1u);
+    EXPECT_EQ(presenceItems[0]["detail"], "wrld_feed:12345");
+
+    // Time-window filter excludes the oldest friend_log row.
+    auto windowed = db.UnifiedFeed(50, 0, std::nullopt, std::nullopt, "2026-06-24T10:30:00Z");
+    ASSERT_TRUE(vrcsm::core::isOk(windowed));
+    EXPECT_EQ(vrcsm::core::value(windowed).size(), 2u);
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// Own-algorithm: PredictFriendOnlineWindows aggregates online/offline brackets into
+// a 168-bucket hour-of-week histogram and ranks the recurring slot first. Sessions
+// are built in LOCAL time anchored to "now" so the test is timezone-independent and
+// the recency-decay math is exercised without hardcoding float weights.
+TEST(CommonTests, PredictFriendOnlineWindowsRanksRecurringSlot)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-predict-online");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+
+    // Build an ISO-8601 local wall-clock string (no offset → parsed as local) for a
+    // given day-offset back from now and an explicit local hour.
+    auto localIso = [](int daysAgo, int hour) -> std::string {
+        std::time_t base = std::time(nullptr) - static_cast<std::time_t>(daysAgo) * 86400;
+        std::tm lt{};
+        localtime_s(&lt, &base);
+        lt.tm_hour = hour;
+        lt.tm_min = 0;
+        lt.tm_sec = 0;
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d",
+            lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
+        return std::string(buf);
+    };
+    auto recordSession = [&](int daysAgo, int startHour, int endHour) {
+        vrcsm::core::Database::FriendPresenceEventInsert on;
+        on.user_id = "usr_pred";
+        on.event_type = "online";
+        on.occurred_at = localIso(daysAgo, startHour);
+        ASSERT_TRUE(vrcsm::core::isOk(db.RecordFriendPresenceEvent(on)));
+        vrcsm::core::Database::FriendPresenceEventInsert off;
+        off.user_id = "usr_pred";
+        off.event_type = "offline";
+        off.occurred_at = localIso(daysAgo, endHour);
+        ASSERT_TRUE(vrcsm::core::isOk(db.RecordFriendPresenceEvent(off)));
+    };
+
+    // Eight distinct days of a recurring 20:00–22:00 local session (weekly cadence
+    // implied by spreading them across the last ~8 weeks, same hour each time).
+    for (int w = 0; w < 8; ++w)
+    {
+        recordSession(7 * w + 1, 20, 22);
+    }
+
+    auto res = db.PredictFriendOnlineWindows("usr_pred", 3, 4);
+    ASSERT_TRUE(vrcsm::core::isOk(res)) << vrcsm::core::error(res).message;
+    const auto& out = vrcsm::core::value(res);
+    EXPECT_EQ(out["status"], "ok");
+    EXPECT_EQ(out["heatmap"].size(), 168u);
+    ASSERT_FALSE(out["top_windows"].empty());
+    // The recurring slot starts at local hour 20.
+    EXPECT_EQ(out["top_windows"][0]["start_hour"], 20);
+    EXPECT_GE(static_cast<int>(out["top_windows"][0]["observation_days"]), 2);
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, PredictFriendOnlineWindowsReportsInsufficientData)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-predict-empty");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+
+    // One short session only — well below the sufficiency gate.
+    vrcsm::core::Database::FriendPresenceEventInsert on;
+    on.user_id = "usr_thin";
+    on.event_type = "online";
+    on.occurred_at = "2026-06-24T20:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordFriendPresenceEvent(on)));
+    vrcsm::core::Database::FriendPresenceEventInsert off;
+    off.user_id = "usr_thin";
+    off.event_type = "offline";
+    off.occurred_at = "2026-06-24T20:30:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordFriendPresenceEvent(off)));
+
+    auto res = db.PredictFriendOnlineWindows("usr_thin", 3, 4);
+    ASSERT_TRUE(vrcsm::core::isOk(res)) << vrcsm::core::error(res).message;
+    const auto& out = vrcsm::core::value(res);
+    EXPECT_EQ(out["status"], "insufficient_data");
+    EXPECT_TRUE(out["top_windows"].empty());
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// Track L: RecordLogEvent persists into log_events and the unified feed surfaces
+// it under the 'log_event' source kind with kind in event_type and payload in
+// detail. The kind filter must also narrow to just the log_event branch.
+TEST(CommonTests, UnifiedFeedSurfacesLogEvents)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-feed-logevent");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    auto& db = vrcsm::core::Database::Instance();
+
+    vrcsm::core::Database::LogEventInsert ve;
+    ve.kind = "videoPlay";
+    ve.world_id = "wrld_logevt";
+    ve.instance_id = "42";
+    ve.detail = "https://example.invalid/clip.mp4";
+    ve.occurred_at = "2026-06-25T09:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordLogEvent(ve)));
+
+    vrcsm::core::Database::LogEventInsert se;
+    se.kind = "stickerSpawn";
+    se.user_id = "usr_logevt";
+    se.display_name = "Dave";
+    se.detail = "inv_1234";
+    se.occurred_at = "2026-06-25T09:05:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordLogEvent(se)));
+
+    auto kindOnly = db.UnifiedFeed(50, 0, std::nullopt, "log_event");
+    ASSERT_TRUE(vrcsm::core::isOk(kindOnly)) << vrcsm::core::error(kindOnly).message;
+    const auto& items = vrcsm::core::value(kindOnly);
+    ASSERT_EQ(items.size(), 2u);
+    // Newest first: stickerSpawn precedes videoPlay.
+    EXPECT_EQ(items[0]["source_kind"], "log_event");
+    EXPECT_EQ(items[0]["event_type"], "stickerSpawn");
+    EXPECT_EQ(items[0]["user_id"], "usr_logevt");
+    EXPECT_EQ(items[0]["detail"], "inv_1234");
+    EXPECT_EQ(items[1]["event_type"], "videoPlay");
+    EXPECT_EQ(items[1]["world_id"], "wrld_logevt");
+    EXPECT_EQ(items[1]["detail"], "https://example.invalid/clip.mp4");
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
 TEST(CommonTests, AvatarPreviewCacheKeyDiffersAcrossSourceSignatures)
 {
     constexpr const char* avatarId = "avtr_164034fd-61d6-410d-892f-9ecc3964817e";

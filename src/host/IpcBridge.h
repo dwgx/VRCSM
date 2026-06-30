@@ -209,6 +209,7 @@ private:
     nlohmann::json HandleDbPlayerEncounters(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarHistory(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarHistoryCount(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleDbAvatarBenchmarks(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarHistoryRecord(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarHistoryResolve(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbStatsHeatmap(const nlohmann::json& params, const std::optional<std::string>& id);
