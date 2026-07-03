@@ -69,8 +69,18 @@ DirectoryStats sizeOf(const std::filesystem::path& dir)
         if (ec) break;
         if (f.is_regular_file())
         {
-            stats.bytes += f.file_size(ec);
-            if (ec) ec.clear();
+            // file_size() returns (uintmax_t)-1 on error; only fold it into the
+            // running total when the call actually succeeded, otherwise the -1
+            // wraps the sum and corrupts free-space/verify accounting.
+            const auto sz = f.file_size(ec);
+            if (!ec)
+            {
+                stats.bytes += sz;
+            }
+            else
+            {
+                ec.clear();
+            }
             stats.files += 1;
         }
     }
@@ -295,7 +305,15 @@ Result<MigrateSummary> Migrator::execute(
                 std::filesystem::copy_options::overwrite_existing,
                 ec);
             if (ec) return Error{"copy_failed", ec.message()};
-            bytesDone += f.file_size(ec);
+            const auto sz = f.file_size(ec);
+            if (!ec)
+            {
+                bytesDone += sz;
+            }
+            else
+            {
+                ec.clear();
+            }
             filesDone += 1;
             if (filesDone % 32 == 0)
             {
@@ -307,6 +325,14 @@ Result<MigrateSummary> Migrator::execute(
 
     emit("verify", bytesDone, totalStats.bytes, filesDone, totalStats.files, "verifying");
     const auto verifyStats = sizeOf(targetPath);
+    // Compare both the file count and the byte total against what we actually
+    // copied. Byte-total-only verification can pass a copy that produced a
+    // different file set with the same aggregate size; comparing counts as well
+    // catches dropped/extra files before the source is renamed to backup.
+    if (verifyStats.files != filesDone)
+    {
+        return Error{"verify_failed", "file count mismatch after copy"};
+    }
     if (verifyStats.bytes != bytesDone)
     {
         return Error{"verify_failed", "byte count mismatch after copy"};

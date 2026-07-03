@@ -47,6 +47,30 @@ let lowPriorityTimer: number | null = null;
 const NEG_TTL_MS = 5 * 60_000;
 const FOREVER = Number.POSITIVE_INFINITY;
 
+// Hard ceiling on memo entries. Resolved thumbnail URLs hold a FOREVER TTL, so
+// without a cap the map grows monotonically across a multi-hour browse session
+// and leaks heap in the long-lived WebView2 process. Evict in insertion order
+// (Map preserves it) once the ceiling is crossed — a cheap LRU-on-write.
+const MAX_ENTRIES = 4_000;
+
+function memoSet(id: string, entry: CacheEntry): void {
+  // Re-insert moves the key to the most-recent position so churned keys stay
+  // and cold keys age out first.
+  if (memo.has(id)) memo.delete(id);
+  memo.set(id, entry);
+  if (memo.size > MAX_ENTRIES) {
+    const overflow = memo.size - MAX_ENTRIES;
+    let removed = 0;
+    for (const oldKey of memo.keys()) {
+      if (removed >= overflow) break;
+      // Never evict the entry we just wrote.
+      if (oldKey === id) continue;
+      memo.delete(oldKey);
+      removed += 1;
+    }
+  }
+}
+
 function isResolvedFresh(e: CacheEntry, now: number): e is { state: "resolved"; url: string | null; expiresAt: number } {
   return e.state === "resolved" && e.expiresAt > now;
 }
@@ -94,14 +118,6 @@ export function resetLowPriorityThumbnailQueue(): void {
   }
 }
 
-// Auto-wire auth state changes → cache invalidation. This fires exactly
-// once at module load (we subscribe forever), so the frontend no longer
-// has to remember to bump the memo after login/logout at every call
-// site. Avatar cards and friend rows refresh without a page reload.
-ipc.on("auth.loginCompleted", () => {
-  invalidateThumbnails();
-});
-
 /**
  * Accept both world and avatar prefixes. The C++ host is now auth-aware
  * (v0.2.0 AuthStore): worlds always work anonymously, avatars only work
@@ -123,7 +139,7 @@ function fetchOne(id: string): Promise<string | null> {
     // Expired negative-cache entry — fall through and re-fetch.
   }
   if (!isLookupSupported(id)) {
-    memo.set(id, { state: "resolved", url: null, expiresAt: FOREVER });
+    memoSet(id, { state: "resolved", url: null, expiresAt: FOREVER });
     return Promise.resolve(null);
   }
   const promise = ipc
@@ -140,7 +156,7 @@ function fetchOne(id: string): Promise<string | null> {
         // the cache — drop the entry so the next useThumbnail tries again.
         memo.delete(id);
       } else {
-        memo.set(id, {
+        memoSet(id, {
           state: "resolved",
           url,
           expiresAt: url ? FOREVER : Date.now() + NEG_TTL_MS,
@@ -154,7 +170,7 @@ function fetchOne(id: string): Promise<string | null> {
       memo.delete(id);
       return null;
     });
-  memo.set(id, { state: "pending", promise });
+  memoSet(id, { state: "pending", promise });
   return promise;
 }
 
@@ -223,7 +239,7 @@ export function prefetchThumbnails(ids: string[]): void {
     const existing = memo.get(id);
     if (existing && (existing.state === "pending" || isResolvedFresh(existing, now))) continue;
     if (!isLookupSupported(id)) {
-      memo.set(id, { state: "resolved", url: null, expiresAt: FOREVER });
+      memoSet(id, { state: "resolved", url: null, expiresAt: FOREVER });
     }
   }
 
@@ -244,7 +260,7 @@ export function prefetchThumbnails(ids: string[]): void {
           continue;
         }
         const url = row.localUrl ?? row.url ?? null;
-        memo.set(row.id, {
+        memoSet(row.id, {
           state: "resolved",
           url,
           expiresAt: url ? FOREVER : Date.now() + NEG_TTL_MS,
@@ -268,7 +284,7 @@ export function prefetchThumbnails(ids: string[]): void {
   // Mark each id as pending so individual useThumbnail calls don't
   // double-fetch — they'll resolve off the same batch promise.
   for (const id of need) {
-    memo.set(id, {
+    memoSet(id, {
       state: "pending",
       promise: batchPromise.then(() => {
         const e = memo.get(id);

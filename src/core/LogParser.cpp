@@ -126,6 +126,154 @@ void to_json(nlohmann::json& j, const ScreenshotEvent& e)
     };
 }
 
+void to_json(nlohmann::json& j, const VideoPlayEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"url", e.url},
+        {"world_id", e.world_id ? nlohmann::json(*e.world_id) : nlohmann::json(nullptr)},
+        {"instance_id", e.instance_id ? nlohmann::json(*e.instance_id) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const PortalSpawnEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const VoteKickEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"phase", e.phase},
+        {"target", e.target ? nlohmann::json(*e.target) : nlohmann::json(nullptr)},
+        {"message", e.message ? nlohmann::json(*e.message) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const JoinBlockedEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"reason_kind", e.reason_kind},
+        {"location", e.location ? nlohmann::json(*e.location) : nlohmann::json(nullptr)},
+        {"reason", e.reason ? nlohmann::json(*e.reason) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const StickerSpawnEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"user_id", e.user_id},
+        {"display_name", e.display_name},
+        {"inventory_id", e.inventory_id},
+    };
+}
+
+void to_json(nlohmann::json& j, const NotificationEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"sender_id", e.sender_id},
+        {"sender_name", e.sender_name},
+        {"type", e.type},
+        {"notification_id", e.notification_id},
+    };
+}
+
+void to_json(nlohmann::json& j, const VideoErrorEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"error_message", e.error_message},
+    };
+}
+
+void to_json(nlohmann::json& j, const AttributedVideoEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"url", e.url},
+        {"requester", e.requester ? nlohmann::json(*e.requester) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const VideoSyncEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"url", e.url},
+    };
+}
+
+void to_json(nlohmann::json& j, const AvatarPedestalEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"display_name", e.display_name},
+        {"user_id", e.user_id ? nlohmann::json(*e.user_id) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const AppQuitEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"uptime_seconds", e.uptime_seconds ? nlohmann::json(*e.uptime_seconds) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const SessionModeEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"mode", e.mode},
+        {"hmd_model", e.hmd_model ? nlohmann::json(*e.hmd_model) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const OscFailEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"reason", e.reason},
+    };
+}
+
+void to_json(nlohmann::json& j, const UdonExceptionEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"message", e.message},
+    };
+}
+
+void to_json(nlohmann::json& j, const InstanceResetEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"minutes", e.minutes},
+    };
+}
+
+void to_json(nlohmann::json& j, const ShaderKeywordEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const AudioDeviceEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"device_name", e.device_name},
+    };
+}
+
 void to_json(nlohmann::json& j, const WorldSwitchEvent& e)
 {
     j = nlohmann::json{
@@ -158,6 +306,23 @@ void to_json(nlohmann::json& j, const LogReport& r)
         {"avatar_switches", r.avatar_switches},
         {"screenshots", r.screenshots},
         {"world_switches", r.world_switches},
+        {"video_plays", r.video_plays},
+        {"portal_spawns", r.portal_spawns},
+        {"vote_kicks", r.vote_kicks},
+        {"join_blocked", r.join_blocked},
+        {"sticker_spawns", r.sticker_spawns},
+        {"notifications", r.notifications},
+        {"video_errors", r.video_errors},
+        {"attributed_video_plays", r.attributed_video_plays},
+        {"video_syncs", r.video_syncs},
+        {"avatar_pedestals", r.avatar_pedestals},
+        {"app_quits", r.app_quits},
+        {"session_modes", r.session_modes},
+        {"osc_fails", r.osc_fails},
+        {"udon_exceptions", r.udon_exceptions},
+        {"instance_resets", r.instance_resets},
+        {"shader_keywords", r.shader_keywords},
+        {"audio_devices", r.audio_devices},
     };
 }
 
@@ -349,8 +514,15 @@ struct ParseState
 
     // playerName → usr_xxx map populated from OnPlayerJoined lines so we
     // can attach the actor's user_id to AvatarSwitchEvents (logs put the
-    // id only on join, never on the avatar-switch line).
+    // id only on join, never on the avatar-switch line). A9 also uses this
+    // to backfill AvatarPedestal events; reset on each WorldInstance switch
+    // since display names are only unique within an instance.
     std::unordered_map<std::string, std::string> playerNameToUserId;
+
+    // A8 stateful diagnostics. Shader-keyword is emitted once per world
+    // context (reset on WorldInstance); audio-device only when it changes.
+    bool shaderKeywordEmitted = false;
+    std::string lastAudioDevice;
 };
 
 void maybeApplyLegacyClearCache(const std::string& value, LogReport& report)
@@ -388,14 +560,27 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
             st.currentWorldId = worldId;
             st.currentInstanceId = fullInstanceId;
         }
+        // A9: display names are per-instance — reset the enrichment map.
+        // A8: shader-keyword dedupe resets on each new world context.
+        st.playerNameToUserId.clear();
+        st.shaderKeywordEmitted = false;
         return;
     }
 
-    // User auth — captures local player identity.
-    if (!report.local_user_name && std::regex_search(line, m, kUserAuthRe))
+    // User auth — captures local player identity. A single log can contain
+    // several `User Authenticated` lines when the user signs out and back in
+    // under a different account mid-session; we must track the *current* local
+    // user, not freeze on the first one. Freezing was the cause of the second
+    // account's avatar names silently vanishing: their `Switching <me> ...`
+    // lines no longer matched `local_user_name`, so no name→id pair was bound.
+    if (std::regex_search(line, m, kUserAuthRe))
     {
         report.local_user_name = stripTrailing(m[1]);
         report.local_user_id = stripTrailing(m[2]);
+        // A fresh identity invalidates any half-formed pairing from the
+        // previous account so its name can't leak onto the new user's load.
+        st.pendingLocalAvatarName.clear();
+        st.pendingLocalAvatarAuthor.clear();
     }
 
     // Profile `- avatar: avtr_xxx` header (appears right after User Authenticated).
@@ -635,6 +820,197 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
         }
     }
 
+    // Track L atoms (video/portal/moderation/sticker). These reuse the shared
+    // ParseVrchatLogAtom so the batch report and the live classifier never
+    // diverge on format. Each is capped like the streams above.
+    if (const auto atom = ParseVrchatLogAtom(line))
+    {
+        switch (atom->kind)
+        {
+            case LogAtomKind::VideoPlay:
+                if (report.video_plays.size() < kMaxEventsPerKind)
+                {
+                    VideoPlayEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.url = atom->getOr("url");
+                    if (!st.currentWorldId.empty()) ev.world_id = st.currentWorldId;
+                    if (!st.currentInstanceId.empty()) ev.instance_id = st.currentInstanceId;
+                    report.video_plays.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::PortalSpawn:
+                if (report.portal_spawns.size() < kMaxEventsPerKind)
+                {
+                    PortalSpawnEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    report.portal_spawns.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::VoteKick:
+                if (report.vote_kicks.size() < kMaxEventsPerKind)
+                {
+                    VoteKickEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.phase = atom->getOr("phase");
+                    if (const auto t = atom->get("target")) ev.target = *t;
+                    if (const auto msg = atom->get("message")) ev.message = *msg;
+                    report.vote_kicks.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::JoinBlocked:
+                if (report.join_blocked.size() < kMaxEventsPerKind)
+                {
+                    JoinBlockedEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.reason_kind = atom->getOr("reason_kind");
+                    if (const auto loc = atom->get("location")) ev.location = *loc;
+                    if (const auto r = atom->get("reason")) ev.reason = *r;
+                    report.join_blocked.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::StickerSpawn:
+                if (report.sticker_spawns.size() < kMaxEventsPerKind)
+                {
+                    StickerSpawnEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.user_id = atom->getOr("user_id");
+                    ev.display_name = atom->getOr("display_name");
+                    ev.inventory_id = atom->getOr("inventory_id");
+                    report.sticker_spawns.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::Notification:
+                if (report.notifications.size() < kMaxEventsPerKind)
+                {
+                    NotificationEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.sender_id = atom->getOr("sender_id");
+                    ev.sender_name = atom->getOr("sender_name");
+                    ev.type = atom->getOr("type");
+                    ev.notification_id = atom->getOr("notification_id");
+                    report.notifications.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::VideoError:
+                if (report.video_errors.size() < kMaxEventsPerKind)
+                {
+                    VideoErrorEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.error_message = atom->getOr("error_message");
+                    report.video_errors.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::AttributedVideoPlay:
+                if (report.attributed_video_plays.size() < kMaxEventsPerKind)
+                {
+                    AttributedVideoEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.url = atom->getOr("url");
+                    if (const auto r = atom->get("requester")) ev.requester = *r;
+                    report.attributed_video_plays.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::VideoSync:
+                if (report.video_syncs.size() < kMaxEventsPerKind)
+                {
+                    VideoSyncEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.url = atom->getOr("url");
+                    report.video_syncs.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::AvatarPedestalChange:
+                if (report.avatar_pedestals.size() < kMaxEventsPerKind)
+                {
+                    AvatarPedestalEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.display_name = atom->getOr("display_name");
+                    // A9: backfill the usr_ id when this name was seen joining.
+                    if (auto it = st.playerNameToUserId.find(ev.display_name);
+                        it != st.playerNameToUserId.end())
+                    {
+                        ev.user_id = it->second;
+                    }
+                    report.avatar_pedestals.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::AppQuit:
+                if (report.app_quits.size() < kMaxEventsPerKind)
+                {
+                    AppQuitEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    if (const auto u = atom->get("uptime_seconds")) ev.uptime_seconds = *u;
+                    report.app_quits.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::SessionMode:
+                if (report.session_modes.size() < kMaxEventsPerKind)
+                {
+                    SessionModeEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.mode = atom->getOr("mode");
+                    if (const auto h = atom->get("hmd_model")) ev.hmd_model = *h;
+                    report.session_modes.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::OscFail:
+                if (report.osc_fails.size() < kMaxEventsPerKind)
+                {
+                    OscFailEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.reason = atom->getOr("reason");
+                    report.osc_fails.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::UdonException:
+                if (report.udon_exceptions.size() < kMaxEventsPerKind)
+                {
+                    UdonExceptionEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.message = atom->getOr("message");
+                    report.udon_exceptions.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::InstanceReset:
+                if (report.instance_resets.size() < kMaxEventsPerKind)
+                {
+                    InstanceResetEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.minutes = atom->getOr("minutes");
+                    report.instance_resets.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::ShaderKeyword:
+                // A8: emit once per world context (reset on WorldInstance).
+                if (!st.shaderKeywordEmitted
+                    && report.shader_keywords.size() < kMaxEventsPerKind)
+                {
+                    st.shaderKeywordEmitted = true;
+                    ShaderKeywordEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    report.shader_keywords.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::AudioDevice:
+            {
+                // A8: only emit when the input device actually changed.
+                const std::string device = atom->getOr("device_name");
+                if (!device.empty() && device != st.lastAudioDevice
+                    && report.audio_devices.size() < kMaxEventsPerKind)
+                {
+                    st.lastAudioDevice = device;
+                    AudioDeviceEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.device_name = device;
+                    report.audio_devices.push_back(std::move(ev));
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
     // Avatar unpack — confirms author for the pending switch.
     if (std::regex_search(line, m, kUnpackAvatarRe))
     {
@@ -676,6 +1052,14 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
                 info.author = st.pendingLocalAvatarAuthor;
             }
             report.avatar_names[id] = std::move(info);
+
+            // Consume the pending name: a single `Switching` pairs with exactly
+            // the next avatar-data load. Without this, the same local switch
+            // name leaks onto every subsequent unnamed id (e.g. fallback /
+            // impostor / re-loaded avatars), stamping many distinct ids with
+            // one name — the "5 different avatars all called Runa" bug.
+            st.pendingLocalAvatarName.clear();
+            st.pendingLocalAvatarAuthor.clear();
         }
     }
 

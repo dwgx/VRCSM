@@ -25,6 +25,13 @@ import {
 import { SettingRow } from "./components/SettingRow";
 import { useUiPrefBoolean, useUiPrefString } from "@/lib/ui-prefs";
 import { DISCORD_PREF_CLIENT_ID, DISCORD_PREF_ENABLED } from "@/lib/useDiscordPresence";
+import {
+  NOTIFY_PREF_FRIEND_ONLINE,
+  NOTIFY_PREF_INVITE,
+  NOTIFY_PREF_FRIEND_REQUEST,
+  NOTIFY_PREF_VR_OVERLAY,
+} from "@/lib/notifications";
+import { TTS_PREF_ENABLED, TTS_PREF_SCOPE, isTtsSupported } from "@/lib/tts";
 import { cn } from "@/lib/utils";
 import { useReport } from "@/lib/report-context";
 import type { AppVersion } from "@/lib/types";
@@ -42,6 +49,11 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
   const [showRadarTimeline, setShowRadarTimeline] = useUiPrefBoolean("vrcsm.layout.radar.timeline.visible", true);
   const [showVrchatSidebar, setShowVrchatSidebar] = useUiPrefBoolean("vrcsm.layout.vrchat.sidebar.visible", true);
   const [showFriendsDetail, setShowFriendsDetail] = useUiPrefBoolean("vrcsm.layout.friends.detail.visible", true);
+  // Privacy / display toggles (VRCX parity)
+  const [showInstanceId, setShowInstanceId] = useUiPrefBoolean("vrcsm.privacy.showInstanceId", true);
+  const [hideUnfriends, setHideUnfriends] = useUiPrefBoolean("vrcsm.friendLog.hideUnfriends", false);
+  const [statusShapes, setStatusShapes] = useUiPrefBoolean("vrcsm.a11y.statusShapes", false);
+  const [userColorPref, setUserColorPref] = useUiPrefBoolean("vrcsm.a11y.userColor", false);
 
   const [autoStart, setAutoStart] = useState(false);
   useEffect(() => {
@@ -54,6 +66,18 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
   const [discordEnabled, setDiscordEnabled] = useUiPrefBoolean(DISCORD_PREF_ENABLED, false);
   const [discordClientId, setDiscordClientId] = useUiPrefString(DISCORD_PREF_CLIENT_ID, "");
   const [screenshotsAutoInject, setScreenshotsAutoInject] = useUiPrefBoolean("vrcsm.screenshots.autoInject", true);
+
+  // Desktop toast notifications — opt-in per event type (default OFF). The
+  // useToastPrefsSync hook in App.tsx pushes these to the native host on
+  // change via notify.setPrefs.
+  const [toastFriendOnline, setToastFriendOnline] = useUiPrefBoolean(NOTIFY_PREF_FRIEND_ONLINE, false);
+  const [toastInvite, setToastInvite] = useUiPrefBoolean(NOTIFY_PREF_INVITE, false);
+  const [toastFriendRequest, setToastFriendRequest] = useUiPrefBoolean(NOTIFY_PREF_FRIEND_REQUEST, false);
+  const [toastVrOverlay, setToastVrOverlay] = useUiPrefBoolean(NOTIFY_PREF_VR_OVERLAY, false);
+  // Spoken announcements (Web Speech API). Independent of the toast channel.
+  const ttsSupported = isTtsSupported();
+  const [ttsEnabled, setTtsEnabled] = useUiPrefBoolean(TTS_PREF_ENABLED, false);
+  const [ttsScope, setTtsScope] = useUiPrefString(TTS_PREF_SCOPE, "friends");
 
   const [clearCacheOpen, setClearCacheOpen] = useState(false);
   const [clearCacheWorking, setClearCacheWorking] = useState(false);
@@ -383,6 +407,54 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
                 : t("common.disabled", { defaultValue: "Disabled" })}
             </Button>
           </SettingRow>
+          <SettingRow
+            label={t("settings.general.showInstanceId", { defaultValue: "Show instance ID" })}
+            hint={t("settings.general.showInstanceIdHint", {
+              defaultValue: "When off, the instance number is hidden from friend locations. World, type and region still show.",
+            })}
+          >
+            <Button size="sm" variant={showInstanceId ? "default" : "outline"} onClick={() => setShowInstanceId((current) => !current)}>
+              {showInstanceId
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.general.hideUnfriends", { defaultValue: "Hide unfriend events" })}
+            hint={t("settings.general.hideUnfriendsHint", {
+              defaultValue: "Hide \"removed you\" / unfriend rows from the friend activity log. Other events still show.",
+            })}
+          >
+            <Button size="sm" variant={hideUnfriends ? "default" : "outline"} onClick={() => setHideUnfriends((current) => !current)}>
+              {hideUnfriends
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.general.statusShapes", { defaultValue: "Colorblind status shapes" })}
+            hint={t("settings.general.statusShapesHint", {
+              defaultValue: "Add a distinct shape to each status indicator (join me, active, ask me, busy, offline) so they're distinguishable without relying on color.",
+            })}
+          >
+            <Button size="sm" variant={statusShapes ? "default" : "outline"} onClick={() => setStatusShapes((current) => !current)}>
+              {statusShapes
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.general.userColor", { defaultValue: "Per-user name colors" })}
+            hint={t("settings.general.userColorHint", {
+              defaultValue: "Tint each user's name with a stable, unique color derived from their ID, making people easier to recognize at a glance across feeds and rosters.",
+            })}
+          >
+            <Button size="sm" variant={userColorPref ? "default" : "outline"} onClick={() => setUserColorPref((current) => !current)}>
+              {userColorPref
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
         </CardContent>
       </Card>
 
@@ -509,6 +581,136 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
               className="h-8 w-[220px] font-mono text-[12px]"
             />
           </SettingRow>
+        </CardContent>
+      </Card>
+
+      {/* Desktop toast notifications — native Windows Action Center toasts
+          for social Pipeline events. Opt-in per type (default OFF). */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.notify.title", { defaultValue: "Desktop Notifications" })}</CardTitle>
+          <CardDescription>
+            {t("settings.notify.desc", {
+              defaultValue:
+                "Show native Windows notifications for live VRChat events while VRCSM is running. Each type is off by default.",
+            })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <SettingRow
+            label={t("settings.notify.friendOnline.label", { defaultValue: "Friend Comes Online" })}
+            hint={t("settings.notify.friendOnline.desc", {
+              defaultValue: "Toast when a friend logs in to VRChat.",
+            })}
+          >
+            <Button
+              variant={toastFriendOnline ? "default" : "outline"}
+              size="sm"
+              onClick={() => setToastFriendOnline(!toastFriendOnline)}
+              className="h-7 px-3 text-[12px]"
+            >
+              {toastFriendOnline
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.notify.invite.label", { defaultValue: "Invites" })}
+            hint={t("settings.notify.invite.desc", {
+              defaultValue: "Toast when you receive an instance invite.",
+            })}
+          >
+            <Button
+              variant={toastInvite ? "default" : "outline"}
+              size="sm"
+              onClick={() => setToastInvite(!toastInvite)}
+              className="h-7 px-3 text-[12px]"
+            >
+              {toastInvite
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.notify.friendRequest.label", { defaultValue: "Friend Requests" })}
+            hint={t("settings.notify.friendRequest.desc", {
+              defaultValue: "Toast when someone sends you a friend request.",
+            })}
+          >
+            <Button
+              variant={toastFriendRequest ? "default" : "outline"}
+              size="sm"
+              onClick={() => setToastFriendRequest(!toastFriendRequest)}
+              className="h-7 px-3 text-[12px]"
+            >
+              {toastFriendRequest
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.notify.vrOverlay.label", { defaultValue: "Show in VR Headset" })}
+            hint={t("settings.notify.vrOverlay.desc", {
+              defaultValue:
+                "Also mirror the enabled notifications above into your headset via XSOverlay. Requires XSOverlay running.",
+            })}
+          >
+            <Button
+              variant={toastVrOverlay ? "default" : "outline"}
+              size="sm"
+              onClick={() => setToastVrOverlay(!toastVrOverlay)}
+              className="h-7 px-3 text-[12px]"
+            >
+              {toastVrOverlay
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.notify.tts.label", { defaultValue: "Speak Notifications" })}
+            hint={
+              ttsSupported
+                ? t("settings.notify.tts.desc", {
+                    defaultValue:
+                      "Read live events aloud via your system voice while you're in VR.",
+                  })
+                : t("settings.notify.tts.unsupported", {
+                    defaultValue: "Speech synthesis isn't available in this runtime.",
+                  })
+            }
+          >
+            <Button
+              variant={ttsEnabled ? "default" : "outline"}
+              size="sm"
+              disabled={!ttsSupported}
+              onClick={() => setTtsEnabled(!ttsEnabled)}
+              className="h-7 px-3 text-[12px]"
+            >
+              {ttsEnabled
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          {ttsEnabled && ttsSupported ? (
+            <SettingRow
+              label={t("settings.notify.ttsScope.label", { defaultValue: "What to Speak" })}
+              hint={t("settings.notify.ttsScope.desc", {
+                defaultValue:
+                  "Friends only announces friends coming online; All also speaks invites and friend requests.",
+              })}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTtsScope(ttsScope === "all" ? "friends" : "all")}
+                className="h-7 px-3 text-[12px]"
+              >
+                {ttsScope === "all"
+                  ? t("settings.notify.ttsScope.all", { defaultValue: "All events" })
+                  : t("settings.notify.ttsScope.friends", { defaultValue: "Friends only" })}
+              </Button>
+            </SettingRow>
+          ) : null}
         </CardContent>
       </Card>
 

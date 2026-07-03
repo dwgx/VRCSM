@@ -13,8 +13,9 @@ import { TabRegistry } from "./TabRegistry";
 import { TabExperimental } from "./TabExperimental";
 import { TabVrDiag } from "./TabVrDiag";
 import TabHardware from "./TabHardware";
+import { TabData } from "./TabData";
 
-type SettingsTab = "general" | "config" | "steamvr" | "registry" | "hardware" | "experimental" | "vrdiag";
+type SettingsTab = "general" | "config" | "steamvr" | "registry" | "hardware" | "experimental" | "vrdiag" | "data";
 
 export default function SettingsLayout() {
   const { t } = useTranslation();
@@ -112,6 +113,12 @@ export default function SettingsLayout() {
           >
             {t("settings.tabs.vrDiag", { defaultValue: "VR Diagnostics" })}
           </button>
+          <button
+            onClick={() => selectTab("data")}
+            className={cn("unity-tab flex items-center gap-1.5 px-4 py-2 text-[12px]", activeTab === "data" && "unity-tab-active")}
+          >
+            {t("settings.tabs.data", { defaultValue: "Data Management" })}
+          </button>
         </div>
       </header>
 
@@ -124,6 +131,7 @@ export default function SettingsLayout() {
         {activeTab === "hardware" && <TabHardware />}
         {activeTab === "experimental" && <TabExperimental />}
         {activeTab === "vrdiag" && <TabVrDiag />}
+        {activeTab === "data" && <TabData />}
       </div>
     </div>
   );
@@ -138,6 +146,7 @@ function normalizeTab(raw: string | null): SettingsTab | null {
     case "hardware":
     case "experimental":
     case "vrdiag":
+    case "data":
       return raw;
     default:
       return null;

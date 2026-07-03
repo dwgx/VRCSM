@@ -114,6 +114,97 @@ public:
     // All aggregated encounters for a given user (across worlds).
     Result<nlohmann::json> EncountersForUser(const std::string& user_id);
 
+    // ─── Co-presence ego-network (Track 4 relationship graph) ───────
+    //
+    // Builds a co-presence graph centered on `center_user_id` (normally
+    // the local user) from raw player_events. We reconstruct per-user
+    // presence intervals within each (world_id, instance_id) session and
+    // emit an edge between two users when their intervals overlap by at
+    // least `min_overlap_sec`. Edges touching the center are "confirmed"
+    // co-presence (we logged them entering our own instance); edges
+    // between two non-center users are "co_presence" only — never a
+    // confirmed-friendship claim (VRChat exposes no FoF data).
+    //
+    // Returns { center, nodes:[{user_id, display_name, sessions,
+    //   total_seconds, last_seen}], edges:[{source, target, kind,
+    //   overlap_count, overlap_seconds, last_overlap}] }.
+    Result<nlohmann::json> CoPresenceEgoNetwork(
+        const std::string& center_user_id,
+        int since_days = 90,
+        int min_overlap_sec = 60);
+
+    // ─── log_events (Track L: video/portal/moderation/sticker) ──────
+
+    struct LogEventInsert
+    {
+        std::string kind;            // "videoPlay" | "portalSpawn" | "voteKick" | "joinBlocked" | "stickerSpawn"
+        std::optional<std::string> user_id;
+        std::optional<std::string> display_name;
+        std::optional<std::string> world_id;
+        std::optional<std::string> instance_id;
+        std::optional<std::string> detail;   // source-specific payload (url / reason / inv_…)
+        std::string occurred_at;
+    };
+    // Append-only. Backs the 'log_event' branch of the unified feed.
+    Result<std::monostate> RecordLogEvent(const LogEventInsert& e);
+
+    // ─── notifications (schema v15) ───────────────────────────────
+    // Account-scoped mirror of the VRChat notification inbox (friend
+    // requests / invites / messages). INSERT OR IGNORE on the unique
+    // (account_user_id, notification_id) key so re-seeding the inbox is
+    // idempotent. The unified feed uses the generic log_event row for
+    // notifications; this table backs the dedicated inbox view.
+    struct NotificationInsert
+    {
+        std::string account_user_id;
+        std::string notification_id;             // not_xxx
+        std::string type;                        // friendRequest/invite/...
+        std::optional<std::string> sender_id;
+        std::optional<std::string> sender_name;
+        std::optional<std::string> detail;       // raw type/message payload
+        bool seen = false;
+        std::string occurred_at;
+    };
+    Result<std::monostate> RecordNotification(const NotificationInsert& n);
+
+    // ─── sessions (schema v15) ────────────────────────────────────
+    // One row per VRChat run, used by session segmentation (mode/hmd,
+    // graceful-quit detection). RecordSessionStart opens a row and returns
+    // its rowid; RecordSessionMode patches the open session's mode/hmd;
+    // RecordSessionEnd closes it (ended_at + closed_gracefully).
+    struct SessionStartInsert
+    {
+        std::optional<std::string> account_user_id;
+        std::string started_at;
+        std::optional<std::string> mode;         // vr | desktop
+        std::optional<std::string> hmd_model;
+        std::optional<std::string> log_file;
+    };
+    Result<std::int64_t> RecordSessionStart(const SessionStartInsert& s);
+    Result<std::monostate> RecordSessionMode(std::int64_t session_id,
+                                             const std::optional<std::string>& mode,
+                                             const std::optional<std::string>& hmd_model);
+    Result<std::monostate> RecordSessionEnd(std::int64_t session_id,
+                                            const std::string& ended_at,
+                                            bool closed_gracefully);
+
+    // ─── online entity caches (schema v16) ────────────────────────
+    // Thin account-scoped REST-seed mirrors. NOT sources of truth — safe
+    // to drop/rebuild, never surfaced in the unified feed. Each Upsert is
+    // INSERT OR REPLACE on the composite primary key.
+    struct OwnedAvatarUpsert
+    {
+        std::string account_user_id;
+        std::string avatar_id;
+        std::optional<std::string> name;
+        std::optional<std::string> description;
+        std::optional<std::string> image_url;
+        std::optional<std::string> release_status;
+        std::optional<int> version;
+        std::optional<std::string> updated_at;
+    };
+    Result<std::monostate> UpsertOwnedAvatar(const OwnedAvatarUpsert& a);
+
     // ─── avatar_history ──────────────────────────────────────────
 
     struct AvatarSeenInsert
@@ -176,10 +267,83 @@ public:
                                             int limit, int offset);
 
     Result<std::optional<std::string>> GetFriendNote(const std::string& user_id);
+    // Batch read of every friend note, so a friend list can show inline
+    // nicknames without firing one IPC per row. Returns an array of
+    // { user_id, note } objects.
+    Result<nlohmann::json> AllFriendNotes();
     Result<std::monostate> SetFriendNote(const std::string& user_id,
                                          const std::string& note,
                                          const std::string& updated_at);
     Result<nlohmann::json> ClearHistory(bool include_friend_notes = false);
+
+    // ─── unified data-management panel (data.usage / data.clear) ─────
+    //
+    // Row counts for the tables surfaced in the data-management UI. Only
+    // whitelisted table names are queried; a table that does not exist
+    // (older schema) is skipped rather than erroring. Returns a JSON
+    // object of { "<table>": count }.
+    Result<nlohmann::json> TableCounts();
+
+    // Bulk-DELETE the given tables inside a single transaction. Every
+    // name is validated against an internal allowlist before any SQL is
+    // built — callers never inject raw table names into SQL. An unknown
+    // name aborts the whole call with `db_invalid_argument` before any
+    // delete runs. Returns { "<table>": rowsDeleted } on success.
+    Result<nlohmann::json> ClearTables(const std::vector<std::string>& tables);
+
+    // ─── friend_presence_events + unified feed (Track B1) ────────
+    // Durable presence/location/status/avatar-flip events for friends. This is
+    // a superset of friend_log: friend_log only tracks confirmed-friendship
+    // online/offline/name flips, while this captures per-instance location
+    // moves and status changes so the feed can replay a friend's session.
+    struct FriendPresenceEventInsert
+    {
+        std::string user_id;
+        std::optional<std::string> display_name;
+        std::string event_type;              // "online" | "offline" | "location" | "status" | "avatar"
+        std::optional<std::string> world_id;
+        std::optional<std::string> instance_id;
+        std::optional<std::string> location; // raw VRChat location string when known
+        std::optional<std::string> status;   // join-me/active/busy/ask-me/offline
+        std::optional<std::string> old_value;
+        std::optional<std::string> new_value;
+        std::optional<std::string> source;   // "pipeline" | "logwatch" | "poll"
+        std::string occurred_at;
+    };
+    Result<std::monostate> RecordFriendPresenceEvent(const FriendPresenceEventInsert& e);
+
+    // Chronological presence events (latest first), optionally scoped to one user.
+    Result<nlohmann::json> RecentFriendPresenceEvents(
+        int limit,
+        int offset,
+        std::optional<std::string> user_id = std::nullopt,
+        std::optional<std::string> event_type = std::nullopt,
+        std::optional<std::string> occurred_after = std::nullopt,
+        std::optional<std::string> occurred_before = std::nullopt);
+
+    // Unified feed read model: UNION ALL across friend_log, player_events,
+    // friend_presence_events and avatar_history into one time-ordered stream.
+    // Each row carries a `source_kind` discriminator so the frontend can route
+    // rendering. Filterable by kind and time window; paginated.
+    Result<nlohmann::json> UnifiedFeed(
+        int limit,
+        int offset,
+        std::optional<std::string> user_id = std::nullopt,
+        std::optional<std::string> source_kind = std::nullopt,
+        std::optional<std::string> occurred_after = std::nullopt,
+        std::optional<std::string> occurred_before = std::nullopt);
+
+    // Predict a friend's likely-online hour-of-week distribution from their
+    // friend_presence_events online/offline brackets. This is an original analytic
+    // layer (no VRCX equivalent): online sessions are bracketed, split across a
+    // 168-bucket hour-of-week histogram in local time, weighted by exponential
+    // recency decay, and the top contiguous windows are ranked. Returns the JSON
+    // shape documented in docs/wave2-research/own-overlap-algorithm-design.md §4,
+    // or {"status":"insufficient_data"} when there is not enough observed signal.
+    Result<nlohmann::json> PredictFriendOnlineWindows(
+        const std::string& user_id,
+        int top_n = 3,
+        int half_life_weeks = 4);
 
     // ─── local_favorites ─────────────────────────────────────────
 
@@ -192,12 +356,18 @@ public:
         std::optional<std::string> thumbnail_url;
         std::string added_at;
         int sort_order{0};
+        std::string source{"local"}; // 'local' (user-curated) | 'official' (VRChat sync)
     };
     Result<std::monostate> AddFavorite(const FavoriteInsert& f);
     Result<std::monostate> RemoveFavorite(const std::string& type,
                                           const std::string& target_id,
                                           const std::string& list_name);
     Result<std::monostate> ClearFavoriteList(const std::string& list_name);
+
+    // Removes every favorite tagged with the given origin ('official' wipes all
+    // VRChat-synced groups regardless of their current displayName). Used by
+    // official sync to replace the previous snapshot before re-importing.
+    Result<std::monostate> ClearFavoritesBySource(const std::string& source);
 
     // All distinct list names (plus item counts per list), grouped by
     // type. Shape: [{ name, type, item_count, latest_added_at }, ...]

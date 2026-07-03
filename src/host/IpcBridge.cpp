@@ -140,6 +140,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "avatar.details",
         "avatar.parameters.local",
         "world.details",
+        "instance.details",
         "avatar.preview",
         "avatar.preview.status",
         "avatar.preview.prefetch",
@@ -164,6 +165,20 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "rules.setEnabled",
         "rules.history",
         "friends.request",
+        "users.boop",
+        "inventory.list",
+        "prints.list",
+        "prints.get",
+        "prints.upload",
+        "prints.delete",
+        "files.list",
+        "files.uploadImage",
+        "files.delete",
+        "avatars.updateImage",
+        "avatars.listOwned",
+        "avatars.harvestIds",
+        "avatars.update",
+        "avatars.delete",
         "user.invite",
         "user.inviteTo",
         "user.requestInvite",
@@ -184,6 +199,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "db.worldVisits.list",
         "db.playerEvents.list",
         "db.playerEncounters",
+        "db.coPresenceGraph",
         "db.avatarHistory.list",
         "db.avatarHistory.count",
         "db.avatarHistory.resolve",
@@ -191,6 +207,8 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "db.stats.heatmap",
         "db.stats.overview",
         "db.history.clear",
+        "data.usage",
+        "data.clear",
         "search.global",
         "favorites.lists",
         "favorites.items",
@@ -205,7 +223,13 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "friendLog.recent",
         "friendLog.forUser",
         "friendNote.get",
+        "friendNote.all",
         "friendNote.set",
+        "friendPresence.record",
+        "friendPresence.recent",
+        "friendPresence.predict",
+        "db.coPresenceGraph",
+        "feed.unified",
 
         // Pipeline + notifications + DM send
         "pipeline.start",
@@ -220,6 +244,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "discord.setActivity",
         "discord.clearActivity",
         "discord.status",
+        "notify.setPrefs",
         "osc.send",
         "osc.listen.start",
         "osc.listen.stop",
@@ -372,6 +397,17 @@ IpcBridge::~IpcBridge()
     {
         std::unique_lock<std::mutex> lk(m_asyncMutex);
         m_asyncCv.wait(lk, [this] { return m_activeAsyncTasks == 0; });
+    }
+
+    // Stop the log tailer before any IpcBridge member it touches is destroyed.
+    // The tailer callback (LogsBridge) runs on the tailer's own worker thread
+    // and locks m_currentWorldMutex / m_playerIdMutex / m_audioDeviceMutex,
+    // which are declared *after* m_logTailer and would otherwise be destroyed
+    // before ~LogTailer joins that thread — a shutdown use-after-free whenever
+    // VRChat is actively writing its log as the app closes.
+    if (m_logTailer)
+    {
+        m_logTailer->Stop();
     }
 
     if (m_pipeline)
@@ -688,11 +724,27 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("avatar.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarDetails(p, id); });
     m_handlers.emplace("avatar.parameters.local", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarParametersLocal(p, id); });
     m_handlers.emplace("world.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldDetails(p, id); });
+    m_handlers.emplace("instance.details", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInstanceDetails(p, id); });
     m_handlers.emplace("avatar.select", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSelect(p, id); });
     m_handlers.emplace("avatar.search", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarSearch(p, id); });
     m_handlers.emplace("worlds.search", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleWorldsSearch(p, id); });
     m_handlers.emplace("friends.unfriend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsUnfriend(p, id); });
     m_handlers.emplace("friends.request", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsRequest(p, id); });
+    // Wave 2 / Section B — online social + VRC+ media
+    m_handlers.emplace("users.boop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUsersBoop(p, id); });
+    m_handlers.emplace("inventory.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInventoryList(p, id); });
+    m_handlers.emplace("prints.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePrintsList(p, id); });
+    m_handlers.emplace("prints.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePrintsGet(p, id); });
+    m_handlers.emplace("prints.upload", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePrintsUpload(p, id); });
+    m_handlers.emplace("prints.delete", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePrintsDelete(p, id); });
+    m_handlers.emplace("files.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFilesList(p, id); });
+    m_handlers.emplace("files.uploadImage", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFilesUploadImage(p, id); });
+    m_handlers.emplace("files.delete", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFilesDelete(p, id); });
+    m_handlers.emplace("avatars.updateImage", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarsUpdateImage(p, id); });
+    m_handlers.emplace("avatars.listOwned", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarsListOwned(p, id); });
+    m_handlers.emplace("avatars.harvestIds", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarsHarvestIds(p, id); });
+    m_handlers.emplace("avatars.update", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarsUpdate(p, id); });
+    m_handlers.emplace("avatars.delete", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleAvatarsDelete(p, id); });
     m_handlers.emplace("user.invite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInvite(p, id); });
     m_handlers.emplace("user.inviteTo", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserInviteTo(p, id); });
     m_handlers.emplace("visits.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVisitsList(p, id); });
@@ -731,6 +783,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("discord.setActivity", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDiscordSetActivity(p, id); });
     m_handlers.emplace("discord.clearActivity", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDiscordClearActivity(p, id); });
     m_handlers.emplace("discord.status", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDiscordStatus(p, id); });
+    m_handlers.emplace("notify.setPrefs", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleNotifySetPrefs(p, id); });
     m_handlers.emplace("osc.send", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOscSend(p, id); });
     m_handlers.emplace("osc.listen.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOscListenStart(p, id); });
     m_handlers.emplace("osc.listen.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOscListenStop(p, id); });
@@ -747,6 +800,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("db.worldVisits.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbWorldVisits(p, id); });
     m_handlers.emplace("db.playerEvents.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbPlayerEvents(p, id); });
     m_handlers.emplace("db.playerEncounters", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbPlayerEncounters(p, id); });
+    m_handlers.emplace("db.coPresenceGraph", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbCoPresenceGraph(p, id); });
     m_handlers.emplace("db.avatarHistory.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistory(p, id); });
     m_handlers.emplace("db.avatarBenchmarks.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarBenchmarks(p, id); });
     m_handlers.emplace("db.avatarHistory.count", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbAvatarHistoryCount(p, id); });
@@ -755,6 +809,8 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("db.stats.heatmap", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsHeatmap(p, id); });
     m_handlers.emplace("db.stats.overview", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbStatsOverview(p, id); });
     m_handlers.emplace("db.history.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDbHistoryClear(p, id); });
+    m_handlers.emplace("data.usage", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDataUsage(p, id); });
+    m_handlers.emplace("data.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleDataClear(p, id); });
     m_handlers.emplace("search.global", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSearchGlobal(p, id); });
     m_handlers.emplace("favorites.lists", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesLists(p, id); });
     m_handlers.emplace("favorites.items", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFavoritesItems(p, id); });
@@ -769,7 +825,12 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("friendLog.recent", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendLogRecent(p, id); });
     m_handlers.emplace("friendLog.forUser", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendLogForUser(p, id); });
     m_handlers.emplace("friendNote.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendNoteGet(p, id); });
+    m_handlers.emplace("friendNote.all", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendNoteAll(p, id); });
     m_handlers.emplace("friendNote.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendNoteSet(p, id); });
+    m_handlers.emplace("friendPresence.record", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendPresenceRecord(p, id); });
+    m_handlers.emplace("friendPresence.recent", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendPresenceRecent(p, id); });
+    m_handlers.emplace("friendPresence.predict", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendPresencePredict(p, id); });
+    m_handlers.emplace("feed.unified", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFeedUnified(p, id); });
 
     // Experimental visual avatar search (v0.11) — guarded on the frontend
     // by the avatarVisualSearch experimental flag. The handlers are always

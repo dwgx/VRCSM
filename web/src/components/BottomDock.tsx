@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CircleOff, Eraser, ScrollText, Terminal } from "lucide-react";
+import { AlertTriangle, CircleOff, Eraser, Filter, ScrollText, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/lib/ipc";
 import { getTrueCacheLabel } from "@/lib/report-metrics";
+import { isLogNoise } from "@/lib/log-noise";
 import { cn, formatDate } from "@/lib/utils";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import type { LogStreamChunk, Report } from "@/lib/types";
 
 type DockTab = "console" | "output" | "problems";
@@ -35,6 +37,8 @@ export function BottomDock({ report, resetToken = 0 }: BottomDockProps) {
   const [activeTab, setActiveTab] = useState<DockTab>("console");
   const [height, setHeight] = useState(180);
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([]);
+  // VRChat's EOS telemetry retries flood the console; fold them by default.
+  const [hideNoise, setHideNoise] = useUiPrefBoolean("vrcsm.dock.hideNoise", true);
   const resizeState = useRef<{ startY: number; startHeight: number } | null>(
     null,
   );
@@ -90,6 +94,14 @@ export function BottomDock({ report, resetToken = 0 }: BottomDockProps) {
     if (!viewport) return;
     viewport.scrollTop = viewport.scrollHeight;
   }, [activeTab, consoleLines]);
+
+  // Apply the EOS-noise fold. We count what was hidden so the toggle can show
+  // how much is being suppressed rather than silently dropping lines.
+  const visibleConsoleLines = useMemo(
+    () => (hideNoise ? consoleLines.filter((l) => !isLogNoise(l.message)) : consoleLines),
+    [consoleLines, hideNoise],
+  );
+  const hiddenNoiseCount = consoleLines.length - visibleConsoleLines.length;
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -174,7 +186,28 @@ export function BottomDock({ report, resetToken = 0 }: BottomDockProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="ml-auto h-6 px-2 text-[11px]"
+          className={cn(
+            "ml-auto h-6 px-2 text-[11px]",
+            hideNoise && "text-[hsl(var(--primary))]",
+          )}
+          onClick={() => setHideNoise((v) => !v)}
+          title={t("dock.hideNoiseHint", {
+            defaultValue:
+              "Fold VRChat's EOS/Stomp telemetry retry spam (not a VRCSM error).",
+          })}
+        >
+          <Filter className="size-3.5" />
+          {hideNoise
+            ? t("dock.noiseHidden", {
+                count: hiddenNoiseCount,
+                defaultValue: "Noise hidden ({{count}})",
+              })
+            : t("dock.showAll", { defaultValue: "Show all" })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-[11px]"
           onClick={() => setConsoleLines([])}
         >
           <Eraser className="size-3.5" />
@@ -188,7 +221,7 @@ export function BottomDock({ report, resetToken = 0 }: BottomDockProps) {
             ref={consoleViewportRef}
             className="scrollbar-thin h-full overflow-y-auto px-3 py-2 font-mono text-[11px]"
           >
-            {consoleLines.length === 0 ? (
+            {visibleConsoleLines.length === 0 ? (
               <div className="flex h-full items-center justify-center text-[hsl(var(--muted-foreground))]">
                 <div className="flex items-center gap-2">
                   <CircleOff className="size-4" />
@@ -197,7 +230,7 @@ export function BottomDock({ report, resetToken = 0 }: BottomDockProps) {
               </div>
             ) : (
               <div className="space-y-1.5">
-                {consoleLines.map((line) => (
+                {visibleConsoleLines.map((line) => (
                   <div
                     key={line.id}
                     className={cn(

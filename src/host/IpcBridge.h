@@ -123,11 +123,27 @@ private:
     nlohmann::json HandleAvatarDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarParametersLocal(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleWorldDetails(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInstanceDetails(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarSelect(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarSearch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleWorldsSearch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendsUnfriend(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendsRequest(const nlohmann::json& params, const std::optional<std::string>& id);
+    // Wave 2 / Section B — online social + VRC+ media
+    nlohmann::json HandleUsersBoop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInventoryList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePrintsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePrintsGet(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePrintsUpload(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePrintsDelete(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFilesList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFilesUploadImage(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFilesDelete(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarsUpdateImage(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarsListOwned(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarsHarvestIds(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarsUpdate(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleAvatarsDelete(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserInvite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserInviteTo(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleVisitsList(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -165,6 +181,11 @@ private:
     nlohmann::json HandleDiscordSetActivity(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDiscordClearActivity(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDiscordStatus(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // Desktop toast notifications — push the user's per-event-type toggles
+    // into the host so the Pipeline event lambda knows which native Action
+    // Center toasts to raise.
+    nlohmann::json HandleNotifySetPrefs(const nlohmann::json& params, const std::optional<std::string>& id);
 
     // OSC bridge — UDP send/receive to VRChat's OSC surface.
     nlohmann::json HandleOscSend(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -207,6 +228,7 @@ private:
     nlohmann::json HandleDbWorldVisits(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbPlayerEvents(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbPlayerEncounters(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleDbCoPresenceGraph(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarHistory(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarHistoryCount(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbAvatarBenchmarks(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -215,6 +237,13 @@ private:
     nlohmann::json HandleDbStatsHeatmap(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbStatsOverview(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleDbHistoryClear(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // data.usage / data.clear — unified data-management panel. usage is a
+    // read-only aggregate of on-disk cache sizes + DB table counts; clear
+    // performs whitelisted per-target cleanup (disk dirs via SafeDelete,
+    // tables via Database::ClearTables). Impl in bridges/DatabaseBridge.cpp.
+    nlohmann::json HandleDataUsage(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleDataClear(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleSearchGlobal(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesLists(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFavoritesItems(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -229,7 +258,15 @@ private:
     nlohmann::json HandleFriendLogRecent(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendLogForUser(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendNoteGet(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFriendNoteAll(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendNoteSet(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // friendPresence.* + feed.* — durable presence events and the unified feed
+    // read model (Track B1). Implementations in bridges/DatabaseBridge.cpp.
+    nlohmann::json HandleFriendPresenceRecord(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFriendPresenceRecent(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFriendPresencePredict(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleFeedUnified(const nlohmann::json& params, const std::optional<std::string>& id);
 
     // vector.* — experimental visual avatar search (v0.11).
     // Implementations in bridges/VectorBridge.cpp.
@@ -299,6 +336,20 @@ private:
     std::mutex m_logTailerMutex;
     std::unique_ptr<vrcsm::core::Pipeline> m_pipeline;
     std::unique_ptr<vrcsm::core::DiscordRpc> m_discordRpc;
+
+    // Per-event-type desktop-toast toggles. Default OFF — toasts only fire
+    // after the frontend pushes the user's saved prefs via notify.setPrefs.
+    // Read from the Pipeline callback thread, written from the UI thread, so
+    // they are atomics (no lock needed for independent bool flags).
+    std::atomic<bool> m_toastFriendOnline{false};
+    std::atomic<bool> m_toastInvite{false};
+    std::atomic<bool> m_toastFriendRequest{false};
+    // Mirror the enabled toast events into the headset via XSOverlay. Gated by
+    // a single master toggle (default OFF) layered on top of the per-event
+    // toast toggles above — an event surfaces in VR only when its toast type
+    // is enabled AND this is on.
+    std::atomic<bool> m_vrOverlayEnabled{false};
+
     std::unique_ptr<vrcsm::core::OscBridge> m_osc;
     std::unique_ptr<vrcsm::core::ScreenshotWatcher> m_screenshotWatcher;
     vrcsm::core::TaskQueue m_previewQueue;
@@ -317,6 +368,13 @@ private:
     // carry usr_xxx alongside the wearer's display name.
     std::mutex m_playerIdMutex;
     std::unordered_map<std::string, std::string> m_playerNameToUserId;
+
+    // A8 live stateful diagnostics: dedupe audio-device-change events so the
+    // feed only records when the input device actually differs from the last
+    // one seen (mirrors VRCX's LastAudioDevice flag). Guarded by its own mutex
+    // because it is touched from the LogTailer callback thread.
+    std::mutex m_audioDeviceMutex;
+    std::string m_lastAudioDevice;
 
     // Coalesce same-avatar preview requests so repeated renders / panes
     // join the existing extraction instead of cancelling and restarting it.

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useReport } from "@/lib/report-context";
 import { useAuth } from "@/lib/auth-context";
 import { ipc } from "@/lib/ipc";
@@ -22,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThumbImage } from "@/components/ThumbImage";
 import { ImageZoom } from "@/components/ImageZoom";
-import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
+import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Trash2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import type { AvatarSwitchEvent } from "@/lib/types";
@@ -280,8 +281,11 @@ function buildSeenLogAvatars(events: AvatarSwitchEvent[], historyRows: SeenAvata
 export default function AvatarBenchmark() {
   const { t } = useTranslation();
   const { report } = useReport();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>("benchmark");
   const [seenPage, setSeenPage] = useState(1);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const avatars = useMemo(() => {
     if (!report) return [];
@@ -366,6 +370,39 @@ export default function AvatarBenchmark() {
     if (ids.length > 0) prefetchThumbnails([...new Set(ids)]);
   }, [seenLogAvatars, seenAvatars]);
 
+  // Clear targets the currently-visible tab: the "My Avatars" benchmark table
+  // vs the "Seen Avatars" encounter history. Live-scan data (from the running
+  // report) reappears on the next scan — only the persisted rows are removed.
+  const clearTarget = tab === "benchmark" ? "cache.benchmark" : "history.avatarHistory";
+  const canClear = tab === "benchmark"
+    ? (benchmarkQuery.data?.items?.length ?? 0) > 0
+    : totalSeen > 0;
+
+  async function handleClear() {
+    setClearing(true);
+    try {
+      await ipc.dataClear([clearTarget]);
+      if (tab === "benchmark") {
+        await queryClient.invalidateQueries({ queryKey: ["db.avatarBenchmarks.list"] });
+      } else {
+        await queryClient.invalidateQueries({ queryKey: ["db.avatarHistory.count"] });
+        await queryClient.invalidateQueries({ queryKey: ["db.avatarHistory.list"] });
+        setSeenPage(1);
+      }
+      toast.success(t("benchmark.clearSuccess", { defaultValue: "Cleared." }));
+    } catch (e) {
+      toast.error(
+        t("benchmark.clearFailed", {
+          error: e instanceof Error ? e.message : String(e),
+          defaultValue: "Failed to clear: {{error}}",
+        }),
+      );
+    } finally {
+      setClearing(false);
+      setClearOpen(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
       <header className="flex items-center gap-2">
@@ -373,7 +410,45 @@ export default function AvatarBenchmark() {
         <span className="text-[11px] uppercase tracking-[0.08em] font-semibold">
           {t("benchmark.title", { defaultValue: "Avatar Performance Benchmark" })}
         </span>
+        <div className="ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-[11px]"
+            onClick={() => setClearOpen(true)}
+            disabled={clearing || !canClear}
+          >
+            <Trash2 className={clearing ? "size-3 animate-pulse" : "size-3"} />
+            {t("benchmark.clear", { defaultValue: "Clear" })}
+          </Button>
+        </div>
       </header>
+
+      <ConfirmDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        title={
+          tab === "benchmark"
+            ? t("benchmark.clearBenchmarkTitle", { defaultValue: "Clear avatar benchmarks?" })
+            : t("benchmark.clearSeenTitle", { defaultValue: "Clear seen-avatar history?" })
+        }
+        description={
+          tab === "benchmark"
+            ? t("benchmark.clearBenchmarkDesc", {
+                defaultValue:
+                  "This deletes persisted benchmark snapshots. Avatars still in the live scan reappear on the next scan. This cannot be undone.",
+              })
+            : t("benchmark.clearSeenDesc", {
+                defaultValue:
+                  "This permanently deletes the logged history of avatars you've seen. This cannot be undone.",
+              })
+        }
+        confirmLabel={t("benchmark.clear", { defaultValue: "Clear" })}
+        cancelLabel={t("common.cancel", { defaultValue: "Cancel" })}
+        onConfirm={handleClear}
+        loading={clearing}
+        tone="destructive"
+      />
 
       <div className="flex gap-2">
         <Button

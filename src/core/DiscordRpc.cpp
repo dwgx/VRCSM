@@ -79,6 +79,64 @@ std::uint32_t ReadLe32(const std::uint8_t* src)
 
 } // namespace
 
+// ─────────────────────────────────────────────────────────────────────────
+// Pure framing / payload helpers (declared in DiscordRpc.h). No pipe I/O,
+// no Win32 — covered by tests/CommonTests.cpp.
+// ─────────────────────────────────────────────────────────────────────────
+
+std::string EncodeFrame(std::uint32_t opcode, const std::string& payload)
+{
+    std::string frame;
+    frame.resize(8 + payload.size());
+    auto* p = reinterpret_cast<std::uint8_t*>(frame.data());
+    WriteLe32(p, opcode);
+    WriteLe32(p + 4, static_cast<std::uint32_t>(payload.size()));
+    if (!payload.empty())
+    {
+        std::memcpy(p + 8, payload.data(), payload.size());
+    }
+    return frame;
+}
+
+bool DecodeFrameHeader(const std::string& header, std::uint32_t& opcode, std::uint32_t& length)
+{
+    if (header.size() < 8)
+    {
+        return false;
+    }
+    const auto* p = reinterpret_cast<const std::uint8_t*>(header.data());
+    opcode = ReadLe32(p);
+    length = ReadLe32(p + 4);
+    return true;
+}
+
+nlohmann::json BuildSetActivityPayload(std::int64_t pid, const nlohmann::json& activity, const std::string& nonce)
+{
+    nlohmann::json args{{"pid", pid}};
+    if (activity.is_object() && !activity.empty())
+    {
+        args["activity"] = activity;
+    }
+    else
+    {
+        // Empty / non-object activity clears the presence panel.
+        args["activity"] = nullptr;
+    }
+    return nlohmann::json{
+        {"cmd", "SET_ACTIVITY"},
+        {"args", std::move(args)},
+        {"nonce", nonce},
+    };
+}
+
+nlohmann::json BuildHandshakePayload(const std::string& clientId)
+{
+    return nlohmann::json{
+        {"v", 1},
+        {"client_id", clientId},
+    };
+}
+
 DiscordRpc::DiscordRpc() = default;
 
 DiscordRpc::~DiscordRpc()
@@ -201,22 +259,12 @@ bool DiscordRpc::WriteFrame(std::uint32_t opcode, const std::string& payload)
         return false;
     }
 
-    std::uint8_t header[8];
-    WriteLe32(header, opcode);
-    WriteLe32(header + 4, static_cast<std::uint32_t>(payload.size()));
-
+    const std::string frame = EncodeFrame(opcode, payload);
     DWORD written = 0;
-    if (!WriteFile(h, header, sizeof(header), &written, nullptr) || written != sizeof(header))
+    if (!WriteFile(h, frame.data(), static_cast<DWORD>(frame.size()), &written, nullptr) ||
+        written != frame.size())
     {
         return false;
-    }
-    if (!payload.empty())
-    {
-        if (!WriteFile(h, payload.data(), static_cast<DWORD>(payload.size()), &written, nullptr) ||
-            written != payload.size())
-        {
-            return false;
-        }
     }
     return true;
 }
@@ -235,8 +283,8 @@ bool DiscordRpc::ReadFrame(std::uint32_t& opcode, std::string& payload)
     {
         return false;
     }
-    opcode = ReadLe32(header);
-    const std::uint32_t length = ReadLe32(header + 4);
+    std::uint32_t length = 0;
+    DecodeFrameHeader(std::string(reinterpret_cast<const char*>(header), sizeof(header)), opcode, length);
     if (length > kMaxFrame)
     {
         spdlog::warn("DiscordRpc: frame too large ({})", length);
@@ -256,11 +304,7 @@ bool DiscordRpc::ReadFrame(std::uint32_t& opcode, std::string& payload)
 
 bool DiscordRpc::DoHandshake()
 {
-    const nlohmann::json hs{
-        {"v", 1},
-        {"client_id", m_clientId},
-    };
-    if (!WriteFrame(kOpHandshake, hs.dump()))
+    if (!WriteFrame(kOpHandshake, BuildHandshakePayload(m_clientId).dump()))
     {
         return false;
     }
@@ -318,22 +362,8 @@ bool DiscordRpc::SendActivityIfDirty()
         return true;
     }
 
-    nlohmann::json args{{"pid", static_cast<std::int64_t>(GetCurrentProcessId())}};
-    if (!activity.empty() && activity.is_object())
-    {
-        args["activity"] = std::move(activity);
-    }
-    else
-    {
-        // Empty object clears the presence panel.
-        args["activity"] = nullptr;
-    }
-
-    const nlohmann::json frame{
-        {"cmd", "SET_ACTIVITY"},
-        {"args", args},
-        {"nonce", MakeNonce()},
-    };
+    const nlohmann::json frame = BuildSetActivityPayload(
+        static_cast<std::int64_t>(GetCurrentProcessId()), activity, MakeNonce());
 
     if (!WriteFrame(kOpFrame, frame.dump()))
     {

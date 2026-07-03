@@ -96,6 +96,9 @@ void VrcRadarEngine::Stop() {
     if (pollThread_.joinable()) {
         pollThread_.join();
     }
+    // Poll thread has exited; still take pollMutex_ to serialize against any
+    // in-flight PollOnce() from the IPC pool or screenshot-watcher thread.
+    std::lock_guard<std::mutex> lk(pollMutex_);
     reader_->Detach();
     gaBase_ = 0;
     vrcBase_ = 0;
@@ -311,6 +314,11 @@ bool VrcRadarEngine::TryReadPlayerList(RadarSnapshot& snap) {
 // BuildSnapshot
 // ─────────────────────────────────────────────────────────────
 RadarSnapshot VrcRadarEngine::BuildSnapshot() {
+    // Hold pollMutex_ for the whole attach→scan sequence so concurrent callers
+    // (IPC pool, screenshot-watcher thread, internal PollLoop) never race on
+    // reader_ / the cached bases. See VrcRadarEngine.h for the threading model.
+    std::lock_guard<std::mutex> lk(pollMutex_);
+
     RadarSnapshot snap;
     snap.timestamp = std::chrono::system_clock::now();
 

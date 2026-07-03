@@ -77,6 +77,13 @@ private:
 
     std::atomic<bool> running_{ false };
     std::unique_ptr<ProcessMemoryReader> reader_;
+    // Serializes the entire attach→scan→detach sequence. PollOnce() is reached
+    // concurrently from the IPC thread pool (radar.poll is async) and from the
+    // ScreenshotWatcher callback thread, in addition to the internal PollLoop.
+    // Without this, one thread's Detach() (CloseHandle) can race another's
+    // Attach()/ReadProcessMemory on the same process HANDLE — a data race that
+    // can double-close an OS-reused handle. Guards reader_ and the cached bases.
+    mutable std::mutex pollMutex_;
     SnapshotCallback callback_;
     std::chrono::milliseconds interval_;
     std::thread pollThread_;

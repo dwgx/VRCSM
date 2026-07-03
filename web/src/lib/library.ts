@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { ipc } from "@/lib/ipc";
+import { qk } from "@/lib/query-keys";
 import type { FavoriteItem, FavoriteListSummary } from "@/lib/types";
 
 export const LIBRARY_LIST_NAME = "Library";
@@ -125,8 +126,8 @@ export function useFavoriteItems(listName: string, enabled = true) {
 
 async function invalidateFavoriteQueries(queryClient: ReturnType<typeof useQueryClient>) {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["favorites.lists"] }),
-    queryClient.invalidateQueries({ queryKey: ["favorites.items"] }),
+    queryClient.invalidateQueries({ queryKey: qk.favorites.listsRoot }),
+    queryClient.invalidateQueries({ queryKey: qk.favorites.itemsRoot }),
   ]);
 }
 

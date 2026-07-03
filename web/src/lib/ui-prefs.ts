@@ -110,3 +110,42 @@ export function useUiPrefBoolean(key: string, fallback: boolean) {
 
   return [value, update] as const;
 }
+
+/**
+ * A persisted set of string tokens (e.g. muted feed categories). Stored as a
+ * JSON array under one localStorage key and exposed as a `Set` plus a `toggle`.
+ * Built on the string-pref primitives so it inherits the same cross-tab / same-
+ * tab change propagation.
+ */
+export function useUiPrefStringSet(key: string, fallback: readonly string[] = []) {
+  const fallbackJson = JSON.stringify([...fallback]);
+  const [raw, setRaw] = useUiPrefString(key, fallbackJson);
+
+  const value = (() => {
+    try {
+      const parsed = JSON.parse(raw);
+      return new Set<string>(Array.isArray(parsed) ? parsed.map(String) : []);
+    } catch {
+      return new Set<string>(fallback);
+    }
+  })();
+
+  const toggle = (token: string) => {
+    setRaw((current) => {
+      let set: Set<string>;
+      try {
+        const parsed = JSON.parse(current);
+        set = new Set<string>(Array.isArray(parsed) ? parsed.map(String) : []);
+      } catch {
+        set = new Set<string>(fallback);
+      }
+      if (set.has(token)) set.delete(token);
+      else set.add(token);
+      return JSON.stringify([...set]);
+    });
+  };
+
+  const clear = () => setRaw(JSON.stringify([]));
+
+  return [value, toggle, clear] as const;
+}

@@ -169,8 +169,18 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
 
     m_logTailer = std::make_unique<vrcsm::core::LogTailer>(
         probe.baseDir,
-        [this](const vrcsm::core::LogTailLine& line)
+        [this, alive = m_alive](const vrcsm::core::LogTailLine& line)
         {
+            // Defense-in-depth: if the bridge has begun tearing down, bail before
+            // touching any member. Primary safety is ~IpcBridge stopping the
+            // tailer before these members destruct; this guards the window
+            // between *m_alive=false and the thread join. `alive` is a captured
+            // shared_ptr copy so this read is valid even if `this` is gone.
+            if (!alive || !alive->load())
+            {
+                return;
+            }
+
             // 1) Raw line → logs.stream for the Console dock.
             {
                 nlohmann::json data{
@@ -322,6 +332,138 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                     {
                         (void)vrcsm::core::Database::Instance().RecordPlayerEvent(e);
                     }
+                }
+                else if (kind == "videoPlay" || kind == "portalSpawn"
+                         || kind == "voteKick" || kind == "joinBlocked"
+                         || kind == "stickerSpawn"
+                         || kind == "notification" || kind == "videoError"
+                         || kind == "attributedVideoPlay" || kind == "videoSync"
+                         || kind == "avatarPedestal" || kind == "vrcQuit"
+                         || kind == "sessionMode" || kind == "oscFail"
+                         || kind == "udonException" || kind == "instanceReset"
+                         || kind == "shaderKeyword" || kind == "audioDevice")
+                {
+                    // Track L atoms → generic log_events table. `detail` packs
+                    // the source-specific payload so the unified feed renders
+                    // without a second lookup.
+                    vrcsm::core::Database::LogEventInsert e;
+                    e.kind = kind;
+                    e.occurred_at = iso;
+                    {
+                        std::lock_guard<std::mutex> lk(m_currentWorldMutex);
+                        if (!m_currentWorldId.empty()) e.world_id = m_currentWorldId;
+                        if (!m_currentInstanceId.empty()) e.instance_id = m_currentInstanceId;
+                    }
+
+                    const auto str = [&data](const char* key) -> std::optional<std::string>
+                    {
+                        if (auto it = data.find(key); it != data.end() && it->is_string()
+                            && !it->get<std::string>().empty())
+                        {
+                            return it->get<std::string>();
+                        }
+                        return std::nullopt;
+                    };
+
+                    if (kind == "videoPlay")
+                    {
+                        e.detail = str("url");
+                    }
+                    else if (kind == "voteKick")
+                    {
+                        std::string detail = data.value("phase", std::string{});
+                        if (auto t = str("target")) detail += " target=" + *t;
+                        if (auto m = str("message")) detail += " msg=" + *m;
+                        if (!detail.empty()) e.detail = detail;
+                    }
+                    else if (kind == "joinBlocked")
+                    {
+                        std::string detail = data.value("reason_kind", std::string{});
+                        if (auto r = str("reason")) detail += ": " + *r;
+                        else if (auto loc = str("location")) detail += ": " + *loc;
+                        if (!detail.empty()) e.detail = detail;
+                    }
+                    else if (kind == "stickerSpawn")
+                    {
+                        e.user_id = str("user_id");
+                        e.display_name = str("display_name");
+                        e.detail = str("inventory_id");
+                    }
+                    else if (kind == "notification")
+                    {
+                        // A1: pack sender + type for the feed row. (A dedicated
+                        // `notifications` table is Slice D1, a separate schema
+                        // change; here we keep the generic log_event path.)
+                        e.user_id = str("sender_id");
+                        e.display_name = str("sender_name");
+                        e.detail = str("type");
+                    }
+                    else if (kind == "videoError")
+                    {
+                        e.detail = str("error_message");
+                    }
+                    else if (kind == "attributedVideoPlay")
+                    {
+                        e.display_name = str("requester");
+                        e.detail = str("url");
+                    }
+                    else if (kind == "videoSync")
+                    {
+                        e.detail = str("url");
+                    }
+                    else if (kind == "avatarPedestal")
+                    {
+                        e.display_name = str("display_name");
+                        e.user_id = str("user_id");
+                    }
+                    else if (kind == "vrcQuit")
+                    {
+                        e.detail = str("uptime_seconds");
+                    }
+                    else if (kind == "sessionMode")
+                    {
+                        std::string detail = data.value("mode", std::string{});
+                        if (auto h = str("hmd_model")) detail += " " + *h;
+                        if (!detail.empty()) e.detail = detail;
+                    }
+                    else if (kind == "oscFail")
+                    {
+                        e.detail = str("reason");
+                    }
+                    else if (kind == "udonException")
+                    {
+                        e.detail = str("message");
+                    }
+                    else if (kind == "instanceReset")
+                    {
+                        e.detail = str("minutes");
+                    }
+                    else if (kind == "audioDevice")
+                    {
+                        // A8: only persist when the input device changed since
+                        // the last one this session saw (live dedupe mirrors
+                        // the batch parser's lastAudioDevice guard).
+                        const std::string device = data.value("device_name", std::string{});
+                        bool changed = false;
+                        {
+                            std::lock_guard<std::mutex> lk(m_audioDeviceMutex);
+                            if (!device.empty() && device != m_lastAudioDevice)
+                            {
+                                m_lastAudioDevice = device;
+                                changed = true;
+                            }
+                        }
+                        if (!changed)
+                        {
+                            // Skip the DB write for an unchanged device.
+                            return;
+                        }
+                        e.detail = device;
+                    }
+                    // portalSpawn / shaderKeyword carry no extra payload — kind
+                    // alone is the signal.
+
+                    (void)vrcsm::core::Database::Instance().RecordLogEvent(e);
                 }
             }
             catch (...)

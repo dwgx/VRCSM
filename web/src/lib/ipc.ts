@@ -188,6 +188,40 @@ export interface FriendOnlinePredictionDto {
   top_windows: OnlineWindowDto[];
 }
 
+// ─── Co-presence ego-network (Track 4 relationship graph) ──────────────
+// Built in C++ (Database::CoPresenceEgoNetwork) from raw player_events:
+// per-user presence intervals are reconstructed inside each
+// (world_id, instance_id) session and an edge is emitted when two users
+// overlap by >= min_overlap_sec.
+export interface CoPresenceNode {
+  user_id: string;
+  display_name: string;
+  sessions: number;        // # of instance sessions the user appeared in
+  total_seconds: number;   // summed in-session presence seconds
+  last_seen: number;       // epoch seconds of latest presence end
+  is_center: boolean;
+}
+
+export interface CoPresenceEdge {
+  source: string;          // ordered pair (source < target)
+  target: string;
+  // "confirmed" = edge touches the center (we logged it from our own
+  // instance). "co_presence" = inference between two non-center users;
+  // never a confirmed-friendship claim.
+  kind: "confirmed" | "co_presence";
+  overlap_count: number;   // # of sessions the pair overlapped in
+  overlap_seconds: number; // summed overlap seconds
+  last_overlap: number;    // epoch seconds of latest overlap end
+}
+
+export interface CoPresenceGraph {
+  center: string;
+  since_days: number;
+  min_overlap_sec: number;
+  nodes: CoPresenceNode[];
+  edges: CoPresenceEdge[];
+}
+
 // Persisted parameter-count snapshot for an avatar measured during a cache
 // scan. Survives VRChat evicting the live LocalAvatarData file so the
 // benchmark page can still show it. Backed by the avatar_benchmark table.
@@ -221,6 +255,60 @@ export interface FeedEntryDto {
   occurred_at: string | null;
 }
 
+// ── Unified data management (data.usage / data.clear) ──────────────────
+
+// Whitelisted cleanup targets accepted by data.clear. Unknown keys are
+// skipped host-side and flagged in the response.
+export type DataClearTarget =
+  // disk caches
+  | "cache.thumbnails"
+  | "cache.previews"
+  | "cache.screenshotThumbs"
+  | "cache.updates"
+  | "cache.pluginFeed"
+  | "cache.index"
+  // rebuildable cache tables
+  | "cache.assetCache"
+  | "cache.benchmark"
+  | "cache.onlineMirror"
+  // history tables
+  | "history.worldVisits"
+  | "history.playerEvents"
+  | "history.avatarHistory"
+  | "history.friendLog"
+  | "history.sessions"
+  | "history.logEvents"
+  // experimental
+  | "experimental.embeddings"
+  // user assets (dangerous)
+  | "assets.favorites";
+
+export interface DataUsage {
+  /** Bytes per disk-cache key (recursive; missing dir = 0). */
+  disk: Record<string, number>;
+  /** COUNT(*) per DB table (absent tables omitted). */
+  tables: Record<string, number>;
+  /** vrcsm.db file size in bytes. */
+  dbFileBytes: number;
+}
+
+export interface DataClearTargetResult {
+  ok: boolean;
+  kind?: "disk" | "table";
+  /** disk targets: files + dirs removed. */
+  removed?: number;
+  /** table targets: rows deleted per table. */
+  cleared?: Record<string, number>;
+  /** set when an unknown target was skipped. */
+  skipped?: boolean;
+  reason?: string;
+  error?: { code: string; message: string };
+}
+
+export interface DataClearResponse {
+  results: Record<string, DataClearTargetResult>;
+}
+
 interface WebViewBridge {
   postMessage: (message: string) => void;
   addEventListener: (type: "message", listener: (event: { data: string }) => void) => void;
@@ -250,10 +338,20 @@ type Pending = {
 // the call rejects with `IpcError("timeout", ...)` and the slot is freed.
 const DEFAULT_IPC_TIMEOUT_MS = 60_000;
 
+// Long-running methods get a generous-but-finite ceiling instead of the 60s
+// default. They legitimately exceed 60s (multi-GB cache copies, AssetRipper
+// extraction, full favorites round-trips, slow multipart uploads), but an
+// *unbounded* wait reopens the pending-promise leak: if the host never replies
+// the slot + awaiting Promise/spinner would survive for the whole window
+// lifetime. 15 minutes is well past any real completion while still reaping a
+// truly stuck call.
+const LONG_RUNNING_IPC_TIMEOUT_MS = 15 * 60_000;
+
 // Methods that legitimately take longer than the default ceiling. Cache
 // migration copies tens of GB; avatar extraction shells out to AssetRipper;
-// favorites.syncOfficial round-trips the full VRChat favorites graph.
-// For these we disable the timer — callers own their own cancellation.
+// favorites.syncOfficial round-trips the full VRChat favorites graph. These
+// use LONG_RUNNING_IPC_TIMEOUT_MS instead of the 60s default — finite, so a
+// stuck host call is still eventually reaped instead of leaking forever.
 const LONG_RUNNING_METHODS = new Set<string>([
   "migrate.execute",
   "scan",
@@ -263,6 +361,10 @@ const LONG_RUNNING_METHODS = new Set<string>([
   "favorites.syncOfficial",
   "favorites.export",
   "favorites.import",
+  // Image/print uploads push raw bytes over IPC + multipart to VRChat —
+  // a slow connection can exceed the 60s default, so exempt them.
+  "prints.upload",
+  "files.uploadImage",
   // thumbnails.fetch removed: a batch of ~50 ids parallel-fetches in ~6s,
   // a stuck call should not pin the pending map forever — let the default
   // 60s timeout reject it so memo entries can clear and retry.
@@ -460,22 +562,21 @@ class IpcClient {
     const id = uuid();
     const envelope: IpcEnvelopeRequest<TParams> = { id, method };
     if (params !== undefined) envelope.params = params;
-    const applyTimeout = !LONG_RUNNING_METHODS.has(method);
+    const timeoutMs = LONG_RUNNING_METHODS.has(method)
+      ? LONG_RUNNING_IPC_TIMEOUT_MS
+      : DEFAULT_IPC_TIMEOUT_MS;
     const promise = new Promise<TResult>((resolve, reject) => {
-      let timerId: number | null = null;
-      if (applyTimeout) {
-        timerId = window.setTimeout(() => {
-          if (!this.pending.has(id)) return;
-          this.pending.delete(id);
-          reject(
-            new IpcError(
-              "timeout",
-              `IPC '${method}' did not respond within ${DEFAULT_IPC_TIMEOUT_MS}ms`,
-              0,
-            ),
-          );
-        }, DEFAULT_IPC_TIMEOUT_MS);
-      }
+      const timerId = window.setTimeout(() => {
+        if (!this.pending.has(id)) return;
+        this.pending.delete(id);
+        reject(
+          new IpcError(
+            "timeout",
+            `IPC '${method}' did not respond within ${timeoutMs}ms`,
+            0,
+          ),
+        );
+      }, timeoutMs);
       this.pending.set(id, {
         resolve: (v) => resolve(v as TResult),
         reject,
@@ -484,6 +585,25 @@ class IpcClient {
     });
     this.bridge.postMessage(JSON.stringify(envelope));
     return promise;
+  }
+
+  /**
+   * Reject and clear every in-flight pending call. Invoked on logout /
+   * auth-expiry so stale slots (and the spinners awaiting them) don't survive
+   * an account transition. Without this, a long-running call started under
+   * account A would keep its slot — and any UI awaiting it — alive after the
+   * session it belonged to is gone.
+   */
+  cancelAll(reason = "cancelled"): void {
+    if (this.pending.size === 0) return;
+    const slots = Array.from(this.pending.values());
+    this.pending.clear();
+    for (const slot of slots) {
+      if (slot.timerId !== null) {
+        window.clearTimeout(slot.timerId);
+      }
+      slot.reject(new IpcError(reason, `IPC call ${reason} (session reset)`, 0));
+    }
   }
 
   private async mockCall<TResult>(method: string, params?: unknown): Promise<TResult> {
@@ -706,6 +826,16 @@ class IpcClient {
         return { ok: true } as unknown as TResult;
       case "discord.clearActivity":
         return { ok: true } as unknown as TResult;
+      case "notify.setPrefs": {
+        const p = (params ?? {}) as Record<string, boolean>;
+        return {
+          ok: true,
+          friendOnline: !!p.friendOnline,
+          invite: !!p.invite,
+          friendRequest: !!p.friendRequest,
+          vrOverlay: !!p.vrOverlay,
+        } as unknown as TResult;
+      }
       case "osc.send":
       case "osc.listen.start":
       case "osc.listen.stop":
@@ -1298,13 +1428,14 @@ class IpcClient {
         return { ok: true, updated_at: updatedAt } as unknown as TResult;
       }
       case "favorites.syncOfficial": {
-        const listName = "VRChat Official Favorites";
+        // Mirrors the host: each VRChat favorite group becomes its own list,
+        // named after the group's displayName.
         const syncedAt = nowIso();
         const officialItems: FavoriteItem[] = [
           {
             type: "world",
             target_id: "wrld_official_favorite_world_001",
-            list_name: listName,
+            list_name: "Chill Worlds",
             display_name: "Official Favorite World",
             thumbnail_url: "https://picsum.photos/seed/official-world/512/288",
             added_at: syncedAt,
@@ -1316,28 +1447,44 @@ class IpcClient {
           {
             type: "avatar",
             target_id: "avtr_official_favorite_avatar_001",
-            list_name: listName,
+            list_name: "Daily Drivers",
             display_name: "Official Favorite Avatar",
             thumbnail_url: null,
             added_at: syncedAt,
-            sort_order: 1,
+            sort_order: 0,
+            tags: [],
+            note: null,
+            note_updated_at: null,
+          },
+          {
+            type: "avatar",
+            target_id: "avtr_official_favorite_avatar_002",
+            list_name: "Event Fits",
+            display_name: "Official Favorite Avatar 2",
+            thumbnail_url: null,
+            added_at: syncedAt,
+            sort_order: 0,
             tags: [],
             note: null,
             note_updated_at: null,
           },
         ];
+        const officialLists = ["Chill Worlds", "Daily Drivers", "Event Fits"];
         for (let i = mockFavorites.length - 1; i >= 0; i -= 1) {
-          if (mockFavorites[i].list_name === listName) {
+          if (officialLists.includes(mockFavorites[i].list_name)) {
             mockFavorites.splice(i, 1);
           }
         }
         mockFavorites.push(...officialItems);
+        const lists = [...new Set(officialItems.map((it) => it.list_name))];
         return {
           ok: true,
-          list_name: listName,
+          lists,
+          list_count: lists.length,
+          grouped: true,
           imported: officialItems.length,
-          avatars: 1,
-          worlds: 1,
+          avatars: officialItems.filter((it) => it.type === "avatar").length,
+          worlds: officialItems.filter((it) => it.type === "world").length,
           synced_at: syncedAt,
         } satisfies FavoritesSyncResult as unknown as TResult;
       }
@@ -1510,6 +1657,119 @@ class IpcClient {
       }
       case "user.updateProfile":
         return { profile: null } as unknown as TResult;
+      case "users.boop":
+        return { ok: true } as unknown as TResult;
+      case "inventory.list": {
+        const p = (params ?? {}) as { types?: string };
+        const kinds = (p.types ?? "sticker,emoji,prop").split(",");
+        const data = kinds.flatMap((kind, ki) =>
+          Array.from({ length: 4 }).map((_, i) => ({
+            id: `inv_${kind}_${i}`,
+            name: `${kind} ${i + 1}`,
+            itemType: kind,
+            imageUrl: `https://picsum.photos/seed/${kind}${ki}${i}/256/256`,
+            thumbnailImageUrl: `https://picsum.photos/seed/${kind}${ki}${i}/128/128`,
+            isSeen: true,
+            created_at: new Date(Date.now() - i * 3600_000).toISOString(),
+          })),
+        );
+        return { data, totalCount: data.length } as unknown as TResult;
+      }
+      case "prints.list": {
+        const prints = Array.from({ length: 6 }).map((_, i) => ({
+          id: `prnt_mock_${i}`,
+          authorName: "You",
+          note: i % 2 === 0 ? `Print note ${i}` : "",
+          image: `https://picsum.photos/seed/print${i}/512/384`,
+          files: { image: `https://picsum.photos/seed/print${i}/512/384` },
+          worldName: "The Black Cat",
+          createdAt: new Date(Date.now() - i * 86400_000).toISOString(),
+        }));
+        return { prints } as unknown as TResult;
+      }
+      case "prints.get": {
+        const p = (params ?? {}) as { printId?: string };
+        return {
+          id: p.printId ?? "prnt_mock_0",
+          authorName: "You",
+          image: "https://picsum.photos/seed/printdetail/512/384",
+        } as unknown as TResult;
+      }
+      case "prints.upload":
+        return {
+          id: `prnt_mock_${Date.now()}`,
+          image: "https://picsum.photos/seed/newprint/512/384",
+        } as unknown as TResult;
+      case "prints.delete":
+      case "files.delete":
+        return { ok: true } as unknown as TResult;
+      case "files.list": {
+        const p = (params ?? {}) as { tag?: string };
+        const tag = p.tag || "gallery";
+        const files = Array.from({ length: 5 }).map((_, i) => ({
+          id: `file_${tag}_${i}`,
+          name: `${tag}_${i}.png`,
+          tags: [tag],
+          mimeType: "image/png",
+          versions: [
+            {
+              version: 1,
+              status: "complete",
+              file: { url: `https://picsum.photos/seed/${tag}${i}/512/512` },
+            },
+          ],
+        }));
+        return { files } as unknown as TResult;
+      }
+      case "files.uploadImage": {
+        const p = (params ?? {}) as { tag?: string };
+        return {
+          id: `file_mock_${Date.now()}`,
+          tags: [p.tag ?? "gallery"],
+          versions: [
+            {
+              version: 1,
+              status: "complete",
+              file: { url: "https://picsum.photos/seed/upload/512/512" },
+            },
+          ],
+        } as unknown as TResult;
+      }
+      case "avatars.updateImage":
+        return { ok: true } as unknown as TResult;
+      case "avatars.update":
+        return { ok: true } as unknown as TResult;
+      case "avatars.delete":
+        return { ok: true } as unknown as TResult;
+      case "avatars.harvestIds":
+        return {
+          ids: Array.from({ length: 4 }, (_, i) => `avtr_mock_harvest_${i}`),
+        } as unknown as TResult;
+      case "avatars.listOwned": {
+        const p = (params ?? {}) as { releaseStatus?: string };
+        const wanted = p.releaseStatus && p.releaseStatus !== "all" ? p.releaseStatus : null;
+        const statuses = ["public", "private", "private"];
+        const avatars = Array.from({ length: 6 })
+          .map((_, i) => ({
+            id: `avtr_mock_owned_${i}`,
+            name: `My Avatar ${i}`,
+            description: `Owned avatar ${i} (browser dev mode).`,
+            authorId: "usr_mock-1234-5678",
+            authorName: "mock_user",
+            imageUrl: `https://picsum.photos/seed/owned${i}/512/512`,
+            thumbnailImageUrl: `https://picsum.photos/seed/owned${i}/256/256`,
+            releaseStatus: statuses[i % statuses.length],
+            version: 1 + i,
+            tags: i % 2 === 0 ? ["author_tag_test"] : [],
+            unityPackages: [
+              { platform: "standalonewindows", unityVersion: "2022.3.22f1", assetVersion: 4 },
+            ],
+            created_at: "2025-06-01T12:00:00Z",
+            updated_at: nowIso(),
+          }))
+          .filter((a) => (wanted ? a.releaseStatus === wanted : true));
+        return { avatars } as unknown as TResult;
+      }
       case "screenshots.list": {
         const mockShots = Array.from({ length: 8 }).map((_, i) => {
           const d = new Date(Date.now() - i * 86400000);
@@ -1582,6 +1842,46 @@ class IpcClient {
         });
         return { items: items.slice(offset, offset + limit) } as unknown as TResult;
       }
+      case "db.stats.heatmap": {
+        // 7×24 world-visit counts (row = day-of-week Sun..Sat, col = hour).
+        // Seed a plausible evening/weekend-heavy pattern so the dev chart has
+        // shape instead of a flat grid.
+        const grid = Array.from({ length: 7 }, (_, dow) =>
+          Array.from({ length: 24 }, (_, hour) => {
+            const evening = hour >= 19 && hour <= 23 ? 6 : 0;
+            const afternoon = hour >= 13 && hour <= 18 ? 3 : 0;
+            const weekend = dow === 0 || dow === 6 ? 4 : 0;
+            const jitter = (dow * 7 + hour) % 3;
+            return Math.max(0, evening + afternoon + weekend + jitter - (hour < 8 ? 5 : 0));
+          }),
+        );
+        return grid as unknown as TResult;
+      }
+      case "db.coPresenceGraph": {
+        // Co-presence ego-network fixture: center + a few mates, with one
+        // confirmed (center-touching) and one inferred (mate↔mate) edge so the
+        // dev graph renders both edge styles + the honesty label.
+        const center = (params as { center_user_id?: string } | undefined)?.center_user_id
+          ?? "usr_mock-self";
+        const nowSec = Math.floor(Date.now() / 1000);
+        return {
+          center,
+          since_days: 90,
+          min_overlap_sec: 60,
+          nodes: [
+            { user_id: center, display_name: "Me", sessions: 12, total_seconds: 86_400, last_seen: nowSec, is_center: true },
+            { user_id: "usr_mock-alice", display_name: "mock_alice", sessions: 8, total_seconds: 40_000, last_seen: nowSec, is_center: false },
+            { user_id: "usr_mock-bob", display_name: "mock_bob", sessions: 5, total_seconds: 18_000, last_seen: nowSec, is_center: false },
+            { user_id: "usr_mock-carol", display_name: "mock_carol", sessions: 3, total_seconds: 7_200, last_seen: nowSec, is_center: false },
+          ],
+          edges: [
+            { source: center, target: "usr_mock-alice", kind: "confirmed", overlap_count: 8, overlap_seconds: 30_000, last_overlap: nowSec },
+            { source: center, target: "usr_mock-bob", kind: "confirmed", overlap_count: 5, overlap_seconds: 12_000, last_overlap: nowSec },
+            { source: "usr_mock-alice", target: "usr_mock-bob", kind: "co_presence", overlap_count: 3, overlap_seconds: 5_400, last_overlap: nowSec },
+            { source: center, target: "usr_mock-carol", kind: "confirmed", overlap_count: 3, overlap_seconds: 6_000, last_overlap: nowSec },
+          ],
+        } as unknown as TResult;
+      }
       case "logs.files.clear":
         return {
           ok: true,
@@ -1596,6 +1896,342 @@ class IpcClient {
           removed: ["session.dat", "thumb-cache.json"],
           skipped: ["WebView2"],
         } as unknown as TResult;
+      // Event recorder — host implements these (IpcBridge HandleEventList etc.);
+      // dev mock just returns a small fixture so the page renders instead of
+      // throwing "method not implemented".
+      case "event.list":
+        return {
+          recordings: [
+            {
+              id: 1,
+              name: "Mock Meetup",
+              world_id: "wrld_mock-1111-2222-3333",
+              instance_id: "12345",
+              started_at: nowIso(),
+              ended_at: null,
+              attendee_count: 2,
+            },
+          ],
+        } as unknown as TResult;
+      case "event.attendees":
+        return {
+          attendees: [
+            { id: 1, user_id: "usr_mock-aaaa", display_name: "mock_alice", first_seen_at: nowIso() },
+            { id: 2, user_id: "usr_mock-bbbb", display_name: "mock_bob", first_seen_at: nowIso() },
+          ],
+        } as unknown as TResult;
+      case "event.start":
+        return { id: 2 } as unknown as TResult;
+      case "event.stop":
+      case "event.addAttendee":
+      case "event.delete":
+        return { ok: true } as unknown as TResult;
+
+      // ── Simple ok/void host actions (UI fire-and-forget mutations) ──────
+      // These all resolve to { ok: true } in the host; the mock mirrors that
+      // so click handlers (invite, friend req, mute/block, preview lifecycle,
+      // rule toggles, vector upsert, audio switch, presence/log inserts …)
+      // resolve cleanly instead of throwing mock_not_implemented.
+      case "avatar.preview.abort":
+      case "avatar.preview.release":
+      case "avatar.preview.retain":
+      case "avatar.select":
+      case "friends.request":
+      case "friends.unfriend":
+      case "hw.applyPreset":
+      case "pipeline.stop":
+      case "friendLog.insert":
+      case "friendPresence.record":
+      case "db.avatarHistory.record":
+      case "db.avatarHistory.resolve":
+      case "notifications.clear":
+      case "notifications.see":
+      case "notifications.hide":
+      case "notifications.accept":
+      case "notifications.respond":
+      case "user.block":
+      case "user.unblock":
+      case "user.mute":
+      case "user.unmute":
+      case "user.invite":
+      case "user.inviteTo":
+      case "user.requestInvite":
+      case "message.send":
+      case "groups.setRepresented":
+      case "vector.upsertEmbedding":
+      case "vr.audio.switch":
+      case "rules.delete":
+      case "rules.setEnabled":
+      case "screenshots.injectMetadata":
+        return { ok: true } as unknown as TResult;
+
+      // ── Auto-start (Windows run-at-login toggle) ────────────────────────
+      case "autoStart.get":
+        return { enabled: false } as unknown as TResult;
+      case "autoStart.set": {
+        const p = (params ?? {}) as { enabled?: boolean };
+        return { enabled: Boolean(p.enabled) } as unknown as TResult;
+      }
+
+      // ── Counts / empty collections consumed as arrays ───────────────────
+      case "db.avatarHistory.count":
+        return { count: 0 } as unknown as TResult;
+      case "notifications.list":
+        return { notifications: [] } as unknown as TResult;
+      case "calendar.list":
+        return { events: [] } as unknown as TResult;
+      case "vector.getUnindexed":
+        return { avatar_ids: [] } as unknown as TResult;
+      case "vector.search":
+        // Wrapper types the result as { matches: [...] }.
+        return { matches: [] } as unknown as TResult;
+      case "friendLog.recent":
+      case "friendLog.forUser":
+      case "db.playerEncounters":
+      case "db.playerEvents.list":
+      case "db.avatarHistory.list":
+      case "db.avatarBenchmarks.list":
+        return { items: [] } as unknown as TResult;
+      case "calendar.discover":
+      case "calendar.featured":
+        return { events: [] } as unknown as TResult;
+      case "pipeline.start":
+        return { ok: true, state: "connected", already: false } as unknown as TResult;
+      case "friendNote.all":
+        return { items: [] } as unknown as TResult;
+      case "friendNote.get":
+        return { note: null } as unknown as TResult;
+      case "friendNote.set":
+        return { ok: true, updated_at: nowIso() } as unknown as TResult;
+      case "friendPresence.recent":
+        return { items: [] } as unknown as TResult;
+      case "feed.unified":
+        return { items: [] } as unknown as TResult;
+      case "visits.list":
+        return { visits: [] } as unknown as TResult;
+      case "worlds.search":
+        return { worlds: [] } as unknown as TResult;
+      case "avatar.search":
+        return { avatars: [] } as unknown as TResult;
+      case "user.getSavedMessages":
+        return { messages: [] } as unknown as TResult;
+      case "jams.list":
+        return [] as unknown as TResult;
+      case "jams.detail":
+        return {} as unknown as TResult;
+
+      // ── Rules automation page ───────────────────────────────────────────
+      case "rules.list":
+        return { rules: [] } as unknown as TResult;
+      case "rules.get":
+        return {} as unknown as TResult;
+      case "rules.create":
+        return { id: 1 } as unknown as TResult;
+      case "rules.update":
+        return {} as unknown as TResult;
+      case "rules.history":
+        return { firings: [] } as unknown as TResult;
+
+      // ── Discord Rich Presence status ────────────────────────────────────
+      case "discord.status":
+        return { running: false, connected: false } as unknown as TResult;
+      case "discord.setActivity":
+        return { ok: true, connected: false } as unknown as TResult;
+
+      // ── Screenshot metadata read ────────────────────────────────────────
+      case "screenshots.readMetadata":
+        return { metadata: {} } as unknown as TResult;
+
+      // ── Live memory reader / radar (no host attached in dev) ────────────
+      case "memory.status":
+        return { attached: false, vrcBase: 0, gaBase: 0 } as unknown as TResult;
+      case "radar.poll":
+        return {
+          attached: false,
+          vrcBase: 0,
+          gaBase: 0,
+          players: [],
+          instanceId: "",
+          worldId: "",
+        } as unknown as TResult;
+
+      // ── Friend online prediction (analytic) ─────────────────────────────
+      case "friendPresence.predict": {
+        const p = (params ?? {}) as { user_id?: string };
+        return {
+          user_id: p.user_id ?? "",
+          status: "insufficient_data",
+          timezone_offset_minutes: 0,
+          total_online_minutes: 0,
+          observation_days: 0,
+          half_life_weeks: 4,
+          heatmap: new Array(168).fill(0),
+          top_windows: [],
+        } as unknown as TResult;
+      }
+
+      // ── db.stats.overview (dashboard headline counters) ────────────────
+      case "db.stats.overview":
+        return {
+          total_visits: 0,
+          unique_worlds: 0,
+          unique_users: 0,
+          total_seconds: 0,
+          first_seen_at: null,
+          last_seen_at: null,
+        } as unknown as TResult;
+
+      // ── data.usage (unified data-management panel, read-only) ──────────
+      case "data.usage":
+        return {
+          disk: {
+            "cache.thumbnails": 12_582_912,
+            "cache.previews": 41_943_040,
+            "cache.screenshotThumbs": 3_145_728,
+            "cache.updates": 0,
+            "cache.pluginFeed": 8_192,
+            "cache.index": 65_536,
+          },
+          tables: {
+            world_visits: 128,
+            player_events: 4210,
+            player_encounters: 3980,
+            avatar_history: 512,
+            friend_log: 340,
+            sessions: 47,
+            log_events: 15_003,
+            friend_presence_events: 2201,
+            avatar_embeddings_meta: 64,
+            asset_cache: 890,
+            avatar_benchmark: 33,
+            owned_avatars: 12,
+            online_prints: 5,
+            online_inventory: 8,
+            online_files: 21,
+            local_favorites: 96,
+          },
+          dbFileBytes: 6_291_456,
+        } as unknown as TResult;
+
+      // ── data.clear (unified data-management panel, per-target cleanup) ──
+      case "data.clear": {
+        const p = (params ?? {}) as { targets?: string[] };
+        const targets = p.targets ?? [];
+        // Mirror the host: disk keys → removed, known table keys → cleared,
+        // anything else → skipped/unknown_target (so the UI's skipped path is
+        // exercised in dev, matching HandleDataClear's contract).
+        const diskKeys = new Set([
+          "cache.thumbnails", "cache.previews", "cache.screenshotThumbs",
+          "cache.updates", "cache.pluginFeed", "cache.index",
+        ]);
+        const tableKeys = new Set([
+          "cache.assetCache", "cache.benchmark", "cache.onlineMirror",
+          "history.worldVisits", "history.playerEvents", "history.avatarHistory",
+          "history.friendLog", "history.sessions", "history.logEvents",
+          "experimental.embeddings", "assets.favorites",
+        ]);
+        const results: Record<string, unknown> = {};
+        for (const key of targets) {
+          if (diskKeys.has(key)) {
+            results[key] = { ok: true, kind: "disk", removed: 42 };
+          } else if (tableKeys.has(key)) {
+            results[key] = { ok: true, kind: "table", cleared: {} };
+          } else {
+            results[key] = { ok: false, skipped: true, reason: "unknown_target" };
+          }
+        }
+        return { results } as unknown as TResult;
+      }
+
+      // ── images.cache (mirror thumbnails.fetch row shape) ────────────────
+      case "images.cache": {
+        const p = (params ?? {}) as {
+          id?: string;
+          url?: string;
+          items?: Array<{ id: string; url: string }>;
+        };
+        const items = p.items ?? (p.id ? [{ id: p.id, url: p.url ?? "" }] : []);
+        const results = items.map(({ id, url }) => ({
+          id,
+          url,
+          localUrl: null,
+          imageCached: false,
+          source: "network" as const,
+          error: null,
+        }));
+        return { results } as unknown as TResult;
+      }
+
+      // ── VR diagnostics (network/audio/streaming health) ────────────────
+      // Consumer maps over adapters/networkWarnings/vrlinkErrors unguarded,
+      // so every array field must be present (empty is fine).
+      case "vr.diagnose":
+        return {
+          adapters: [],
+          networkWarnings: [],
+          steamvrRunning: false,
+          hmdModel: "",
+          hmdDriver: "",
+          preferredRefreshRate: 0,
+          supersampleScale: 0,
+          targetBandwidth: 0,
+          motionSmoothing: false,
+          allowSupersampleFiltering: false,
+          preferredCodec: "",
+          gpuName: "",
+          gpuVramBytes: 0,
+          gpuDriverVersion: "",
+          defaultPlaybackDevice: "",
+          defaultRecordingDevice: "",
+          steamSpeakersFound: false,
+          steamMicFound: false,
+          vrlinkErrors: [],
+          vrlinkBadLinkEvents: 0,
+          vrlinkDroppedFrames: 0,
+          vrlinkAvgBitrateMbps: 0,
+          vrlinkMaxLatencyMs: 0,
+        } as unknown as TResult;
+
+      // ── instance.details (occupant counts for a location) ───────────────
+      case "instance.details":
+        return { instance: null } as unknown as TResult;
+
+      // ── world.details (world inspector) ─────────────────────────────────
+      case "world.details": {
+        const p = (params ?? {}) as { id?: string };
+        const id = p.id ?? "";
+        if (!id) return { details: null } as unknown as TResult;
+        return {
+          details: {
+            id,
+            name: "Mock World",
+            description: "A mock world for local dev.",
+            authorId: "usr_mock-author",
+            authorName: "mock_author",
+            imageUrl: null,
+            thumbnailImageUrl: `https://picsum.photos/seed/${encodeURIComponent(id.slice(0, 16))}/256/144`,
+            releaseStatus: "public",
+            capacity: 32,
+            visits: 0,
+            favorites: 0,
+            tags: [],
+            created_at: null,
+            updated_at: null,
+          },
+        } as unknown as TResult;
+      }
+
+      // ── avatar.parameters.local (OSC tools parameter dump) ──────────────
+      case "avatar.parameters.local": {
+        const p = (params ?? {}) as { avatarId?: string; userId?: string };
+        return {
+          avatar_id: p.avatarId ?? "",
+          user_id: p.userId ?? "",
+          path: "",
+          parameters: [],
+        } as unknown as TResult;
+      }
+
       default: {
         const message = `Mock IPC method not implemented: ${method}`;
         console.warn(message);
@@ -1975,6 +2611,115 @@ class IpcClient {
     );
   }
 
+  // ── Wave 2 / Section B: online social + VRC+ media ──────────────────
+
+  async boopUser(userId: string, emojiId?: string) {
+    return this.call<{ userId: string; emojiId?: string }, { ok: boolean }>(
+      "users.boop",
+      emojiId ? { userId, emojiId } : { userId },
+    );
+  }
+
+  async inventoryList(types?: string, n = 100, offset = 0) {
+    return this.call<
+      { types?: string; n: number; offset: number },
+      { data: any[]; totalCount?: number }
+    >("inventory.list", types ? { types, n, offset } : { n, offset });
+  }
+
+  async printsList() {
+    return this.call<{}, { prints: any[] }>("prints.list", {});
+  }
+
+  async printsGet(printId: string) {
+    return this.call<{ printId: string }, any>("prints.get", { printId });
+  }
+
+  async printsUpload(params: {
+    imageBase64: string;
+    timestamp: string;
+    note?: string;
+    worldId?: string;
+    worldName?: string;
+  }) {
+    return this.call<typeof params, any>("prints.upload", params);
+  }
+
+  async printsDelete(printId: string) {
+    return this.call<{ printId: string }, { ok: boolean }>("prints.delete", {
+      printId,
+    });
+  }
+
+  async filesList(tag: string) {
+    return this.call<{ tag: string }, { files: any[] }>("files.list", { tag });
+  }
+
+  async filesUploadImage(params: {
+    imageBase64: string;
+    tag: string;
+    matchingDimensions?: boolean;
+    // Animated-emoji sprite-sheet metadata (only read when tag === "emojianimated").
+    frames?: number;
+    framesOverTime?: number;
+    animationStyle?: string;
+  }) {
+    return this.call<typeof params, any>("files.uploadImage", params);
+  }
+
+  async filesDelete(fileId: string) {
+    return this.call<{ fileId: string }, { ok: boolean }>("files.delete", {
+      fileId,
+    });
+  }
+
+  async avatarsUpdateImage(avatarId: string, imageUrl: string) {
+    return this.call<{ avatarId: string; imageUrl: string }, any>(
+      "avatars.updateImage",
+      { avatarId, imageUrl },
+    );
+  }
+
+  async avatarsListOwned(params?: {
+    releaseStatus?: "all" | "public" | "private" | "hidden";
+    count?: number;
+    offset?: number;
+  }) {
+    return this.call<typeof params, { avatars: AvatarSearchResult[] }>(
+      "avatars.listOwned",
+      params ?? {},
+    );
+  }
+
+  async avatarsHarvestIds() {
+    return this.call<Record<string, never>, { ids: string[] }>(
+      "avatars.harvestIds",
+      {},
+    );
+  }
+
+  async avatarsUpdate(
+    avatarId: string,
+    patch: {
+      name?: string;
+      description?: string;
+      releaseStatus?: string;
+      tags?: string[];
+      imageUrl?: string;
+    },
+  ) {
+    return this.call<{ avatarId: string; patch: typeof patch }, any>(
+      "avatars.update",
+      { avatarId, patch },
+    );
+  }
+
+  async avatarsDelete(avatarId: string) {
+    return this.call<{ avatarId: string }, { ok: boolean }>("avatars.delete", {
+      avatarId,
+    });
+  }
+
   // ── Discord Rich Presence ───────────────────────────────────────────
 
   async discordSetActivity(activity: Record<string, unknown>, clientId?: string) {
@@ -1993,6 +2738,28 @@ class IpcClient {
       "discord.status",
       {},
     );
+  }
+
+  // ── Desktop toast notifications ─────────────────────────────────────
+  // Push the user's per-event-type toggles (all default OFF) into the
+  // host so the native Pipeline event lambda knows which Action Center
+  // toasts to raise. The host echoes back the resolved flags.
+  async notifySetPrefs(prefs: {
+    friendOnline: boolean;
+    invite: boolean;
+    friendRequest: boolean;
+    vrOverlay: boolean;
+  }) {
+    return this.call<
+      typeof prefs,
+      {
+        ok: boolean;
+        friendOnline: boolean;
+        invite: boolean;
+        friendRequest: boolean;
+        vrOverlay: boolean;
+      }
+    >("notify.setPrefs", prefs);
   }
 
   // ── OSC bridge ──────────────────────────────────────────────────────
@@ -2120,6 +2887,20 @@ class IpcClient {
     );
   }
 
+  // Co-presence ego-network centered on `centerUserId` (normally the local
+  // user). Edges touching the center are "confirmed" co-presence; edges
+  // between two other users are "co_presence" inference only — never a
+  // confirmed-friendship claim (VRChat exposes no friend-of-friend data).
+  async dbCoPresenceGraph(centerUserId: string, sinceDays = 90, minOverlapSec = 60) {
+    return this.call<
+      { center_user_id: string; since_days: number; min_overlap_sec: number },
+      CoPresenceGraph
+    >(
+      "db.coPresenceGraph",
+      { center_user_id: centerUserId, since_days: sinceDays, min_overlap_sec: minOverlapSec },
+    );
+  }
+
   async dbAvatarHistory(limit = 100, offset = 0) {
     return this.call<{ limit: number; offset: number }, { items: any[] }>(
       "db.avatarHistory.list", { limit, offset },
@@ -2161,6 +2942,20 @@ class IpcClient {
       "db.history.clear",
       { include_friend_notes: includeFriendNotes },
     );
+  }
+
+  // ── Unified data management (data.usage / data.clear) ────────────────
+
+  /** Read-only usage aggregate: on-disk cache bytes + DB table counts. */
+  async dataUsage() {
+    return this.call<undefined, DataUsage>("data.usage");
+  }
+
+  /** Per-target cleanup. `targets` is a whitelist of DataClearTarget keys. */
+  async dataClear(targets: string[]) {
+    return this.call<{ targets: string[] }, DataClearResponse>("data.clear", {
+      targets,
+    });
   }
 
   async searchGlobal(params: SearchGlobalRequest) {
@@ -2375,6 +3170,13 @@ class IpcClient {
     );
   }
 
+  async friendNoteAll() {
+    return this.call<
+      undefined,
+      { items: { user_id: string; note: string | null }[] }
+    >("friendNote.all", undefined);
+  }
+
   async friendNoteSet(userId: string, note: string) {
     return this.call<
       { user_id: string; note: string },
@@ -2444,6 +3246,63 @@ class IpcClient {
     display_name?: string;
   }) {
     return this.call<typeof params, { ok: boolean }>("friendLog.insert", params);
+  }
+
+  // ── Friend presence events + unified feed (Track B1) ────────────────
+  // friendPresence.* persists per-instance presence/location/status/avatar
+  // flips; feed.unified reads them back joined with friend_log, player_events
+  // and avatar_history as one time-ordered stream.
+
+  async friendPresenceRecord(params: {
+    user_id: string;
+    event_type: string;
+    display_name?: string;
+    world_id?: string;
+    instance_id?: string;
+    location?: string;
+    status?: string;
+    old_value?: string;
+    new_value?: string;
+    source?: string;
+    occurred_at?: string;
+  }) {
+    return this.call<typeof params, { ok: boolean }>("friendPresence.record", params);
+  }
+
+  async friendPresenceRecent(params: {
+    limit?: number;
+    offset?: number;
+    user_id?: string;
+    event_type?: string;
+    occurred_after?: string;
+    occurred_before?: string;
+  } = {}) {
+    return this.call<typeof params, { items: FriendPresenceEventDto[] }>(
+      "friendPresence.recent", params,
+    );
+  }
+
+  async friendPresencePredict(params: {
+    user_id: string;
+    top_n?: number;
+    half_life_weeks?: number;
+  }) {
+    return this.call<typeof params, FriendOnlinePredictionDto>(
+      "friendPresence.predict", params,
+    );
+  }
+
+  async feedUnified(params: {
+    limit?: number;
+    offset?: number;
+    user_id?: string;
+    source_kind?: FeedSourceKind;
+    occurred_after?: string;
+    occurred_before?: string;
+  } = {}) {
+    return this.call<typeof params, { items: FeedEntryDto[] }>(
+      "feed.unified", params,
+    );
   }
 
   // ── Vector (experimental visual avatar search) ─────────────────────

@@ -62,6 +62,7 @@ const LIBRARY_LAYOUT_CLASS: Record<LayoutMode, string> = {
   "list": "flex flex-col divide-y divide-[hsl(var(--border))] rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))]",
 };
 import { useThumbnail } from "@/lib/thumbnails";
+import { useUiPrefString } from "@/lib/ui-prefs";
 import type { FavoriteItem } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 import { ImageZoom } from "@/components/ImageZoom";
@@ -386,6 +387,7 @@ function Library() {
   const [search, setSearch] = useState("");
   const [layoutMode, setLayoutMode] = useLayoutMode("library");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [sortBy, setSortBy] = useUiPrefString("vrcsm.library.sort", "added");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<FavoriteItem | null>(null);
   const [syncingOfficial, setSyncingOfficial] = useState(false);
@@ -444,7 +446,7 @@ function Library() {
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return items.filter((item) => {
+    const filtered = items.filter((item) => {
       const type = normalizeFavoriteType(item.type);
       if (typeFilter !== "all" && type !== typeFilter) return false;
       if (tagFilter && !item.tags.includes(tagFilter)) return false;
@@ -457,7 +459,24 @@ function Library() {
         item.tags.some((tag) => tag.toLowerCase().includes(q))
       );
     });
-  }, [items, search, typeFilter, tagFilter]);
+    // "added" keeps the backend insertion order (newest-saved-first as served);
+    // name/type are stable client-side re-sorts. localeCompare keeps CJK names
+    // grouped sensibly under the active i18n locale.
+    if (sortBy === "name") {
+      return [...filtered].sort((a, b) =>
+        (a.display_name ?? a.target_id).localeCompare(b.display_name ?? b.target_id),
+      );
+    }
+    if (sortBy === "type") {
+      return [...filtered].sort((a, b) => {
+        const ta = normalizeFavoriteType(a.type);
+        const tb = normalizeFavoriteType(b.type);
+        if (ta !== tb) return ta.localeCompare(tb);
+        return (a.display_name ?? a.target_id).localeCompare(b.display_name ?? b.target_id);
+      });
+    }
+    return filtered;
+  }, [items, search, typeFilter, tagFilter, sortBy]);
 
   async function handleRemove(item: FavoriteItem) {
     try {
@@ -534,11 +553,18 @@ function Library() {
       ]);
       if (showToast) {
         toast.success(
-          t("library.officialSyncSuccess", {
-            count: result.imported,
-            avatars: result.avatars,
-            worlds: result.worlds,
-          }),
+          result.grouped && result.list_count > 1
+            ? t("library.officialSyncSuccessGrouped", {
+                count: result.imported,
+                lists: result.list_count,
+                avatars: result.avatars,
+                worlds: result.worlds,
+              })
+            : t("library.officialSyncSuccess", {
+                count: result.imported,
+                avatars: result.avatars,
+                worlds: result.worlds,
+              }),
         );
       }
     } catch (e) {
@@ -615,7 +641,46 @@ function Library() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[260px_1fr]">
-        <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
+        <div className="flex flex-col gap-4">
+          <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
+            <div className="unity-panel-header flex items-center justify-between">
+              <span>{t("library.filterByType", { defaultValue: "Type" })}</span>
+            </div>
+            <div className="flex flex-col gap-px p-2">
+              {(["all", "avatar", "world", "user"] as const).map((type) => {
+                const active = typeFilter === type;
+                const Icon = type === "all" ? LayoutGrid : typeMeta(type).icon;
+                const count = type === "all" ? counts.total : counts[type];
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setTypeFilter(type)}
+                    className={cn(
+                      "flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-left text-[12px] transition-colors",
+                      active
+                        ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                        : "border-transparent text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-raised))]",
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon className="size-3.5" />
+                      {t(
+                        type === "all"
+                          ? "library.filters.all"
+                          : typeMeta(type).labelKey,
+                      )}
+                    </span>
+                    <span className="font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
           <div className="unity-panel-header flex items-center justify-between">
             <span>{t("library.collections")}</span>
             <span className="font-mono text-[10px] normal-case tracking-normal">
@@ -686,6 +751,7 @@ function Library() {
             )}
           </div>
         </Card>
+        </div>
 
         <div className="flex flex-col gap-4">
           <Card elevation="flat" className="p-0">
@@ -715,20 +781,16 @@ function Library() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {(["all", "avatar", "world", "user"] as const).map((type) => (
-                    <Button
-                      key={type}
-                      variant={typeFilter === type ? "tonal" : "ghost"}
-                      size="sm"
-                      onClick={() => setTypeFilter(type)}
-                    >
-                      {t(
-                        type === "all"
-                          ? "library.filters.all"
-                          : typeMeta(type).labelKey,
-                      )}
-                    </Button>
-                  ))}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    aria-label={t("library.sortLabel", { defaultValue: "Sort" })}
+                    className="h-8 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 text-[12px] text-[hsl(var(--foreground))]"
+                  >
+                    <option value="added">{t("library.sort.added", { defaultValue: "Recently added" })}</option>
+                    <option value="name">{t("library.sort.name", { defaultValue: "Name" })}</option>
+                    <option value="type">{t("library.sort.type", { defaultValue: "Type" })}</option>
+                  </select>
                   <LayoutModeSwitcher
                     value={layoutMode}
                     onChange={setLayoutMode}

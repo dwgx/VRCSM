@@ -3,6 +3,7 @@
 #include "CacheScanner.h"
 #include "PathProbe.h"
 
+#include <cstddef>
 #include <cstring>
 #include <system_error>
 #include <vector>
@@ -106,8 +107,21 @@ std::optional<std::filesystem::path> JunctionUtil::readJunctionTarget(const std:
     const auto* data = reinterpret_cast<const ReparseDataBufferMountPoint*>(buffer.data());
     if (data->ReparseTag != kReparseTagMountPoint) return std::nullopt;
 
-    const wchar_t* base = data->PathBuffer + (data->SubstituteNameOffset / sizeof(WCHAR));
-    std::wstring sub(base, data->SubstituteNameLength / sizeof(WCHAR));
+    // Validate the on-disk offset/length fields before slicing PathBuffer:
+    // they are attacker-influenceable (a crafted mount point) and must stay
+    // within the bytes DeviceIoControl actually returned. Without this a bad
+    // offset/length can over-read far past the buffer.
+    const std::size_t pathBufBytesOffset = offsetof(ReparseDataBufferMountPoint, PathBuffer);
+    if (returned < pathBufBytesOffset) return std::nullopt;
+    const std::size_t availBytes = returned - pathBufBytesOffset;
+    const std::size_t subOffset = data->SubstituteNameOffset;
+    const std::size_t subLen = data->SubstituteNameLength;
+    if (subOffset > availBytes) return std::nullopt;
+    if (subLen > availBytes - subOffset) return std::nullopt;
+    if ((subOffset % sizeof(WCHAR)) != 0 || (subLen % sizeof(WCHAR)) != 0) return std::nullopt;
+
+    const wchar_t* base = data->PathBuffer + (subOffset / sizeof(WCHAR));
+    std::wstring sub(base, subLen / sizeof(WCHAR));
     if (sub.rfind(L"\\??\\", 0) == 0) sub = sub.substr(4);
     return std::filesystem::path(sub);
 }

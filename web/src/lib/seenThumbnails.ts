@@ -10,7 +10,7 @@
 // query plumbing (`useQuery`, throttling, persistence) is duplicated in
 // each page because their data shapes differ.
 
-const WEARER_REFERENCE_CACHE_KEY = "vrcsm.seen.wearerReferences.v1";
+export const WEARER_REFERENCE_CACHE_KEY = "vrcsm.seen.wearerReferences.v1";
 const WEARER_REFERENCE_TTL_MS = 24 * 60 * 60_000;
 
 export type WearerReferenceStatus = "loading" | "resolved" | "miss";
@@ -98,6 +98,16 @@ export function saveWearerReference(key: string, ref: WearerReference): void {
 export function readWearerReference(key: string): WearerReference | undefined {
   const cache = loadWearerReferenceCache();
   return cache[key];
+}
+
+export function clearWearerReferenceCache(): void {
+  cacheMemo = {};
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(WEARER_REFERENCE_CACHE_KEY);
+  } catch {
+    // localStorage may be unavailable in constrained WebView/test contexts.
+  }
 }
 
 export function normalizeAvatarName(name?: string | null): string {

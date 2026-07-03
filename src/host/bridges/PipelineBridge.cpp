@@ -7,6 +7,8 @@
 #include "../../core/Pipeline.h"
 #include "../../core/PngMetadata.h"
 #include "../../core/ScreenshotWatcher.h"
+#include "../../core/ToastNotifier.h"
+#include "../../core/VrOverlayNotifier.h"
 #include "../../core/VrcApi.h"
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -61,6 +63,43 @@ nlohmann::json IpcBridge::HandlePipelineStart(const nlohmann::json&, const std::
         {
             PostEventToUi("pipeline.event",
                 nlohmann::json{{"type", type}, {"content", content}});
+
+            // Raise a native desktop toast for social events the user opted
+            // into. Formatting is pure + unit-tested in ToastNotifier; the
+            // per-kind toggle (default OFF) gates whether it actually shows.
+            // Fire-and-forget: failures are swallowed inside ShowToast.
+            if (auto toast = vrcsm::core::FormatPipelineToast(type, content))
+            {
+                bool enabled = false;
+                switch (toast->kind)
+                {
+                case vrcsm::core::ToastKind::FriendOnline:
+                    enabled = m_toastFriendOnline.load();
+                    break;
+                case vrcsm::core::ToastKind::Invite:
+                    enabled = m_toastInvite.load();
+                    break;
+                case vrcsm::core::ToastKind::FriendRequest:
+                    enabled = m_toastFriendRequest.load();
+                    break;
+                }
+                if (enabled)
+                {
+                    vrcsm::core::ToastNotifier::ShowToast(*toast);
+
+                    // Mirror the same event into the headset via XSOverlay when
+                    // the master VR toggle is on. Reuses the toast we already
+                    // formatted; SendXsOverlay is fire-and-forget over loopback
+                    // UDP and swallows any failure (XSOverlay not running, etc).
+                    if (m_vrOverlayEnabled.load())
+                    {
+                        vrcsm::core::OverlayNotification overlay;
+                        overlay.title = toast->title;
+                        overlay.body = toast->body;
+                        vrcsm::core::VrOverlayNotifier::Notify(overlay);
+                    }
+                }
+            }
         },
         [this](vrcsm::core::Pipeline::ConnState state, const std::string& detail)
         {
@@ -78,6 +117,35 @@ nlohmann::json IpcBridge::HandlePipelineStop(const nlohmann::json&, const std::o
         m_pipeline->Stop();
     }
     return nlohmann::json{{"ok", true}};
+}
+
+// ── Desktop toast prefs ─────────────────────────────────────────────────
+// The frontend owns the per-event-type toggles (localStorage, default OFF)
+// and pushes the current values here so the Pipeline event lambda — which
+// runs on the socket thread and cannot read localStorage — knows what to
+// raise. Missing fields leave the corresponding flag unchanged so a partial
+// push never silently re-enables a type the user turned off.
+nlohmann::json IpcBridge::HandleNotifySetPrefs(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    auto readBool = [&params](const char* key, std::atomic<bool>& target) {
+        auto it = params.find(key);
+        if (it != params.end() && it->is_boolean())
+        {
+            target.store(it->get<bool>());
+        }
+    };
+    readBool("friendOnline", m_toastFriendOnline);
+    readBool("invite", m_toastInvite);
+    readBool("friendRequest", m_toastFriendRequest);
+    readBool("vrOverlay", m_vrOverlayEnabled);
+
+    return nlohmann::json{
+        {"ok", true},
+        {"friendOnline", m_toastFriendOnline.load()},
+        {"invite", m_toastInvite.load()},
+        {"friendRequest", m_toastFriendRequest.load()},
+        {"vrOverlay", m_vrOverlayEnabled.load()},
+    };
 }
 
 // ── Notifications inbox ─────────────────────────────────────────────────
@@ -171,13 +239,28 @@ namespace
 // Refusing the connection without a real id avoids "why does my
 // Discord show generic VRCSM" complaints when the project hasn't
 // shipped its own published app yet.
+//
+// `kDiscordPlaceholderClientId` (DiscordRpc.h) is the empty fallback used
+// when the user has not supplied an id; an empty id keeps the feature
+// flag-gated-dark (DiscordRpc refuses to connect). TODO(wave3): once an
+// official VRCSM Discord app is registered, give it a real snowflake
+// there and use it as the default here.
+const char* EffectiveDiscordClientId(const std::optional<std::string>& userId)
+{
+    if (userId.has_value() && !userId->empty())
+    {
+        return userId->c_str();
+    }
+    return vrcsm::core::kDiscordPlaceholderClientId;
+}
 
 }
 
 nlohmann::json IpcBridge::HandleDiscordSetActivity(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto overrideId = JsonStringField(params, "clientId");
-    if (!overrideId.has_value() || overrideId->empty())
+    const std::string clientId = EffectiveDiscordClientId(overrideId);
+    if (clientId.empty())
     {
         throw IpcException(vrcsm::core::Error{
             "discord_not_configured",
@@ -188,7 +271,7 @@ nlohmann::json IpcBridge::HandleDiscordSetActivity(const nlohmann::json& params,
     if (!m_discordRpc)
     {
         m_discordRpc = std::make_unique<vrcsm::core::DiscordRpc>();
-        m_discordRpc->SetClientId(*overrideId);
+        m_discordRpc->SetClientId(clientId);
         m_discordRpc->Start();
     }
 

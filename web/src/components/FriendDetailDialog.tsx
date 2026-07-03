@@ -18,6 +18,8 @@ import {
   MapPin,
   UserMinus,
   BellRing,
+  CalendarClock,
+  Tag,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,17 +34,23 @@ import {
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageZoom } from "@/components/ImageZoom";
 import { SmartWearButton } from "@/components/SmartWearButton";
+import { EntityLink } from "@/components/EntityLink";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
-import type { Friend, WorldDetails } from "@/lib/types";
+import { useCachedImageUrl } from "@/lib/image-cache";
+import type { Friend, VrcSavedMessage, WorldDetails, VrcInventoryItem } from "@/lib/types";
+import type { FriendOnlinePredictionDto } from "@/lib/ipc";
 import type { VrcUserProfile } from "@/components/ProfileCard";
+import { deriveNameHistory } from "@/lib/name-history";
 import {
   blockUser,
+  getSavedMessages,
   inviteSelf,
   muteUser,
   removeFriend,
   requestInvite,
   setFriendNote,
 } from "@/lib/social";
+import { boopUser, listInventory } from "@/lib/vrc-media";
 import {
   openExternalUrlQuietly,
   openVrchatLocation,
@@ -57,7 +65,11 @@ import {
   instanceTypeLabel,
   regionLabel,
   relativeTime,
+  statusBucket,
+  statusShape,
+  statusShapeClass,
 } from "@/lib/vrcFriends";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { cn } from "@/lib/utils";
 
 // ---- Bio link parser (mirrors ProfileCard) ------------------------------------
@@ -116,6 +128,17 @@ interface FriendLogItem {
   occurred_at: string;
 }
 
+// Per-world co-presence row from `db.playerEncounters`
+// (Database::EncountersForUser → player_encounters).
+interface PlayerEncounter {
+  user_id: string;
+  display_name: string | null;
+  world_id: string | null;
+  first_seen: string | null;
+  last_seen: string | null;
+  encounter_count: number;
+}
+
 const EVENT_ICONS: Record<string, typeof History> = {
   "friend.added":     Users,
   "friend.removed":   Users,
@@ -143,7 +166,7 @@ interface FriendDetailDialogProps {
 }
 
 export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // --- Profile query (richer than the list-row Friend object) -----------------
   const { data: profileData, isLoading: profileLoading } = useIpcQuery<
@@ -167,6 +190,27 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
   });
   const world = worldData?.details ?? null;
 
+  // --- Live occupant count -----------------------------------------------------
+  // Volatile, so a short staleTime and gated to a real instance the dialog is
+  // open on. n_users is the live count; capacity here mirrors the world cap.
+  const isRealInstance = inWorld && !!loc.instanceId;
+  const { data: instanceData } = useIpcQuery<
+    { location: string },
+    {
+      instance: {
+        n_users: number;
+        capacity: number;
+        recommendedCapacity?: number;
+        full?: boolean;
+        queueSize?: number;
+      } | null;
+    }
+  >("instance.details", { location: friend?.location ?? "" }, {
+    enabled: isRealInstance,
+    staleTime: 30_000,
+  });
+  const occupants = instanceData?.instance ?? null;
+
   // --- Activity log ------------------------------------------------------------
   const { data: logData } = useIpcQuery<
     { user_id: string; limit: number; offset: number },
@@ -175,12 +219,47 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
     enabled: !!friend,
     staleTime: 60_000,
   });
+  // VRCX parity: optionally drop unfriend rows from the activity log.
+  const hideUnfriends = useUiPrefBoolean("vrcsm.friendLog.hideUnfriends", false)[0];
+  const a11yStatusShapes = useUiPrefBoolean("vrcsm.a11y.statusShapes", false)[0];
+  const logItems = (logData?.items ?? []).filter(
+    (item) => !(hideUnfriends && item.event_type === "friend.removed"),
+  );
+  // VRCX parity (#5): earliest observed friend.added → "friends since". Only as
+  // accurate as our log history, so the UI labels it "tracked since".
+  const friendedAt = (logData?.items ?? [])
+    .filter((item) => item.event_type === "friend.added")
+    .reduce<string | null>((min, item) => {
+      if (!item.occurred_at) return min;
+      return min === null || item.occurred_at < min ? item.occurred_at : min;
+    }, null);
+
+  // Own-algorithm: predicted "best time to catch them online" from observed
+  // presence history. Gated to an open dialog; the host returns insufficient_data
+  // until there is enough signal, so the UI simply hides the card in that case.
+  const { data: prediction } = useIpcQuery<
+    { user_id: string },
+    FriendOnlinePredictionDto
+  >("friendPresence.predict", { user_id: friend?.id ?? "" }, {
+    enabled: !!friend,
+    staleTime: 5 * 60_000,
+  });
 
   // --- Friend note -------------------------------------------------------------
   const { data: noteData, refetch: refetchNote } = useIpcQuery<
     { user_id: string },
     { note: string | null }
   >("friendNote.get", { user_id: friend?.id ?? "" }, { enabled: !!friend });
+
+  // --- Shared worlds (co-presence from local DB; data VRCX surfaces but we
+  // already have it unused — see docs/BEAT-VRCX-PLAN.md B4) ----------------------
+  const { data: encountersData } = useIpcQuery<
+    { user_id: string },
+    { items: PlayerEncounter[] }
+  >("db.playerEncounters", { user_id: friend?.id ?? "" }, {
+    enabled: !!friend,
+    staleTime: 60_000,
+  });
 
   const [noteText, setNoteText] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
@@ -237,6 +316,14 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
   const bioLinks = profile?.bioLinks ?? [];
   const avatarId = profile?.currentAvatarId ?? friend?.currentAvatarId ?? null;
   const avatarName = profile?.currentAvatarName ?? friend?.currentAvatarName ?? null;
+  const {
+    localUrl: avatarLocalUrl,
+    loading: avatarCacheLoading,
+  } = useCachedImageUrl(
+    friend?.id ? `friend-detail:${friend.id}` : null,
+    avatarUrl,
+  );
+  const avatarDisplayUrl = avatarLocalUrl ?? (avatarCacheLoading ? null : avatarUrl);
 
   return (
     <Dialog open={!!friend} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -265,9 +352,9 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                   className="size-full overflow-hidden rounded-full"
                   style={{ boxShadow: `0 0 0 3px ${dotColor}` }}
                 >
-                  {avatarUrl ? (
+                  {avatarDisplayUrl ? (
                     <img
-                      src={avatarUrl}
+                      src={avatarDisplayUrl}
                       alt=""
                       className="h-full w-full object-cover"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
@@ -278,10 +365,19 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                     </div>
                   )}
                 </div>
-                <span className={cn(
-                  "absolute bottom-1 right-1 size-3.5 rounded-full border-[2.5px] border-[hsl(var(--surface))]",
-                  statusDot(friend?.status ?? null),
-                )} />
+                <span
+                  className={cn(
+                    "absolute bottom-1 right-1 size-3.5 rounded-full border-[2.5px] border-[hsl(var(--surface))]",
+                    statusDot(friend?.status ?? null),
+                    a11yStatusShapes && statusShapeClass(statusShape(friend?.status ?? null)),
+                  )}
+                  title={t(`friends.bucket.${statusBucket(friend?.status ?? null)}`, {
+                    defaultValue: friend?.status ?? "offline",
+                  })}
+                  aria-label={t(`friends.bucket.${statusBucket(friend?.status ?? null)}`, {
+                    defaultValue: friend?.status ?? "offline",
+                  })}
+                />
               </div>
 
               {/* Name / status / bio */}
@@ -337,6 +433,34 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                       Dev
                     </span>
                   )}
+                  {profile?.ageVerificationStatus &&
+                    profile.ageVerificationStatus !== "hidden" &&
+                    profile.ageVerificationStatus !== "unverified" && (
+                      <span
+                        title={t("friendDetail.ageVerified", { defaultValue: "Age verified" })}
+                        className="px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/15 rounded border border-emerald-500/40"
+                      >
+                        18+
+                      </span>
+                    )}
+                  {(() => {
+                    const p = friend?.last_platform;
+                    if (!p) return null;
+                    const label =
+                      p === "android"
+                        ? "Android"
+                        : p === "ios"
+                          ? "iOS"
+                          : p.includes("standalonewindows") || p === "pc"
+                            ? "PC"
+                            : null;
+                    if (!label) return null;
+                    return (
+                      <span className="px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border)/0.4)]">
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Language tags */}
@@ -347,6 +471,16 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                         {l}
                       </span>
                     ))}
+                  </div>
+                )}
+
+                {/* Friends since (#5) — only as accurate as our log history */}
+                {friendedAt && (
+                  <div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                    {t("friendDetail.friendsSince", {
+                      defaultValue: "Friends since {{when}}",
+                      when: relativeTime(friendedAt),
+                    })}
                   </div>
                 )}
               </div>
@@ -416,11 +550,27 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                         {regionLabel(loc.region)}
                       </Badge>
                     )}
-                    {world?.capacity != null && (
+                    {occupants ? (
+                      <span
+                        className="text-[10px] text-[hsl(var(--muted-foreground))]"
+                        title={t("friendDetail.liveOccupants", {
+                          defaultValue: "Live occupants",
+                        })}
+                      >
+                        <Users className="inline size-2.5 mr-0.5" />
+                        {occupants.n_users}
+                        {world?.capacity != null ? `/${world.capacity}` : null}
+                        {occupants.full ? (
+                          <span className="ml-1 text-amber-400">
+                            {t("friendDetail.instanceFull", { defaultValue: "full" })}
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : world?.capacity != null ? (
                       <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
                         <Users className="inline size-2.5 mr-0.5" />{world.capacity}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     <Button
@@ -591,15 +741,93 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
             </div>
           </div>
 
+          {/* ========== 4b. Best time to catch them online (BEYOND VRCX) ========== */}
+          {prediction?.status === "ok" && prediction.top_windows.length > 0 && (
+            <div className="border-b border-[hsl(var(--border)/0.4)] px-5 py-4">
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
+                <CalendarClock className="size-3" />
+                {t("friendDetail.bestTime", { defaultValue: "Best time to catch them" })}
+                {(() => {
+                  // Confidence reflects how much history backs the prediction.
+                  // observation_days is the number of distinct calendar days we
+                  // recorded this friend online; more days = more reliable.
+                  const days = prediction.observation_days;
+                  const level = days >= 14 ? "high" : days >= 7 ? "medium" : "low";
+                  const cls =
+                    level === "high"
+                      ? "bg-emerald-500/15 text-emerald-500"
+                      : level === "medium"
+                        ? "bg-amber-500/15 text-amber-500"
+                        : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]";
+                  return (
+                    <span
+                      className={cn("ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-medium normal-case tracking-normal", cls)}
+                      title={t("friendDetail.confidenceHint", {
+                        defaultValue: "Based on {{days}} days of observed online history",
+                        days,
+                      })}
+                    >
+                      {t(`friendDetail.confidence.${level}`, {
+                        defaultValue:
+                          level === "high" ? "High confidence" : level === "medium" ? "Medium confidence" : "Low confidence",
+                      })}
+                    </span>
+                  );
+                })()}
+              </div>
+              <div className="flex flex-col gap-1">
+                {prediction.top_windows.map((w, i) => {
+                  const day = new Intl.DateTimeFormat(i18n.language, { weekday: "long" })
+                    .format(new Date(Date.UTC(2024, 0, 7 + w.day_of_week))); // 2024-01-07 is a Sunday
+                  const fmtHour = (h: number) =>
+                    new Intl.DateTimeFormat(i18n.language, { hour: "numeric" })
+                      .format(new Date(2024, 0, 1, h));
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 rounded px-2 py-1 text-[10px] hover:bg-[hsl(var(--muted)/0.5)]"
+                    >
+                      <span className="flex-1 truncate text-[hsl(var(--foreground)/0.8)]">
+                        {t("friendDetail.bestTimeWindow", {
+                          defaultValue: "{{day}} {{start}}–{{end}}",
+                          day,
+                          start: fmtHour(w.start_hour),
+                          end: fmtHour(w.end_hour),
+                        })}
+                      </span>
+                      <span
+                        className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-[hsl(var(--muted))]"
+                        title={t("friendDetail.bestTimeDays", {
+                          defaultValue: "Seen online on {{count}} days here",
+                          count: w.observation_days,
+                        })}
+                      >
+                        <span
+                          className="block h-full rounded-full bg-[hsl(var(--primary))]"
+                          style={{ width: `${Math.round(w.score * 100)}%` }}
+                        />
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-[9px] italic text-[hsl(var(--muted-foreground)/0.6)]">
+                {t("friendDetail.bestTimeHint", {
+                  defaultValue: "Estimated from observed online history.",
+                })}
+              </p>
+            </div>
+          )}
+
           {/* ========== 5. Recent Activity ========== */}
           <div className="border-b border-[hsl(var(--border)/0.4)] px-5 py-4">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
               <History className="size-3" />
               {t("friendDetail.recentActivity", { defaultValue: "Recent Activity" })}
             </div>
-            {logData?.items && logData.items.length > 0 ? (
+            {logItems.length > 0 ? (
               <div className="flex flex-col gap-1">
-                {logData.items.map((item) => {
+                {logItems.map((item) => {
                   const Icon = EVENT_ICONS[item.event_type] ?? History;
                   return (
                     <div
@@ -661,9 +889,71 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
             );
           })()}
 
+          {/* ========== 5b2. Name History (VRCX parity: former display names) ========== */}
+          {(() => {
+            const formerNames = deriveNameHistory(logData?.items ?? [], friend?.displayName);
+            if (formerNames.length === 0) return null;
+            return (
+              <div className="border-b border-[hsl(var(--border)/0.4)] px-5 py-4">
+                <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
+                  <Tag className="size-3" />
+                  {t("friendDetail.nameHistory", { defaultValue: "Former Names" })}
+                  <span className="font-mono text-[hsl(var(--muted-foreground)/0.5)]">({formerNames.length})</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {formerNames.slice(0, 10).map((entry, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded px-2 py-1 text-[10px] hover:bg-[hsl(var(--muted)/0.5)]">
+                      <Tag className="size-3 shrink-0 text-sky-400" />
+                      <span className="flex-1 truncate text-[hsl(var(--foreground)/0.8)]">
+                        {entry.name}
+                      </span>
+                      <span className="shrink-0 font-mono text-[9px] text-[hsl(var(--muted-foreground))]">
+                        {relativeTime(entry.lastSeen)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ========== 5c. Shared Worlds (co-presence — BEYOND VRCX surfacing) ========== */}
+          {(() => {
+            const encounters = (encountersData?.items ?? [])
+              .filter((e) => e.world_id && e.world_id.startsWith("wrld_"))
+              .sort((a, b) => (b.last_seen ?? "").localeCompare(a.last_seen ?? ""));
+            if (encounters.length === 0) return null;
+            const totalTimesSeen = encounters.reduce((sum, e) => sum + (e.encounter_count || 0), 0);
+            return (
+              <div className="border-b border-[hsl(var(--border)/0.4)] px-5 py-4">
+                <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
+                  <MapPin className="size-3" />
+                  {t("friendDetail.sharedWorlds", { defaultValue: "Shared Worlds" })}
+                  <span className="font-mono text-[hsl(var(--muted-foreground)/0.5)]">
+                    ({encounters.length} · {t("friendDetail.timesSeen", { defaultValue: "{{n}}x seen", n: totalTimesSeen })})
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {encounters.slice(0, 10).map((e, i) => (
+                    <div key={`${e.world_id}-${i}`} className="flex items-center gap-2 rounded px-2 py-1 text-[10px] hover:bg-[hsl(var(--muted)/0.5)]">
+                      <div className="min-w-0 flex-1">
+                        <EntityLink kind="world" id={e.world_id!} />
+                      </div>
+                      <span className="shrink-0 font-mono text-[9px] text-[hsl(var(--muted-foreground))]">
+                        {e.encounter_count}x
+                      </span>
+                      <span className="shrink-0 font-mono text-[9px] text-[hsl(var(--muted-foreground)/0.7)]">
+                        {relativeTime(e.last_seen ?? "")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ========== 5b. Boop / Quick Action — pick which saved request-invite slot to send ========== */}
           <BoopCard friend={friend} inWorld={inWorld} />
-          {/* ========== End Boop card ========== */}
 
           {/* ========== 6. Friend Note ========== */}
           <div className="px-5 py-4">
@@ -729,12 +1019,67 @@ function BoopCard({
 }) {
   const { t } = useTranslation();
   const [booping, setBooping] = useState(false);
+  // Native VRChat boop (POST /users/{id}/boop). Separate from the saved-
+  // message "ping" below. Debounced via a short local cooldown so rapid
+  // clicks don't spam the endpoint.
+  const [nativeBooping, setNativeBooping] = useState(false);
+  const [nativeBoopCooldown, setNativeBoopCooldown] = useState(false);
+  // Which saved requestInvite slot to attach. 0 is VRChat's default "bare
+  // ping" slot and always exists; slots 1-3 only send text if the user has
+  // configured them in the VRChat client. We read them so the emoji wheel
+  // can actually carry a message instead of just hitting the clipboard.
+  const [slot, setSlot] = useState(0);
+  const [savedMessages, setSavedMessages] = useState<VrcSavedMessage[]>([]);
+  // The signed-in user's own uploaded emoji (VRC+ inventory). Sending one of
+  // these as a native boop makes it play on the recipient's HUD, unlike the
+  // unicode wheel below which only attaches a clipboard hint.
+  const [myEmoji, setMyEmoji] = useState<VrcInventoryItem[]>([]);
+  const [emojiBoopingId, setEmojiBoopingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getSavedMessages("requestInvite")
+      .then((r) => {
+        if (alive) setSavedMessages(r.messages ?? []);
+      })
+      .catch(() => {
+        // Saved messages are best-effort — the bare ping still works without them.
+        if (alive) setSavedMessages([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Load the user's uploaded emoji once. Best-effort: non-supporters or empty
+  // inventories simply get no "my emoji" row.
+  useEffect(() => {
+    let alive = true;
+    listInventory("emoji")
+      .then((r) => {
+        if (alive) setMyEmoji((r.data ?? []).filter((it) => it.itemType === "emoji"));
+      })
+      .catch(() => {
+        if (alive) setMyEmoji([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Index saved messages by slot for quick lookup / cooldown display.
+  const slotsBySlot = new Map<number, VrcSavedMessage>();
+  for (const m of savedMessages) {
+    if (typeof m.slot === "number") slotsBySlot.set(m.slot, m);
+  }
+  const selected = slotsBySlot.get(slot);
+  const onCooldown = (selected?.remainingCooldownMinutes ?? 0) > 0;
 
   async function boop() {
     if (!friend?.id) return;
     try {
       setBooping(true);
-      await requestInvite(friend.id, 0);
+      await requestInvite(friend.id, slot);
       toast.success(t("friendDetail.boopSent", {
         defaultValue: "Boop sent — {{name}} will see a notification.",
         name: friend.displayName ?? "",
@@ -743,6 +1088,47 @@ function BoopCard({
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBooping(false);
+    }
+  }
+
+  // Native boop endpoint — only valid between friends. Debounced with a
+  // 3s local cooldown so the button can't be machine-gunned.
+  async function nativeBoop() {
+    if (!friend?.id || nativeBooping || nativeBoopCooldown) return;
+    try {
+      setNativeBooping(true);
+      await boopUser(friend.id);
+      toast.success(t("friendDetail.nativeBoopSent", {
+        defaultValue: "Booped {{name}}!",
+        name: friend.displayName ?? "",
+      }));
+      setNativeBoopCooldown(true);
+      window.setTimeout(() => setNativeBoopCooldown(false), 3000);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setNativeBooping(false);
+    }
+  }
+
+  // Boop with one of the user's own uploaded emoji. Same /boop endpoint as
+  // nativeBoop but carries the emojiId so it plays on the recipient's HUD.
+  async function emojiBoop(item: VrcInventoryItem) {
+    if (!friend?.id || emojiBoopingId || nativeBoopCooldown) return;
+    try {
+      setEmojiBoopingId(item.id);
+      await boopUser(friend.id, item.id);
+      toast.success(t("friendDetail.emojiBoopSent", {
+        defaultValue: "Booped {{name}} with {{emoji}}!",
+        name: friend.displayName ?? "",
+        emoji: item.name ?? "emoji",
+      }));
+      setNativeBoopCooldown(true);
+      window.setTimeout(() => setNativeBoopCooldown(false), 3000);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEmojiBoopingId(null);
     }
   }
 
@@ -763,24 +1149,104 @@ function BoopCard({
         {t("friendDetail.boop", { defaultValue: "Boop / Ping" })}
       </div>
       <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] p-3">
+        {/* Native boop — instant friends-only ping via the real VRChat
+            /boop endpoint. Distinct from the saved-message ping below. */}
+        <Button
+          variant="tonal"
+          size="sm"
+          className="w-full h-8 mb-2 text-[11px] gap-1.5"
+          disabled={nativeBooping || nativeBoopCooldown}
+          onClick={() => void nativeBoop()}
+        >
+          {nativeBooping ? <Loader2 className="size-3 animate-spin" /> : <BellRing className="size-3" />}
+          {nativeBooping
+            ? t("friendDetail.boopSending", { defaultValue: "Sending…" })
+            : t("friendDetail.nativeBoop", {
+                defaultValue: "Boop {{name}}",
+                name: friend?.displayName ?? "",
+              })}
+        </Button>
+
+        {/* My uploaded emoji — sends a native boop that plays the emoji on the
+            recipient's HUD. Only shown if the user has uploaded any. */}
+        {myEmoji.length > 0 ? (
+          <div className="mb-2">
+            <div className="mb-1 text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))]">
+              {t("friendDetail.myEmoji", { defaultValue: "My emoji" })}
+            </div>
+            <div className="flex flex-wrap gap-1 max-h-[120px] overflow-y-auto">
+              {myEmoji.map((item) => (
+                <EmojiBoopButton
+                  key={item.id}
+                  item={item}
+                  disabled={emojiBoopingId !== null || nativeBoopCooldown}
+                  busy={emojiBoopingId === item.id}
+                  onClick={() => void emojiBoop(item)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <p className="mb-2 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">
           {t("friendDetail.boopHint", {
             defaultValue: "Click an emoji to send a boop notification. The emoji is also copied to your clipboard so you can paste it in VRChat chat.",
           })}
         </p>
 
+        {/* Saved-message slot picker — slot 0 is always a bare ping; slots 1-3
+            send the text the user saved in the VRChat client (if any). */}
+        <div className="mb-2 flex flex-wrap gap-1">
+          {[0, 1, 2, 3].map((n) => {
+            const msg = slotsBySlot.get(n);
+            const cooling = (msg?.remainingCooldownMinutes ?? 0) > 0;
+            const active = slot === n;
+            const label = n === 0
+              ? t("friendDetail.boopEmptySlot", { defaultValue: "(empty — sends bare ping)" })
+              : msg?.message?.trim() || t("friendDetail.boopSlot", { defaultValue: "Slot {{n}}", n });
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setSlot(n)}
+                title={cooling
+                  ? t("friendDetail.boopCooldownTooltip", { defaultValue: "On cooldown — wait before sending again" })
+                  : t("friendDetail.boopSendTooltip", { defaultValue: "Send this message as a request-invite notification" })}
+                className={cn(
+                  "max-w-full truncate rounded-[var(--radius-sm)] border px-2 py-1 text-[10px] transition-colors",
+                  active
+                    ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                    : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--canvas))]",
+                )}
+              >
+                {n === 0
+                  ? t("friendDetail.boopSlot", { defaultValue: "Slot {{n}}", n })
+                  : `${t("friendDetail.boopSlot", { defaultValue: "Slot {{n}}", n })}: ${label}`}
+                {cooling
+                  ? ` · ${t("friendDetail.boopCooldown", { defaultValue: "{{m}}m", m: msg?.remainingCooldownMinutes })}`
+                  : ""}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Send Boop button */}
         <Button
           variant="default"
           size="sm"
           className="w-full h-8 mb-2 text-[11px] gap-1.5"
-          disabled={booping}
+          disabled={booping || onCooldown}
+          title={onCooldown
+            ? t("friendDetail.boopCooldownTooltip", { defaultValue: "On cooldown — wait before sending again" })
+            : undefined}
           onClick={() => void boop()}
         >
           {booping ? <Loader2 className="size-3 animate-spin" /> : <BellRing className="size-3" />}
           {booping
             ? t("friendDetail.boopSending", { defaultValue: "Sending…" })
-            : t("friendDetail.boopSend", { defaultValue: "Boop {{name}}", name: friend?.displayName ?? "" })}
+            : onCooldown
+              ? t("friendDetail.boopCooldown", { defaultValue: "{{m}}m", m: selected?.remainingCooldownMinutes })
+              : t("friendDetail.boopSend", { defaultValue: "Boop {{name}}", name: friend?.displayName ?? "" })}
         </Button>
 
         {/* Emoji wheel */}
@@ -789,8 +1255,9 @@ function BoopCard({
             <button
               key={e}
               type="button"
-              className="rounded-[var(--radius-sm)] bg-[hsl(var(--canvas))] size-8 grid place-items-center text-[15px] hover:bg-[hsl(var(--primary)/0.15)] hover:scale-110 active:scale-95 transition-all cursor-pointer"
+              className="rounded-[var(--radius-sm)] bg-[hsl(var(--canvas))] size-8 grid place-items-center text-[15px] hover:bg-[hsl(var(--primary)/0.15)] hover:scale-110 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-[hsl(var(--canvas))]"
               title={t("friendDetail.boopSendEmoji", { defaultValue: "Boop with {{e}}", e })}
+              disabled={booping || onCooldown}
               onClick={() => {
                 void navigator.clipboard.writeText(e);
                 void boop();
@@ -827,5 +1294,48 @@ function BoopCard({
         </div>
       </div>
     </div>
+  );
+}
+
+// A single uploaded-emoji tile in the boop card. Renders the cached thumbnail
+// and fires a native boop carrying this emoji's id when clicked.
+function EmojiBoopButton({
+  item,
+  disabled,
+  busy,
+  onClick,
+}: {
+  item: VrcInventoryItem;
+  disabled: boolean;
+  busy: boolean;
+  onClick: () => void;
+}) {
+  const { t } = useTranslation();
+  const thumbUrl = item.thumbnailImageUrl || item.imageUrl || "";
+  const { url } = useCachedImageUrl(`boop-emoji:${item.id}`, thumbUrl);
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      title={t("friendDetail.emojiBoopTooltip", {
+        defaultValue: "Boop with {{emoji}}",
+        emoji: item.name ?? "this emoji",
+      })}
+      className="relative size-9 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] overflow-hidden hover:border-[hsl(var(--primary)/0.55)] hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+    >
+      {url ? (
+        <img src={url} alt={item.name ?? "emoji"} className="size-full object-cover" />
+      ) : (
+        <div className="size-full grid place-items-center text-[hsl(var(--muted-foreground))]">
+          <BellRing className="size-3" />
+        </div>
+      )}
+      {busy ? (
+        <div className="absolute inset-0 grid place-items-center bg-black/40">
+          <Loader2 className="size-3 animate-spin text-white" />
+        </div>
+      ) : null}
+    </button>
   );
 }

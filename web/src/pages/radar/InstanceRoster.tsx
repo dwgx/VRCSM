@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { usePipelineEvent } from "@/lib/pipeline-events";
-import { Users, RefreshCcw, MapPin } from "lucide-react";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { Users, RefreshCcw, MapPin, ArrowDownAZ } from "lucide-react";
 
 interface PlayerEventRow {
   id: number;
@@ -106,7 +107,14 @@ export function InstanceRoster() {
     });
   });
 
+  const [sortAlpha, setSortAlpha] = useUiPrefBoolean("vrcsm.radar.roster.sortAlphabetical", false);
+
   const liveList = Array.from(livePlayers.values());
+  if (sortAlpha) {
+    // Default order is join order (Map insertion); alphabetical helps scan a
+    // crowded instance for a specific name.
+    liveList.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -117,6 +125,17 @@ export function InstanceRoster() {
               <Users className="size-3" />
               {t("radar.liveRoster", { defaultValue: "Live Instance Roster" })}
               <Badge variant="secondary">{liveList.length}</Badge>
+              <Button
+                variant={sortAlpha ? "tonal" : "ghost"}
+                size="icon"
+                className="ml-auto size-6"
+                title={t("radar.rosterSortAlphabetical", { defaultValue: "Sort alphabetically" })}
+                aria-label={t("radar.rosterSortAlphabetical", { defaultValue: "Sort alphabetically" })}
+                aria-pressed={sortAlpha}
+                onClick={() => setSortAlpha((c) => !c)}
+              >
+                <ArrowDownAZ className="size-3" />
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-1">

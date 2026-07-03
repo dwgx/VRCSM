@@ -291,7 +291,13 @@ Result<std::monostate> ValidateDownloadedPackage(
         return Error{"update_size", "installer size does not match expected size", 0};
     }
 
-    if (options.expectedSha256.has_value() && !options.expectedSha256->empty())
+    // SHA256 is mandatory. Size-only validation lets a same-size MSI pass and
+    // then runs at installer privilege, so we fail closed when the release did
+    // not publish a `SHA256:` line. package_release.ps1 always emits one.
+    if (!options.expectedSha256.has_value() || options.expectedSha256->empty())
+    {
+        return Error{"update_hash", "release is missing a SHA256 hash; refusing to install", 0};
+    }
     {
         auto actualSha = ComputeSha256(canonicalPath, options.onProgress);
         if (!isOk(actualSha))

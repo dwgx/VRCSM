@@ -185,7 +185,7 @@
       "send": "भेजें",
       "sent": "चैटबॉक्स भेजा गया",
       "rateLimit": "संदेशों के बीच 2 सेकंड प्रतीक्षा करें (VRChat दर सीमा)",
-      "rateLimitBurst": "संदेशों के बीच 2 सेकंड प्रतीक्षा करें (VRChat दर सीमा)"
+      "rateLimitBurst": "Chatbox हर 5 सेकंड में 5 manual messages की अनुमति देता है। {{seconds}}s प्रतीक्षा करें।"
     },
     "studio": {
       "title": "OSC Studio",
@@ -245,7 +245,123 @@
       "startAutoShort": "ऑटो",
       "noCardSelected": "Select a card first"
     },
-    "sendFailed": "OSC भेजना विफल रहा"
+    "sendFailed": "OSC भेजना विफल रहा",
+    "page": {
+      "subtitle": "VRChat OSC messages बनाएं, भेजे जाने वाले content का सटीक preview देखें, और send/receive loop एक ही जगह देखें।"
+    },
+    "profile": {
+      "label": "Profile",
+      "cardCount": "{{count}} cards",
+      "new": "नया profile",
+      "rename": "Profile का नाम बदलें",
+      "delete": "Profile हटाएं",
+      "renameTitle": "Profile का नाम बदलें",
+      "deleteTitle": "यह profile हटाएं?",
+      "deleteBody": "\"{{name}}\" और इसके cards हट जाएंगे। यह वापस नहीं होगा।"
+    },
+    "conn": {
+      "label": "Target",
+      "host": "OSC host",
+      "sendPort": "Send port",
+      "hardware": "Hardware",
+      "hardwareNone": "कोई hardware data नहीं"
+    },
+    "io": {
+      "button": "Import / Export",
+      "title": "Profile Import / Export",
+      "desc": "Export active profile के cards को JSON के रूप में कॉपी करता है। JSON पेस्ट करके import करें ताकि इस profile के cards बदल जाएं।",
+      "export": "Export",
+      "import": "Import",
+      "loadFile": "फ़ाइल लोड करें",
+      "copied": "Profile clipboard पर कॉपी हुआ",
+      "exportReady": "Profile कॉपी के लिए तैयार",
+      "imported": "Profile import हुआ"
+    },
+    "list": {
+      "title": "Messages",
+      "reset": "डिफ़ॉल्ट पर रीसेट करें",
+      "resetTitle": "Messages रीसेट करें?",
+      "resetBody": "यह मौजूदा profile के messages को बिल्ट-इन डिफ़ॉल्ट से बदल देगा।",
+      "empty": "अभी कोई message नहीं। शुरू करने के लिए \"Add message\" इस्तेमाल करें।"
+    },
+    "card": {
+      "emptyPreview": "(कोई output नहीं)",
+      "send": "भेजें",
+      "autoTitle": "तय अंतराल पर अपने-आप भेजें",
+      "autoStart": "Auto",
+      "autoStop": "रोकें",
+      "enable": "चालू करें",
+      "disable": "बंद करें",
+      "moveUp": "ऊपर ले जाएँ",
+      "moveDown": "नीचे ले जाएँ"
+    },
+    "editor": {
+      "empty": "बाईं ओर से कोई संदेश चुनें, या editing शुरू करने के लिए नया जोड़ें।",
+      "title": "संदेश संपादित करें",
+      "delete": "संदेश हटाएँ",
+      "name": "नाम",
+      "group": "समूह",
+      "template": "Chatbox टेक्स्ट",
+      "templatePlaceholder": "टेक्स्ट लिखें और {variables} डालें। उदाहरण: CPU {cpu.loadPct} {cpu.tempC}",
+      "address": "OSC address",
+      "type": "प्रकार",
+      "value": "मान",
+      "previewLabel": "यह भेजा जाएगा",
+      "noOutput": "(कुछ नहीं — template खाली है)",
+      "interval": "हर",
+      "send": "अभी भेजें",
+      "startAuto": "Auto भेजें",
+      "stopAuto": "Auto रोकें",
+      "rateHint": "Chatbox सीमा: 5 सेकंड में 5 मैनुअल sends; auto send हर 2 सेकंड में एक संदेश तक सीमित रहता है।",
+      "insertVariable": "Variable डालें",
+      "searchVariable": "CPU, GPU, समय खोजें...",
+      "noVariables": "कोई variable मेल नहीं खाता।"
+    },
+    "add": {
+      "button": "संदेश जोड़ें",
+      "chatbox": "खाली chatbox संदेश",
+      "raw": "खाली OSC value संदेश",
+      "presets": "Presets"
+    },
+    "loop": {
+      "title": "भेजें और पाएं",
+      "listening": "सुन रहा है",
+      "quickSend": "तुरंत भेजें",
+      "address": "Address",
+      "type": "वैल्यू टाइप",
+      "value": "Value",
+      "send": "भेजें",
+      "listenPort": "Listen port",
+      "start": "सुनें",
+      "stop": "रोकें",
+      "clear": "साफ़ करें",
+      "waiting": "संदेशों की प्रतीक्षा में...",
+      "idle": "संदेश भेजें या listener चालू करें।",
+      "in": "अंदर",
+      "out": "बाहर"
+    },
+    "avatar": {
+      "title": "Avatar parameters",
+      "hint": "लोकल Avatar का OSC config पढ़कर उसके parameters को value messages के रूप में जोड़ता है।",
+      "missing": "Avatar id डालें या चुनें",
+      "loaded": "{{count}} parameters लोड हुए",
+      "load": "लोड करें",
+      "paramName": "Parameter का नाम",
+      "paramType": "Parameter टाइप",
+      "noParams": "इस Avatar फ़ाइल में कोई parameters नहीं हैं।"
+    },
+    "hw": {
+      "title": "हार्डवेयर वैल्यू",
+      "loading": "लोड हो रहा है",
+      "identity": "पहचान",
+      "live": "लाइव sensors",
+      "sensorNeeded": "sensor provider ज़रूरी"
+    },
+    "auto": {
+      "badge": "AUTO",
+      "stats": "भेजे {{sent}} · छोड़े {{skipped}}",
+      "nextIn": "अगला {{seconds}}s"
+    }
   },
   "auth": {
     "signIn": "साइन इन",
@@ -651,7 +767,10 @@
     "jumpTo": "यहाँ जाएँ",
     "seconds": "s",
     "ready": "तैयार",
-    "partial": "आंशिक"
+    "partial": "आंशिक",
+    "add": "जोड़ें",
+    "delete": "हटाएं",
+    "reset": "रीसेट"
   },
   "about": {
     "title": "VRCSM के बारे में",
@@ -1432,7 +1551,8 @@
       "registry": "VRChat रजिस्ट्री",
       "steamvr": "SteamVR",
       "experimental": "प्रायोगिक",
-      "vrDiag": "VR डायग्नोस्टिक्स"
+      "vrDiag": "VR डायग्नोस्टिक्स",
+      "data": "डेटा प्रबंधन"
     },
     "vrDiag": {
       "heading": "VR डायग्नोस्टिक्स",
@@ -1473,6 +1593,63 @@
       "label": "विंडोज के साथ लॉन्च करें",
       "hint": "जब आप विंडोज में लॉग इन करते हैं तो VRCSM स्वचालित रूप से शुरू करें।",
       "errorUpdate": "ऑटोस्टार्ट अपडेट नहीं हो सका"
+    },
+    "data": {
+      "heading": "डेटा प्रबंधन",
+      "blurb": "VRCSM इस मशीन पर जो cache और डेटा रखता है, उसकी समीक्षा करें और साफ़ करें। दोबारा बनने वाले cache साफ़ करना सुरक्षित है; history और asset डेटा हमेशा के लिए हट जाते हैं।",
+      "dbSize": "Database फ़ाइल (vrcsm.db): {{size}}",
+      "loading": "उपयोग लोड हो रहा है…",
+      "loadError": "उपयोग लोड नहीं हुआ: {{error}}",
+      "rowCount": "{{count}} पंक्तियां",
+      "selectedCount": "{{count}} चुने गए",
+      "clearSelected": "चुने गए साफ़ करें",
+      "clearing": "साफ़ हो रहा है…",
+      "clearSuccess": "{{count}} आइटम साफ़ किए।",
+      "clearPartial": "साफ़ किया, {{count}} विफल।",
+      "clearError": "सफ़ाई विफल: {{error}}",
+      "confirmTitle": "सफ़ाई की पुष्टि करें",
+      "confirmIrreversible": "नीचे दिए आइटम हमेशा के लिए हट जाएंगे। इसे पूर्ववत नहीं किया जा सकता।",
+      "confirmSafe": "नीचे दिए आइटम साफ़ हो जाएंगे। Cache अपने आप दोबारा बन जाते हैं।",
+      "confirmClear": "अभी साफ़ करें",
+      "cancel": "रद्द करें",
+      "dangerAck": "मैं समझता हूं कि इससे मेरे अपने asset (favorites, notes, tags) हमेशा के लिए मिट जाएंगे।",
+      "group": {
+        "cache": "दोबारा बनने वाले cache",
+        "cacheDesc": "साफ़ करना सुरक्षित है। VRCSM इन्हें ज़रूरत अनुसार अपने आप दोबारा बना लेता है।",
+        "history": "History और analytics डेटा",
+        "historyDesc": "स्थानीय रूप से दर्ज गतिविधि। साफ़ करना स्थायी है और पूर्ववत नहीं हो सकता।",
+        "experimental": "Experimental feature डेटा",
+        "experimentalDesc": "Experimental features से बना डेटा।",
+        "danger": "Danger zone",
+        "dangerDesc": "आपके अपने assets। साफ़ करने पर favorites, notes और tags हमेशा के लिए मिट जाएँगे।"
+      },
+      "item": {
+        "cache": {
+          "thumbnails": "Thumbnail cache",
+          "previews": "Avatar preview cache",
+          "screenshotThumbs": "Screenshot thumbnails",
+          "updates": "डाउनलोड किए updates",
+          "pluginFeed": "Plugin feed cache",
+          "index": "Cache index",
+          "assetCache": "Asset metadata cache",
+          "benchmark": "Avatar benchmark cache",
+          "onlineMirror": "Online mirror (avatars, prints, inventory)"
+        },
+        "history": {
+          "worldVisits": "World visit इतिहास",
+          "playerEvents": "Player events और मुलाक़ातें",
+          "avatarHistory": "Avatar इतिहास",
+          "friendLog": "Friend log और presence",
+          "sessions": "Session इतिहास",
+          "logEvents": "Log events"
+        },
+        "experimental": {
+          "embeddings": "Visual search embeddings"
+        },
+        "assets": {
+          "favorites": "स्थानीय favorites, notes और tags"
+        }
+      }
     }
   },
   "imageZoom": {

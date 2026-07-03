@@ -4,6 +4,8 @@
 #include "StringUtil.h"
 #include "UrlProtocol.h"
 
+#include "../core/ToastNotifier.h"
+
 namespace
 {
 std::wstring GetErrorMessage(const std::exception& ex)
@@ -39,6 +41,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nShowCmd)
         // the app). Registration is best-effort — failures only disable
         // clickable links, not the app itself.
         vrcsm::host::RegisterProtocolHandlers();
+
+        // Set the process AppUserModelID and create the Start-menu shortcut
+        // carrying the same AUMID, so native Action Center toasts can be
+        // raised (required for unpackaged apps). Best-effort: failure only
+        // disables toasts, never the app.
+        vrcsm::core::ToastNotifier::EnsureSetup();
 
         App app;
         const int exitCode = app.Run(hInstance, nShowCmd);

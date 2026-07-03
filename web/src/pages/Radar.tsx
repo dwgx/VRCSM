@@ -14,6 +14,8 @@ import {
   BarChart3,
   FileClock,
   Users,
+  Activity,
+  ScrollText,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { useVrcProcess } from "@/lib/vrc-context";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { FriendLogPanel } from "@/pages/FriendLog";
+import { FeedPanel } from "@/pages/Feed";
+import { GameLogPanel } from "@/pages/GameLog";
 
 import type { RadarTab } from "./radar/radar-types";
 import { RadarEngine } from "./radar/RadarEngine";
@@ -104,11 +108,41 @@ export default function Radar() {
             <Users className="size-3.5" />
             {t("radar.rosterTab", { defaultValue: "Instance Roster" })}
           </button>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+              tab === "feed"
+                ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
+            )}
+            onClick={() => setTab("feed")}
+          >
+            <Activity className="size-3.5" />
+            {t("feed.tab", { defaultValue: "Feed" })}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+              tab === "gamelog"
+                ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-raised))]",
+            )}
+            onClick={() => setTab("gamelog")}
+          >
+            <ScrollText className="size-3.5" />
+            {t("gameLog.tab", { defaultValue: "Game Log" })}
+          </button>
         </div>
       </header>
 
       {tab === "roster" ? (
         <InstanceRoster />
+      ) : tab === "feed" ? (
+        <FeedPanel embedded />
+      ) : tab === "gamelog" ? (
+        <GameLogPanel embedded />
       ) : tab === "history" ? (
         <FriendLogPanel embedded />
       ) : tab === "analysis" ? (

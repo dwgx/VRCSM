@@ -111,4 +111,11 @@ Result<TelemetrySnapshot> CollectTelemetry();
 std::vector<SensorReading> ParseAida64SensorValuesForTest(const std::string& xml);
 std::optional<double> AcpiTenthsKelvinToCelsiusForTest(double value);
 
+// Pure CPU-load math from two cumulative GetSystemTimes readings (100ns ticks).
+// `kernel` includes idle time, per the GetSystemTimes contract. Newer sample is
+// the second triple. Returns nullopt on counter wrap or a zero-length interval.
+std::optional<double> CpuLoadFromTicksForTest(
+    std::uint64_t idle0, std::uint64_t kernel0, std::uint64_t user0,
+    std::uint64_t idle1, std::uint64_t kernel1, std::uint64_t user1);
+
 } // namespace vrcsm::core::hw

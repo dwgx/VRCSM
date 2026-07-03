@@ -15,7 +15,9 @@ namespace vrcsm::core
 /// percent of lines carry structured events).
 ///
 /// Event shape:
-///   { "kind": "player" | "avatarSwitch" | "screenshot" | "worldSwitch",
+///   { "kind": "player" | "avatarSwitch" | "screenshot" | "worldSwitch"
+///           | "videoPlay" | "portalSpawn" | "voteKick" | "joinBlocked"
+///           | "stickerSpawn",
 ///     "data": { ...same layout as the batch LogParser emits... } }
 ///
 /// The frontend can cast the `data` field straight to the existing

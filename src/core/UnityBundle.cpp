@@ -20,6 +20,11 @@ namespace vrcsm::core
 namespace
 {
 
+// blocksInfo holds only the block + node tables (each capped at 0x10000
+// entries). Even at worst case that is a few MiB; 64 MiB is a generous ceiling
+// that rejects a crafted header asking for a huge decompression allocation.
+constexpr std::uint32_t kMaxBlocksInfoSize = 64u * 1024u * 1024u;
+
 // ─── Big-endian scalar readers ───────────────────────────────────────
 // Unity bundle headers are network-byte-order regardless of the target
 // platform's endianness, which differs from the nested SerializedFile
@@ -381,6 +386,15 @@ Result<UnityBundle> parseUnityBundle(const std::filesystem::path& path)
         return Error{"bundle_invalid", "Truncated UnityFS header"};
     }
 
+    // blocksInfo is metadata (block + node tables, each capped at 0x10000
+    // entries below). A legitimate blocksInfo is well under a few MiB; cap the
+    // attacker-supplied uncompressedInfoSize so decompressBlock can't be asked
+    // to allocate a huge buffer before any payload is validated.
+    if (uncompressedInfoSize > kMaxBlocksInfoSize)
+    {
+        return Error{"bundle_invalid", "blocksInfo size exceeds sanity cap"};
+    }
+
     // Per Unity source (kArchiveFlags* in BundleFile), flags encode:
     //   bits 0..5  → compression type for blocksInfo   (0x3F)
     //   bit  6     → blocksInfo + directoryInfo combined (0x40)
@@ -632,6 +646,10 @@ Result<std::monostate> validateUnityBundleStructure(const std::filesystem::path&
     if (compressedInfoSize == 0 || uncompressedInfoSize == 0)
     {
         return Error{"bundle_invalid", "BlocksInfo sizes are empty"};
+    }
+    if (uncompressedInfoSize > kMaxBlocksInfoSize)
+    {
+        return Error{"bundle_invalid", "blocksInfo size exceeds sanity cap"};
     }
 
     constexpr std::uint32_t kBlocksInfoAtEnd = 0x80;

@@ -28,11 +28,16 @@ import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { getTrueCacheCategoryCount, getTrueCacheLabel } from "@/lib/report-metrics";
 import { formatDate } from "@/lib/utils";
+import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { countOnlineFriends } from "@/lib/vrcFriends";
+import type { FriendsListResult } from "@/lib/types";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { VrcProcessProvider, useVrcProcess } from "@/lib/vrc-context";
 import { useDiscordPresence } from "@/lib/useDiscordPresence";
 import { useScreenshotAutoInject } from "@/lib/useScreenshotAutoInject";
 import { useFriendsPipelineSync } from "@/lib/useFriendsPipelineSync";
+import { useToastPrefsSync } from "@/lib/notifications";
+import { useTtsAnnounce } from "@/lib/tts";
 import { useStrangerAlert } from "@/lib/useStrangerAlert";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { Download } from "lucide-react";
@@ -43,7 +48,7 @@ import { Download } from "lucide-react";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Bundles = lazy(() => import("@/pages/Bundles"));
 const Library = lazy(() => import("@/pages/Library"));
-const Avatars = lazy(() => import("@/pages/Avatars"));
+const ModelsHub = lazy(() => import("@/pages/ModelsHub"));
 const Worlds = lazy(() => import("@/pages/Worlds"));
 const Friends = lazy(() => import("@/pages/Friends"));
 const Groups = lazy(() => import("@/pages/Groups"));
@@ -114,6 +119,17 @@ function AppContent() {
   const [sidebarHidden] = useUiPrefBoolean("vrcsm.layout.sidebar.hidden", false);
   const [dockHidden] = useUiPrefBoolean("vrcsm.layout.dock.hidden", false);
 
+  // Live online-friend tally for the status bar. Reads the shared friends.list
+  // cache (kept fresh by useFriendsPipelineSync) so the number ticks in real
+  // time without its own poll, and never disagrees with the Dashboard card.
+  const { status: authStatus } = useAuth();
+  const { data: friendsData } = useIpcQuery<undefined, FriendsListResult>(
+    "friends.list",
+    undefined,
+    { enabled: authStatus.authed, staleTime: 30_000 },
+  );
+  const friendsOnline = friendsData ? countOnlineFriends(friendsData.friends) : null;
+
   // Discord Rich Presence — opt-in, configured under Settings → Discord.
   // No-op when disabled or no client_id is set.
   useDiscordPresence();
@@ -127,10 +143,19 @@ function AppContent() {
   // Dashboard, and any other consumer of useIpcQuery("friends.list").
   useFriendsPipelineSync();
 
+  // Desktop toast notifications — push the user's per-event-type toggles
+  // (default OFF, configured under Settings) to the native host so it can
+  // raise Action Center toasts for friend-online / invite / friend-request.
+  useToastPrefsSync();
+
   // Stranger-in-Private warning — toast when a non-friend joins the
   // user's non-public instance. Opt-out is per-user via dismissing the
   // toast; a more granular "always allow this user" VIP list is Tier S.
   useStrangerAlert();
+
+  // Spoken announcements for live social events via the Web Speech API
+  // (default OFF, configured under Settings). Parallel to the toast channel.
+  useTtsAnnounce();
 
   const routeMeta = useMemo<Record<string, RouteShellMeta>>(
     () => ({
@@ -150,6 +175,13 @@ function AppContent() {
         title: t("nav.avatars"),
         breadcrumb: [t("nav.category.assets", { defaultValue: "Assets" }), t("nav.avatars")],
       },
+      "/models": {
+        title: t("nav.models", { defaultValue: "Model Database" }),
+        breadcrumb: [
+          t("nav.category.assets", { defaultValue: "Assets" }),
+          t("nav.models", { defaultValue: "Model Database" }),
+        ],
+      },
       "/worlds": {
         title: t("nav.worlds"),
         breadcrumb: [t("nav.category.assets", { defaultValue: "Assets" }), t("nav.worlds")],
@@ -165,6 +197,10 @@ function AppContent() {
       "/profile": {
         title: t("nav.profile"),
         breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.profile")],
+      },
+      "/vrcplus": {
+        title: t("nav.vrcPlus", { defaultValue: "VRC+" }),
+        breadcrumb: [t("nav.category.social", { defaultValue: "Social" }), t("nav.vrcPlus", { defaultValue: "VRC+" })],
       },
       "/vrchat": {
         title: t("nav.vrchat"),
@@ -292,7 +328,6 @@ function AppContent() {
   // click on each nav entry renders instantly from React Query cache.
   // These endpoints are auth-gated but skip cleanly if the session
   // isn't ready yet — the next hook fire picks them up.
-  const { status: authStatus } = useAuth();
   useEffect(() => {
     if (!authStatus.authed) return;
     void queryClient.prefetchQuery({
@@ -493,11 +528,13 @@ function AppContent() {
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/bundles" element={<Bundles />} />
                                 <Route path="/library" element={<Library />} />
-                                <Route path="/avatars" element={<Avatars />} />
+                                <Route path="/avatars" element={<ModelsHub />} />
+                                <Route path="/models" element={<Navigate to="/avatars?tab=owned" replace />} />
                                 <Route path="/worlds" element={<Worlds />} />
                                 <Route path="/friends" element={<Friends />} />
                                 <Route path="/groups" element={<Groups />} />
                                 <Route path="/profile" element={<Profile />} />
+                                <Route path="/vrcplus" element={<Navigate to="/vrchat?tab=vrcplus" replace />} />
                                 <Route path="/vrchat" element={<VrchatWorkspace />} />
                                 <Route path="/screenshots" element={<Screenshots />} />
                                 <Route path="/friend-log" element={<Navigate to="/radar" replace />} />
@@ -550,6 +587,7 @@ function AppContent() {
                     breadcrumb={currentMeta.breadcrumb}
                     cacheTotal={shellReport ? trueCacheLabel : "—"}
                     currentPageLabel={currentMeta.title}
+                    friendsOnline={friendsOnline}
                     version={shellVersion}
                     vrcRunning={vrcRunning}
                   />

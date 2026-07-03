@@ -58,5 +58,12 @@ vrcget-bin/
 tools/build-*-force.bat
 tools/build-test-extract.bat
 
+# Repo-root scratch build/test launchers (hardcode vcvars path — not portable)
+_build_*.bat
+_tmp_*.bat
+
+# Review/screenshot scratch artifacts
+*-review.png
+
 .playwright-mcp/
 .codegraph/

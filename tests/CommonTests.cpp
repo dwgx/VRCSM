@@ -4,14 +4,20 @@
 #include <cctype>
 #include <chrono>
 #include <fstream>
+#include <iostream>
+#include <map>
 
 #include <Windows.h>
 #include <sqlite3.h>
 #include <wil/resource.h>
 
 #include "core/AvatarPreview.h"
+#include "core/AvatarIdHarvest.h"
 #include "core/Common.h"
 #include "core/Database.h"
+#include "core/DiscordRpc.h"
+#include "core/ToastNotifier.h"
+#include "core/VrOverlayNotifier.h"
 #include "core/JunctionUtil.h"
 #include "core/LogAtoms.h"
 #include "core/LogEventClassifier.h"
@@ -113,6 +119,24 @@ std::int64_t QueryInt64(sqlite3* db, const char* sql)
     return sqlite3_column_int64(stmt, 0);
 }
 
+std::string QueryText(sqlite3* db, const char* sql)
+{
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+    {
+        ADD_FAILURE() << sqlite3_errmsg(db);
+        return {};
+    }
+    const auto finalize = wil::scope_exit([&]() { sqlite3_finalize(stmt); });
+    if (sqlite3_step(stmt) != SQLITE_ROW)
+    {
+        ADD_FAILURE() << "query returned no rows";
+        return {};
+    }
+    const auto* text = sqlite3_column_text(stmt, 0);
+    return text != nullptr ? reinterpret_cast<const char*>(text) : std::string{};
+}
+
 } // namespace
 
 TEST(CommonTests, EnsureWithinBaseAcceptsNestedChild)
@@ -188,6 +212,49 @@ TEST(CommonTests, AcpiThermalZoneConvertsTenthsKelvinToCelsius)
     EXPECT_NEAR(*value, 27.05, 0.001);
     EXPECT_FALSE(vrcsm::core::hw::AcpiTenthsKelvinToCelsiusForTest(0.0).has_value());
     EXPECT_FALSE(vrcsm::core::hw::AcpiTenthsKelvinToCelsiusForTest(5000.0).has_value());
+}
+
+TEST(CommonTests, CpuLoadFromTicksComputesBusyFraction)
+{
+    using vrcsm::core::hw::CpuLoadFromTicksForTest;
+
+    // kernel includes idle. Interval: kernel +100 (of which idle +25), user +0.
+    // total = kernel(100) + user(0) = 100; busy = 100 - 25 = 75 -> 75%.
+    auto threeQuarters = CpuLoadFromTicksForTest(0, 0, 0, 25, 100, 0);
+    ASSERT_TRUE(threeQuarters.has_value());
+    EXPECT_NEAR(*threeQuarters, 75.0, 0.001);
+
+    // Fully idle: idle delta == kernel delta, user 0 -> 0%.
+    auto idle = CpuLoadFromTicksForTest(0, 0, 0, 200, 200, 0);
+    ASSERT_TRUE(idle.has_value());
+    EXPECT_NEAR(*idle, 0.0, 0.001);
+
+    // Fully busy: no idle, all in user -> 100%.
+    auto busy = CpuLoadFromTicksForTest(0, 0, 0, 0, 50, 150);
+    ASSERT_TRUE(busy.has_value());
+    EXPECT_NEAR(*busy, 100.0, 0.001);
+}
+
+TEST(CommonTests, CpuLoadFromTicksRejectsWrapAndZeroInterval)
+{
+    using vrcsm::core::hw::CpuLoadFromTicksForTest;
+
+    // Zero-length interval -> no value.
+    EXPECT_FALSE(CpuLoadFromTicksForTest(10, 20, 30, 10, 20, 30).has_value());
+    // Counter wrap (newer < older) -> no value, never a negative/garbage load.
+    EXPECT_FALSE(CpuLoadFromTicksForTest(100, 200, 300, 50, 100, 150).has_value());
+}
+
+TEST(CommonTests, PackLuidIsStableAndDistinct)
+{
+    using vrcsm::core::hw::PackLuid;
+
+    // Low/high parts occupy disjoint halves; a negative HighPart must not collide
+    // with a different adapter (bit-pattern packing, not arithmetic).
+    EXPECT_EQ(PackLuid(0x12345678u, 0), 0x0000000012345678ull);
+    EXPECT_EQ(PackLuid(0, 1), 0x0000000100000000ull);
+    EXPECT_EQ(PackLuid(0xFFFFFFFFu, -1), 0xFFFFFFFFFFFFFFFFull);
+    EXPECT_NE(PackLuid(1, 0), PackLuid(0, 1));
 }
 
 TEST(CommonTests, DeleteExecuteRejectsPreservedCwpRootTargets)
@@ -445,6 +512,132 @@ TEST(CommonTests, UnifiedFeedMergesSourcesInTimeOrder)
     auto windowed = db.UnifiedFeed(50, 0, std::nullopt, std::nullopt, "2026-06-24T10:30:00Z");
     ASSERT_TRUE(vrcsm::core::isOk(windowed));
     EXPECT_EQ(vrcsm::core::value(windowed).size(), 2u);
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// Own-algorithm: CoPresenceEgoNetwork reconstructs per-user presence intervals
+// inside each (world_id, instance_id) session from raw player_events and emits an
+// edge when two users overlap by >= min_overlap_sec. Center-touching edges are
+// "confirmed" co-presence; non-center pairs are "co_presence" inference only.
+// Timestamps are anchored to "now" so the since-window math is exercised honestly.
+TEST(CommonTests, CoPresenceEgoNetworkBuildsConfirmedAndInferredEdges)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-copresence");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+
+    // UTC ISO string `secsAgo` seconds before now (trailing Z → parsed as UTC).
+    auto isoAgo = [](int secsAgo) -> std::string {
+        std::time_t t = std::time(nullptr) - static_cast<std::time_t>(secsAgo);
+        std::tm gt{};
+        gmtime_s(&gt, &t);
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            gt.tm_year + 1900, gt.tm_mon + 1, gt.tm_mday, gt.tm_hour, gt.tm_min, gt.tm_sec);
+        return std::string(buf);
+    };
+    auto ev = [&](const char* kind, const std::string& uid, const std::string& name,
+                  const std::string& world, const std::string& inst, int secsAgo) {
+        vrcsm::core::Database::PlayerEventInsert e;
+        e.kind = kind;
+        e.user_id = uid;
+        e.display_name = name;
+        e.world_id = world;
+        e.instance_id = inst;
+        e.occurred_at = isoAgo(secsAgo);
+        ASSERT_TRUE(vrcsm::core::isOk(db.RecordPlayerEvent(e)));
+    };
+
+    const std::string self = "usr_self";
+
+    // Session A in (wrld_x, inst_1) ~1h ago: self present the whole time; Alice
+    // overlaps self heavily; Bob overlaps both Alice and self briefly.
+    ev("joined", self,        "Me",    "wrld_x", "inst_1", 3600);
+    ev("joined", "usr_alice", "Alice", "wrld_x", "inst_1", 3500);
+    ev("joined", "usr_bob",   "Bob",   "wrld_x", "inst_1", 3400);
+    ev("left",   "usr_bob",   "Bob",   "wrld_x", "inst_1", 3100);  // Bob ~300s
+    ev("left",   "usr_alice", "Alice", "wrld_x", "inst_1", 1800);  // Alice ~1700s
+    ev("left",   self,        "Me",    "wrld_x", "inst_1", 1700);
+
+    // Session B in (wrld_x, inst_2) — DIFFERENT instance, same world: Carol joins
+    // and leaves while NOBODY else is there. Must not connect to session A users.
+    ev("joined", "usr_carol", "Carol", "wrld_x", "inst_2", 1000);
+    ev("left",   "usr_carol", "Carol", "wrld_x", "inst_2", 100);
+
+    // Session C in (wrld_y, inst_1) — same instance_id as A but DIFFERENT world:
+    // Dave joins with a MISSING left (crash). The 4h cap must bound his interval
+    // and he should still co-present with self who is briefly there.
+    ev("joined", self,       "Me",   "wrld_y", "inst_1", 2000);
+    ev("joined", "usr_dave", "Dave", "wrld_y", "inst_1", 1990);
+    ev("left",   self,       "Me",   "wrld_y", "inst_1", 1000);
+    // (no "left" for Dave)
+
+    auto res = db.CoPresenceEgoNetwork(self, /*since_days=*/90, /*min_overlap_sec=*/60);
+    ASSERT_TRUE(vrcsm::core::isOk(res)) << vrcsm::core::error(res).message;
+    const auto& g = vrcsm::core::value(res);
+    EXPECT_EQ(g["center"], self);
+
+    // Collect nodes by id.
+    std::set<std::string> nodeIds;
+    for (const auto& n : g["nodes"]) nodeIds.insert(n["user_id"].get<std::string>());
+    EXPECT_TRUE(nodeIds.count(self));
+    EXPECT_TRUE(nodeIds.count("usr_alice"));
+    EXPECT_TRUE(nodeIds.count("usr_bob"));
+    EXPECT_TRUE(nodeIds.count("usr_dave"));
+    // Carol is alone in her session → no overlap edge, but she IS a node (present).
+    EXPECT_TRUE(nodeIds.count("usr_carol"));
+
+    // Index edges by ordered pair.
+    auto edgeKind = [&](const std::string& a, const std::string& b) -> std::string {
+        std::string s = a, t = b;
+        if (s > t) std::swap(s, t);
+        for (const auto& e : g["edges"])
+        {
+            if (e["source"].get<std::string>() == s && e["target"].get<std::string>() == t)
+                return e["kind"].get<std::string>();
+        }
+        return "";
+    };
+
+    // Self↔Alice and Self↔Bob and Self↔Dave: confirmed (center-touching).
+    EXPECT_EQ(edgeKind(self, "usr_alice"), "confirmed");
+    EXPECT_EQ(edgeKind(self, "usr_bob"), "confirmed");
+    EXPECT_EQ(edgeKind(self, "usr_dave"), "confirmed");
+    // Alice↔Bob overlapped ~300s in session A but neither is the center → inferred.
+    EXPECT_EQ(edgeKind("usr_alice", "usr_bob"), "co_presence");
+    // Carol shares nothing → no edge to anyone.
+    EXPECT_EQ(edgeKind(self, "usr_carol"), "");
+    EXPECT_EQ(edgeKind("usr_alice", "usr_carol"), "");
+
+    // Dave's capped (missing-left) interval is bounded: total_seconds must not blow
+    // up to the full since-window. With a 4h cap his node time stays well under 5h.
+    for (const auto& n : g["nodes"])
+    {
+        if (n["user_id"].get<std::string>() == "usr_dave")
+        {
+            EXPECT_LT(n["total_seconds"].get<long long>(), 5 * 3600);
+        }
+    }
+
+    // min_overlap_sec gate: raise it above Bob's ~300s overlap with self and the
+    // self↔bob edge should vanish while self↔alice (~1700s) survives.
+    auto strict = db.CoPresenceEgoNetwork(self, 90, 600);
+    ASSERT_TRUE(vrcsm::core::isOk(strict));
+    const auto& gs = vrcsm::core::value(strict);
+    bool selfBob = false, selfAlice = false;
+    for (const auto& e : gs["edges"])
+    {
+        const auto s = e["source"].get<std::string>();
+        const auto t = e["target"].get<std::string>();
+        if ((s == self && t == "usr_bob") || (s == "usr_bob" && t == self)) selfBob = true;
+        if ((s == self && t == "usr_alice") || (s == "usr_alice" && t == self)) selfAlice = true;
+    }
+    EXPECT_FALSE(selfBob);
+    EXPECT_TRUE(selfAlice);
 
     db.Close();
     std::error_code ec;
@@ -718,6 +911,87 @@ TEST(CommonTests, GlobalSearchMergesFavoriteAndVisitEvidence)
     std::filesystem::remove_all(dir, ec);
 }
 
+TEST(CommonTests, FavoritesClearBySourceKeepsLocalListsAndExposesSource)
+{
+    // Official favorites sync mirrors VRChat's native groups as separate lists
+    // tagged source='official', then replaces that snapshot wholesale on the
+    // next sync via ClearFavoritesBySource. Local lists the user curated
+    // (source='local') must survive that wipe, and FavoriteLists must report
+    // the origin so the UI can distinguish synced groups from local shelves.
+    const auto dir = MakeTempTestDir(L"vrcsm-favorites-source");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    auto& db = vrcsm::core::Database::Instance();
+
+    // A user-curated local favorite (default source = 'local').
+    ASSERT_TRUE(vrcsm::core::isOk(db.AddFavorite({
+        "avatar",
+        "avtr_local-curated-0000-0000-000000000000",
+        "My Shelf",
+        "Local Pick",
+        std::nullopt,
+        "2026-04-27T09:00:00Z",
+        0,
+    })));
+
+    // Two official-synced favorites in distinct VRChat groups.
+    vrcsm::core::Database::FavoriteInsert official1;
+    official1.type = "avatar";
+    official1.target_id = "avtr_official-aaaa-0000-0000-000000000000";
+    official1.list_name = "Daily Drivers";
+    official1.display_name = "Synced Avatar";
+    official1.added_at = "2026-04-27T10:00:00Z";
+    official1.sort_order = 0;
+    official1.source = "official";
+    ASSERT_TRUE(vrcsm::core::isOk(db.AddFavorite(official1)));
+
+    vrcsm::core::Database::FavoriteInsert official2;
+    official2.type = "world";
+    official2.target_id = "wrld_official-bbbb-0000-0000-000000000000";
+    official2.list_name = "Chill Worlds";
+    official2.display_name = "Synced World";
+    official2.added_at = "2026-04-27T10:01:00Z";
+    official2.sort_order = 0;
+    official2.source = "official";
+    ASSERT_TRUE(vrcsm::core::isOk(db.AddFavorite(official2)));
+
+    // FavoriteLists exposes per-list source.
+    {
+        auto listsRes = db.FavoriteLists();
+        ASSERT_TRUE(vrcsm::core::isOk(listsRes)) << vrcsm::core::error(listsRes).message;
+        std::map<std::string, std::string> sourceByList;
+        for (const auto& row : vrcsm::core::value(listsRes))
+        {
+            sourceByList[row.at("list_name").get<std::string>()] =
+                row.value("source", std::string{});
+        }
+        EXPECT_EQ(sourceByList["My Shelf"], "local");
+        EXPECT_EQ(sourceByList["Daily Drivers"], "official");
+        EXPECT_EQ(sourceByList["Chill Worlds"], "official");
+    }
+
+    // Clearing by source wipes every official group but spares local lists.
+    ASSERT_TRUE(vrcsm::core::isOk(db.ClearFavoritesBySource("official")));
+
+    {
+        auto listsRes = db.FavoriteLists();
+        ASSERT_TRUE(vrcsm::core::isOk(listsRes)) << vrcsm::core::error(listsRes).message;
+        std::vector<std::string> remaining;
+        for (const auto& row : vrcsm::core::value(listsRes))
+        {
+            remaining.push_back(row.at("list_name").get<std::string>());
+        }
+        EXPECT_TRUE(ContainsSubstring(remaining, "My Shelf"));
+        EXPECT_FALSE(ContainsSubstring(remaining, "Daily Drivers"));
+        EXPECT_FALSE(ContainsSubstring(remaining, "Chill Worlds"));
+    }
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
 TEST(CommonTests, GlobalSearchKeepsHistoricalAvatarReferenceThumbnailUnverified)
 {
     const auto dir = MakeTempTestDir(L"vrcsm-global-search-avatar-reference");
@@ -895,6 +1169,100 @@ VALUES
     std::filesystem::remove_all(dir, ec);
 }
 
+// Schema v16 owned_avatars round-trip: Open() must create the cache table,
+// UpsertOwnedAvatar must persist every column, and INSERT OR REPLACE on the
+// composite (account_user_id, avatar_id) key must overwrite the prior row
+// rather than duplicate it.
+TEST(CommonTests, DatabaseUpsertOwnedAvatarRoundTripsAndReplaces)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-owned-avatars-roundtrip");
+    const auto dbPath = dir / L"vrcsm.db";
+
+    auto& db = vrcsm::core::Database::Instance();
+    db.Close();
+    auto opened = db.Open(dbPath);
+    ASSERT_TRUE(vrcsm::core::isOk(opened)) << vrcsm::core::error(opened).message;
+
+    vrcsm::core::Database::OwnedAvatarUpsert first;
+    first.account_user_id = "usr_owner";
+    first.avatar_id = "avtr_123";
+    first.name = "First Name";
+    first.description = "first desc";
+    first.image_url = "https://example.com/a.png";
+    first.release_status = "private";
+    first.version = 3;
+    first.updated_at = "2026-04-27T10:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.UpsertOwnedAvatar(first)));
+
+    // Second account owning the same avatar_id must be a distinct row.
+    vrcsm::core::Database::OwnedAvatarUpsert other = first;
+    other.account_user_id = "usr_other";
+    other.name = "Other Owner";
+    ASSERT_TRUE(vrcsm::core::isOk(db.UpsertOwnedAvatar(other)));
+
+    // Same composite key with new values must replace, not duplicate.
+    vrcsm::core::Database::OwnedAvatarUpsert updated;
+    updated.account_user_id = "usr_owner";
+    updated.avatar_id = "avtr_123";
+    updated.name = "Renamed";
+    updated.release_status = "public";
+    updated.version = 4;
+    // description/image_url/updated_at left empty → bound as NULL.
+    ASSERT_TRUE(vrcsm::core::isOk(db.UpsertOwnedAvatar(updated)));
+
+    // Missing required keys must be rejected.
+    vrcsm::core::Database::OwnedAvatarUpsert invalid;
+    invalid.avatar_id = "avtr_999";  // no account_user_id
+    EXPECT_FALSE(vrcsm::core::isOk(db.UpsertOwnedAvatar(invalid)));
+
+    db.Close();
+
+    sqlite3* rawDb = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(
+        vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+        &rawDb,
+        SQLITE_OPEN_READONLY,
+        nullptr), SQLITE_OK);
+    ASSERT_NE(rawDb, nullptr);
+    {
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        // Open() must have migrated the schema to at least v16.
+        EXPECT_GE(QueryInt64(rawDb, "PRAGMA user_version;"), 16);
+        // Two distinct rows (two accounts), the replace did not add a third.
+        EXPECT_EQ(QueryInt64(rawDb, "SELECT COUNT(*) FROM owned_avatars;"), 2);
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM owned_avatars WHERE avatar_id = 'avtr_123';"), 2);
+        // Replaced row carries the new values.
+        EXPECT_EQ(QueryText(rawDb,
+            "SELECT name FROM owned_avatars "
+            "WHERE account_user_id = 'usr_owner' AND avatar_id = 'avtr_123';"),
+            "Renamed");
+        EXPECT_EQ(QueryText(rawDb,
+            "SELECT release_status FROM owned_avatars "
+            "WHERE account_user_id = 'usr_owner' AND avatar_id = 'avtr_123';"),
+            "public");
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT version FROM owned_avatars "
+            "WHERE account_user_id = 'usr_owner' AND avatar_id = 'avtr_123';"), 4);
+        // Cleared optional columns became NULL on replace.
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM owned_avatars "
+            "WHERE account_user_id = 'usr_owner' AND avatar_id = 'avtr_123' "
+            "AND description IS NULL AND image_url IS NULL;"), 1);
+        // The second account's row is untouched.
+        EXPECT_EQ(QueryText(rawDb,
+            "SELECT name FROM owned_avatars "
+            "WHERE account_user_id = 'usr_other' AND avatar_id = 'avtr_123';"),
+            "Other Owner");
+        // The invalid upsert wrote nothing.
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM owned_avatars WHERE avatar_id = 'avtr_999';"), 0);
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
 TEST(CommonTests, UpdatePackageValidationRejectsInstallerOutsideUpdatesDirectory)
 {
     const auto dir = MakeTempTestDir(L"vrcsm-update-package-outside");
@@ -922,14 +1290,63 @@ TEST(CommonTests, UpdatePackageValidationAcceptsReleaseAssetFileName)
     std::filesystem::remove(installer, ec);
     WriteBytes(installer, "not really an msi");
 
+    auto sha = vrcsm::core::updater::ComputeSha256(installer);
+    ASSERT_TRUE(vrcsm::core::isOk(sha)) << vrcsm::core::error(sha).message;
+
     vrcsm::core::updater::PackageValidationOptions options;
     options.version = "9.9.9";
     options.expectedFileName = fileName;
     options.expectedSize = static_cast<std::uint64_t>(std::filesystem::file_size(installer));
+    options.expectedSha256 = vrcsm::core::value(sha);
 
     const auto result = vrcsm::core::updater::ValidateDownloadedPackage(installer, options);
 
     EXPECT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+
+    std::filesystem::remove(installer, ec);
+}
+
+TEST(CommonTests, UpdatePackageValidationRejectsMissingSha256)
+{
+    const std::string fileName = "VRCSM_v9.9.9_x64_Installer.msi";
+    const auto installer = vrcsm::core::updater::BuildUpdateTargetPath(fileName);
+    std::error_code ec;
+    std::filesystem::remove(installer, ec);
+    WriteBytes(installer, "not really an msi");
+
+    vrcsm::core::updater::PackageValidationOptions options;
+    options.version = "9.9.9";
+    options.expectedFileName = fileName;
+    options.expectedSize = static_cast<std::uint64_t>(std::filesystem::file_size(installer));
+    // No expectedSha256 — must be rejected fail-closed.
+
+    const auto result = vrcsm::core::updater::ValidateDownloadedPackage(installer, options);
+
+    ASSERT_FALSE(vrcsm::core::isOk(result));
+    EXPECT_EQ(vrcsm::core::error(result).code, "update_hash");
+
+    std::filesystem::remove(installer, ec);
+}
+
+TEST(CommonTests, UpdatePackageValidationRejectsWrongSha256)
+{
+    const std::string fileName = "VRCSM_v9.9.9_x64_Installer.msi";
+    const auto installer = vrcsm::core::updater::BuildUpdateTargetPath(fileName);
+    std::error_code ec;
+    std::filesystem::remove(installer, ec);
+    WriteBytes(installer, "not really an msi");
+
+    vrcsm::core::updater::PackageValidationOptions options;
+    options.version = "9.9.9";
+    options.expectedFileName = fileName;
+    options.expectedSize = static_cast<std::uint64_t>(std::filesystem::file_size(installer));
+    options.expectedSha256 =
+        "0000000000000000000000000000000000000000000000000000000000000000";
+
+    const auto result = vrcsm::core::updater::ValidateDownloadedPackage(installer, options);
+
+    ASSERT_FALSE(vrcsm::core::isOk(result));
+    EXPECT_EQ(vrcsm::core::error(result).code, "update_hash");
 
     std::filesystem::remove(installer, ec);
 }
@@ -1099,6 +1516,56 @@ TEST(CommonTests, TruncatedUnityFsMagicOnlyBundleIsNotTrusted)
     std::filesystem::remove_all(dir, ec);
 }
 
+// ── Wave 2 / Section B: multipart + base64 plumbing (B1) ───────────────
+
+TEST(CommonTests, BuildMultipartFormDataFramesFieldsAndFile)
+{
+    using vrcsm::core::VrcApi;
+    std::vector<VrcApi::MultipartField> fields;
+    fields.push_back({"tag", "icon"});
+    VrcApi::MultipartFile file{"file", "image.png", "image/png", std::string("\x89PNG\r\n", 6)};
+
+    const auto out = VrcApi::buildMultipartFormData("BOUND123", fields, file);
+
+    // Content-Type carries the boundary verbatim.
+    EXPECT_EQ(out.contentType, "multipart/form-data; boundary=BOUND123");
+
+    // Field part framing.
+    EXPECT_NE(out.body.find("--BOUND123\r\n"), std::string::npos);
+    EXPECT_NE(out.body.find("Content-Disposition: form-data; name=\"tag\"\r\n\r\nicon\r\n"),
+              std::string::npos);
+
+    // File part framing with filename + content type.
+    EXPECT_NE(out.body.find(
+        "Content-Disposition: form-data; name=\"file\"; filename=\"image.png\"\r\n"
+        "Content-Type: image/png\r\n\r\n"), std::string::npos);
+
+    // Raw file bytes are embedded verbatim (binary-safe).
+    EXPECT_NE(out.body.find(std::string("\x89PNG\r\n", 6)), std::string::npos);
+
+    // Closing boundary terminator.
+    EXPECT_NE(out.body.find("--BOUND123--\r\n"), std::string::npos);
+    EXPECT_TRUE(out.body.size() > std::string("--BOUND123--\r\n").size() + 6);
+}
+
+TEST(CommonTests, DecodeBase64RoundTripsAndRejectsGarbage)
+{
+    using vrcsm::core::VrcApi;
+    // "Hello, VRCSM" base64-encoded.
+    const auto decoded = VrcApi::decodeBase64("SGVsbG8sIFZSQ1NN");
+    ASSERT_TRUE(decoded.has_value());
+    EXPECT_EQ(*decoded, "Hello, VRCSM");
+
+    // Padding + whitespace tolerated.
+    const auto withPad = VrcApi::decodeBase64("YWI=\n");
+    ASSERT_TRUE(withPad.has_value());
+    EXPECT_EQ(*withPad, "ab");
+
+    // Non-base64 characters are rejected.
+    EXPECT_FALSE(VrcApi::decodeBase64("not base64!@#$%").has_value());
+}
+
+
 TEST(CommonTests, AvatarPreviewLruSkipsPartFilesAndRetainedGlbs)
 {
     const auto dir = vrcsm::core::AvatarPreview::PreviewCacheDir()
@@ -1182,6 +1649,123 @@ TEST(CommonTests, LogEventClassifierUsesSharedWorldInstanceParsing)
     EXPECT_EQ(data["region"].get<std::string>(), "us");
 }
 
+TEST(CommonTests, LogAtomsParseVideoPlaybackResolveUrl)
+{
+    const auto atom = vrcsm::core::ParseVrchatLogAtom(
+        "[Video Playback] Attempting to resolve URL 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'");
+    ASSERT_TRUE(atom.has_value());
+    EXPECT_EQ(atom->kind, vrcsm::core::LogAtomKind::VideoPlay);
+    EXPECT_EQ(atom->getOr("url"), "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+}
+
+TEST(CommonTests, LogEventClassifierEmitsVideoPlay)
+{
+    vrcsm::core::LogTailLine line;
+    line.iso_time = "2026.06.23 22:30:00";
+    line.line = "[Video Playback] Resolving URL 'https://example.com/clip.mp4'";
+
+    auto event = vrcsm::core::ClassifyStreamLine(line);
+    ASSERT_TRUE(event.is_object());
+    EXPECT_EQ(event["kind"].get<std::string>(), "videoPlay");
+    EXPECT_EQ(event["data"]["url"].get<std::string>(), "https://example.com/clip.mp4");
+}
+
+TEST(CommonTests, LogAtomsParsePortalSpawn)
+{
+    const auto atom = vrcsm::core::ParseVrchatLogAtom(
+        "[Behaviour] Instantiated a (Clone [800004] Portals/PortalInternalDynamic)");
+    ASSERT_TRUE(atom.has_value());
+    EXPECT_EQ(atom->kind, vrcsm::core::LogAtomKind::PortalSpawn);
+}
+
+TEST(CommonTests, LogAtomsParseVoteKickInitiationAndSuccess)
+{
+    const auto init = vrcsm::core::ParseVrchatLogAtom(
+        "[ModerationManager] A vote kick has been initiated against \xD7\x91\xD7\x95\xD7\xA8\xD7\xA7\xD7\xA1 849d, do you agree?");
+    ASSERT_TRUE(init.has_value());
+    EXPECT_EQ(init->kind, vrcsm::core::LogAtomKind::VoteKick);
+    EXPECT_EQ(init->getOr("phase"), "initiated");
+    EXPECT_EQ(init->getOr("target"), "\xD7\x91\xD7\x95\xD7\xA8\xD7\xA7\xD7\xA1 849d");
+
+    const auto ok = vrcsm::core::ParseVrchatLogAtom(
+        "[ModerationManager] Vote to kick CoolUser 849d succeeded");
+    ASSERT_TRUE(ok.has_value());
+    EXPECT_EQ(ok->kind, vrcsm::core::LogAtomKind::VoteKick);
+    EXPECT_EQ(ok->getOr("phase"), "succeeded");
+    EXPECT_EQ(ok->getOr("target"), "CoolUser 849d");
+
+    const auto self = vrcsm::core::ParseVrchatLogAtom(
+        "[Behaviour] Received executive message: You have been kicked from the instance by majority vote");
+    ASSERT_TRUE(self.has_value());
+    EXPECT_EQ(self->kind, vrcsm::core::LogAtomKind::VoteKick);
+    EXPECT_EQ(self->getOr("phase"), "self");
+    EXPECT_EQ(self->getOr("message"), "You have been kicked from the instance by majority vote");
+}
+
+TEST(CommonTests, LogAtomsParseFailedToJoinWithReason)
+{
+    const auto atom = vrcsm::core::ParseVrchatLogAtom(
+        "[Behaviour] Failed to join instance 'wrld_1234:5678' due to 'That instance is full'");
+    ASSERT_TRUE(atom.has_value());
+    EXPECT_EQ(atom->kind, vrcsm::core::LogAtomKind::JoinBlocked);
+    EXPECT_EQ(atom->getOr("reason_kind"), "failed");
+    EXPECT_EQ(atom->getOr("location"), "wrld_1234:5678");
+    EXPECT_EQ(atom->getOr("reason"), "That instance is full");
+}
+
+// Real log lines drop the closing quote on the reason and localize it. Sampled
+// verbatim (UTF-8) from output_log_2026-06-29: offline-test-mode rejection with
+// an instance tag and a Chinese reason and NO trailing quote.
+TEST(CommonTests, LogAtomsParseFailedToJoinRealUnclosedLocalizedReason)
+{
+    const auto atom = vrcsm::core::ParseVrchatLogAtom(
+        "[Behaviour] Failed to join instance "
+        "'wrld_4432ea9b-729c-46e3-8eaf-846aa0a37fdd:00635~private(usr_def3682f-6851-4289-82a8-24a44abf9a7f)~region(jp)'"
+        " due to '\xE6\x82\xA8\xE6\xAD\xA3\xE5\xA4\x84\xE4\xBA\x8E\xE7\xA6\xBB\xE7\xBA\xBF");
+    ASSERT_TRUE(atom.has_value());
+    EXPECT_EQ(atom->kind, vrcsm::core::LogAtomKind::JoinBlocked);
+    EXPECT_EQ(atom->getOr("reason_kind"), "failed");
+    EXPECT_EQ(
+        atom->getOr("location"),
+        "wrld_4432ea9b-729c-46e3-8eaf-846aa0a37fdd:00635~private(usr_def3682f-6851-4289-82a8-24a44abf9a7f)~region(jp)");
+    // Reason is captured despite the missing closing quote.
+    EXPECT_EQ(atom->getOr("reason"), "\xE6\x82\xA8\xE6\xAD\xA3\xE5\xA4\x84\xE4\xBA\x8E\xE7\xA6\xBB\xE7\xBA\xBF");
+}
+
+TEST(CommonTests, LogEventClassifierEmitsStickerSpawnFlippedOrder)
+{
+    vrcsm::core::LogTailLine line;
+    line.iso_time = "2026.06.23 22:40:00";
+    line.line =
+        "[StickersManager] User usr_032383a7-748c-4fb2-94e4-bcb928e5de6b (Natsumi-sama) "
+        "spawned sticker inv_8b380ee4-9a8a-484e-a0c3-b01290b92c6a";
+
+    auto event = vrcsm::core::ClassifyStreamLine(line);
+    ASSERT_TRUE(event.is_object());
+    EXPECT_EQ(event["kind"].get<std::string>(), "stickerSpawn");
+    const auto& data = event["data"];
+    EXPECT_EQ(data["user_id"].get<std::string>(), "usr_032383a7-748c-4fb2-94e4-bcb928e5de6b");
+    EXPECT_EQ(data["display_name"].get<std::string>(), "Natsumi-sama");
+    EXPECT_EQ(data["inventory_id"].get<std::string>(), "inv_8b380ee4-9a8a-484e-a0c3-b01290b92c6a");
+}
+
+// A4 standalone classifier: the VERIFIED VRCX-master pedestal line shape
+// ([Network Processing] RPC invoked SwitchAvatar on AvatarPedestal for <name>)
+// classifies to avatarPedestalChange and captures the trailing display name.
+TEST(CommonTests, LogEventClassifierEmitsAvatarPedestalChange)
+{
+    vrcsm::core::LogTailLine line;
+    line.iso_time = "2026.06.23 22:55:03";
+    line.line =
+        "[Network Processing] RPC invoked SwitchAvatar on AvatarPedestal for Mona";
+
+    auto event = vrcsm::core::ClassifyStreamLine(line);
+    ASSERT_TRUE(event.is_object());
+    EXPECT_EQ(event["kind"].get<std::string>(), "avatarPedestal");
+    const auto& data = event["data"];
+    EXPECT_EQ(data["display_name"].get<std::string>(), "Mona");
+}
+
 TEST(CommonTests, LogParserBuildsAtomicReportFromPrefixedVrchatLog)
 {
     const auto dir = MakeTempTestDir(L"vrcsm-log-atoms");
@@ -1228,3 +1812,578 @@ TEST(CommonTests, LogParserBuildsAtomicReportFromPrefixedVrchatLog)
     std::error_code ec;
     std::filesystem::remove_all(dir, ec);
 }
+
+// Regression: a single local "Switching <me> to avatar <Name>" must bind that
+// name to exactly the NEXT "Loading Avatar Data:avtr_xxx" — not to every
+// subsequent load. Before the fix, the pending local name was never cleared
+// after binding, so a string of avatar-data loads (fallback/impostor/re-load)
+// all inherited one name, producing many distinct ids that all rendered as the
+// same avatar (the "5 different avatars all called Runa" bug).
+TEST(CommonTests, LogParserDoesNotLeakLocalAvatarNameAcrossLoads)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-avatar-name-leak");
+    const auto path = dir / L"output_log_2026-06-29_23-49-59.txt";
+    WriteBytes(path,
+        "2026.06.29 23:50:00 Log        -  User Authenticated: dwgx (usr_00000000-0000-0000-0000-000000000000)\n"
+        "2026.06.29 23:50:01 Log        -  [Behaviour] Switching dwgx to avatar Runa\n"
+        "2026.06.29 23:50:02 Log        -  Loading Avatar Data:avtr_aaaaaaaa-1111-2222-3333-444444444444\n"
+        "2026.06.29 23:50:03 Log        -  Loading Avatar Data:avtr_bbbbbbbb-1111-2222-3333-444444444444\n"
+        "2026.06.29 23:50:04 Log        -  [Behaviour] Switching dwgx to avatar Mittens\n"
+        "2026.06.29 23:50:05 Log        -  Loading Avatar Data:avtr_cccccccc-1111-2222-3333-444444444444\n");
+
+    const auto report = vrcsm::core::LogParser::parse(dir);
+
+    // The first switch binds only to the first load.
+    ASSERT_TRUE(report.avatar_names.count("avtr_aaaaaaaa-1111-2222-3333-444444444444"));
+    EXPECT_EQ(report.avatar_names.at("avtr_aaaaaaaa-1111-2222-3333-444444444444").name, "Runa");
+
+    // The second load must NOT inherit "Runa" — there was no switch for it.
+    EXPECT_EQ(report.avatar_names.count("avtr_bbbbbbbb-1111-2222-3333-444444444444"), 0u);
+
+    // A later switch binds its own name to the following load.
+    ASSERT_TRUE(report.avatar_names.count("avtr_cccccccc-1111-2222-3333-444444444444"));
+    EXPECT_EQ(report.avatar_names.at("avtr_cccccccc-1111-2222-3333-444444444444").name, "Mittens");
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// Regression: a single log can re-authenticate under a different account when
+// the user signs out and back in mid-session. The local identity must follow
+// the latest `User Authenticated`, otherwise the second account's own avatar
+// switches stop matching `local_user_name` and their names never bind to an
+// id — the "names vanished after switching accounts" bug. Found on real logs
+// where account A=Mitaka loaded fine but account B=dwgx's avatars came back
+// nameless (or stamped with A's leftover pending name).
+TEST(CommonTests, LogParserTracksLocalUserAcrossReauth)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-reauth-name");
+    const auto path = dir / L"output_log_2026-06-29_23-49-59.txt";
+    WriteBytes(path,
+        "2026.06.29 23:50:00 Log        -  User Authenticated: Mitaka (usr_aaaaaaaa-0000-0000-0000-000000000000)\n"
+        "2026.06.29 23:50:01 Log        -  [Behaviour] Switching Mitaka to avatar Runa\n"
+        "2026.06.29 23:50:02 Log        -  Loading Avatar Data:avtr_aaaaaaaa-1111-2222-3333-444444444444\n"
+        "2026.06.29 23:52:00 Log        -  User Authenticated: dwgx (usr_bbbbbbbb-0000-0000-0000-000000000000)\n"
+        "2026.06.29 23:52:01 Log        -  [Behaviour] Switching dwgx to avatar BigCat\n"
+        "2026.06.29 23:52:02 Log        -  Loading Avatar Data:avtr_bbbbbbbb-1111-2222-3333-444444444444\n");
+
+    const auto report = vrcsm::core::LogParser::parse(dir);
+
+    // Latest auth wins — local identity is the second account.
+    ASSERT_TRUE(report.local_user_name.has_value());
+    EXPECT_EQ(*report.local_user_name, "dwgx");
+
+    // Account A's switch bound correctly while it was the local user.
+    ASSERT_TRUE(report.avatar_names.count("avtr_aaaaaaaa-1111-2222-3333-444444444444"));
+    EXPECT_EQ(report.avatar_names.at("avtr_aaaaaaaa-1111-2222-3333-444444444444").name, "Runa");
+
+    // Account B's switch must also bind — not be dropped for failing to match a
+    // frozen first-account identity, and not inherit A's "Runa".
+    ASSERT_TRUE(report.avatar_names.count("avtr_bbbbbbbb-1111-2222-3333-444444444444"));
+    EXPECT_EQ(report.avatar_names.at("avtr_bbbbbbbb-1111-2222-3333-444444444444").name, "BigCat");
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// Track L: the batch parser must populate the five log-event streams from the
+// same line formats the live classifier recognizes, so the Logs page shows
+// historical video/portal/moderation/sticker events from disk.
+TEST(CommonTests, LogParserPopulatesTrackLEventStreams)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-log-trackl");
+    const auto path = dir / L"output_log_2026-06-23_22-20-00.txt";
+    WriteBytes(path,
+        "2026.06.23 22:20:00 Log        -  User Authenticated: Local User (usr_00000000-0000-0000-0000-000000000000)\n"
+        "2026.06.23 22:20:01 Log        -  [Behaviour] Joining wrld_dddddddd-bbbb-cccc-dddd-eeeeeeeeeeee:5555~public~region(us)\n"
+        "2026.06.23 22:20:02 Log        -  [Video Playback] Attempting to resolve URL 'https://example.invalid/clip.mp4'\n"
+        "2026.06.23 22:20:03 Log        -  [Behaviour] Instantiated a (Clone [0] Portals/PortalInternalDynamic)\n"
+        "2026.06.23 22:20:04 Log        -  [ModerationManager] A vote kick has been initiated against Carol, do you agree?\n"
+        "2026.06.23 22:20:05 Log        -  [Behaviour] Failed to join instance 'wrld_dddddddd-bbbb-cccc-dddd-eeeeeeeeeeee:5555' due to 'instance is full'\n"
+        "2026.06.23 22:20:06 Log        -  [StickersManager] User usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb (Dave) spawned sticker inv_12345678-1111-2222-3333-444444444444\n");
+
+    const auto report = vrcsm::core::LogParser::parse(dir);
+    ASSERT_EQ(report.log_count, 1u);
+
+    ASSERT_EQ(report.video_plays.size(), 1u);
+    EXPECT_EQ(report.video_plays[0].url, "https://example.invalid/clip.mp4");
+    ASSERT_TRUE(report.video_plays[0].world_id.has_value());
+    EXPECT_EQ(*report.video_plays[0].world_id, "wrld_dddddddd-bbbb-cccc-dddd-eeeeeeeeeeee");
+
+    ASSERT_EQ(report.portal_spawns.size(), 1u);
+
+    ASSERT_EQ(report.vote_kicks.size(), 1u);
+    ASSERT_TRUE(report.vote_kicks[0].target.has_value());
+    EXPECT_EQ(*report.vote_kicks[0].target, "Carol");
+
+    ASSERT_EQ(report.join_blocked.size(), 1u);
+    ASSERT_TRUE(report.join_blocked[0].reason.has_value());
+    EXPECT_EQ(*report.join_blocked[0].reason, "instance is full");
+
+    ASSERT_EQ(report.sticker_spawns.size(), 1u);
+    EXPECT_EQ(report.sticker_spawns[0].user_id, "usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb");
+    EXPECT_EQ(report.sticker_spawns[0].display_name, "Dave");
+    EXPECT_EQ(report.sticker_spawns[0].inventory_id, "inv_12345678-1111-2222-3333-444444444444");
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// Opt-in integration probe: classify every line of the real VRChat logs on this
+// machine and print a per-kind tally. Disabled unless VRCSM_REAL_LOG_DIR is set,
+// so CI stays hermetic. Run with:
+//   VRCSM_REAL_LOG_DIR="<...>/LocalLow/VRChat/VRChat" VRCSM_Tests --gtest_filter=*RealLog*
+TEST(CommonTests, RealLogClassificationTally)
+{
+    const char* dir = std::getenv("VRCSM_REAL_LOG_DIR");
+    if (!dir)
+    {
+        GTEST_SKIP() << "VRCSM_REAL_LOG_DIR not set";
+    }
+
+    std::map<std::string, int> tally;
+    int totalLines = 0;
+    int classified = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(dir))
+    {
+        const auto name = entry.path().filename().string();
+        if (name.rfind("output_log_", 0) != 0) continue;
+        std::ifstream in(entry.path(), std::ios::binary);
+        std::string raw;
+        while (std::getline(in, raw))
+        {
+            ++totalLines;
+            vrcsm::core::LogTailLine line;
+            line.line = raw;
+            const auto ev = vrcsm::core::ClassifyStreamLine(line);
+            if (ev.is_object())
+            {
+                ++classified;
+                tally[ev.value("kind", std::string{"?"})] += 1;
+            }
+        }
+    }
+
+    std::cout << "[real-log] scanned " << totalLines << " lines, classified "
+              << classified << "\n";
+    for (const auto& [kind, count] : tally)
+    {
+        std::cout << "[real-log]   " << kind << " = " << count << "\n";
+    }
+    SUCCEED();
+}
+
+// ── Wave 2 Section A: golden atom + classifier + batch coverage ──────────
+
+TEST(CommonTests, LogAtomsParseNotification)
+{
+    const auto atom = vrcsm::core::ParseVrchatLogAtom(
+        "[API] Received Notification: <Notification from username:Alice, "
+        "sender user id:usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb to of type: friendRequest, "
+        "id: not_12345678-1111-2222-3333-444444444444, created at: 2026, type:friendRequest, "
+        "details: {}> received at 2026");
+    ASSERT_TRUE(atom.has_value());
+    EXPECT_EQ(atom->kind, vrcsm::core::LogAtomKind::Notification);
+    EXPECT_EQ(atom->getOr("sender_name"), "Alice");
+    EXPECT_EQ(atom->getOr("sender_id"), "usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb");
+    EXPECT_EQ(atom->getOr("type"), "friendRequest");
+    EXPECT_EQ(atom->getOr("notification_id"), "not_12345678-1111-2222-3333-444444444444");
+}
+
+TEST(CommonTests, LogAtomsParseVideoErrorBothShapes)
+{
+    const auto legacy = vrcsm::core::ParseVrchatLogAtom(
+        "[Video Playback] ERROR: Failed to load video, error code 5");
+    ASSERT_TRUE(legacy.has_value());
+    EXPECT_EQ(legacy->kind, vrcsm::core::LogAtomKind::VideoError);
+    EXPECT_EQ(legacy->getOr("error_message"), "Failed to load video, error code 5");
+
+    const auto avpro = vrcsm::core::ParseVrchatLogAtom(
+        "[AVProVideo] Error: Media loading failed");
+    ASSERT_TRUE(avpro.has_value());
+    EXPECT_EQ(avpro->kind, vrcsm::core::LogAtomKind::VideoError);
+    EXPECT_EQ(avpro->getOr("error_message"), "Media loading failed");
+}
+
+TEST(CommonTests, LogAtomsParseAttributedVideoUsharpAndSdk2)
+{
+    const auto usharp = vrcsm::core::ParseVrchatLogAtom(
+        "[USharpVideo] Started video load for URL: https://example.com/a.mp4, requested by Bob");
+    ASSERT_TRUE(usharp.has_value());
+    EXPECT_EQ(usharp->kind, vrcsm::core::LogAtomKind::AttributedVideoPlay);
+    EXPECT_EQ(usharp->getOr("url"), "https://example.com/a.mp4");
+    EXPECT_EQ(usharp->getOr("requester"), "Bob");
+
+    const auto sdk2 = vrcsm::core::ParseVrchatLogAtom("User Carol added URL https://example.com/b.mp4");
+    ASSERT_TRUE(sdk2.has_value());
+    EXPECT_EQ(sdk2->kind, vrcsm::core::LogAtomKind::AttributedVideoPlay);
+    EXPECT_EQ(sdk2->getOr("requester"), "Carol");
+    EXPECT_EQ(sdk2->getOr("url"), "https://example.com/b.mp4");
+
+    const auto sync = vrcsm::core::ParseVrchatLogAtom(
+        "[USharpVideo] Syncing video to https://example.com/c.mp4");
+    ASSERT_TRUE(sync.has_value());
+    EXPECT_EQ(sync->kind, vrcsm::core::LogAtomKind::VideoSync);
+    EXPECT_EQ(sync->getOr("url"), "https://example.com/c.mp4");
+}
+
+TEST(CommonTests, LogAtomsParseAppQuitBothNames)
+{
+    const auto legacy = vrcsm::core::ParseVrchatLogAtom("VRCApplication: OnApplicationQuit at 1234.5");
+    ASSERT_TRUE(legacy.has_value());
+    EXPECT_EQ(legacy->kind, vrcsm::core::LogAtomKind::AppQuit);
+    EXPECT_EQ(legacy->getOr("uptime_seconds"), "1234.5");
+
+    const auto modern = vrcsm::core::ParseVrchatLogAtom("VRCApplication: HandleApplicationQuit at 999");
+    ASSERT_TRUE(modern.has_value());
+    EXPECT_EQ(modern->kind, vrcsm::core::LogAtomKind::AppQuit);
+    EXPECT_EQ(modern->getOr("uptime_seconds"), "999");
+}
+
+TEST(CommonTests, LogAtomsParseSessionModeAndDiagnostics)
+{
+    const auto hmd = vrcsm::core::ParseVrchatLogAtom("STEAMVR HMD Model: Valve Index");
+    ASSERT_TRUE(hmd.has_value());
+    EXPECT_EQ(hmd->kind, vrcsm::core::LogAtomKind::SessionMode);
+    EXPECT_EQ(hmd->getOr("mode"), "vr");
+    EXPECT_EQ(hmd->getOr("hmd_model"), "Valve Index");
+
+    const auto desktop = vrcsm::core::ParseVrchatLogAtom("VR Disabled");
+    ASSERT_TRUE(desktop.has_value());
+    EXPECT_EQ(desktop->kind, vrcsm::core::LogAtomKind::SessionMode);
+    EXPECT_EQ(desktop->getOr("mode"), "desktop");
+
+    const auto osc = vrcsm::core::ParseVrchatLogAtom("Could not Start OSC: port in use");
+    ASSERT_TRUE(osc.has_value());
+    EXPECT_EQ(osc->kind, vrcsm::core::LogAtomKind::OscFail);
+    EXPECT_EQ(osc->getOr("reason"), "port in use");
+
+    const auto reset = vrcsm::core::ParseVrchatLogAtom(
+        "[ModerationManager] This instance will be reset in 60 minutes due to its age.");
+    ASSERT_TRUE(reset.has_value());
+    EXPECT_EQ(reset->kind, vrcsm::core::LogAtomKind::InstanceReset);
+    EXPECT_EQ(reset->getOr("minutes"), "60");
+}
+
+TEST(CommonTests, LogEventClassifierEmitsSectionAKinds)
+{
+    auto classify = [](const std::string& raw) {
+        vrcsm::core::LogTailLine line;
+        line.iso_time = "2026.06.23 22:50:00";
+        line.line = raw;
+        return vrcsm::core::ClassifyStreamLine(line);
+    };
+
+    auto notif = classify(
+        "[API] Received Notification: <Notification from username:Eve, "
+        "sender user id:usr_eeeeeeee-1111-2222-3333-444444444444 to of type: invite, "
+        "id: not_eeeeeeee-1111-2222-3333-444444444444, type:invite> received at 2026");
+    ASSERT_TRUE(notif.is_object());
+    EXPECT_EQ(notif["kind"].get<std::string>(), "notification");
+    EXPECT_EQ(notif["data"]["sender_name"].get<std::string>(), "Eve");
+
+    auto quit = classify("VRCApplication: HandleApplicationQuit at 42");
+    ASSERT_TRUE(quit.is_object());
+    EXPECT_EQ(quit["kind"].get<std::string>(), "vrcQuit");
+
+    auto sync = classify("[USharpVideo] Syncing video to https://example.com/x.mp4");
+    ASSERT_TRUE(sync.is_object());
+    EXPECT_EQ(sync["kind"].get<std::string>(), "videoSync");
+}
+
+// A8 stateful dedupe + A9 cross-line enrichment exercised through the batch parser.
+TEST(CommonTests, LogParserPopulatesSectionAStreamsWithStatefulDedupe)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-log-sectiona");
+    const auto path = dir / L"output_log_2026-06-23_22-55-00.txt";
+    WriteBytes(path,
+        "2026.06.23 22:55:00 Log        -  User Authenticated: Local User (usr_00000000-0000-0000-0000-000000000000)\n"
+        "2026.06.23 22:55:01 Log        -  [Behaviour] Joining wrld_dddddddd-bbbb-cccc-dddd-eeeeeeeeeeee:5555~public~region(us)\n"
+        "2026.06.23 22:55:02 Log        -  [Behaviour] OnPlayerJoined Mona (usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb)\n"
+        "2026.06.23 22:55:03 Log        -  [Network Processing] RPC invoked SwitchAvatar on AvatarPedestal for Mona\n"
+        "2026.06.23 22:55:04 Log        -  [Always] uSpeak: SetInputDevice 0 (3 total) 'Microphone A'\n"
+        "2026.06.23 22:55:05 Log        -  [Always] uSpeak: SetInputDevice 0 (3 total) 'Microphone A'\n"
+        "2026.06.23 22:55:06 Log        -  [Always] uSpeak: SetInputDevice 0 (3 total) 'Microphone B'\n"
+        "2026.06.23 22:55:07 Log        -  Maximum number (384) of shader global keywords exceeded\n"
+        "2026.06.23 22:55:08 Log        -  Maximum number (384) of shader global keywords exceeded\n"
+        "2026.06.23 22:55:09 Log        -  [Video Playback] ERROR: load failed\n");
+
+    const auto report = vrcsm::core::LogParser::parse(dir);
+    ASSERT_EQ(report.log_count, 1u);
+
+    // A9: pedestal event backfilled with the joined player's user id.
+    ASSERT_EQ(report.avatar_pedestals.size(), 1u);
+    EXPECT_EQ(report.avatar_pedestals[0].display_name, "Mona");
+    ASSERT_TRUE(report.avatar_pedestals[0].user_id.has_value());
+    EXPECT_EQ(*report.avatar_pedestals[0].user_id, "usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb");
+
+    // A8: audio-device emits only on change (A, then B — the duplicate A is dropped).
+    ASSERT_EQ(report.audio_devices.size(), 2u);
+    EXPECT_EQ(report.audio_devices[0].device_name, "Microphone A");
+    EXPECT_EQ(report.audio_devices[1].device_name, "Microphone B");
+
+    // A8: shader-keyword deduped to a single event within the world context.
+    ASSERT_EQ(report.shader_keywords.size(), 1u);
+
+    ASSERT_EQ(report.video_errors.size(), 1u);
+    EXPECT_EQ(report.video_errors[0].error_message, "load failed");
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// A10: read-only avatar-id harvest from an Amplitude-style analytics cache.
+TEST(CommonTests, AvatarIdHarvestExtractsUniqueIdsFromCacheFile)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-harvest");
+    const auto cache = dir / L"amplitude.cache";
+    WriteBytes(cache,
+        "{\"event\":\"x\",\"avatar\":\"avtr_11111111-2222-3333-4444-555555555555\"}\n"
+        "{\"event\":\"y\",\"avatar\":\"avtr_11111111-2222-3333-4444-555555555555\"}\n"
+        "{\"event\":\"z\",\"avatar\":\"avtr_aaaaaaaa-2222-3333-4444-555555555555\"}\n");
+
+    const auto ids = vrcsm::core::AvatarIdHarvest::HarvestFromFile(cache);
+    ASSERT_EQ(ids.size(), 2u);
+    EXPECT_EQ(ids[0], "avtr_11111111-2222-3333-4444-555555555555");
+    EXPECT_EQ(ids[1], "avtr_aaaaaaaa-2222-3333-4444-555555555555");
+
+    // Missing file returns empty without throwing.
+    const auto none = vrcsm::core::AvatarIdHarvest::HarvestFromFile(dir / L"nope.cache");
+    EXPECT_TRUE(none.empty());
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// ── DiscordRpc framing / payload (pure logic, no live pipe) ──────────────
+
+TEST(CommonTests, DiscordRpcEncodeFrameWritesLittleEndianHeader)
+{
+    const std::string body = R"({"v":1,"client_id":"123"})";
+    const std::string frame = vrcsm::core::EncodeFrame(/*opcode=*/0, body);
+
+    ASSERT_EQ(frame.size(), 8u + body.size());
+
+    const auto* bytes = reinterpret_cast<const std::uint8_t*>(frame.data());
+    // opcode 0 (HANDSHAKE), little-endian.
+    EXPECT_EQ(bytes[0], 0u);
+    EXPECT_EQ(bytes[1], 0u);
+    EXPECT_EQ(bytes[2], 0u);
+    EXPECT_EQ(bytes[3], 0u);
+    // length == body.size(), little-endian.
+    const std::uint32_t len = static_cast<std::uint32_t>(body.size());
+    EXPECT_EQ(bytes[4], static_cast<std::uint8_t>(len & 0xff));
+    EXPECT_EQ(bytes[5], static_cast<std::uint8_t>((len >> 8) & 0xff));
+    EXPECT_EQ(bytes[6], static_cast<std::uint8_t>((len >> 16) & 0xff));
+    EXPECT_EQ(bytes[7], static_cast<std::uint8_t>((len >> 24) & 0xff));
+    // Body copied verbatim after the header.
+    EXPECT_EQ(frame.substr(8), body);
+}
+
+TEST(CommonTests, DiscordRpcDecodeFrameHeaderRoundTripsEncode)
+{
+    const std::string body = "payload-bytes";
+    const std::string frame = vrcsm::core::EncodeFrame(/*opcode=*/1, body);
+
+    std::uint32_t op = 99;
+    std::uint32_t len = 0;
+    ASSERT_TRUE(vrcsm::core::DecodeFrameHeader(frame.substr(0, 8), op, len));
+    EXPECT_EQ(op, 1u);
+    EXPECT_EQ(len, body.size());
+
+    // Short header is rejected.
+    EXPECT_FALSE(vrcsm::core::DecodeFrameHeader(std::string(4, '\0'), op, len));
+}
+
+TEST(CommonTests, DiscordRpcBuildHandshakePayloadShape)
+{
+    const auto hs = vrcsm::core::BuildHandshakePayload("123456789012345678");
+    EXPECT_EQ(hs.value("v", 0), 1);
+    EXPECT_EQ(hs.value("client_id", std::string{}), "123456789012345678");
+}
+
+TEST(CommonTests, DiscordRpcBuildSetActivityWrapsActivity)
+{
+    nlohmann::json activity{
+        {"state", "In The Great Pug"},
+        {"details", "wrld_abc:42"},
+    };
+    const auto frame = vrcsm::core::BuildSetActivityPayload(
+        /*pid=*/4321, activity, /*nonce=*/"nonce-1");
+
+    EXPECT_EQ(frame.value("cmd", std::string{}), "SET_ACTIVITY");
+    EXPECT_EQ(frame.value("nonce", std::string{}), "nonce-1");
+    ASSERT_TRUE(frame.contains("args"));
+    EXPECT_EQ(frame["args"].value("pid", 0), 4321);
+    ASSERT_TRUE(frame["args"].contains("activity"));
+    EXPECT_EQ(frame["args"]["activity"].value("state", std::string{}), "In The Great Pug");
+}
+
+TEST(CommonTests, DiscordRpcBuildSetActivityEmptyClearsToNull)
+{
+    // An empty object means "clear the panel" — args.activity must be null,
+    // never an empty object (Discord rejects {}).
+    const auto frame = vrcsm::core::BuildSetActivityPayload(
+        /*pid=*/1, nlohmann::json::object(), /*nonce=*/"n");
+    ASSERT_TRUE(frame["args"].contains("activity"));
+    EXPECT_TRUE(frame["args"]["activity"].is_null());
+
+    // A non-object (e.g. null passed straight through) also clears.
+    const auto frame2 = vrcsm::core::BuildSetActivityPayload(
+        /*pid=*/1, nlohmann::json(nullptr), /*nonce=*/"n");
+    EXPECT_TRUE(frame2["args"]["activity"].is_null());
+}
+
+TEST(CommonTests, DiscordRpcPlaceholderClientIdIsEmptyByDesign)
+{
+    // No real snowflake may be baked in — the integration stays
+    // flag-gated-dark until a published VRCSM app id exists.
+    EXPECT_STREQ(vrcsm::core::kDiscordPlaceholderClientId, "");
+}
+
+// ── ToastNotifier message formatting (pure logic, no Action Center) ──────
+
+TEST(CommonTests, ToastFormatFriendOnlineUsesDisplayNameAndLaunchArg)
+{
+    const nlohmann::json content = {
+        {"userId", "usr_abc"},
+        {"user", {{"displayName", "Nova"}}},
+    };
+    const auto toast = vrcsm::core::FormatPipelineToast("friend-online", content);
+    ASSERT_TRUE(toast.has_value());
+    EXPECT_EQ(toast->kind, vrcsm::core::ToastKind::FriendOnline);
+    EXPECT_EQ(toast->title, "Nova");
+    EXPECT_EQ(toast->body, "is now online");
+    ASSERT_TRUE(toast->launchArg.has_value());
+    EXPECT_EQ(*toast->launchArg, "vrcsm://user/usr_abc");
+}
+
+TEST(CommonTests, ToastFormatFriendOnlineDropsNamelessEvent)
+{
+    // No displayName ⇒ no signal ⇒ no toast (rather than an empty heading).
+    const nlohmann::json content = {{"userId", "usr_abc"}};
+    EXPECT_FALSE(vrcsm::core::FormatPipelineToast("friend-online", content).has_value());
+}
+
+TEST(CommonTests, ToastFormatInviteAndFriendRequestFromNotification)
+{
+    const nlohmann::json invite = {
+        {"id", "not_1"},
+        {"type", "invite"},
+        {"senderUsername", "Pix"},
+        {"senderUserId", "usr_pix"},
+    };
+    const auto inviteToast = vrcsm::core::FormatPipelineToast("notification", invite);
+    ASSERT_TRUE(inviteToast.has_value());
+    EXPECT_EQ(inviteToast->kind, vrcsm::core::ToastKind::Invite);
+    EXPECT_EQ(inviteToast->body, "Invite from Pix");
+    ASSERT_TRUE(inviteToast->launchArg.has_value());
+    EXPECT_EQ(*inviteToast->launchArg, "vrcsm://user/usr_pix");
+
+    const nlohmann::json fr = {
+        {"id", "not_2"},
+        {"type", "friendRequest"},
+        {"senderUsername", "Pix"},
+    };
+    // notification-v2 carries the same shape and must format identically.
+    const auto frToast = vrcsm::core::FormatPipelineToast("notification-v2", fr);
+    ASSERT_TRUE(frToast.has_value());
+    EXPECT_EQ(frToast->kind, vrcsm::core::ToastKind::FriendRequest);
+    EXPECT_EQ(frToast->body, "Friend request from Pix");
+}
+
+TEST(CommonTests, ToastFormatRejectsNonToastWorthyAndMalformed)
+{
+    // A notification type we do not toast on.
+    const nlohmann::json msg = {{"id", "n"}, {"type", "message"}};
+    EXPECT_FALSE(vrcsm::core::FormatPipelineToast("notification", msg).has_value());
+
+    // Unrelated pipeline type.
+    EXPECT_FALSE(vrcsm::core::FormatPipelineToast("friend-location",
+                                                  nlohmann::json::object())
+                     .has_value());
+
+    // Non-object content is treated as untrusted garbage, not crashed on.
+    EXPECT_FALSE(vrcsm::core::FormatPipelineToast("friend-online",
+                                                  nlohmann::json("oops"))
+                     .has_value());
+}
+
+TEST(CommonTests, ToastBuildXmlEscapesAndCarriesLaunch)
+{
+    vrcsm::core::ToastContent c;
+    c.kind = vrcsm::core::ToastKind::FriendOnline;
+    c.title = "A & B <tag>";
+    c.body = "online";
+    c.launchArg = "vrcsm://user/usr_x";
+    const std::string xml = vrcsm::core::BuildToastXml(c);
+
+    // Heading text is XML-escaped (no raw & or < leaks into the document).
+    EXPECT_NE(xml.find("A &amp; B &lt;tag&gt;"), std::string::npos);
+    EXPECT_EQ(xml.find("A & B <tag>"), std::string::npos);
+    // launch attribute present + foreground activation.
+    EXPECT_NE(xml.find(R"(launch="vrcsm://user/usr_x")"), std::string::npos);
+    EXPECT_NE(xml.find(R"(activationType="foreground")"), std::string::npos);
+    EXPECT_NE(xml.find(R"(template="ToastText02")"), std::string::npos);
+
+    // Without a launch arg, no launch attribute is emitted.
+    c.launchArg = std::nullopt;
+    const std::string xml2 = vrcsm::core::BuildToastXml(c);
+    EXPECT_EQ(xml2.find("launch="), std::string::npos);
+}
+
+// ── VR overlay notifier ─────────────────────────────────────────────────
+
+TEST(CommonTests, VrOverlayFormatMirrorsToastEventsAndGating)
+{
+    // Same events as the desktop toast surface in VR with the same title/body.
+    const nlohmann::json online = {
+        {"userId", "usr_abc"},
+        {"user", {{"displayName", "Nova"}}},
+    };
+    const auto n = vrcsm::core::FormatOverlayNotification("friend-online", online);
+    ASSERT_TRUE(n.has_value());
+    EXPECT_EQ(n->title, "Nova");
+    EXPECT_EQ(n->body, "is now online");
+
+    const nlohmann::json invite = {
+        {"id", "not_1"},
+        {"type", "invite"},
+        {"senderUsername", "Pix"},
+        {"senderUserId", "usr_pix"},
+    };
+    const auto inv = vrcsm::core::FormatOverlayNotification("notification", invite);
+    ASSERT_TRUE(inv.has_value());
+    EXPECT_EQ(inv->body, "Invite from Pix");
+
+    // Non-notable events are dropped, exactly like the toast formatter — the
+    // two channels never drift apart.
+    const nlohmann::json msg = {{"id", "n"}, {"type", "message"}};
+    EXPECT_FALSE(vrcsm::core::FormatOverlayNotification("notification", msg).has_value());
+    EXPECT_FALSE(vrcsm::core::FormatOverlayNotification("friend-location",
+                                                        nlohmann::json::object())
+                     .has_value());
+    // Untrusted non-object content is rejected, not crashed on.
+    EXPECT_FALSE(vrcsm::core::FormatOverlayNotification("friend-online",
+                                                        nlohmann::json("oops"))
+                     .has_value());
+}
+
+TEST(CommonTests, VrOverlayBuildsXsOverlayPopupSchema)
+{
+    vrcsm::core::OverlayNotification n;
+    n.title = "Nova";
+    n.body = "is now online";
+    const nlohmann::json payload = vrcsm::core::BuildXsOverlayJson(n);
+
+    // Documented XSOverlay Notifications API shape: a popup (messageType 1)
+    // carrying our title/content, default chime, and VRCSM source tag.
+    EXPECT_EQ(payload.at("messageType").get<int>(), 1);
+    EXPECT_EQ(payload.at("title").get<std::string>(), "Nova");
+    EXPECT_EQ(payload.at("content").get<std::string>(), "is now online");
+    EXPECT_EQ(payload.at("audioPath").get<std::string>(), "default");
+    EXPECT_EQ(payload.at("sourceApp").get<std::string>(), "VRCSM");
+    EXPECT_GT(payload.at("timeout").get<double>(), 0.0);
+}
+
+

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <unordered_set>
 #include <cctype>
@@ -1577,6 +1578,10 @@ Result<nlohmann::json> VrcApi::fetchCurrentUser()
     }
     if (response.status == 401)
     {
+        // [session-diag] A real server 401 on /auth/user is the only
+        // legitimate "your cookie is dead" signal. Log it so we can tell it
+        // apart from the empty-cookie short-circuit above.
+        spdlog::warn("[session-diag] fetchCurrentUser: server returned 401 on /auth/user");
         return Error{"auth_expired", "Session expired", 401};
     }
     if (response.status == 429)
@@ -1618,7 +1623,7 @@ Result<nlohmann::json> VrcApi::fetchAvatarDetails(const std::string& avatarId)
         return Error{"auth_expired", "No session cookie", 401};
     }
 
-    const std::wstring path = toWide(fmt::format("/api/1/avatars/{}", avatarId));
+    const std::wstring path = toWide(fmt::format("/api/1/avatars/{}", percentEncode(avatarId)));
     const auto response = httpGet(
         kApiHostW,
         path,
@@ -2069,6 +2074,33 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchFavoritedWorlds()
         });
 }
 
+Result<std::vector<nlohmann::json>> VrcApi::fetchFavoriteGroups()
+{
+    return fetchPagedAuthedArray(
+        "/favorite/groups",
+        [](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/favorite/groups?n={}&offset={}",
+                limit,
+                offset));
+        });
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchFavoriteRecords(const std::string& type)
+{
+    return fetchPagedAuthedArray(
+        "/favorites",
+        [type](int limit, int offset)
+        {
+            return toWide(fmt::format(
+                "/api/1/favorites?type={}&n={}&offset={}",
+                type,
+                limit,
+                offset));
+        });
+}
+
 bool VrcApi::downloadFile(const std::string& url, const std::filesystem::path& destPath)
 {
     return downloadUrlToFileAtomic(
@@ -2094,7 +2126,7 @@ Result<nlohmann::json> VrcApi::fetchUser(const std::string& userId)
         return Error{"auth_expired", "No session cookie", 401};
     }
 
-    const std::wstring path = toWide(fmt::format("/api/1/users/{}?apiKey={}", userId, kApiKey));
+    const std::wstring path = toWide(fmt::format("/api/1/users/{}?apiKey={}", percentEncode(userId), kApiKey));
     const auto response = httpGet(
         kApiHostW,
         path,
@@ -2123,7 +2155,7 @@ Result<nlohmann::json> VrcApi::selectAvatar(const std::string& avatarId)
     headers.emplace_back(L"Cookie", toWide(cookieHeader));
     headers.emplace_back(L"Content-Type", L"application/json");
 
-    const std::wstring path = toWide(fmt::format("/api/1/avatars/{}/select", avatarId));
+    const std::wstring path = toWide(fmt::format("/api/1/avatars/{}/select", percentEncode(avatarId)));
     const auto response = httpRequest(
         L"PUT",
         kApiHostW,
@@ -2270,7 +2302,7 @@ Result<nlohmann::json> VrcApi::updateAuthUser(const nlohmann::json& patch)
     headers.emplace_back(L"Cookie", toWide(cookieHeader));
     headers.emplace_back(L"Content-Type", L"application/json");
 
-    const std::wstring path = toWide(fmt::format("/api/1/users/{}", userId));
+    const std::wstring path = toWide(fmt::format("/api/1/users/{}", percentEncode(userId)));
     const std::string bodyUtf8 = patch.dump();
     const auto response = httpRequest(
         L"PUT",
@@ -2308,6 +2340,30 @@ Result<nlohmann::json> VrcApi::fetchWorldDetails(const std::string& worldId)
     if (response.status != 200) return Error{"api_error", fmt::format("/worlds/{} returned HTTP {}", worldId, response.status), static_cast<int>(response.status)};
 
     return parseJsonBody(response, "/worlds/{id}");
+}
+
+Result<nlohmann::json> VrcApi::fetchInstance(const std::string& location)
+{
+    // A real instance location is `wrld_*:<instanceId>`; bare world ids,
+    // "offline", "private" and "traveling" have no queryable instance.
+    if (location.empty() || location.find(':') == std::string::npos ||
+        location.rfind("wrld_", 0) != 0)
+    {
+        return Error{"not_found", "Not a real instance location", 404};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    std::optional<std::string> authHeader = cookieHeader.empty() ? std::nullopt : std::make_optional(cookieHeader);
+
+    // World + instance ride together in a single colon-joined path segment.
+    const std::wstring path = toWide(fmt::format("/api/1/instances/{}?apiKey={}", location, kApiKey));
+    const auto response = httpGet(kApiHostW, path, authHeader);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status == 404) return Error{"not_found", fmt::format("Instance {} not found", location), 404};
+    if (response.status != 200) return Error{"api_error", fmt::format("/instances/{} returned HTTP {}", location, response.status), static_cast<int>(response.status)};
+
+    return parseJsonBody(response, "/instances/{location}");
 }
 
 Result<nlohmann::json> VrcApi::inviteSelf(const std::string& instanceLocation)
@@ -2768,7 +2824,7 @@ Result<nlohmann::json> VrcApi::fetchSavedMessages(const std::string& messageType
     if (!isOk(me))
     {
         const auto& err = error(me);
-        if (err.code == "auth_expired") AuthStore::Instance().Clear();
+        if (err.code == "auth_expired") AuthStore::Instance().Clear("SendNotification/auth_expired");
         return err;
     }
     const auto idIt = value(me).find("id");
@@ -2987,6 +3043,567 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchVisits()
                 limit,
                 offset));
         });
+}
+
+// ── Wave 2 / Section B: multipart + online media ───────────────────────
+
+VrcApi::MultipartBody VrcApi::buildMultipartFormData(
+    const std::string& boundary,
+    const std::vector<MultipartField>& fields,
+    const std::optional<MultipartFile>& file)
+{
+    // RFC 2388 multipart/form-data. Each part is preceded by --<boundary>
+    // and the whole body ends with --<boundary>--. Field values and file
+    // bytes are inserted verbatim (binary-safe in std::string).
+    std::string body;
+    const std::string dashBoundary = "--" + boundary;
+
+    for (const auto& field : fields)
+    {
+        body += dashBoundary;
+        body += "\r\n";
+        body += fmt::format(
+            "Content-Disposition: form-data; name=\"{}\"\r\n\r\n", field.name);
+        body += field.value;
+        body += "\r\n";
+    }
+
+    if (file.has_value())
+    {
+        body += dashBoundary;
+        body += "\r\n";
+        body += fmt::format(
+            "Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n",
+            file->fieldName, file->filename);
+        body += fmt::format("Content-Type: {}\r\n\r\n", file->contentType);
+        body += file->bytes;
+        body += "\r\n";
+    }
+
+    body += dashBoundary;
+    body += "--\r\n";
+
+    MultipartBody out;
+    out.body = std::move(body);
+    out.contentType = "multipart/form-data; boundary=" + boundary;
+    return out;
+}
+
+std::optional<std::string> VrcApi::decodeBase64(const std::string& input)
+{
+    auto decodeChar = [](unsigned char c) -> int
+    {
+        if (c >= 'A' && c <= 'Z') return c - 'A';
+        if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+        if (c >= '0' && c <= '9') return c - '0' + 52;
+        if (c == '+') return 62;
+        if (c == '/') return 63;
+        return -1;
+    };
+
+    std::string out;
+    out.reserve((input.size() / 4) * 3);
+
+    int buffer = 0;
+    int bits = 0;
+    for (unsigned char c : input)
+    {
+        if (c == '=' ) break;
+        if (c == '\r' || c == '\n' || c == ' ' || c == '\t') continue;
+        const int v = decodeChar(c);
+        if (v < 0) return std::nullopt; // malformed
+        buffer = (buffer << 6) | v;
+        bits += 6;
+        if (bits >= 8)
+        {
+            bits -= 8;
+            out.push_back(static_cast<char>((buffer >> bits) & 0xFF));
+        }
+    }
+
+    return out;
+}
+
+namespace
+{
+// Random-ish boundary token. Stable per-process counter keeps it unique
+// across concurrent uploads without pulling in <random> entropy each call.
+std::string makeMultipartBoundary()
+{
+    static std::atomic<std::uint64_t> counter{0};
+    const auto n = counter.fetch_add(1, std::memory_order_relaxed);
+    return fmt::format("----VRCSMBoundary{}{}", unixNow(), n);
+}
+} // namespace
+
+Result<nlohmann::json> VrcApi::sendBoop(
+    const std::string& userId,
+    std::optional<std::string> emojiId)
+{
+    if (userId.empty())
+        return Error{"invalid_params", "Empty userId", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    nlohmann::json body = nlohmann::json::object();
+    if (emojiId.has_value() && !emojiId->empty())
+        body["emojiId"] = *emojiId;
+
+    const auto path = toWide(fmt::format("/api/1/users/{}/boop", percentEncode(userId)));
+    const auto response = httpRequest(L"POST", kApiHostW, path, headers, body.dump());
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("/users/{}/boop returned HTTP {}", userId, response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::fetchInventory(
+    std::optional<std::string> types, int n, int offset)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "Not signed in", 401};
+
+    // holderId defaults to the current user server-side, so we omit it.
+    std::string query = fmt::format(
+        "/api/1/inventory?n={}&offset={}",
+        std::clamp(n, 1, 100), std::max(offset, 0));
+    if (types.has_value() && !types->empty())
+        query += "&types=" + percentEncode(*types);
+
+    const auto response = httpGet(kApiHostW, toWide(query), cookieHeader);
+    if (auto err = checkStandardHttpError(response, "/inventory")) return *err;
+    return parseJsonBody(response, "/inventory");
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchPrints()
+{
+    const auto current = fetchCurrentUser();
+    if (!isOk(current))
+        return std::get<Error>(current);
+    const auto& currentUser = value(current);
+    const auto idIt = currentUser.find("id");
+    if (idIt == currentUser.end() || !idIt->is_string())
+        return Error{"api_error", "Current user has no id field", 0};
+    const std::string selfId = idIt->get<std::string>();
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "Not signed in", 401};
+
+    const auto path = toWide(fmt::format("/api/1/prints/user/{}", percentEncode(selfId)));
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    if (auto err = checkStandardHttpError(response, "/prints/user")) return *err;
+
+    const auto doc = parseJsonBody(response, "/prints/user");
+    std::vector<nlohmann::json> out;
+    if (doc.is_array())
+    {
+        for (const auto& item : doc) out.push_back(item);
+    }
+    return out;
+}
+
+Result<nlohmann::json> VrcApi::fetchPrint(const std::string& printId)
+{
+    if (printId.empty())
+        return Error{"not_found", "Empty print id", 404};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "Not signed in", 401};
+
+    const auto path = toWide(fmt::format("/api/1/prints/{}", percentEncode(printId)));
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    if (auto err = checkStandardHttpError(response, "/prints/{id}")) return *err;
+    if (response.status == 404) return Error{"not_found", fmt::format("Print {} not found", printId), 404};
+    return parseJsonBody(response, "/prints/{id}");
+}
+
+Result<nlohmann::json> VrcApi::uploadPrint(
+    const std::string& imageBytes,
+    const std::string& timestamp,
+    std::optional<std::string> note,
+    std::optional<std::string> worldId,
+    std::optional<std::string> worldName)
+{
+    if (imageBytes.empty())
+        return Error{"invalid_params", "Empty image bytes", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<MultipartField> fields;
+    fields.push_back({"timestamp", timestamp});
+    if (note.has_value() && !note->empty()) fields.push_back({"note", *note});
+    if (worldId.has_value() && !worldId->empty()) fields.push_back({"worldId", *worldId});
+    if (worldName.has_value() && !worldName->empty()) fields.push_back({"worldName", *worldName});
+
+    MultipartFile file{"image", "print.png", "image/png", imageBytes};
+    const auto multipart = buildMultipartFormData(makeMultipartBoundary(), fields, file);
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", toWide(multipart.contentType));
+
+    const auto response = httpRequest(
+        L"POST", kApiHostW, toWide("/api/1/prints"), headers, multipart.body);
+
+    if (auto err = checkStandardHttpError(response, "/prints")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("/prints returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return parseJsonBody(response, "/prints");
+}
+
+Result<nlohmann::json> VrcApi::deletePrint(const std::string& printId)
+{
+    if (printId.empty())
+        return Error{"invalid_params", "Empty print id", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto path = toWide(fmt::format("/api/1/prints/{}", percentEncode(printId)));
+    const auto response = httpRequest(L"DELETE", kApiHostW, path, headers, "");
+    if (auto err = checkStandardHttpError(response, "/prints/{id}")) return *err;
+    if (response.status != 200 && response.status != 204)
+        return Error{"api_error",
+            fmt::format("delete print returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<std::vector<nlohmann::json>> VrcApi::fetchFiles(const std::string& tag)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "Not signed in", 401};
+
+    std::string query = "/api/1/files?n=100";
+    if (!tag.empty()) query += "&tag=" + percentEncode(tag);
+
+    const auto response = httpGet(kApiHostW, toWide(query), cookieHeader);
+    if (auto err = checkStandardHttpError(response, "/files")) return *err;
+
+    const auto doc = parseJsonBody(response, "/files");
+    std::vector<nlohmann::json> out;
+    if (doc.is_array())
+    {
+        for (const auto& item : doc) out.push_back(item);
+    }
+    return out;
+}
+
+Result<nlohmann::json> VrcApi::uploadImage(
+    const std::string& imageBytes,
+    const std::string& tag,
+    bool matchingDimensions)
+{
+    if (imageBytes.empty())
+        return Error{"invalid_params", "Empty image bytes", 400};
+    if (tag.empty())
+        return Error{"invalid_params", "Empty image tag", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<MultipartField> fields;
+    fields.push_back({"tag", tag});
+    if (matchingDimensions) fields.push_back({"matchingDimensions", "true"});
+
+    MultipartFile file{"file", "image.png", "image/png", imageBytes};
+    const auto multipart = buildMultipartFormData(makeMultipartBoundary(), fields, file);
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", toWide(multipart.contentType));
+
+    const auto response = httpRequest(
+        L"POST", kApiHostW, toWide("/api/1/file/image"), headers, multipart.body);
+
+    if (auto err = checkStandardHttpError(response, "/file/image")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("/file/image returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return parseJsonBody(response, "/file/image");
+}
+
+Result<nlohmann::json> VrcApi::uploadAnimatedEmoji(
+    const std::string& imageBytes,
+    const AnimatedEmojiParams& anim,
+    bool matchingDimensions)
+{
+    if (imageBytes.empty())
+        return Error{"invalid_params", "Empty image bytes", 400};
+    // The server rejects nonsensical sprite-sheet metadata with an opaque 400,
+    // so validate up front and return a message the UI can actually show.
+    if (anim.frames < 1)
+        return Error{"invalid_params", "Animated emoji needs at least 1 frame", 400};
+    if (anim.framesOverTime < 1)
+        return Error{"invalid_params", "Animated emoji framesOverTime must be >= 1", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<MultipartField> fields;
+    fields.push_back({"tag", "emojianimated"});
+    if (matchingDimensions) fields.push_back({"matchingDimensions", "true"});
+    // VRChat's animated-emoji contract: frame count, playback fps, and the
+    // animation style id all ride alongside the sprite-sheet image.
+    fields.push_back({"frames", std::to_string(anim.frames)});
+    fields.push_back({"framesOverTime", std::to_string(anim.framesOverTime)});
+    if (!anim.animationStyle.empty())
+        fields.push_back({"animationStyle", anim.animationStyle});
+
+    MultipartFile file{"file", "emoji.png", "image/png", imageBytes};
+    const auto multipart = buildMultipartFormData(makeMultipartBoundary(), fields, file);
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", toWide(multipart.contentType));
+
+    const auto response = httpRequest(
+        L"POST", kApiHostW, toWide("/api/1/file/image"), headers, multipart.body);
+
+    if (auto err = checkStandardHttpError(response, "/file/image")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("/file/image returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return parseJsonBody(response, "/file/image");
+}
+
+Result<nlohmann::json> VrcApi::deleteFile(const std::string& fileId)
+{
+    if (fileId.empty())
+        return Error{"invalid_params", "Empty file id", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto path = toWide(fmt::format("/api/1/file/{}", percentEncode(fileId)));
+    const auto response = httpRequest(L"DELETE", kApiHostW, path, headers, "");
+    if (auto err = checkStandardHttpError(response, "/file/{id}")) return *err;
+    if (response.status != 200 && response.status != 204)
+        return Error{"api_error",
+            fmt::format("delete file returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+    return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::updateAvatarImage(
+    const std::string& avatarId,
+    const std::string& imageUrl)
+{
+    if (avatarId.empty())
+        return Error{"invalid_params", "Empty avatar id", 400};
+    if (imageUrl.empty())
+        return Error{"invalid_params", "Empty image url", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const nlohmann::json body = {{"imageUrl", imageUrl}};
+    const auto path = toWide(fmt::format("/api/1/avatars/{}", percentEncode(avatarId)));
+    const auto response = httpRequest(L"PUT", kApiHostW, path, headers, body.dump());
+
+    if (auto err = checkStandardHttpError(response, "/avatars/{id}")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("/avatars/{} returned HTTP {}", avatarId, response.status)),
+            static_cast<int>(response.status)};
+    }
+    return parseJsonBody(response, "/avatars/{id}");
+}
+
+namespace
+{
+    // Normalize a raw avatar JSON object into the slim shape the
+    // model-management page expects. Mirrors searchAvatars() but also
+    // carries the unityPackages array so platform support is visible.
+    nlohmann::json normalizeOwnedAvatar(const nlohmann::json& item)
+    {
+        return {
+            {"id",                item.value("id", "")},
+            {"name",              item.value("name", "")},
+            {"description",       item.value("description", "")},
+            {"authorId",          item.value("authorId", "")},
+            {"authorName",        item.value("authorName", "")},
+            {"imageUrl",          item.value("imageUrl", "")},
+            {"thumbnailImageUrl", item.value("thumbnailImageUrl", "")},
+            {"releaseStatus",     item.value("releaseStatus", "")},
+            {"version",           item.value("version", 0)},
+            {"tags",              item.value("tags", nlohmann::json::array())},
+            {"unityPackages",     item.value("unityPackages", nlohmann::json::array())},
+            {"created_at",        item.value("created_at", "")},
+            {"updated_at",        item.value("updated_at", "")},
+        };
+    }
+} // namespace
+
+Result<nlohmann::json> VrcApi::fetchOwnedAvatars(
+    const std::string& releaseStatus, int count, int offset)
+{
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+
+    // The `user` param only accepts the literal "me"; releaseStatus is one
+    // of all|public|private|hidden. Anything else is coerced to "all" so a
+    // malformed caller can never craft an unexpected query.
+    std::string status = releaseStatus;
+    if (status != "public" && status != "private" && status != "hidden")
+    {
+        status = "all";
+    }
+
+    const auto path = toWide(fmt::format(
+        "/api/1/avatars?apiKey={}&user=me&releaseStatus={}&sort=updated"
+        "&order=descending&n={}&offset={}",
+        kApiKey, status, std::clamp(count, 1, 100), std::max(offset, 0)));
+
+    const auto response = httpGet(kApiHostW, path, cookieHeader);
+    // VRChat refuses to *list* hidden (= deleted) avatars: the
+    // `releaseStatus=hidden` query 401s even with a perfectly valid session.
+    // Translating that into the generic "Session expired" is misleading — the
+    // session is fine, the endpoint simply isn't allowed. Surface a precise
+    // code so the UI can explain it and steer the user to fetch-by-id instead.
+    if (status == "hidden" && response.status == 401)
+    {
+        return Error{"hidden_list_unsupported",
+            "VRChat does not allow listing hidden avatars. Look them up by id instead.",
+            401};
+    }
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status != 200)
+    {
+        return Error{"api_error",
+            fmt::format("/avatars?user=me returned HTTP {}", response.status),
+            static_cast<int>(response.status)};
+    }
+
+    auto arr = parseJsonBody(response, "/avatars?user=me");
+    nlohmann::json results = nlohmann::json::array();
+    if (arr.is_array())
+    {
+        for (auto& item : arr)
+        {
+            results.push_back(normalizeOwnedAvatar(item));
+        }
+    }
+    return nlohmann::json{{"avatars", results}};
+}
+
+Result<nlohmann::json> VrcApi::updateAvatar(
+    const std::string& avatarId, const nlohmann::json& patch)
+{
+    if (avatarId.empty())
+        return Error{"invalid_params", "Empty avatar id", 400};
+    if (!patch.is_object() || patch.empty())
+        return Error{"invalid_params", "Empty avatar patch", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    // Only forward whitelisted writable fields. Drop anything else so a
+    // stray key in the IPC payload can never reach the live account.
+    nlohmann::json body = nlohmann::json::object();
+    for (const char* key : {"name", "description", "releaseStatus", "tags", "imageUrl"})
+    {
+        if (patch.contains(key))
+        {
+            body[key] = patch.at(key);
+        }
+    }
+    if (body.empty())
+        return Error{"invalid_params", "No writable avatar fields in patch", 400};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    headers.emplace_back(L"Content-Type", L"application/json");
+
+    const auto path = toWide(fmt::format("/api/1/avatars/{}", percentEncode(avatarId)));
+    const auto response = httpRequest(L"PUT", kApiHostW, path, headers, body.dump());
+
+    if (auto err = checkStandardHttpError(response, "/avatars/{id}")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("/avatars/{} returned HTTP {}", avatarId, response.status)),
+            static_cast<int>(response.status)};
+    }
+    return parseJsonBody(response, "/avatars/{id}");
+}
+
+Result<nlohmann::json> VrcApi::deleteAvatar(const std::string& avatarId)
+{
+    if (avatarId.empty())
+        return Error{"invalid_params", "Empty avatar id", 400};
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+
+    const auto path = toWide(fmt::format("/api/1/avatars/{}", percentEncode(avatarId)));
+    const auto response = httpRequest(L"DELETE", kApiHostW, path, headers, "");
+    if (auto err = checkStandardHttpError(response, "/avatars/{id}")) return *err;
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("delete avatar returned HTTP {}", response.status)),
+            static_cast<int>(response.status)};
+    }
+    return nlohmann::json{{"ok", true}};
 }
 
 } // namespace vrcsm::core

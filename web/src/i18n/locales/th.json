@@ -185,7 +185,7 @@
       "send": "ส่ง",
       "sent": "ส่งข้อความในกล่องแชทแล้ว",
       "rateLimit": "รอ 2 วินาทีระหว่างส่งข้อความ (จำกัดอัตราของ VRChat)",
-      "rateLimitBurst": "รอ 2 วินาทีระหว่างส่งข้อความ (จำกัดอัตราของ VRChat)"
+      "rateLimitBurst": "Chatbox ส่งได้ 5 ข้อความต่อ 5 วินาที รออีก {{seconds}} วิ"
     },
     "studio": {
       "title": "OSC Studio",
@@ -245,7 +245,123 @@
       "startAutoShort": "อัตโนมัติ",
       "noCardSelected": "Select a card first"
     },
-    "sendFailed": "OSC ส่งไม่สำเร็จ"
+    "sendFailed": "OSC ส่งไม่สำเร็จ",
+    "page": {
+      "subtitle": "สร้างข้อความ OSC ของ VRChat ดูตัวอย่างสิ่งที่จะส่งจริง และติดตามการรับส่งได้ในที่เดียว"
+    },
+    "profile": {
+      "label": "Profile",
+      "cardCount": "{{count}} การ์ด",
+      "new": "Profile ใหม่",
+      "rename": "เปลี่ยนชื่อ Profile",
+      "delete": "ลบ Profile",
+      "renameTitle": "เปลี่ยนชื่อ Profile",
+      "deleteTitle": "ลบ Profile นี้?",
+      "deleteBody": "\"{{name}}\" และการ์ดทั้งหมดจะถูกลบ การกระทำนี้ย้อนกลับไม่ได้"
+    },
+    "conn": {
+      "label": "เป้าหมาย",
+      "host": "OSC host",
+      "sendPort": "พอร์ตส่ง",
+      "hardware": "Hardware",
+      "hardwareNone": "ไม่มีข้อมูล Hardware"
+    },
+    "io": {
+      "button": "นำเข้า / ส่งออก",
+      "title": "นำเข้า / ส่งออก Profile",
+      "desc": "การส่งออกจะคัดลอกการ์ดใน Profile ที่ใช้งานอยู่เป็น JSON วาง JSON แล้วนำเข้าเพื่อแทนที่การ์ดใน Profile นี้",
+      "export": "ส่งออก",
+      "import": "นำเข้า",
+      "loadFile": "โหลดไฟล์",
+      "copied": "คัดลอก Profile ไปยังคลิปบอร์ดแล้ว",
+      "exportReady": "Profile พร้อมคัดลอก",
+      "imported": "นำเข้า Profile แล้ว"
+    },
+    "list": {
+      "title": "ข้อความ",
+      "reset": "รีเซ็ตเป็นค่าเริ่มต้น",
+      "resetTitle": "รีเซ็ตข้อความ?",
+      "resetBody": "การกระทำนี้จะแทนที่ข้อความใน Profile ปัจจุบันด้วยค่าเริ่มต้นที่มีมาให้",
+      "empty": "ยังไม่มีข้อความ กด \"เพิ่มข้อความ\" เพื่อเริ่ม"
+    },
+    "card": {
+      "emptyPreview": "(ไม่มีเอาต์พุต)",
+      "send": "ส่ง",
+      "autoTitle": "ส่งอัตโนมัติตามช่วงเวลา",
+      "autoStart": "อัตโนมัติ",
+      "autoStop": "หยุด",
+      "enable": "เปิด",
+      "disable": "ปิด",
+      "moveUp": "เลื่อนขึ้น",
+      "moveDown": "เลื่อนลง"
+    },
+    "editor": {
+      "empty": "เลือกข้อความทางซ้าย หรือเพิ่มข้อความใหม่เพื่อเริ่มแก้ไข",
+      "title": "แก้ไขข้อความ",
+      "delete": "ลบข้อความ",
+      "name": "ชื่อ",
+      "group": "กลุ่ม",
+      "template": "ข้อความ chatbox",
+      "templatePlaceholder": "พิมพ์ข้อความและแทรก {variables} เช่น CPU {cpu.loadPct} {cpu.tempC}",
+      "address": "OSC address",
+      "type": "ชนิด",
+      "value": "ค่า",
+      "previewLabel": "จะส่ง",
+      "noOutput": "(ไม่มี — เทมเพลตให้ผลว่างเปล่า)",
+      "interval": "ทุก",
+      "send": "ส่งเลย",
+      "startAuto": "ส่งอัตโนมัติ",
+      "stopAuto": "หยุดอัตโนมัติ",
+      "rateHint": "ขีดจำกัด chatbox: ส่งเองได้ 5 ครั้งต่อ 5 วินาที การส่งอัตโนมัติจำกัดที่ 1 ข้อความทุก 2 วินาที",
+      "insertVariable": "แทรกตัวแปร",
+      "searchVariable": "ค้นหา CPU, GPU, เวลา...",
+      "noVariables": "ไม่มีตัวแปรที่ตรงกัน"
+    },
+    "add": {
+      "button": "เพิ่มข้อความ",
+      "chatbox": "ข้อความ chatbox เปล่า",
+      "raw": "ข้อความค่า OSC เปล่า",
+      "presets": "Presets"
+    },
+    "loop": {
+      "title": "ส่งและรับ",
+      "listening": "กำลังฟัง",
+      "quickSend": "ส่งด่วน",
+      "address": "Address",
+      "type": "ชนิดค่า",
+      "value": "ค่า",
+      "send": "ส่ง",
+      "listenPort": "พอร์ตรับฟัง",
+      "start": "ฟัง",
+      "stop": "หยุด",
+      "clear": "ล้าง",
+      "waiting": "รอข้อความ...",
+      "idle": "ส่งข้อความหรือเริ่มการฟัง",
+      "in": "เข้า",
+      "out": "ออก"
+    },
+    "avatar": {
+      "title": "พารามิเตอร์ Avatar",
+      "hint": "อ่านการตั้งค่า OSC ของ Avatar ในเครื่องและเพิ่มพารามิเตอร์เป็นข้อความค่า",
+      "missing": "กรอกหรือเลือก avatar id",
+      "loaded": "โหลด {{count}} พารามิเตอร์แล้ว",
+      "load": "โหลด",
+      "paramName": "ชื่อพารามิเตอร์",
+      "paramType": "ชนิดพารามิเตอร์",
+      "noParams": "ไม่มีพารามิเตอร์ในไฟล์ Avatar นี้"
+    },
+    "hw": {
+      "title": "ค่าฮาร์ดแวร์",
+      "loading": "กำลังโหลด",
+      "identity": "ข้อมูลระบุตัวตน",
+      "live": "เซ็นเซอร์แบบเรียลไทม์",
+      "sensorNeeded": "ต้องมีตัวให้ข้อมูลเซ็นเซอร์"
+    },
+    "auto": {
+      "badge": "AUTO",
+      "stats": "ส่งแล้ว {{sent}} · ข้าม {{skipped}}",
+      "nextIn": "อีก {{seconds}}วิ"
+    }
   },
   "auth": {
     "signIn": "เข้าสู่ระบบ",
@@ -651,7 +767,10 @@
     "jumpTo": "ไปที่",
     "seconds": "วิ",
     "ready": "พร้อม",
-    "partial": "บางส่วน"
+    "partial": "บางส่วน",
+    "add": "เพิ่ม",
+    "delete": "ลบ",
+    "reset": "รีเซ็ต"
   },
   "about": {
     "title": "เกี่ยวกับ VRCSM",
@@ -1451,7 +1570,8 @@
       "registry": "เรจิสทรี VRChat",
       "steamvr": "SteamVR",
       "experimental": "ทดลอง",
-      "vrDiag": "การวินิจฉัย VR"
+      "vrDiag": "การวินิจฉัย VR",
+      "data": "จัดการข้อมูล"
     },
     "vrDiag": {
       "heading": "การวินิจฉัย VR",
@@ -1492,6 +1612,63 @@
       "label": "เปิดพร้อมกับ Windows",
       "hint": "เริ่ม VRCSM โดยอัตโนมัติเมื่อคุณเข้าสู่ระบบ Windows",
       "errorUpdate": "อัปเดตการเปิดอัตโนมัติไม่สำเร็จ"
+    },
+    "data": {
+      "heading": "การจัดการข้อมูล",
+      "blurb": "ตรวจสอบและล้างแคชและข้อมูลที่ VRCSM เก็บไว้บนเครื่องนี้ แคชที่สร้างใหม่ได้ล้างได้อย่างปลอดภัย ส่วนประวัติและข้อมูล asset จะถูกลบถาวร",
+      "dbSize": "ไฟล์ฐานข้อมูล (vrcsm.db): {{size}}",
+      "loading": "กำลังโหลดการใช้งาน…",
+      "loadError": "โหลดการใช้งานไม่สำเร็จ: {{error}}",
+      "rowCount": "{{count}} แถว",
+      "selectedCount": "เลือกแล้ว {{count}}",
+      "clearSelected": "ล้างที่เลือก",
+      "clearing": "กำลังล้าง…",
+      "clearSuccess": "ล้างแล้ว {{count}} รายการ",
+      "clearPartial": "ล้างแล้ว แต่ล้มเหลว {{count}} รายการ",
+      "clearError": "ล้างข้อมูลไม่สำเร็จ: {{error}}",
+      "confirmTitle": "ยืนยันการล้างข้อมูล",
+      "confirmIrreversible": "รายการต่อไปนี้จะถูกลบถาวร ไม่สามารถกู้คืนได้",
+      "confirmSafe": "รายการต่อไปนี้จะถูกล้าง แคชจะถูกสร้างขึ้นใหม่โดยอัตโนมัติ",
+      "confirmClear": "ล้างเดี๋ยวนี้",
+      "cancel": "ยกเลิก",
+      "dangerAck": "ฉันเข้าใจว่านี่จะลบ asset ของฉันเองอย่างถาวร (รายการโปรด บันทึก แท็ก)",
+      "group": {
+        "cache": "แคชที่สร้างใหม่ได้",
+        "cacheDesc": "ล้างได้อย่างปลอดภัย VRCSM จะสร้างขึ้นใหม่โดยอัตโนมัติเมื่อจำเป็น",
+        "history": "ข้อมูลประวัติและการวิเคราะห์",
+        "historyDesc": "กิจกรรมที่บันทึกไว้ในเครื่อง การล้างเป็นการถาวรและกู้คืนไม่ได้",
+        "experimental": "ข้อมูลฟีเจอร์ทดลอง",
+        "experimentalDesc": "ข้อมูลที่สร้างจากฟีเจอร์ทดลอง",
+        "danger": "โซนอันตราย",
+        "dangerDesc": "ข้อมูลของคุณเอง การล้างจะลบรายการโปรด โน้ต และแท็กอย่างถาวร"
+      },
+      "item": {
+        "cache": {
+          "thumbnails": "แคชภาพขนาดย่อ",
+          "previews": "แคชตัวอย่าง Avatar",
+          "screenshotThumbs": "ภาพย่อของสกรีนช็อต",
+          "updates": "อัปเดตที่ดาวน์โหลด",
+          "pluginFeed": "แคชฟีดปลั๊กอิน",
+          "index": "ดัชนีแคช",
+          "assetCache": "แคชข้อมูลเมตาของ asset",
+          "benchmark": "แคชเบนช์มาร์ก Avatar",
+          "onlineMirror": "มิเรอร์ออนไลน์ (avatar, print, inventory)"
+        },
+        "history": {
+          "worldVisits": "ประวัติการเข้า World",
+          "playerEvents": "เหตุการณ์และการพบผู้เล่น",
+          "avatarHistory": "ประวัติ Avatar",
+          "friendLog": "บันทึกเพื่อนและสถานะ",
+          "sessions": "ประวัติเซสชัน",
+          "logEvents": "เหตุการณ์ในบันทึก"
+        },
+        "experimental": {
+          "embeddings": "Embedding สำหรับค้นหาด้วยภาพ"
+        },
+        "assets": {
+          "favorites": "รายการโปรด โน้ต และแท็กในเครื่อง"
+        }
+      }
     }
   },
   "imageZoom": {

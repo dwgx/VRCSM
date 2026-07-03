@@ -1,8 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   cardPreview,
+  createOscProfile,
+  deleteOscProfile,
+  getActiveOscProfile,
   importOscStudioProfile,
+  loadOscStudioProfiles,
+  renameOscProfile,
   renderOscTemplate,
+  saveOscStudioProfiles,
+  setActiveOscProfile,
+  setActiveProfileCards,
   type HardwareSnapshot,
   type OscStudioCard,
 } from "../osc-studio";
@@ -95,5 +103,94 @@ describe("osc-studio templates", () => {
     };
 
     expect(cardPreview(card, { now: fixedNow })).toHaveLength(144);
+  });
+});
+
+describe("osc-studio profiles", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("seeds a single Default profile on first load", () => {
+    const state = loadOscStudioProfiles();
+    expect(state.profiles).toHaveLength(1);
+    expect(state.profiles[0].name).toBe("Default");
+    expect(state.activeProfileId).toBe(state.profiles[0].id);
+    expect(state.profiles[0].cards.length).toBeGreaterThan(0);
+  });
+
+  it("migrates a legacy v4 single-card store into a Default profile", () => {
+    const legacyCards = importOscStudioProfile(JSON.stringify([
+      {
+        id: "legacy",
+        kind: "chatbox-template",
+        title: "Legacy",
+        group: "chatbox",
+        enabled: true,
+        address: "/chatbox/input",
+        valueType: "string",
+        value: "",
+        template: "hi",
+      },
+    ]));
+    localStorage.setItem("vrcsm.oscStudio.cards.v1", JSON.stringify({
+      version: 4,
+      cards: legacyCards,
+      savedAt: fixedNow.toISOString(),
+    }));
+
+    const state = loadOscStudioProfiles();
+    expect(state.profiles).toHaveLength(1);
+    expect(state.profiles[0].name).toBe("Default");
+    expect(state.profiles[0].cards.some((card) => card.id === "legacy")).toBe(true);
+  });
+
+  it("creates, switches, renames, and deletes profiles while keeping at least one", () => {
+    let state = loadOscStudioProfiles();
+    const defaultId = state.activeProfileId;
+
+    state = createOscProfile(state, "Streaming");
+    expect(state.profiles).toHaveLength(2);
+    expect(getActiveOscProfile(state).name).toBe("Streaming");
+    const streamingId = state.activeProfileId;
+
+    state = renameOscProfile(state, streamingId, "Stream HUD");
+    expect(state.profiles.find((p) => p.id === streamingId)?.name).toBe("Stream HUD");
+
+    state = setActiveOscProfile(state, defaultId);
+    expect(state.activeProfileId).toBe(defaultId);
+
+    state = deleteOscProfile(state, streamingId);
+    expect(state.profiles).toHaveLength(1);
+
+    // Never drops the last remaining profile.
+    state = deleteOscProfile(state, state.activeProfileId);
+    expect(state.profiles).toHaveLength(1);
+  });
+
+  it("persists cards independently per profile across reloads", () => {
+    let state = createOscProfile(loadOscStudioProfiles(), "Second");
+    const secondId = state.activeProfileId;
+    const card: OscStudioCard = {
+      id: "second-only",
+      kind: "chatbox-template",
+      title: "Second only",
+      group: "chatbox",
+      enabled: true,
+      address: "/chatbox/input",
+      valueType: "string",
+      value: "",
+      template: "second",
+    };
+    state = setActiveProfileCards(state, [card]);
+    saveOscStudioProfiles(state);
+
+    const reloaded = loadOscStudioProfiles();
+    const second = reloaded.profiles.find((p) => p.id === secondId);
+    expect(second?.cards).toHaveLength(1);
+    expect(second?.cards[0].id).toBe("second-only");
+    // The Default profile still has its seeded cards.
+    const other = reloaded.profiles.find((p) => p.id !== secondId);
+    expect((other?.cards.length ?? 0)).toBeGreaterThan(1);
   });
 });

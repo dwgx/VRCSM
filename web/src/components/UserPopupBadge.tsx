@@ -11,6 +11,8 @@ import {
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { assetImageUrl, useAsset } from "@/lib/assets-cache";
 import { trustRank, trustColorClass, trustLabelKey } from "@/lib/vrcFriends";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { userColor } from "@/lib/user-color";
 
 interface UserPopupBadgeProps {
   userId: string;
@@ -21,6 +23,7 @@ interface UserPopupBadgeProps {
 export function UserPopupBadge({ userId, displayName, compact = false }: UserPopupBadgeProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [userColorEnabled] = useUiPrefBoolean("vrcsm.a11y.userColor", false);
   const { data } = useIpcQuery<{ userId: string }, { profile: VrcUserProfile | null }>(
     "user.getProfile",
     { userId },
@@ -67,7 +70,8 @@ export function UserPopupBadge({ userId, displayName, compact = false }: UserPop
         </div>
         <span className={compact
           ? "min-w-0 truncate text-[10.5px] font-medium text-[hsl(var(--foreground))]"
-          : "text-[11.5px] font-medium text-[hsl(var(--foreground))]"}>
+          : "text-[11.5px] font-medium text-[hsl(var(--foreground))]"}
+          style={userColorEnabled && userId.startsWith("usr_") ? { color: userColor(userId).css } : undefined}>
           {name}
         </span>
         {rank && !compact && (

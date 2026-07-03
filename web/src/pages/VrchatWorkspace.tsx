@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -7,7 +8,6 @@ import {
   LogIn,
   RefreshCw,
   Users,
-  Shirt,
   Globe2,
   Ban,
   Sparkles,
@@ -26,30 +26,44 @@ import { cn } from "@/lib/utils";
 
 const TabOverview = lazy(() => import("./workspace/TabOverview"));
 const TabFriends = lazy(() => import("./workspace/TabFriends"));
-const TabAvatars = lazy(() => import("./workspace/TabAvatars"));
 const TabWorlds = lazy(() => import("./workspace/TabWorlds"));
 const TabSocial = lazy(() => import("./workspace/TabSocial"));
-const TabVrcPlus = lazy(() => import("./workspace/TabVrcPlus"));
+// VRC+ now lives inside the workspace: render the full media manager (prints,
+// gallery, icons, inventory) here rather than the old read-only summary tab.
+const VrcPlusManager = lazy(() => import("./VrcPlus"));
 
-type WorkspaceTab = "overview" | "friends" | "avatars" | "worlds" | "social" | "vrcplus";
+type WorkspaceTab = "overview" | "friends" | "worlds" | "social" | "vrcplus";
 
 const TABS: Array<{ key: WorkspaceTab; labelKey: string; icon: typeof Users }> = [
   { key: "overview", labelKey: "vrchatWorkspace.tabs.overview", icon: LayoutDashboard },
   { key: "friends", labelKey: "vrchatWorkspace.tabs.friends", icon: Users },
-  { key: "avatars", labelKey: "vrchatWorkspace.tabs.avatars", icon: Shirt },
   { key: "worlds", labelKey: "vrchatWorkspace.tabs.worlds", icon: Globe2 },
   { key: "social", labelKey: "vrchatWorkspace.tabs.social", icon: Ban },
   { key: "vrcplus", labelKey: "vrchatWorkspace.tabs.vrcPlus", icon: Sparkles },
 ];
 
+const VALID_TABS: WorkspaceTab[] = ["overview", "friends", "worlds", "social", "vrcplus"];
+
 function usePersistedTab(): [WorkspaceTab, (tab: WorkspaceTab) => void] {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTabState] = useState<WorkspaceTab>(() => {
+    // A `?tab=` param (e.g. the /vrcplus redirect) wins over the saved tab so
+    // deep links land on the right place.
+    const param = searchParams.get("tab");
+    if (param && VALID_TABS.includes(param as WorkspaceTab)) return param as WorkspaceTab;
     const saved = localStorage.getItem("vrcsm.workspace.activeTab");
-    return (saved as WorkspaceTab) || "overview";
+    if (saved && VALID_TABS.includes(saved as WorkspaceTab)) return saved as WorkspaceTab;
+    return "overview";
   });
   const setTab = (next: WorkspaceTab) => {
     setTabState(next);
     localStorage.setItem("vrcsm.workspace.activeTab", next);
+    // Drop the one-shot ?tab= param once the user navigates so refreshes use
+    // the persisted choice rather than re-pinning the deep-linked tab.
+    if (searchParams.has("tab")) {
+      searchParams.delete("tab");
+      setSearchParams(searchParams, { replace: true });
+    }
   };
   return [tab, setTab];
 }
@@ -148,10 +162,9 @@ export default function VrchatWorkspace() {
       <Suspense fallback={tabFallback}>
         {tab === "overview" && <TabOverview />}
         {tab === "friends" && <TabFriends />}
-        {tab === "avatars" && <TabAvatars />}
         {tab === "worlds" && <TabWorlds />}
         {tab === "social" && <TabSocial />}
-        {tab === "vrcplus" && <TabVrcPlus />}
+        {tab === "vrcplus" && <VrcPlusManager />}
       </Suspense>
 
       <LoginForm open={loginOpen} onOpenChange={setLoginOpen} />

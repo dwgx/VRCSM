@@ -3,6 +3,7 @@
 
 #include "../../core/AuthStore.h"
 #include "../../core/AvatarData.h"
+#include "../../core/AvatarIdHarvest.h"
 #include "../../core/AvatarPreview.h"
 #include "../../core/Database.h"
 #include "../../core/PathProbe.h"
@@ -390,7 +391,7 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
         const auto& err = vrcsm::core::error(currentUser);
         if (err.code == "auth_expired")
         {
-            vrcsm::core::AuthStore::Instance().Clear();
+            vrcsm::core::AuthStore::Instance().Clear("FriendsList/auth_expired");
         }
         return nlohmann::json{{"friends", nlohmann::json::array()}};
     }
@@ -421,7 +422,7 @@ nlohmann::json IpcBridge::HandleGroupsList(const nlohmann::json&, const std::opt
         const auto& err = vrcsm::core::error(result);
         if (err.code == "auth_expired")
         {
-            vrcsm::core::AuthStore::Instance().Clear();
+            vrcsm::core::AuthStore::Instance().Clear("GroupsList/auth_expired");
             return nlohmann::json{{"groups", nlohmann::json::array()}};
         }
         throw IpcException{err};
@@ -467,7 +468,7 @@ nlohmann::json IpcBridge::HandleCalendarList(const nlohmann::json&, const std::o
         const auto& err = vrcsm::core::error(result);
         if (err.code == "auth_expired")
         {
-            vrcsm::core::AuthStore::Instance().Clear();
+            vrcsm::core::AuthStore::Instance().Clear("CalendarList/auth_expired");
         }
         return nlohmann::json{{"events", nlohmann::json::array()}};
     }
@@ -482,7 +483,7 @@ nlohmann::json IpcBridge::HandleModerationsList(const nlohmann::json&, const std
         const auto& err = vrcsm::core::error(currentUser);
         if (err.code == "auth_expired")
         {
-            vrcsm::core::AuthStore::Instance().Clear();
+            vrcsm::core::AuthStore::Instance().Clear("ModerationsList/auth_expired");
         }
         return nlohmann::json{{"items", nlohmann::json::array()}};
     }
@@ -517,6 +518,21 @@ nlohmann::json IpcBridge::HandleAvatarBundleDownload(const nlohmann::json& param
         });
     }
 
+    // VRChat only hands out bundle asset URLs for avatars the signed-in user
+    // owns. For avatars merely seen in logs the API returns a record with no
+    // usable assetUrl, and a non-https value here can never download — surface
+    // that as a precise, localizable error code instead of a generic failure.
+    if (assetUrl.rfind("https://", 0) != 0)
+    {
+        spdlog::warn("avatar.bundle.download: refusing non-https assetUrl for {}: {}",
+                     avatarId, assetUrl);
+        throw IpcException(vrcsm::core::Error{
+            "invalid_asset_url",
+            "Avatar asset URL is not downloadable (you may not own this avatar)",
+            0,
+        });
+    }
+
     const std::filesystem::path targetDir = Utf8ToWide(outDir);
     std::error_code ec;
     std::filesystem::create_directories(targetDir, ec);
@@ -534,6 +550,8 @@ nlohmann::json IpcBridge::HandleAvatarBundleDownload(const nlohmann::json& param
 
     if (!vrcsm::core::VrcApi::downloadFile(assetUrl, targetPath))
     {
+        spdlog::warn("avatar.bundle.download: downloadFile failed for {} ({})",
+                     avatarId, assetUrl);
         throw IpcException(vrcsm::core::Error{
             "download_failed",
             "Failed to download avatar bundle",
@@ -589,6 +607,30 @@ nlohmann::json IpcBridge::HandleWorldDetails(const nlohmann::json& params, const
     auto details = unwrapResult(vrcsm::core::VrcApi::fetchWorldDetails(*idField));
     CacheWorldAsset(*idField, details, "world.details");
     return nlohmann::json{{"details", std::move(details)}};
+}
+
+nlohmann::json IpcBridge::HandleInstanceDetails(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto location = JsonStringField(params, "location");
+    if (!location.has_value() || location->empty())
+    {
+        return nlohmann::json{{"instance", nullptr}};
+    }
+    // Only the canonical occupant fields are surfaced; the raw payload is
+    // large and volatile. n_users is the live count, capacity the hard cap.
+    auto instance = unwrapResult(vrcsm::core::VrcApi::fetchInstance(*location));
+    nlohmann::json out = nlohmann::json::object();
+    out["location"] = *location;
+    out["n_users"] = instance.value("n_users", 0);
+    out["capacity"] = instance.value("capacity", 0);
+    out["recommendedCapacity"] = instance.value("recommendedCapacity", 0);
+    if (instance.contains("full") && instance["full"].is_boolean())
+        out["full"] = instance["full"].get<bool>();
+    if (instance.contains("queueSize") && instance["queueSize"].is_number())
+        out["queueSize"] = instance["queueSize"];
+    if (instance.contains("platforms") && instance["platforms"].is_object())
+        out["platforms"] = instance["platforms"];
+    return nlohmann::json{{"instance", std::move(out)}};
 }
 
 nlohmann::json IpcBridge::HandleAvatarSelect(const nlohmann::json& params, const std::optional<std::string>&)
@@ -1096,4 +1138,183 @@ nlohmann::json IpcBridge::HandleFriendsRequest(const nlohmann::json& params, con
         throw IpcException({"missing_field", "friends.request: missing 'userId'", 400});
 
     return unwrapResult(vrcsm::core::VrcApi::sendFriendRequest(*userId));
+}
+
+// ── Wave 2 / Section B: online social + VRC+ media ─────────────────────
+
+nlohmann::json IpcBridge::HandleUsersBoop(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId");
+    if (!userId.has_value() || userId->empty())
+        throw IpcException({"missing_field", "users.boop: missing 'userId'", 400});
+
+    std::optional<std::string> emojiId;
+    if (const auto e = JsonStringField(params, "emojiId"); e.has_value() && !e->empty())
+        emojiId = *e;
+
+    return unwrapResult(vrcsm::core::VrcApi::sendBoop(*userId, emojiId));
+}
+
+nlohmann::json IpcBridge::HandleInventoryList(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    std::optional<std::string> types;
+    if (const auto t = JsonStringField(params, "types"); t.has_value() && !t->empty())
+        types = *t;
+    const int n = ParamInt(params, "n", 100);
+    const int offset = ParamInt(params, "offset", 0);
+    return unwrapResult(vrcsm::core::VrcApi::fetchInventory(types, n, offset));
+}
+
+nlohmann::json IpcBridge::HandlePrintsList(const nlohmann::json&, const std::optional<std::string>&)
+{
+    auto r = vrcsm::core::VrcApi::fetchPrints();
+    if (std::holds_alternative<vrcsm::core::Error>(r))
+        throw IpcException(std::move(std::get<vrcsm::core::Error>(r)));
+    return nlohmann::json{{"prints", std::get<std::vector<nlohmann::json>>(std::move(r))}};
+}
+
+nlohmann::json IpcBridge::HandlePrintsGet(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto printId = JsonStringField(params, "printId");
+    if (!printId.has_value() || printId->empty())
+        throw IpcException({"missing_field", "prints.get: missing 'printId'", 400});
+    return unwrapResult(vrcsm::core::VrcApi::fetchPrint(*printId));
+}
+
+nlohmann::json IpcBridge::HandlePrintsUpload(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    // The frontend sends the image as base64 (data-URI prefix stripped on
+    // the JS side). Decode to raw bytes here before the multipart upload.
+    const auto imageBase64 = JsonStringField(params, "imageBase64");
+    if (!imageBase64.has_value() || imageBase64->empty())
+        throw IpcException({"missing_field", "prints.upload: missing 'imageBase64'", 400});
+    const auto bytes = vrcsm::core::VrcApi::decodeBase64(*imageBase64);
+    if (!bytes.has_value() || bytes->empty())
+        throw IpcException({"invalid_params", "prints.upload: malformed base64 image", 400});
+
+    const auto timestamp = JsonStringField(params, "timestamp").value_or("");
+    if (timestamp.empty())
+        throw IpcException({"missing_field", "prints.upload: missing 'timestamp'", 400});
+
+    std::optional<std::string> note;
+    if (const auto v = JsonStringField(params, "note"); v.has_value() && !v->empty()) note = *v;
+    std::optional<std::string> worldId;
+    if (const auto v = JsonStringField(params, "worldId"); v.has_value() && !v->empty()) worldId = *v;
+    std::optional<std::string> worldName;
+    if (const auto v = JsonStringField(params, "worldName"); v.has_value() && !v->empty()) worldName = *v;
+
+    return unwrapResult(vrcsm::core::VrcApi::uploadPrint(*bytes, timestamp, note, worldId, worldName));
+}
+
+nlohmann::json IpcBridge::HandlePrintsDelete(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto printId = JsonStringField(params, "printId");
+    if (!printId.has_value() || printId->empty())
+        throw IpcException({"missing_field", "prints.delete: missing 'printId'", 400});
+    return unwrapResult(vrcsm::core::VrcApi::deletePrint(*printId));
+}
+
+nlohmann::json IpcBridge::HandleFilesList(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto tag = JsonStringField(params, "tag").value_or("");
+    auto r = vrcsm::core::VrcApi::fetchFiles(tag);
+    if (std::holds_alternative<vrcsm::core::Error>(r))
+        throw IpcException(std::move(std::get<vrcsm::core::Error>(r)));
+    return nlohmann::json{{"files", std::get<std::vector<nlohmann::json>>(std::move(r))}};
+}
+
+nlohmann::json IpcBridge::HandleFilesUploadImage(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto imageBase64 = JsonStringField(params, "imageBase64");
+    if (!imageBase64.has_value() || imageBase64->empty())
+        throw IpcException({"missing_field", "files.uploadImage: missing 'imageBase64'", 400});
+    const auto bytes = vrcsm::core::VrcApi::decodeBase64(*imageBase64);
+    if (!bytes.has_value() || bytes->empty())
+        throw IpcException({"invalid_params", "files.uploadImage: malformed base64 image", 400});
+
+    const auto tag = JsonStringField(params, "tag").value_or("");
+    if (tag.empty())
+        throw IpcException({"missing_field", "files.uploadImage: missing 'tag'", 400});
+
+    bool matchingDimensions = false;
+    if (params.contains("matchingDimensions") && params["matchingDimensions"].is_boolean())
+        matchingDimensions = params["matchingDimensions"].get<bool>();
+
+    // Animated emoji carry sprite-sheet metadata (frames / fps / style) and go
+    // through a dedicated upload path; everything else is a plain image upload.
+    if (tag == "emojianimated")
+    {
+        vrcsm::core::VrcApi::AnimatedEmojiParams anim;
+        if (params.contains("frames") && params["frames"].is_number_integer())
+            anim.frames = params["frames"].get<int>();
+        if (params.contains("framesOverTime") && params["framesOverTime"].is_number_integer())
+            anim.framesOverTime = params["framesOverTime"].get<int>();
+        anim.animationStyle = JsonStringField(params, "animationStyle").value_or("");
+        // Animated emoji are always square sprite sheets.
+        return unwrapResult(vrcsm::core::VrcApi::uploadAnimatedEmoji(*bytes, anim, true));
+    }
+
+    return unwrapResult(vrcsm::core::VrcApi::uploadImage(*bytes, tag, matchingDimensions));
+}
+
+nlohmann::json IpcBridge::HandleFilesDelete(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto fileId = JsonStringField(params, "fileId");
+    if (!fileId.has_value() || fileId->empty())
+        throw IpcException({"missing_field", "files.delete: missing 'fileId'", 400});
+    return unwrapResult(vrcsm::core::VrcApi::deleteFile(*fileId));
+}
+
+nlohmann::json IpcBridge::HandleAvatarsUpdateImage(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto avatarId = JsonStringField(params, "avatarId");
+    if (!avatarId.has_value() || avatarId->empty())
+        throw IpcException({"missing_field", "avatars.updateImage: missing 'avatarId'", 400});
+    const auto imageUrl = JsonStringField(params, "imageUrl");
+    if (!imageUrl.has_value() || imageUrl->empty())
+        throw IpcException({"missing_field", "avatars.updateImage: missing 'imageUrl'", 400});
+    return unwrapResult(vrcsm::core::VrcApi::updateAvatarImage(*avatarId, *imageUrl));
+}
+
+nlohmann::json IpcBridge::HandleAvatarsListOwned(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto releaseStatus = JsonStringField(params, "releaseStatus").value_or("all");
+    int count = 100;
+    int offset = 0;
+    if (params.contains("count") && params["count"].is_number_integer())
+        count = params["count"].get<int>();
+    if (params.contains("offset") && params["offset"].is_number_integer())
+        offset = params["offset"].get<int>();
+    return unwrapResult(vrcsm::core::VrcApi::fetchOwnedAvatars(releaseStatus, count, offset));
+}
+
+// A10 — read-only avatar-id harvest from VRChat's own local Amplitude analytics
+// cache. No network, no mutation, no upload; only `avtr_` ids are extracted and
+// the raw analytics content is treated as opaque DATA. The default-OFF
+// experimental flag gate lives in the frontend (see web/src/lib/avatar-harvest.ts);
+// the host simply performs the read-only scan when asked.
+nlohmann::json IpcBridge::HandleAvatarsHarvestIds(const nlohmann::json&, const std::optional<std::string>&)
+{
+    const std::vector<std::string> ids = vrcsm::core::AvatarIdHarvest::Harvest();
+    return nlohmann::json{{"ids", ids}};
+}
+
+nlohmann::json IpcBridge::HandleAvatarsUpdate(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto avatarId = JsonStringField(params, "avatarId");
+    if (!avatarId.has_value() || avatarId->empty())
+        throw IpcException({"missing_field", "avatars.update: missing 'avatarId'", 400});
+    if (!params.contains("patch") || !params["patch"].is_object())
+        throw IpcException({"missing_field", "avatars.update: missing object 'patch'", 400});
+    return unwrapResult(vrcsm::core::VrcApi::updateAvatar(*avatarId, params["patch"]));
+}
+
+nlohmann::json IpcBridge::HandleAvatarsDelete(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    // DESTRUCTIVE (soft delete + permanent id reservation). The double-
+    // confirm gate lives in the UI; the host only validates the id.
+    const auto avatarId = JsonStringField(params, "avatarId");
+    if (!avatarId.has_value() || avatarId->empty())
+        throw IpcException({"missing_field", "avatars.delete: missing 'avatarId'", 400});
+    return unwrapResult(vrcsm::core::VrcApi::deleteAvatar(*avatarId));
 }

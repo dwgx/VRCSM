@@ -40,7 +40,7 @@ export interface RecentSessionEvent {
   occurred_at: string;
 }
 
-export type RadarTab = "live" | "analysis" | "history" | "roster";
+export type RadarTab = "live" | "analysis" | "history" | "roster" | "feed" | "gamelog";
 
 export interface ScanLogsResponse {
   world_switches: WorldSwitchEvent[];

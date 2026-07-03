@@ -185,7 +185,7 @@
       "send": "送信",
       "sent": "チャットボックスに送信しました",
       "rateLimit": "メッセージ間は2秒待ってください (VRChatのレート制限)",
-      "rateLimitBurst": "メッセージ間は2秒待ってください (VRChatのレート制限)"
+      "rateLimitBurst": "Chatboxは5秒ごとに手動メッセージ5件まで。あと{{seconds}}秒待ってください。"
     },
     "studio": {
       "title": "OSC スタジオ",
@@ -245,7 +245,123 @@
       "startAutoShort": "自動",
       "noCardSelected": "Select a card first"
     },
-    "sendFailed": "OSC送信に失敗しました"
+    "sendFailed": "OSC送信に失敗しました",
+    "page": {
+      "subtitle": "VRChat の OSC メッセージを作成し、送信内容をプレビューして、送受信の流れを一か所で確認できます。"
+    },
+    "profile": {
+      "label": "プロファイル",
+      "cardCount": "{{count}} 枚のカード",
+      "new": "新規プロファイル",
+      "rename": "プロファイル名を変更",
+      "delete": "プロファイルを削除",
+      "renameTitle": "プロファイル名を変更",
+      "deleteTitle": "このプロファイルを削除しますか?",
+      "deleteBody": "「{{name}}」とそのカードが削除されます。この操作は元に戻せません。"
+    },
+    "conn": {
+      "label": "送信先",
+      "host": "OSC ホスト",
+      "sendPort": "送信ポート",
+      "hardware": "ハードウェア",
+      "hardwareNone": "ハードウェアデータなし"
+    },
+    "io": {
+      "button": "インポート / エクスポート",
+      "title": "プロファイルのインポート / エクスポート",
+      "desc": "エクスポートすると現在のプロファイルのカードを JSON でコピーします。JSON を貼り付けてインポートすると、このプロファイルのカードを置き換えます。",
+      "export": "エクスポート",
+      "import": "インポート",
+      "loadFile": "ファイルを読み込む",
+      "copied": "プロファイルをクリップボードにコピーしました",
+      "exportReady": "プロファイルをコピーできます",
+      "imported": "プロファイルをインポートしました"
+    },
+    "list": {
+      "title": "メッセージ",
+      "reset": "デフォルトに戻す",
+      "resetTitle": "メッセージをリセットしますか?",
+      "resetBody": "現在のプロファイルのメッセージを組み込みのデフォルトに置き換えます。",
+      "empty": "メッセージがまだありません。「メッセージを追加」から始めましょう。"
+    },
+    "card": {
+      "emptyPreview": "(出力なし)",
+      "send": "送信",
+      "autoTitle": "一定間隔で自動送信",
+      "autoStart": "自動",
+      "autoStop": "停止",
+      "enable": "有効",
+      "disable": "無効",
+      "moveUp": "上へ",
+      "moveDown": "下へ"
+    },
+    "editor": {
+      "empty": "左のメッセージを選択するか、新しく追加して編集を始めましょう。",
+      "title": "メッセージを編集",
+      "delete": "メッセージを削除",
+      "name": "名前",
+      "group": "グループ",
+      "template": "chatboxテキスト",
+      "templatePlaceholder": "テキストを入力して{variables}を挿入。例: CPU {cpu.loadPct} {cpu.tempC}",
+      "address": "OSCアドレス",
+      "type": "タイプ",
+      "value": "値",
+      "previewLabel": "送信内容",
+      "noOutput": "(なし — テンプレートが空です)",
+      "interval": "間隔",
+      "send": "今すぐ送信",
+      "startAuto": "自動送信",
+      "stopAuto": "自動送信を停止",
+      "rateHint": "chatboxの制限: 手動送信は5秒で5回まで、自動送信は2秒に1回まで。",
+      "insertVariable": "変数を挿入",
+      "searchVariable": "CPU、GPU、時刻を検索...",
+      "noVariables": "一致する変数なし。"
+    },
+    "add": {
+      "button": "メッセージを追加",
+      "chatbox": "空のchatboxメッセージ",
+      "raw": "空のOSC値メッセージ",
+      "presets": "プリセット"
+    },
+    "loop": {
+      "title": "送受信",
+      "listening": "受信中",
+      "quickSend": "クイック送信",
+      "address": "アドレス",
+      "type": "値の型",
+      "value": "値",
+      "send": "送信",
+      "listenPort": "受信ポート",
+      "start": "受信開始",
+      "stop": "停止",
+      "clear": "クリア",
+      "waiting": "メッセージを待機中...",
+      "idle": "メッセージを送信するか受信を開始してください。",
+      "in": "受信",
+      "out": "送信"
+    },
+    "avatar": {
+      "title": "Avatar パラメータ",
+      "hint": "ローカルの Avatar の OSC 設定を読み込み、パラメータを値メッセージとして追加します。",
+      "missing": "Avatar ID を入力または選択してください",
+      "loaded": "{{count}} 個のパラメータを読み込みました",
+      "load": "読み込み",
+      "paramName": "パラメータ名",
+      "paramType": "パラメータの型",
+      "noParams": "この Avatar ファイルにパラメータがありません。"
+    },
+    "hw": {
+      "title": "ハードウェア値",
+      "loading": "読み込み中",
+      "identity": "識別情報",
+      "live": "ライブセンサー",
+      "sensorNeeded": "センサープロバイダーが必要"
+    },
+    "auto": {
+      "badge": "AUTO",
+      "stats": "送信 {{sent}} · スキップ {{skipped}}",
+      "nextIn": "次まで {{seconds}}秒"
+    }
   },
   "auth": {
     "signIn": "サインイン",
@@ -651,7 +767,10 @@
     "jumpTo": "移動",
     "seconds": "秒",
     "ready": "準備完了",
-    "partial": "一部"
+    "partial": "一部",
+    "add": "追加",
+    "delete": "削除",
+    "reset": "リセット"
   },
   "about": {
     "title": "VRCSM について",
@@ -1432,7 +1551,8 @@
       "registry": "VRChatレジストリ",
       "experimental": "実験的機能",
       "steamvr": "SteamVR",
-      "vrDiag": "VR診断"
+      "vrDiag": "VR診断",
+      "data": "データ管理"
     },
     "vrDiag": {
       "heading": "VR診断",
@@ -1473,6 +1593,63 @@
       "label": "Windowsと同時に起動",
       "hint": "WindowsにログインしたときにVRCSMを自動的に起動します。",
       "errorUpdate": "自動起動の更新に失敗しました"
+    },
+    "data": {
+      "heading": "データ管理",
+      "blurb": "VRCSM がこの端末に保存しているキャッシュとデータを確認・削除できます。再生成できるキャッシュは削除しても安全ですが、履歴やアセットのデータは完全に削除されます。",
+      "dbSize": "データベースファイル (vrcsm.db): {{size}}",
+      "loading": "使用量を読み込み中…",
+      "loadError": "使用量の読み込みに失敗しました: {{error}}",
+      "rowCount": "{{count}} 件",
+      "selectedCount": "{{count}} 件選択中",
+      "clearSelected": "選択項目を削除",
+      "clearing": "削除中…",
+      "clearSuccess": "{{count}} 件を削除しました。",
+      "clearPartial": "{{count}} 件の失敗がありました。",
+      "clearError": "削除に失敗しました: {{error}}",
+      "confirmTitle": "削除の確認",
+      "confirmIrreversible": "以下の項目が完全に削除されます。この操作は取り消せません。",
+      "confirmSafe": "以下の項目を削除します。キャッシュは自動的に再生成されます。",
+      "confirmClear": "今すぐ削除",
+      "cancel": "キャンセル",
+      "dangerAck": "自分のアセット(お気に入り、メモ、タグ)が完全に削除されることを理解しています。",
+      "group": {
+        "cache": "再生成可能なキャッシュ",
+        "cacheDesc": "削除しても安全です。VRCSM が必要に応じて自動的に再生成します。",
+        "history": "履歴・分析データ",
+        "historyDesc": "ローカルに記録されたアクティビティです。削除すると元に戻せません。",
+        "experimental": "実験的機能のデータ",
+        "experimentalDesc": "実験的機能によって生成されたデータ。",
+        "danger": "危険な操作",
+        "dangerDesc": "あなた自身のデータです。消去するとお気に入り、メモ、タグが完全に削除されます。"
+      },
+      "item": {
+        "cache": {
+          "thumbnails": "サムネイルキャッシュ",
+          "previews": "Avatarプレビューキャッシュ",
+          "screenshotThumbs": "スクリーンショットのサムネイル",
+          "updates": "ダウンロード済みアップデート",
+          "pluginFeed": "プラグインフィードキャッシュ",
+          "index": "キャッシュインデックス",
+          "assetCache": "アセットメタデータキャッシュ",
+          "benchmark": "Avatarベンチマークキャッシュ",
+          "onlineMirror": "オンラインミラー(Avatar、プリント、インベントリ)"
+        },
+        "history": {
+          "worldVisits": "ワールド訪問履歴",
+          "playerEvents": "プレイヤーイベントと遭遇",
+          "avatarHistory": "Avatar履歴",
+          "friendLog": "フレンドログとプレゼンス",
+          "sessions": "セッション履歴",
+          "logEvents": "ログイベント"
+        },
+        "experimental": {
+          "embeddings": "ビジュアル検索の埋め込み"
+        },
+        "assets": {
+          "favorites": "ローカルのお気に入り、メモ、タグ"
+        }
+      }
     }
   },
   "imageZoom": {

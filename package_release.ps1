@@ -76,7 +76,25 @@ if ($LASTEXITCODE -ne 0) { Write-Error "wix build failed ($LASTEXITCODE)"; exit 
 $msiSize = [math]::Round((Get-Item $msiOut).Length / 1MB, 1)
 Write-Host "[package] MSI done: ${msiSize} MB"
 
+# --- SHA256 + release-notes snippet ---
+# The in-app updater requires a `SHA256: <hex>` line in the GitHub release notes
+# and refuses to install an MSI whose hash does not match (UpdatePackage.cpp).
+# Emit it here so every release carries it; pasting the snippet into the release
+# notes is a mandatory release step.
+$msiSha = (Get-FileHash -LiteralPath $msiOut -Algorithm SHA256).Hash.ToLower()
+$zipSha = (Get-FileHash -LiteralPath $zipOut -Algorithm SHA256).Hash.ToLower()
+$msiBytes = (Get-Item $msiOut).Length
+$notesOut = "$outDir\VRCSM_v${version}_release-notes.txt"
+@"
+SHA256: $msiSha
+Installer: VRCSM_v${version}_x64_Installer.msi ($msiBytes bytes)
+ZIP SHA256: $zipSha
+"@ | Set-Content -LiteralPath $notesOut -Encoding UTF8
+Write-Host "[package] MSI SHA256: $msiSha"
+Write-Host "[package] Release-notes snippet -> $notesOut"
+
 Write-Host ""
 Write-Host "[package] All done."
 Write-Host "  ZIP : $zipOut"
 Write-Host "  MSI : $msiOut"
+Write-Host "  NOTE: $notesOut  (paste the 'SHA256:' line into the GitHub release notes)"

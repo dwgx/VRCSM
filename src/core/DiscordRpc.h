@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -10,6 +11,40 @@
 
 namespace vrcsm::core
 {
+
+// Placeholder Discord application id. There is intentionally NO real
+// snowflake baked in: shipping a published VRCSM app id is a project
+// decision and inventing one here would surface a generic / wrong app
+// in users' Discord. The empty default keeps the integration
+// flag-gated-dark — DiscordRpc refuses to connect with an empty id and
+// the frontend requires the user to paste their own id from
+// https://discord.com/developers/applications.
+//
+// TODO(wave3): replace with the official VRCSM Discord application id
+// once one is registered, then make it the fallback when the user has
+// not supplied their own. Until then this stays empty by design.
+constexpr const char* kDiscordPlaceholderClientId = "";
+
+// ── Pure framing / payload helpers (no pipe, unit-testable) ──────────────
+// These are split out from the I/O path so the wire format can be tested
+// without a live Discord pipe (tests/CommonTests.cpp).
+
+// Encode one IPC frame: [opcode u32 LE][length u32 LE][payload bytes].
+// Returns the full byte string ready to write to the pipe.
+std::string EncodeFrame(std::uint32_t opcode, const std::string& payload);
+
+// Decode the 8-byte frame header. Returns false if `header` is shorter
+// than 8 bytes; otherwise fills opcode + length.
+bool DecodeFrameHeader(const std::string& header, std::uint32_t& opcode, std::uint32_t& length);
+
+// Build the SET_ACTIVITY command JSON Discord expects on opcode FRAME.
+// An empty / non-object `activity` yields `args.activity = null` (which
+// clears the presence panel). `nonce` is passed through verbatim so the
+// builder stays deterministic for tests.
+nlohmann::json BuildSetActivityPayload(std::int64_t pid, const nlohmann::json& activity, const std::string& nonce);
+
+// Build the v1 handshake JSON: {"v":1,"client_id":"<id>"}.
+nlohmann::json BuildHandshakePayload(const std::string& clientId);
 
 // Discord Rich Presence client over the local IPC named pipe.
 //

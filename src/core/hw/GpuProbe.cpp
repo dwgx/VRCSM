@@ -15,6 +15,12 @@
 namespace vrcsm::core::hw
 {
 
+std::uint64_t PackLuid(std::uint32_t lowPart, std::int32_t highPart)
+{
+    return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(highPart)) << 32) |
+           static_cast<std::uint64_t>(lowPart);
+}
+
 void to_json(nlohmann::json& j, const GpuAdapterInfo& adapter)
 {
     j = nlohmann::json{
@@ -27,6 +33,7 @@ void to_json(nlohmann::json& j, const GpuAdapterInfo& adapter)
         {"device_id", adapter.deviceId},
         {"dedicated_video_memory_bytes", adapter.dedicatedVideoMemoryBytes},
         {"adapter_ram_bytes", adapter.adapterRamBytes},
+        {"luid", adapter.hasLuid ? nlohmann::json(adapter.luid) : nlohmann::json(nullptr)},
         {"software", adapter.software},
         {"virtual", adapter.virtualAdapter},
         {"primary_candidate", adapter.primaryCandidate},
@@ -279,6 +286,8 @@ std::vector<GpuAdapterInfo> EnumerateDxgiAdapters()
         info.vendor = GpuVendorFromId(desc.VendorId);
         info.dedicatedVideoMemoryBytes = static_cast<std::uint64_t>(desc.DedicatedVideoMemory);
         info.adapterRamBytes = info.dedicatedVideoMemoryBytes;
+        info.luid = PackLuid(desc.AdapterLuid.LowPart, desc.AdapterLuid.HighPart);
+        info.hasLuid = true;
         info.software = (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0;
         info.source = "dxgi";
         info.virtualAdapter = IsVirtualDisplayAdapter(info.name, info.pnpId, info.software);
@@ -332,6 +341,57 @@ std::optional<GpuAdapterInfo> ChooseBestGpuAdapter(std::vector<GpuAdapterInfo> a
         return std::nullopt;
     }
     return *best;
+}
+
+std::optional<std::uint64_t> QueryDxgiVideoMemoryUsed(std::uint64_t packedLuid)
+{
+    wil::com_ptr<IDXGIFactory1> factory;
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(factory.put()))) || !factory)
+    {
+        return std::nullopt;
+    }
+
+    for (UINT index = 0;; ++index)
+    {
+        wil::com_ptr<IDXGIAdapter1> adapter;
+        const HRESULT hr = factory->EnumAdapters1(index, adapter.put());
+        if (hr == DXGI_ERROR_NOT_FOUND)
+        {
+            break;
+        }
+        if (FAILED(hr) || !adapter)
+        {
+            continue;
+        }
+
+        DXGI_ADAPTER_DESC1 desc{};
+        if (FAILED(adapter->GetDesc1(&desc)))
+        {
+            continue;
+        }
+        if (PackLuid(desc.AdapterLuid.LowPart, desc.AdapterLuid.HighPart) != packedLuid)
+        {
+            continue;
+        }
+
+        // IDXGIAdapter3 (Windows 10+) exposes live video-memory usage. Segment
+        // LOCAL is dedicated VRAM on a discrete GPU; on integrated GPUs it maps
+        // to the carved-out system memory pool.
+        auto adapter3 = adapter.try_query<IDXGIAdapter3>();
+        if (!adapter3)
+        {
+            return std::nullopt;
+        }
+
+        DXGI_QUERY_VIDEO_MEMORY_INFO memInfo{};
+        if (FAILED(adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &memInfo)))
+        {
+            return std::nullopt;
+        }
+        return static_cast<std::uint64_t>(memInfo.CurrentUsage);
+    }
+
+    return std::nullopt;
 }
 
 } // namespace vrcsm::core::hw

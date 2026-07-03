@@ -185,7 +185,7 @@
       "send": "보내기",
       "sent": "채팅창 메시지를 보냈습니다",
       "rateLimit": "메시지 사이에 2초간 기다려 주세요 (VRChat 속도 제한)",
-      "rateLimitBurst": "메시지 사이에 2초간 기다려 주세요 (VRChat 속도 제한)"
+      "rateLimitBurst": "Chatbox는 5초당 수동 메시지 5개까지 허용돼요. {{seconds}}초 기다려 주세요."
     },
     "studio": {
       "title": "OSC Studio",
@@ -245,7 +245,123 @@
       "startAutoShort": "자동",
       "noCardSelected": "Select a card first"
     },
-    "sendFailed": "OSC 전송에 실패했습니다"
+    "sendFailed": "OSC 전송에 실패했습니다",
+    "page": {
+      "subtitle": "VRChat OSC 메시지를 만들고, 전송될 내용을 미리 보고, 송수신 흐름을 한곳에서 확인하세요."
+    },
+    "profile": {
+      "label": "프로필",
+      "cardCount": "카드 {{count}}개",
+      "new": "새 프로필",
+      "rename": "프로필 이름 변경",
+      "delete": "프로필 삭제",
+      "renameTitle": "프로필 이름 변경",
+      "deleteTitle": "이 프로필을 삭제할까요?",
+      "deleteBody": "\"{{name}}\"와(과) 해당 카드가 삭제됩니다. 되돌릴 수 없습니다."
+    },
+    "conn": {
+      "label": "대상",
+      "host": "OSC 호스트",
+      "sendPort": "전송 포트",
+      "hardware": "하드웨어",
+      "hardwareNone": "하드웨어 데이터 없음"
+    },
+    "io": {
+      "button": "가져오기 / 내보내기",
+      "title": "프로필 가져오기 / 내보내기",
+      "desc": "내보내기는 현재 프로필의 카드를 JSON으로 복사합니다. JSON을 붙여넣고 가져오면 이 프로필의 카드를 대체합니다.",
+      "export": "내보내기",
+      "import": "가져오기",
+      "loadFile": "파일 불러오기",
+      "copied": "프로필을 클립보드에 복사했습니다",
+      "exportReady": "프로필 복사 준비 완료",
+      "imported": "프로필을 가져왔습니다"
+    },
+    "list": {
+      "title": "메시지",
+      "reset": "기본값으로 초기화",
+      "resetTitle": "메시지를 초기화할까요?",
+      "resetBody": "현재 프로필의 메시지를 기본 제공 메시지로 대체합니다.",
+      "empty": "아직 메시지가 없습니다. \"메시지 추가\"로 시작하세요."
+    },
+    "card": {
+      "emptyPreview": "(출력 없음)",
+      "send": "전송",
+      "autoTitle": "일정 간격으로 자동 전송",
+      "autoStart": "자동",
+      "autoStop": "중지",
+      "enable": "사용",
+      "disable": "사용 안 함",
+      "moveUp": "위로",
+      "moveDown": "아래로"
+    },
+    "editor": {
+      "empty": "왼쪽에서 메시지를 선택하거나 새로 추가해 편집을 시작하세요.",
+      "title": "메시지 편집",
+      "delete": "메시지 삭제",
+      "name": "이름",
+      "group": "그룹",
+      "template": "Chatbox 텍스트",
+      "templatePlaceholder": "텍스트를 입력하고 {variables}를 삽입하세요. 예: CPU {cpu.loadPct} {cpu.tempC}",
+      "address": "OSC 주소",
+      "type": "타입",
+      "value": "값",
+      "previewLabel": "전송될 내용",
+      "noOutput": "(없음 — 템플릿 결과가 비어 있음)",
+      "interval": "간격",
+      "send": "지금 전송",
+      "startAuto": "자동 전송",
+      "stopAuto": "자동 중지",
+      "rateHint": "Chatbox 제한: 5초당 수동 전송 5회, 자동 전송은 2초당 1회로 제한됩니다.",
+      "insertVariable": "변수 삽입",
+      "searchVariable": "CPU, GPU, 시간 검색...",
+      "noVariables": "일치하는 변수가 없습니다."
+    },
+    "add": {
+      "button": "메시지 추가",
+      "chatbox": "빈 Chatbox 메시지",
+      "raw": "빈 OSC 값 메시지",
+      "presets": "프리셋"
+    },
+    "loop": {
+      "title": "송수신",
+      "listening": "수신 중",
+      "quickSend": "빠른 전송",
+      "address": "주소",
+      "type": "값 유형",
+      "value": "값",
+      "send": "전송",
+      "listenPort": "수신 포트",
+      "start": "수신",
+      "stop": "중지",
+      "clear": "지우기",
+      "waiting": "메시지 대기 중...",
+      "idle": "메시지를 보내거나 수신을 시작하세요.",
+      "in": "수신",
+      "out": "송신"
+    },
+    "avatar": {
+      "title": "Avatar 파라미터",
+      "hint": "로컬 Avatar의 OSC 설정을 읽어 해당 파라미터를 값 메시지로 추가합니다.",
+      "missing": "Avatar ID를 입력하거나 선택하세요",
+      "loaded": "파라미터 {{count}}개 불러옴",
+      "load": "불러오기",
+      "paramName": "파라미터 이름",
+      "paramType": "파라미터 유형",
+      "noParams": "이 Avatar 파일에 파라미터가 없습니다."
+    },
+    "hw": {
+      "title": "하드웨어 값",
+      "loading": "불러오는 중",
+      "identity": "식별 정보",
+      "live": "실시간 센서",
+      "sensorNeeded": "센서 제공자 필요"
+    },
+    "auto": {
+      "badge": "AUTO",
+      "stats": "전송 {{sent}} · 건너뜀 {{skipped}}",
+      "nextIn": "다음 {{seconds}}초"
+    }
   },
   "auth": {
     "signIn": "로그인",
@@ -651,7 +767,10 @@
     "jumpTo": "이동",
     "seconds": "초",
     "ready": "준비됨",
-    "partial": "일부"
+    "partial": "일부",
+    "add": "추가",
+    "delete": "삭제",
+    "reset": "초기화"
   },
   "about": {
     "title": "VRCSM 정보",
@@ -1432,7 +1551,8 @@
       "registry": "VRChat 레지스트리",
       "steamvr": "SteamVR",
       "experimental": "실험적 기능",
-      "vrDiag": "VR 진단"
+      "vrDiag": "VR 진단",
+      "data": "데이터 관리"
     },
     "vrDiag": {
       "heading": "VR 진단",
@@ -1473,6 +1593,63 @@
       "label": "Windows 시작 시 실행",
       "hint": "Windows에 로그인할 때 VRCSM을 자동으로 시작합니다.",
       "errorUpdate": "자동 시작 업데이트에 실패했습니다"
+    },
+    "data": {
+      "heading": "데이터 관리",
+      "blurb": "VRCSM가 이 기기에 저장하는 캐시와 데이터를 확인하고 정리하세요. 다시 생성되는 캐시는 안전하게 지울 수 있지만, 기록과 에셋 데이터는 영구적으로 삭제됩니다.",
+      "dbSize": "데이터베이스 파일(vrcsm.db): {{size}}",
+      "loading": "사용량 불러오는 중…",
+      "loadError": "사용량을 불러오지 못했습니다: {{error}}",
+      "rowCount": "{{count}}행",
+      "selectedCount": "{{count}}개 선택됨",
+      "clearSelected": "선택 항목 정리",
+      "clearing": "정리 중…",
+      "clearSuccess": "{{count}}개 항목을 정리했습니다.",
+      "clearPartial": "정리 완료, {{count}}개 실패.",
+      "clearError": "정리 실패: {{error}}",
+      "confirmTitle": "정리 확인",
+      "confirmIrreversible": "다음 항목이 영구적으로 삭제됩니다. 되돌릴 수 없습니다.",
+      "confirmSafe": "다음 항목이 정리됩니다. 캐시는 자동으로 다시 생성됩니다.",
+      "confirmClear": "지금 정리",
+      "cancel": "취소",
+      "dangerAck": "내 에셋(즐겨찾기, 메모, 태그)이 영구적으로 삭제됨을 이해합니다.",
+      "group": {
+        "cache": "재생성 가능한 캐시",
+        "cacheDesc": "안전하게 지울 수 있습니다. VRCSM가 필요할 때 자동으로 다시 생성합니다.",
+        "history": "기록 및 분석 데이터",
+        "historyDesc": "로컬에 기록된 활동입니다. 정리 시 영구적이며 되돌릴 수 없습니다.",
+        "experimental": "실험적 기능 데이터",
+        "experimentalDesc": "실험적 기능으로 생성된 데이터입니다.",
+        "danger": "위험 구역",
+        "dangerDesc": "직접 만든 자료입니다. 삭제하면 즐겨찾기, 메모, 태그가 영구적으로 사라집니다."
+      },
+      "item": {
+        "cache": {
+          "thumbnails": "썸네일 캐시",
+          "previews": "Avatar 미리보기 캐시",
+          "screenshotThumbs": "스크린샷 썸네일",
+          "updates": "다운로드된 업데이트",
+          "pluginFeed": "플러그인 피드 캐시",
+          "index": "캐시 색인",
+          "assetCache": "에셋 메타데이터 캐시",
+          "benchmark": "Avatar 벤치마크 캐시",
+          "onlineMirror": "온라인 미러 (avatar, print, 인벤토리)"
+        },
+        "history": {
+          "worldVisits": "월드 방문 기록",
+          "playerEvents": "플레이어 이벤트 및 만남",
+          "avatarHistory": "Avatar 기록",
+          "friendLog": "친구 로그 및 접속 상태",
+          "sessions": "세션 기록",
+          "logEvents": "로그 이벤트"
+        },
+        "experimental": {
+          "embeddings": "비주얼 검색 임베딩"
+        },
+        "assets": {
+          "favorites": "로컬 즐겨찾기, 메모 및 태그"
+        }
+      }
     }
   },
   "imageZoom": {

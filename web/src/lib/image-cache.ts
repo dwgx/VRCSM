@@ -22,11 +22,45 @@ const memo = new Map<string, CacheEntry>();
 const NEG_TTL_MS = 5 * 60_000;
 const FOREVER = Number.POSITIVE_INFINITY;
 
+// Hard ceiling on memo entries. The cache is keyed by id|url and previously
+// grew monotonically (resolved entries hold FOREVER TTL), so a multi-hour
+// browse session could accumulate tens of thousands of entries and leak heap
+// in the long-lived WebView2 process. We cap it and evict in insertion order
+// (Map preserves insertion order) once the ceiling is crossed.
+const MAX_ENTRIES = 4_000;
+
+function memoSet(key: string, entry: CacheEntry): void {
+  // Re-insert moves the key to the most-recent position, giving a cheap
+  // LRU-on-write so churned keys stay and cold keys age out first.
+  if (memo.has(key)) memo.delete(key);
+  memo.set(key, entry);
+  if (memo.size > MAX_ENTRIES) {
+    const overflow = memo.size - MAX_ENTRIES;
+    let removed = 0;
+    for (const oldKey of memo.keys()) {
+      if (removed >= overflow) break;
+      // Never evict the entry we just wrote.
+      if (oldKey === key) continue;
+      memo.delete(oldKey);
+      removed += 1;
+    }
+  }
+}
+
 let generation = 0;
 const listeners = new Set<() => void>();
 
 function keyFor(id: string, url: string): string {
   return `${id}|${url}`;
+}
+
+function isAlreadyLocalImageUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "thumb.local" || host === "preview.local" || host === "screenshot-thumbs.local";
+  } catch {
+    return false;
+  }
 }
 
 function isFresh(entry: CacheEntry, now: number): entry is Extract<CacheEntry, { state: "resolved" }> {
@@ -41,6 +75,10 @@ function notify(): void {
 export async function cacheImageUrl(id: string, url: string): Promise<string | null> {
   if (!id || !url) return null;
   const key = keyFor(id, url);
+  if (isAlreadyLocalImageUrl(url)) {
+    memoSet(key, { state: "resolved", localUrl: url, sourceUrl: url, expiresAt: FOREVER });
+    return url;
+  }
   const now = Date.now();
   const hit = memo.get(key);
   if (hit) {
@@ -53,7 +91,7 @@ export async function cacheImageUrl(id: string, url: string): Promise<string | n
     .then((resp) => {
       const row = resp.results[0];
       if (!row || row.error) {
-        memo.set(key, {
+        memoSet(key, {
           state: "resolved",
           localUrl: null,
           sourceUrl: url,
@@ -63,7 +101,7 @@ export async function cacheImageUrl(id: string, url: string): Promise<string | n
         return null;
       }
       const localUrl = row.localUrl ?? null;
-      memo.set(key, {
+      memoSet(key, {
         state: "resolved",
         localUrl,
         sourceUrl: url,
@@ -77,13 +115,18 @@ export async function cacheImageUrl(id: string, url: string): Promise<string | n
       notify();
       return null;
     });
-  memo.set(key, { state: "pending", promise, sourceUrl: url });
+  memoSet(key, { state: "pending", promise, sourceUrl: url });
   return promise;
 }
 
 export function invalidateCachedImageUrl(id: string, url: string): void {
   if (!id || !url) return;
   memo.delete(keyFor(id, url));
+  notify();
+}
+
+export function invalidateCachedImages(): void {
+  memo.clear();
   notify();
 }
 
@@ -97,6 +140,23 @@ export async function cacheImageUrls(
   for (const item of items) {
     if (!item.id || !item.url) continue;
     const key = keyFor(item.id, item.url);
+    if (isAlreadyLocalImageUrl(item.url)) {
+      memoSet(key, {
+        state: "resolved",
+        localUrl: item.url,
+        sourceUrl: item.url,
+        expiresAt: FOREVER,
+      });
+      resolved.set(key, {
+        id: item.id,
+        url: item.url,
+        localUrl: item.url,
+        imageCached: true,
+        source: "disk",
+        error: null,
+      });
+      continue;
+    }
     const hit = memo.get(key);
     if (hit?.state === "resolved" && isFresh(hit, now)) {
       resolved.set(key, {
@@ -110,7 +170,16 @@ export async function cacheImageUrls(
       continue;
     }
     if (hit?.state === "pending") {
-      const localUrl = await hit.promise;
+      const awaited = await hit.promise;
+      // Overlapping-batch guard: the prior batch's derived promise can resolve
+      // to null even when that id actually succeeded (e.g. its batch's shared
+      // catch cleared the key). Re-read the memo and prefer a freshly-resolved
+      // positive entry so we don't flap this id to the fallback and re-fetch.
+      const after = memo.get(key);
+      const localUrl =
+        after?.state === "resolved" && isFresh(after, Date.now())
+          ? after.localUrl
+          : awaited;
       resolved.set(key, {
         id: item.id,
         url: item.url,
@@ -130,12 +199,18 @@ export async function cacheImageUrls(
         items: need.map(({ id, url }) => ({ id, url })),
       })
       .then((resp) => resp.results);
+    // Track the exact pending entries we insert so the shared catch only
+    // removes keys still owned by *this* batch — never a key a concurrent
+    // batch has since overwritten with its own pending/resolved entry.
+    const ownPending = new Map<string, CacheEntry>();
     for (const item of need) {
-      memo.set(item.key, {
+      const entry: CacheEntry = {
         state: "pending",
         sourceUrl: item.url,
         promise: sharedPromise.then((rows) => rows.find((row) => row.id === item.id && row.url === item.url)?.localUrl ?? null),
-      });
+      };
+      ownPending.set(item.key, entry);
+      memoSet(item.key, entry);
     }
     try {
       const rows = await sharedPromise;
@@ -143,7 +218,7 @@ export async function cacheImageUrls(
       for (const item of need) {
         const row = byKey.get(item.key);
         const localUrl = row?.error ? null : row?.localUrl ?? null;
-        memo.set(item.key, {
+        memoSet(item.key, {
           state: "resolved",
           localUrl,
           sourceUrl: item.url,
@@ -159,7 +234,13 @@ export async function cacheImageUrls(
         });
       }
     } catch {
-      for (const item of need) memo.delete(item.key);
+      for (const item of need) {
+        // Only clear keys still holding *our* pending entry — a concurrent
+        // batch may have already replaced it with a valid result.
+        if (memo.get(item.key) === ownPending.get(item.key)) {
+          memo.delete(item.key);
+        }
+      }
     } finally {
       notify();
     }

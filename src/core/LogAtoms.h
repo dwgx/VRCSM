@@ -29,6 +29,24 @@ enum class LogAtomKind
     AvatarLoad,
     PlayerPresence,
     Screenshot,
+    VideoPlay,
+    PortalSpawn,
+    VoteKick,
+    JoinBlocked,
+    StickerSpawn,
+    // Wave 2 Section A expansion (A1–A8). All follow the StickerSpawn recipe.
+    Notification,          // A1: [API] Received Notification
+    VideoError,            // A2: [Video Playback]/[AVProVideo] error
+    AttributedVideoPlay,   // A3: SDK2/USharpVideo play carrying the requester
+    VideoSync,             // A3: [USharpVideo] Syncing video to <url>
+    AvatarPedestalChange,  // A4: RPC SwitchAvatar on AvatarPedestal
+    AppQuit,               // A5: VRCApplication On/HandleApplicationQuit
+    SessionMode,           // A6: VR vs Desktop session marker
+    OscFail,               // A7: Could not Start OSC
+    UdonException,         // A7: VRC.Udon.VM.UdonVMException
+    InstanceReset,         // A7: [ModerationManager] instance age reset
+    ShaderKeyword,         // A8: shader global keyword limit (stateful dedupe)
+    AudioDevice,           // A8: uSpeak SetInputDevice (stateful change-only)
 };
 
 struct LogAtom

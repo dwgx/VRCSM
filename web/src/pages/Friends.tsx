@@ -42,6 +42,7 @@ import {
   type StatusBucket,
 } from "@/lib/vrcFriends";
 import { useSelfLocation } from "@/lib/useSelfLocation";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { inviteSelf, inviteUser, requestInvite } from "@/lib/social";
 import {
   LIBRARY_LIST_NAME,
@@ -395,12 +396,14 @@ function FriendMenuItems({
 const FriendRow = memo(function FriendRow({
   friend,
   colocatedFriends = [],
+  nickname,
   onOpenDetail,
   onSelect,
   selected = false,
 }: {
   friend: Friend;
   colocatedFriends?: Friend[];
+  nickname?: string;
   onOpenDetail: (friend: Friend) => void;
   onSelect: (friend: Friend) => void;
   selected?: boolean;
@@ -408,6 +411,7 @@ const FriendRow = memo(function FriendRow({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const actions = useFriendActions(friend, onOpenDetail);
+  const showInstanceId = useUiPrefBoolean("vrcsm.privacy.showInstanceId", true)[0];
 
   const loc = parseLocation(friend.location);
   const PlatformIcon = platformIcon(friend.last_platform);
@@ -492,6 +496,14 @@ const FriendRow = memo(function FriendRow({
             >
               {friend.displayName}
             </span>
+            {nickname ? (
+              <span
+                className="shrink-0 truncate text-[11px] italic text-[hsl(var(--muted-foreground))]"
+                title={nickname}
+              >
+                ({nickname})
+              </span>
+            ) : null}
             {isModerator ? (
               <Shield
                 className="size-3 text-red-400"
@@ -618,7 +630,7 @@ const FriendRow = memo(function FriendRow({
               </>
             ) : null}
 
-            {loc.kind === "world" && loc.instanceId ? (
+            {loc.kind === "world" && loc.instanceId && showInstanceId ? (
               <>
                 <span className="text-[hsl(var(--muted-foreground))]">
                   {t("friends.fields.instance")}
@@ -996,6 +1008,34 @@ export default function Friends() {
   const { toggleFavorite, pending: favoritePending } =
     useFavoriteActions(LIBRARY_LIST_NAME);
 
+  // Inline nicknames: VRCX treats the first line of a friend's note as a
+  // nickname shown beside the display name. One batch read keeps the list from
+  // firing an IPC per row.
+  const { data: notesData } = useIpcQuery<
+    undefined,
+    { items: { user_id: string; note: string | null }[] }
+  >("friendNote.all", undefined, { enabled: status.authed, staleTime: 60_000 });
+  const nicknames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of notesData?.items ?? []) {
+      const first = (row.note ?? "").split("\n")[0]?.trim();
+      if (first) map.set(row.user_id, first);
+    }
+    return map;
+  }, [notesData]);
+
+  // Full note text per user, lowercased once, for the search filter. VRCX lets
+  // you find a friend by anything you wrote about them (not just the first-line
+  // nickname); we match the entire memo body, which is already loaded above.
+  const noteSearchIndex = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of notesData?.items ?? []) {
+      const note = (row.note ?? "").trim();
+      if (note) map.set(row.user_id, note.toLowerCase());
+    }
+    return map;
+  }, [notesData]);
+
   const openDetail = useCallback((friend: Friend) => {
     setDialogFriend(friend);
   }, []);
@@ -1213,9 +1253,12 @@ export default function Friends() {
       }
       // Avatar name
       if (f.currentAvatarName?.toLowerCase().includes(q)) return true;
+      // Friend note / memo — match the full note body, not just the nickname.
+      const note = noteSearchIndex.get(f.id);
+      if (note?.includes(q)) return true;
       return false;
     });
-  }, [friendsWithComputed, debouncedFilter, t]);
+  }, [friendsWithComputed, debouncedFilter, t, noteSearchIndex]);
 
   // Group filtered friends into status buckets. Sort within each bucket by
   // display name so the order stays stable across refreshes (VRChat's list
@@ -1337,6 +1380,8 @@ export default function Friends() {
         <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
           {data ? (
             <span>
+              <span className="font-medium text-emerald-400">{viewCounts.online}</span>
+              {" / "}
               {t("friends.totalCount", { count: data.friends.length })}
             </span>
           ) : null}
@@ -1452,6 +1497,7 @@ export default function Friends() {
                               key={f.id}
                               friend={f}
                               colocatedFriends={colocated}
+                              nickname={nicknames.get(f.id)}
                               onOpenDetail={openDetail}
                               onSelect={selectFriend}
                               selected={selectedFriend?.id === f.id}

@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:smoke": "vitest run src/__tests__/pages-smoke.test.tsx"
+    "test:smoke": "vitest run src/__tests__/pages-smoke.test.tsx src/__tests__/interaction-smoke.test.tsx",
+    "i18n:translate": "node scripts/i18n-translate.mjs",
+    "i18n:check": "node scripts/i18n-translate.mjs --dry-run"
   },
   "dependencies": {
     "@fontsource/geist-mono": "^5.2.7",

@@ -429,6 +429,174 @@ export function saveOscStudioCards(cards: OscStudioCard[]): void {
   }
 }
 
+// --- Multi-profile persistence (v5) -----------------------------------------
+// v4 stored a single card list under STORAGE_KEY. v5 stores a list of named
+// profiles plus an active id. On first load we migrate any v4 payload into a
+// single "Default" profile so no user data is lost.
+
+const PROFILES_STORAGE_KEY = "vrcsm.oscStudio.profiles.v5";
+const PROFILE_STORE_VERSION = 5;
+const DEFAULT_PROFILE_NAME = "Default";
+
+export interface OscStudioProfile {
+  id: string;
+  name: string;
+  cards: OscStudioCard[];
+}
+
+export interface OscStudioProfilesState {
+  version: number;
+  profiles: OscStudioProfile[];
+  activeProfileId: string;
+  savedAt?: string;
+}
+
+function makeProfileId(): string {
+  return `profile-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+export function defaultOscStudioCards(): OscStudioCard[] {
+  return cloneDefaults();
+}
+
+function makeDefaultProfilesState(cards?: OscStudioCard[]): OscStudioProfilesState {
+  const profile: OscStudioProfile = {
+    id: makeProfileId(),
+    name: DEFAULT_PROFILE_NAME,
+    cards: cards && cards.length ? cards : cloneDefaults(),
+  };
+  return {
+    version: PROFILE_STORE_VERSION,
+    profiles: [profile],
+    activeProfileId: profile.id,
+  };
+}
+
+function normalizeProfile(value: unknown): OscStudioProfile | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<OscStudioProfile>;
+  if (typeof candidate.id !== "string") return null;
+  const cards = Array.isArray(candidate.cards)
+    ? candidate.cards.filter(isOscStudioCard).map(normalizeCard)
+    : [];
+  return {
+    id: candidate.id,
+    name: typeof candidate.name === "string" && candidate.name.trim() ? candidate.name : DEFAULT_PROFILE_NAME,
+    cards,
+  };
+}
+
+function normalizeProfilesState(value: unknown): OscStudioProfilesState | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<OscStudioProfilesState>;
+  if (typeof candidate.version !== "number" || candidate.version < PROFILE_STORE_VERSION) return null;
+  if (!Array.isArray(candidate.profiles)) return null;
+  const profiles = candidate.profiles
+    .map(normalizeProfile)
+    .filter((profile): profile is OscStudioProfile => profile !== null);
+  if (profiles.length === 0) return null;
+  const activeProfileId =
+    typeof candidate.activeProfileId === "string" && profiles.some((p) => p.id === candidate.activeProfileId)
+      ? candidate.activeProfileId
+      : profiles[0].id;
+  return {
+    version: PROFILE_STORE_VERSION,
+    profiles,
+    activeProfileId,
+    savedAt: typeof candidate.savedAt === "string" ? candidate.savedAt : undefined,
+  };
+}
+
+export function loadOscStudioProfiles(): OscStudioProfilesState {
+  try {
+    const raw = localStorage.getItem(PROFILES_STORAGE_KEY);
+    if (raw) {
+      const state = normalizeProfilesState(JSON.parse(raw));
+      if (state) return state;
+    }
+  } catch {
+    // fall through to migration/default
+  }
+  // Migrate a legacy v4 single-profile store into a Default profile.
+  try {
+    if (localStorage.getItem(STORAGE_KEY)) {
+      const migrated = makeDefaultProfilesState(loadOscStudioCards());
+      saveOscStudioProfiles(migrated);
+      return migrated;
+    }
+  } catch {
+    // ignore and use defaults
+  }
+  return makeDefaultProfilesState();
+}
+
+export function saveOscStudioProfiles(state: OscStudioProfilesState): void {
+  try {
+    localStorage.setItem(
+      PROFILES_STORAGE_KEY,
+      JSON.stringify({
+        version: PROFILE_STORE_VERSION,
+        profiles: state.profiles,
+        activeProfileId: state.activeProfileId,
+        savedAt: new Date().toISOString(),
+      }),
+    );
+  } catch {
+    // Ignore private-mode/quota failures; the page still works in memory.
+  }
+}
+
+function nextProfileName(state: OscStudioProfilesState): string {
+  return `Profile ${state.profiles.length + 1}`;
+}
+
+export function setActiveOscProfile(state: OscStudioProfilesState, id: string): OscStudioProfilesState {
+  if (!state.profiles.some((profile) => profile.id === id)) return state;
+  return { ...state, activeProfileId: id };
+}
+
+export function createOscProfile(state: OscStudioProfilesState, name?: string): OscStudioProfilesState {
+  const profile: OscStudioProfile = {
+    id: makeProfileId(),
+    name: name && name.trim() ? name.trim() : nextProfileName(state),
+    cards: cloneDefaults(),
+  };
+  return {
+    ...state,
+    profiles: [...state.profiles, profile],
+    activeProfileId: profile.id,
+  };
+}
+
+export function renameOscProfile(state: OscStudioProfilesState, id: string, name: string): OscStudioProfilesState {
+  const clean = name.trim();
+  if (!clean) return state;
+  return {
+    ...state,
+    profiles: state.profiles.map((profile) => (profile.id === id ? { ...profile, name: clean } : profile)),
+  };
+}
+
+export function deleteOscProfile(state: OscStudioProfilesState, id: string): OscStudioProfilesState {
+  if (state.profiles.length <= 1) return state; // always keep at least one profile
+  const profiles = state.profiles.filter((profile) => profile.id !== id);
+  const activeProfileId = state.activeProfileId === id ? profiles[0].id : state.activeProfileId;
+  return { ...state, profiles, activeProfileId };
+}
+
+export function getActiveOscProfile(state: OscStudioProfilesState): OscStudioProfile {
+  return state.profiles.find((profile) => profile.id === state.activeProfileId) ?? state.profiles[0];
+}
+
+export function setActiveProfileCards(state: OscStudioProfilesState, cards: OscStudioCard[]): OscStudioProfilesState {
+  return {
+    ...state,
+    profiles: state.profiles.map((profile) =>
+      profile.id === state.activeProfileId ? { ...profile, cards } : profile,
+    ),
+  };
+}
+
 export function moveOscCard(
   cards: OscStudioCard[],
   cardId: string,

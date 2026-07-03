@@ -2,6 +2,21 @@
 
 Batch-uploads every `.unitypackage` in a folder to VRChat without the 25% "Could not find VRCAvatarDescriptor" failure rate the original [VRC-Auto-Uploader](https://github.com/dwgx/VRC-Auto-Uploader) used to ship with.
 
+## Unity compatibility
+
+The VRChat SDK pins Unity to a narrow band, so "any Unity" really means the versions the SDK itself supports:
+
+| VRChat SDK | Unity Editor |
+|---|---|
+| 3.6.0 and newer | 2022.3.x (currently 2022.3.22f1) |
+| 3.4.2 and older | 2019.4.31f1 |
+
+Sources: [VRChat getting-started](https://creators.vrchat.com/getting-started/), [SDK 3.6.0 release notes](https://ask.vrchat.com/t/sdk-release-3-6-0/24446).
+
+v0.9.7 hardens the plugin across this band:
+- `AutoUploader` logs `Application.unityVersion` at startup and warns when the editor is outside the 2019.4 / 2022.3 band, so a version mismatch shows up as an actionable log line instead of a cryptic "SDK not available".
+- `PopupSuppressor` no longer depends solely on the private `Clickable.Invoke` reflection call (whose signature shifts between UIElements versions). It caches that handle and falls back to the public, version-stable `SendEvent` path when reflection is absent or throws.
+
 ## What's different in v0.9.0
 
 | Failure mode | Old behaviour | v0.9.0 fix |

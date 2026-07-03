@@ -11,6 +11,8 @@
  * classifications.
  */
 
+import i18n from "@/i18n";
+
 export type InstanceType =
   | "public"
   | "friends+"
@@ -217,6 +219,12 @@ export function trustColorClass(rank: TrustRank): string {
  * VRChat hands us ISO timestamps, the UI wants something human. Empty
  * input falls through to an empty string so the caller can branch on
  * truthiness without guarding twice.
+ *
+ * Localized via `Intl.RelativeTimeFormat` keyed to the active i18n language,
+ * so a zh-CN user sees "3分钟前" instead of leaked English. `Intl` owns the
+ * per-locale plural rules and wording, so we don't carry translation keys for
+ * every unit. Falls back to a hand-rolled English string only if `Intl`
+ * (or the locale) is unavailable in the runtime.
  */
 export function relativeTime(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -224,25 +232,47 @@ export function relativeTime(iso: string | null | undefined): string {
   if (Number.isNaN(when)) return "";
   const diffSec = Math.max(0, Math.floor((Date.now() - when) / 1000));
 
-  if (diffSec < 60) return "just now";
-  if (diffSec < 60 * 60) {
-    const m = Math.floor(diffSec / 60);
-    return `${m}m ago`;
+  // Pick the largest unit that fits, then let Intl render it for the locale.
+  // Negative values => "ago" (the event is in the past).
+  let value: number;
+  let unit: Intl.RelativeTimeFormatUnit;
+  if (diffSec < 60) {
+    // Sub-minute reads as "now" rather than "0 seconds ago" in every locale.
+    value = 0;
+    unit = "second";
+  } else if (diffSec < 3600) {
+    value = -Math.floor(diffSec / 60);
+    unit = "minute";
+  } else if (diffSec < 86400) {
+    value = -Math.floor(diffSec / 3600);
+    unit = "hour";
+  } else if (diffSec < 86400 * 7) {
+    value = -Math.floor(diffSec / 86400);
+    unit = "day";
+  } else if (diffSec < 86400 * 30) {
+    value = -Math.floor(diffSec / (86400 * 7));
+    unit = "week";
+  } else if (diffSec < 86400 * 365) {
+    value = -Math.floor(diffSec / (86400 * 30));
+    unit = "month";
+  } else {
+    value = -Math.floor(diffSec / (86400 * 365));
+    unit = "year";
   }
-  if (diffSec < 60 * 60 * 24) {
-    const h = Math.floor(diffSec / 3600);
-    return `${h}h ago`;
+
+  try {
+    const lang = i18n.language || "en";
+    const rtf = new Intl.RelativeTimeFormat(lang, { numeric: "auto" });
+    return rtf.format(value, unit);
+  } catch {
+    // Runtime without Intl.RelativeTimeFormat or an unknown locale — keep the
+    // old terse English so the UI never renders blank.
+    if (unit === "second") return "just now";
+    const abbrev: Record<string, string> = {
+      minute: "m", hour: "h", day: "d", week: "w", month: "mo", year: "y",
+    };
+    return `${Math.abs(value)}${abbrev[unit] ?? ""} ago`;
   }
-  if (diffSec < 60 * 60 * 24 * 7) {
-    const d = Math.floor(diffSec / 86400);
-    return `${d}d ago`;
-  }
-  if (diffSec < 60 * 60 * 24 * 30) {
-    const w = Math.floor(diffSec / (86400 * 7));
-    return `${w}w ago`;
-  }
-  const mo = Math.floor(diffSec / (86400 * 30));
-  return `${mo}mo ago`;
 }
 
 /**
@@ -320,6 +350,23 @@ export function statusBucket(status: string | null): StatusBucket {
   }
 }
 
+/**
+ * Count how many friends are currently online. VRChat reports an offline
+ * friend with `location === "offline"` (or a null/empty location); anything
+ * else — a world id, "private", or "traveling" — means they're connected.
+ * Mirrors the filter Dashboard uses so the status-bar tally and the Dashboard
+ * card never disagree. Pure + tested.
+ */
+export function countOnlineFriends(
+  friends: ReadonlyArray<{ location?: string | null }>,
+): number {
+  let n = 0;
+  for (const f of friends) {
+    if (f.location && f.location !== "offline") n += 1;
+  }
+  return n;
+}
+
 export const STATUS_BUCKET_ORDER: StatusBucket[] = [
   "joinMe",
   "active",
@@ -327,3 +374,44 @@ export const STATUS_BUCKET_ORDER: StatusBucket[] = [
   "busy",
   "offline",
 ];
+
+// Colorblind-friendly status indicator: the status colors (green / blue /
+// orange / red / grey) are hard to tell apart for ~8% of users, so we pair each
+// bucket with a distinct CSS shape. Returned classes are applied on top of the
+// existing color dot when the accessibility pref is on. Shapes are chosen to be
+// distinguishable in monochrome: ring (joinMe), solid (active), diamond
+// (askMe), square (busy), hollow (offline).
+export type StatusShape = "ring" | "solid" | "diamond" | "square" | "hollow";
+
+export function statusShape(status: string | null): StatusShape {
+  switch (statusBucket(status)) {
+    case "joinMe":
+      return "ring";
+    case "active":
+      return "solid";
+    case "askMe":
+      return "diamond";
+    case "busy":
+      return "square";
+    default:
+      return "hollow";
+  }
+}
+
+// Tailwind class fragment that morphs a base color dot into the shape above.
+// Caller supplies the base `rounded-full` + size; these override geometry.
+export function statusShapeClass(shape: StatusShape): string {
+  switch (shape) {
+    case "diamond":
+      return "rotate-45 rounded-[1px]";
+    case "square":
+      return "rounded-[1px]";
+    case "ring":
+      return "ring-2 ring-inset ring-[hsl(var(--surface))]";
+    case "hollow":
+      return "bg-transparent border-2 border-current";
+    case "solid":
+    default:
+      return "";
+  }
+}

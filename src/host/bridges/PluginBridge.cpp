@@ -330,6 +330,23 @@ nlohmann::json IpcBridge::HandlePluginRpc(const nlohmann::json& params,
         ? params["params"]
         : nlohmann::json::object();
 
+    // shell.openUrl is a benign web-link opener for plugins, but the same
+    // handler turns a vrchat:// URL into an authenticated VrcApi::inviteSelf
+    // teleport (an account-mutating action). Plugins must never reach that
+    // path, so refuse the vrchat: scheme here — only the trusted app.vrcsm SPA
+    // (which calls m_handlers directly, bypassing plugin.rpc) may launch joins.
+    if (method == "shell.openUrl" && innerParams.is_object()
+        && innerParams.contains("url") && innerParams["url"].is_string())
+    {
+        const std::string url = innerParams["url"].get<std::string>();
+        if (url.rfind("vrchat://", 0) == 0)
+        {
+            throw IpcException(Error{
+                "permission_denied",
+                "plugins may not open vrchat:// URLs (account-launch is host-only)", 0});
+        }
+    }
+
     spdlog::debug("[plugin.rpc] '{}' → {}", callerPluginId, method);
     return InvokeHostHandler(*this, m_handlers, method, innerParams, id);
 }

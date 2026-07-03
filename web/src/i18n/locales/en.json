@@ -8,11 +8,13 @@
     "dashboard": "Dashboard",
     "radar": "Radar & Log",
     "profile": "My Profile",
+    "vrcPlus": "VRC+",
     "vrchat": "VRChat",
     "friends": "Friends",
     "bundles": "Bundles",
     "library": "Library",
     "avatars": "Avatars",
+    "models": "Model Database",
     "worlds": "Worlds",
     "screenshots": "Screenshots",
     "logs": "Logs",
@@ -41,6 +43,51 @@
     "fbt": "FBT Monitor",
     "rules": "Automation Rules"
   },
+  "vrcPlus": {
+    "title": "VRC+ Media",
+    "subtitle": "Manage your prints, gallery, profile icons and inventory. Uploads and deletes hit VRChat directly.",
+    "tab": {
+      "prints": "Prints",
+      "gallery": "Gallery",
+      "icons": "Icons",
+      "inventory": "Inventory",
+      "emoji": "Emoji",
+      "stickers": "Stickers"
+    },
+    "uploadPrint": "Upload print",
+    "uploadImage": "Upload image",
+    "uploadIcon": "Upload icon",
+    "printUploaded": "Print uploaded",
+    "printDeleted": "Print deleted",
+    "imageUploaded": "Image uploaded",
+    "imageDeleted": "Image deleted",
+    "supporterRequired": "This needs an active VRC+ subscription.",
+    "limitReached": "You've reached the VRC+ limit of {{limit}} for this slot.",
+    "deletePrint": "Delete print",
+    "deleteImage": "Delete",
+    "deletePrintTitle": "Delete this print?",
+    "deletePrintBody": "This permanently removes the print from your VRChat account. This cannot be undone.",
+    "deleteImageTitle": "Delete this image?",
+    "deleteImageBody": "This permanently removes the image from your VRChat account. This cannot be undone.",
+    "noPrints": "No prints yet.",
+    "noFiles": "Nothing here yet.",
+    "noInventory": "Inventory is empty.",
+    "uploadEmoji": "Upload emoji",
+    "uploadSticker": "Upload sticker",
+    "emoji": {
+      "static": "Static",
+      "animated": "Animated",
+      "explainer": "Animated emoji are a vertical sprite sheet — stack each frame top-to-bottom in one square PNG, then set the frame count and playback speed.",
+      "pickSheet": "Choose sprite sheet",
+      "frames": "Frames",
+      "fps": "FPS",
+      "style": "Style",
+      "upload": "Upload animated emoji",
+      "uploaded": "Animated emoji uploaded",
+      "badFrames": "Frames and fps must both be at least 1.",
+      "empty": "No animated emoji yet."
+    }
+  },
   "profile": {
     "title": "My Profile",
     "subtitle": "View and edit your VRChat profile",
@@ -51,6 +98,11 @@
     "bio": "Bio",
     "bioPlaceholder": "Bio…",
     "statusPlaceholder": "Status message…",
+    "statusPresets": "Status presets",
+    "saveStatusPreset": "Save current status as a preset",
+    "applyStatusPreset": "Apply this preset",
+    "deleteStatusPreset": "Delete preset",
+    "noStatusPresets": "Save a status + description combo to reuse it later.",
     "currentAvatar": "Current avatar",
     "currentWorld": "Current world",
     "emptyBio": "No bio",
@@ -146,6 +198,21 @@
   },
   "friendDetail": {
     "title": "Friend Details",
+    "nameHistory": "Former Names",
+    "liveOccupants": "Live occupants",
+    "instanceFull": "full",
+    "ageVerified": "Age verified",
+    "friendsSince": "Friends since {{when}}",
+    "bestTime": "Best time to catch them",
+    "bestTimeWindow": "{{day}} {{start}}–{{end}}",
+    "bestTimeDays": "Seen online on {{count}} days here",
+    "bestTimeHint": "Estimated from observed online history.",
+    "confidenceHint": "Based on {{days}} days of observed online history",
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    },
     "sendMessage": "Send a message",
     "messagePlaceholder": "Hi! Want to hop into a world?",
     "messageSent": "Message sent",
@@ -169,6 +236,12 @@
     "boop": "Boop / Ping",
     "boopHint": "Pick a message type, then choose which saved snippet to attach. Configure up to 4 slots per type in the VRChat client (Quick Menu → Notifications → Messages).",
     "boopSent": "Boop sent — {{name}} will see a notification.",
+    "nativeBoop": "Boop {{name}}",
+    "nativeBoopSent": "Booped {{name}}!",
+    "myEmoji": "My emoji",
+    "emojiBoopSent": "Booped {{name}} with {{emoji}}!",
+    "emojiBoopTooltip": "Boop with {{emoji}}",
+    "boopSending": "Sending…",
     "boopSlot": "Slot {{n}}",
     "boopCooldown": "{{m}}m",
     "boopEmptySlot": "(empty — sends bare ping)",
@@ -194,6 +267,122 @@
   "osc": {
     "title": "OSC Tools",
     "subtitle": "Send and receive Open Sound Control messages against VRChat. Out → :9000, In ← :9001 by default.",
+    "page": {
+      "subtitle": "Build VRChat OSC messages, preview exactly what gets sent, and watch the send/receive loop in one place."
+    },
+    "profile": {
+      "label": "Profile",
+      "cardCount": "{{count}} cards",
+      "new": "New profile",
+      "rename": "Rename profile",
+      "delete": "Delete profile",
+      "renameTitle": "Rename profile",
+      "deleteTitle": "Delete this profile?",
+      "deleteBody": "\"{{name}}\" and its cards will be removed. This cannot be undone."
+    },
+    "conn": {
+      "label": "Target",
+      "host": "OSC host",
+      "sendPort": "Send port",
+      "hardware": "Hardware",
+      "hardwareNone": "No hardware data"
+    },
+    "io": {
+      "button": "Import / Export",
+      "title": "Import / Export profile",
+      "desc": "Export copies the active profile's cards as JSON. Paste JSON and import to replace this profile's cards.",
+      "export": "Export",
+      "import": "Import",
+      "loadFile": "Load file",
+      "copied": "Profile copied to clipboard",
+      "exportReady": "Profile ready to copy",
+      "imported": "Profile imported"
+    },
+    "list": {
+      "title": "Messages",
+      "reset": "Reset to defaults",
+      "resetTitle": "Reset messages?",
+      "resetBody": "This replaces the current profile's messages with the built-in defaults.",
+      "empty": "No messages yet. Use \"Add message\" to start."
+    },
+    "card": {
+      "emptyPreview": "(no output)",
+      "send": "Send",
+      "autoTitle": "Send automatically on an interval",
+      "autoStart": "Auto",
+      "autoStop": "Stop",
+      "enable": "Enable",
+      "disable": "Disable",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
+    },
+    "editor": {
+      "empty": "Select a message on the left, or add one to start editing.",
+      "title": "Edit message",
+      "delete": "Delete message",
+      "name": "Name",
+      "group": "Group",
+      "template": "Chatbox text",
+      "templatePlaceholder": "Type text and insert {variables}. Example: CPU {cpu.loadPct} {cpu.tempC}",
+      "address": "OSC address",
+      "type": "Type",
+      "value": "Value",
+      "previewLabel": "Will send",
+      "noOutput": "(nothing — template resolves to empty)",
+      "interval": "Every",
+      "send": "Send now",
+      "startAuto": "Auto send",
+      "stopAuto": "Stop auto",
+      "rateHint": "Chatbox limit: 5 manual sends per 5s; auto send throttles to one message every 2s.",
+      "insertVariable": "Insert variable",
+      "searchVariable": "Search CPU, GPU, time...",
+      "noVariables": "No variables match."
+    },
+    "add": {
+      "button": "Add message",
+      "chatbox": "Blank chatbox message",
+      "raw": "Blank OSC value message",
+      "presets": "Presets"
+    },
+    "loop": {
+      "title": "Send & receive",
+      "listening": "Listening",
+      "quickSend": "Quick send",
+      "address": "Address",
+      "type": "Value type",
+      "value": "Value",
+      "send": "Send",
+      "listenPort": "Listen port",
+      "start": "Listen",
+      "stop": "Stop",
+      "clear": "Clear",
+      "waiting": "Waiting for messages...",
+      "idle": "Send a message or start the listener.",
+      "in": "in",
+      "out": "out"
+    },
+    "avatar": {
+      "title": "Avatar parameters",
+      "hint": "Reads a local avatar's OSC config and adds its parameters as value messages.",
+      "missing": "Enter or pick an avatar id",
+      "loaded": "Loaded {{count}} parameters",
+      "load": "Load",
+      "paramName": "Parameter name",
+      "paramType": "Parameter type",
+      "noParams": "No parameters in this avatar file."
+    },
+    "hw": {
+      "title": "Hardware values",
+      "loading": "loading",
+      "identity": "Identity",
+      "live": "Live sensors",
+      "sensorNeeded": "Needs sensor provider"
+    },
+    "auto": {
+      "badge": "AUTO",
+      "stats": "Sent {{sent}} · skipped {{skipped}}",
+      "nextIn": "next {{seconds}}s"
+    },
     "send": "Send",
     "sendDesc": "Fire a single OSC message. Use addresses like /avatar/parameters/Foo for avatar parameters or /chatbox/input for ChatBox.",
     "sendButton": "Send",
@@ -367,7 +556,8 @@
     "subscriptionInactive": "Inactive",
     "subscriptionSignals": "Signals",
     "lastExpiredSubscription": "Last expired",
-    "liveSignal": "Live signal"
+    "liveSignal": "Live signal",
+    "notOwnedAvatar": "This avatar isn't yours — VRChat doesn't provide a download for it."
   },
   "friends": {
     "title": "Friends",
@@ -636,6 +826,7 @@
       }
     },
     "liveRoster": "Live Instance Roster",
+    "rosterSortAlphabetical": "Sort alphabetically",
     "recentPlayerEvents": "Recent Player Events",
     "noPlayerEvents": "No player events recorded yet. Launch VRChat and join a world.",
     "rosterTab": "Instance Roster"
@@ -701,7 +892,10 @@
     "jumpTo": "Jump to",
     "seconds": "s",
     "ready": "Ready",
-    "partial": "Partial"
+    "partial": "Partial",
+    "add": "Add",
+    "delete": "Delete",
+    "reset": "Reset"
   },
   "about": {
     "title": "About VRCSM",
@@ -740,11 +934,22 @@
     "console": "Console",
     "output": "Output",
     "problems": "Problems",
-    "clear": "Clear"
+    "clear": "Clear",
+    "hideNoiseHint": "Fold VRChat's EOS/Stomp telemetry retry spam (not a VRCSM error).",
+    "noiseHidden": "Noise hidden ({{count}})",
+    "showAll": "Show all"
   },
   "statusBar": {
     "version": "{{version}}",
-    "cacheTotal": "Cache"
+    "cacheTotal": "Cache",
+    "onlineCount": "{{count}} friends online",
+    "serverStatus": "VRChat server status",
+    "serverLevel": {
+      "operational": "All systems operational",
+      "minor": "Minor outage",
+      "major": "Major outage",
+      "critical": "Critical outage"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -836,11 +1041,18 @@
       "collections": "Collections"
     },
     "collections": "Collections",
+    "filterByType": "Type",
     "defaultCollection": "Library",
     "defaultCollectionHint": "Default cross-type local shelf",
     "emptyCollections": "No collections created yet.",
     "collectionMeta": "{{count}} items · latest {{date}}",
     "searchPlaceholder": "Filter by name, id, tag, or note…",
+    "sortLabel": "Sort",
+    "sort": {
+      "added": "Recently added",
+      "name": "Name",
+      "type": "Type"
+    },
     "filters": {
       "all": "All"
     },
@@ -883,8 +1095,52 @@
     "officialSync": "Sync VRChat favorites",
     "officialSyncing": "Syncing VRChat favorites…",
     "officialSyncSuccess": "Synced {{count}} official favorites ({{avatars}} avatars, {{worlds}} worlds)",
+    "officialSyncSuccessGrouped": "Synced {{count}} favorites into {{lists}} groups ({{avatars}} avatars, {{worlds}} worlds)",
     "officialSyncFailed": "VRChat favorites sync failed: {{error}}",
     "officialLastSync": "VRChat favorites synced {{date}}"
+  },
+  "modelDb": {
+    "title": "Model Database",
+    "subtitle": "Manage the avatars your account owns: rename, edit visibility, swap the image, or delete.",
+    "searchPlaceholder": "Filter your avatars",
+    "empty": "No owned avatars found.",
+    "loadFailed": "Failed to load your avatars.",
+    "manage": "Manage",
+    "manageTitle": "Manage avatar",
+    "noChanges": "No changes to save.",
+    "saved": "Avatar updated.",
+    "deleted": "Avatar deleted.",
+    "imageReplaced": "Avatar image replaced.",
+    "replaceImage": "Replace image",
+    "replaceImageConfirmTitle": "Replace this avatar's image?",
+    "replaceImageConfirmBody": "Upload a new image for \"{{name}}\" and re-point it on your live VRChat account. The avatar's public thumbnail changes immediately.",
+    "delete": "Delete avatar",
+    "deleteConfirmTitle": "Delete this avatar?",
+    "deleteConfirmBody": "Permanently delete \"{{name}}\"? VRChat hides the avatar, removes its asset files, and reserves the id forever. This cannot be undone.",
+    "filter": {
+      "all": "All",
+      "public": "Public",
+      "private": "Private",
+      "hidden": "Hidden"
+    },
+    "field": {
+      "name": "Name",
+      "description": "Description",
+      "visibility": "Visibility",
+      "image": "Avatar image"
+    },
+    "hidden": {
+      "explainer": "VRChat can't list hidden (deleted) avatars. Look them up by id instead — scan ids seen in your local logs, or paste a specific avtr_ id. Only avatars you own will resolve.",
+      "lookup": "Look up id",
+      "scanHistory": "Scan log history",
+      "scanning": "Checking {{done}} / {{total}} ids…",
+      "scanDone": "Checked {{checked}} ids · {{found}} hidden avatar(s) found.",
+      "badId": "Enter a valid avtr_ id.",
+      "foundOne": "Hidden avatar resolved.",
+      "notHidden": "That avatar exists but isn't hidden.",
+      "notOwned": "Couldn't resolve that id — VRChat only returns avatars you own.",
+      "noHistory": "No avatar ids in local history yet. Play VRChat to populate it, or paste an id above."
+    }
   },
   "avatars": {
     "title": "Avatars",
@@ -1126,6 +1382,59 @@
     "availableBody": "VRCSM {{version}} is now available.",
     "download": "Download"
   },
+  "feed": {
+    "tab": "Feed",
+    "title": "Activity Feed",
+    "subtitle": "Unified, persistent timeline of friend presence, sessions and avatar changes.",
+    "searchPlaceholder": "Search name, world, detail…",
+    "muteHint": "Right-click to hide from the All view",
+    "loginRequired": "Log in to VRChat via the Settings page to view your activity feed.",
+    "loadFailed": "Could not load the feed.",
+    "empty": "No activity yet. Events appear here as your friends come online and move between instances.",
+    "unknownUser": "Unknown",
+    "category": {
+      "all": "All",
+      "online": "Online",
+      "offline": "Offline",
+      "location": "Location",
+      "status": "Status",
+      "avatar": "Avatar",
+      "joined": "Joined",
+      "left": "Left",
+      "friend-added": "Friend added",
+      "friend-removed": "Friend removed",
+      "video": "Video",
+      "portal": "Portal",
+      "moderation": "Moderation",
+      "sticker": "Sticker",
+      "notification": "Notification",
+      "session": "Session",
+      "diagnostic": "Diagnostic",
+      "other": "Other"
+    }
+  },
+  "gameLog": {
+    "tab": "Game Log",
+    "title": "Game Log",
+    "subtitle": "Live raw VRChat output log tail.",
+    "searchPlaceholder": "Filter lines…",
+    "lineCount": "{{n}} lines",
+    "pause": "Pause",
+    "resume": "Resume",
+    "clear": "Clear",
+    "jumpToBottom": "Jump to latest",
+    "paused": "Stream paused. Resume to capture new lines.",
+    "waiting": "Waiting for VRChat log output… launch VRChat to see live lines.",
+    "level": {
+      "all": "All",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "Error"
+    },
+    "hideNoiseHint": "Fold VRChat's EOS/Stomp telemetry retry spam (not a VRCSM error).",
+    "noiseHidden": "Hiding noise",
+    "showAll": "Show all"
+  },
   "friendLog": {
     "subtitle": "Session encounter history and social change records kept in the local database.",
     "searchPlaceholder": "Search by player, user id, world id, or event...",
@@ -1201,6 +1510,37 @@
         "label": "Application ID",
         "desc": "The 18-19 digit snowflake from your Discord developer dashboard.",
         "placeholder": "1234567890000000000"
+      }
+    },
+    "notify": {
+      "title": "Desktop Notifications",
+      "desc": "Show native Windows notifications for live VRChat events while VRCSM is running. Each type is off by default.",
+      "friendOnline": {
+        "label": "Friend Comes Online",
+        "desc": "Toast when a friend logs in to VRChat."
+      },
+      "invite": {
+        "label": "Invites",
+        "desc": "Toast when you receive an instance invite."
+      },
+      "friendRequest": {
+        "label": "Friend Requests",
+        "desc": "Toast when someone sends you a friend request."
+      },
+      "vrOverlay": {
+        "label": "Show in VR Headset",
+        "desc": "Also mirror the enabled notifications above into your headset via XSOverlay. Requires XSOverlay running."
+      },
+      "tts": {
+        "label": "Speak Notifications",
+        "desc": "Read live events aloud via your system voice while you're in VR.",
+        "unsupported": "Speech synthesis isn't available in this runtime."
+      },
+      "ttsScope": {
+        "label": "What to Speak",
+        "desc": "Friends only announces friends coming online; All also speaks invites and friend requests.",
+        "all": "All events",
+        "friends": "Friends only"
       }
     },
     "screenshots": {
@@ -1337,7 +1677,8 @@
       "steamvr": "SteamVR",
       "registry": "VRChat Registry",
       "experimental": "Experimental",
-      "vrDiag": "VR Diagnostics"
+      "vrDiag": "VR Diagnostics",
+      "data": "Data Management"
     },
     "general": {
       "layoutTitle": "Workspace Layout",
@@ -1355,6 +1696,14 @@
       "friendsDetailHint": "Show the right-side profile detail pane on the Friends page.",
       "vrchatSidebar": "VRChat workspace side stack",
       "vrchatSidebarHint": "When disabled, the right column folds below the main VRChat workspace instead of staying side-by-side.",
+      "showInstanceId": "Show instance ID",
+      "showInstanceIdHint": "When off, the instance number is hidden from friend locations. World, type and region still show.",
+      "hideUnfriends": "Hide unfriend events",
+      "hideUnfriendsHint": "Hide \"removed you\" / unfriend rows from the friend activity log. Other events still show.",
+      "statusShapes": "Colorblind status shapes",
+      "statusShapesHint": "Add a distinct shape to each status indicator (join me, active, ask me, busy, offline) so they're distinguishable without relying on color.",
+      "userColor": "Per-user name colors",
+      "userColorHint": "Tint each user's name with a stable, unique color derived from their ID, making people easier to recognize at a glance across feeds and rosters.",
       "runtimeTitle": "Runtime Detection",
       "runtimeDesc": "Heuristic environment summary parsed from VRChat logs on this machine.",
       "runtimeMode": "Runtime mode",
@@ -1477,6 +1826,11 @@
           "name": "Visual Avatar Search",
           "description": "Find avatars visually similar to an image using a local AI model. Adds a 'Find Similar' right-click action on avatar cards.",
           "warning": "First use downloads a ~150 MB CLIP model. All processing runs locally; nothing is uploaded. Indexing a large cache can take several minutes and is CPU-intensive without WebGPU."
+        },
+        "amplitudeHarvest": {
+          "name": "Amplitude Avatar-ID Harvest",
+          "description": "Reads avatar ids (avtr_...) out of VRChat's own local Amplitude analytics cache to enrich the Model Database with avatars you've encountered. Read-only: nothing is written, deleted, or uploaded. Adds a 'Scan local cache' action on the Model Database page.",
+          "warning": "Reading VRChat's analytics cache may be considered against VRChat's Terms of Service / data-use guidelines. Use at your own risk. This stays strictly local and read-only — only avtr_ ids are extracted, no other analytics data is surfaced or sent anywhere."
         }
       },
       "visualSearch": {
@@ -1548,6 +1902,63 @@
       "label": "Launch with Windows",
       "hint": "Start VRCSM automatically when you log in to Windows.",
       "errorUpdate": "Failed to update autostart"
+    },
+    "data": {
+      "heading": "Data Management",
+      "blurb": "Review and clear the caches and data VRCSM stores on this machine. Rebuildable caches are safe to clear; history and asset data are removed permanently.",
+      "dbSize": "Database file (vrcsm.db): {{size}}",
+      "loading": "Loading usage…",
+      "loadError": "Failed to load usage: {{error}}",
+      "rowCount": "{{count}} rows",
+      "selectedCount": "{{count}} selected",
+      "clearSelected": "Clear selected",
+      "clearing": "Clearing…",
+      "clearSuccess": "Cleared {{count}} item(s).",
+      "clearPartial": "Cleared with {{count}} failure(s).",
+      "clearError": "Cleanup failed: {{error}}",
+      "confirmTitle": "Confirm cleanup",
+      "confirmIrreversible": "The following items will be permanently removed. This cannot be undone.",
+      "confirmSafe": "The following items will be cleared. Caches regenerate automatically.",
+      "confirmClear": "Clear now",
+      "cancel": "Cancel",
+      "dangerAck": "I understand this permanently deletes my own assets (favorites, notes, tags).",
+      "group": {
+        "cache": "Rebuildable caches",
+        "cacheDesc": "Safe to clear. VRCSM regenerates these automatically as needed.",
+        "history": "History & analytics data",
+        "historyDesc": "Locally recorded activity. Clearing is permanent and cannot be undone.",
+        "experimental": "Experimental feature data",
+        "experimentalDesc": "Data produced by experimental features.",
+        "danger": "Danger zone",
+        "dangerDesc": "Your own assets. Clearing permanently deletes favorites, notes and tags."
+      },
+      "item": {
+        "cache": {
+          "thumbnails": "Thumbnail cache",
+          "previews": "Avatar preview cache",
+          "screenshotThumbs": "Screenshot thumbnails",
+          "updates": "Downloaded updates",
+          "pluginFeed": "Plugin feed cache",
+          "index": "Cache index",
+          "assetCache": "Asset metadata cache",
+          "benchmark": "Avatar benchmark cache",
+          "onlineMirror": "Online mirror (avatars, prints, inventory)"
+        },
+        "history": {
+          "worldVisits": "World visit history",
+          "playerEvents": "Player events & encounters",
+          "avatarHistory": "Avatar history",
+          "friendLog": "Friend log & presence",
+          "sessions": "Session history",
+          "logEvents": "Log events"
+        },
+        "experimental": {
+          "embeddings": "Visual search embeddings"
+        },
+        "assets": {
+          "favorites": "Local favorites, notes & tags"
+        }
+      }
     }
   },
   "imageZoom": {
@@ -1598,11 +2009,29 @@
     "unknownWorld": "(unknown world)",
     "stillInWorld": "still in world",
     "instanceLabel": "instance",
-    "openAction": "open"
+    "openAction": "open",
+    "rejoinAction": "Rejoin",
+    "rejoinHint": "Launch VRChat into this exact instance",
+    "heatmap": {
+      "title": "Activity heatmap",
+      "subtitle": "When you join worlds, by weekday and hour (last {{days}} days)",
+      "empty": "Not enough visit history yet to chart an activity pattern.",
+      "busiest": "Busiest: {{day}} around {{hour}}",
+      "legendLess": "less",
+      "legendMore": "more",
+      "cellTooltip": "{{day}} {{hour}}: {{count}} visits",
+      "totalVisits": "{{count}} visits charted"
+    }
   },
   "strangerAlert": {
     "title": "Stranger joined your {{access}} instance",
     "unknownUser": "(unknown user)"
+  },
+  "tts": {
+    "friendOnline": "{{name}} is now online",
+    "invite": "Invite from {{who}}",
+    "friendRequest": "Friend request from {{who}}",
+    "someone": "Someone"
   },
   "profileCard": {
     "home": "Home",
@@ -1699,7 +2128,16 @@
     "guide": "Aggregates world visits and player encounters from your VRChat log history. Data accumulates as VRCSM parses logs — keep the app running while you play to build up analytics.",
     "noWorlds": "No visit data yet. World history is recorded when VRCSM parses your VRChat logs.",
     "selfFiltered": "Your own player id is excluded from encounter rankings.",
-    "lazyWorlds": "World badges and thumbnails are loaded only when visible or opened."
+    "lazyWorlds": "World badges and thumbnails are loaded only when visible or opened.",
+    "tabRankings": "Rankings",
+    "tabGraph": "Relationship Graph",
+    "graphTitle": "Co-Presence Network",
+    "graphGuide": "Players who shared your instances, linked by overlapping time. Solid lines are confirmed (logged from your own instance); dashed lines are inferred co-presence between others — not confirmed friendships.",
+    "graphLoading": "Building co-presence graph…",
+    "graphEmpty": "No co-presence data yet. Edges appear once VRCSM has logged players sharing your instances.",
+    "graphAria": "Co-presence relationship graph",
+    "legendConfirmed": "Confirmed co-presence (your instance)",
+    "legendInferred": "Inferred co-presence (others, not confirmed friends)"
   },
   "benchmark": {
     "title": "Avatar Performance Benchmark",
@@ -1749,5 +2187,11 @@
     "empty": "No rules yet. Create one to automate VRChat actions.",
     "namePlaceholder": "Rule name...",
     "history": "Firing History"
+  },
+  "models": {
+    "tab": {
+      "browse": "Browse",
+      "owned": "My Avatars"
+    }
   }
 }

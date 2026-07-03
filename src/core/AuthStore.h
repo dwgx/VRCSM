@@ -18,7 +18,9 @@ public:
     bool Load();
     bool Save() const;
     void SetCookies(std::string auth, std::string twoFactor);
-    void Clear();
+    // `reason` is a diagnostic tag identifying the call site — logged so we
+    // can tell an intentional logout from a spurious session wipe.
+    void Clear(std::string_view reason = "unspecified");
     bool HasSession() const;
     std::string BuildCookieHeader() const;
 

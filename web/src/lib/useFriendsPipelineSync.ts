@@ -7,6 +7,8 @@ import {
   FRIEND_PIPELINE_EVENT_TYPES,
 } from "./friends-pipeline";
 import { ipc } from "./ipc";
+import { recordPresenceFromPipeline } from "./feed-recorder";
+import { qk } from "./query-keys";
 import type { Friend, FriendsListResult } from "./types";
 
 // Fields we watch for diffs to persist into friend_log. Keep the list
@@ -87,9 +89,24 @@ export function useFriendsPipelineSync() {
       subscribePipelineEvent(type, (content) => {
         // Snapshot PRIOR cache state before the reducer merges the
         // patch, so diff-based friend_log entries see the old values.
-        const prevCache = qc.getQueryData<FriendsListResult>([
-          "friends.list",
-        ]);
+        const prevCache = qc.getQueryData<FriendsListResult>(qk.friends.list());
+
+        // Persist presence/location/status flips into friend_presence_events
+        // via the central recorder (powers the unified feed). Covers offline
+        // too — friend_log only tracks online/offline on confirmed friendships,
+        // this is the superset that also captures per-instance moves.
+        if (
+          type === "friend-online" || type === "friend-offline" ||
+          type === "friend-active" || type === "friend-location"
+        ) {
+          const c = content as { userId?: string } | null;
+          const patch = extractPatchedUser(content);
+          const presenceUserId = c?.userId ?? patch?.id;
+          const prevRow = presenceUserId
+            ? prevCache?.friends.find((f) => f.id === presenceUserId)
+            : undefined;
+          recordPresenceFromPipeline(type, content, prevRow);
+        }
 
         // Diff + persist (before the reducer runs, so we see old values).
         if (type === "friend-update" || type === "friend-online" ||
@@ -170,7 +187,7 @@ export function useFriendsPipelineSync() {
         // (no params). Other variants would need their own update path,
         // but the workspace + dashboard call sites all use this key.
         qc.setQueriesData<FriendsListResult>(
-          { queryKey: ["friends.list"] },
+          { queryKey: qk.friends.root },
           (prev) => applyFriendPipelineEvent(prev ?? null, type, content) ?? prev,
         );
       }),

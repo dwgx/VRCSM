@@ -1238,12 +1238,24 @@ function AvatarRow({
   const wearerDisplayName =
     item.wearer_reference_display_name ?? item.wearer_name ?? t("common.unknown", { defaultValue: "Unknown" });
   return (
-    <button
-      type="button"
+    // Rendered as a role="button" div, not a real <button>, because the thumb
+    // contains its own "save to library" <button> — a button nested in a button
+    // is invalid HTML and triggers React hydration errors plus undefined click
+    // behaviour. Keyboard access is preserved via tabIndex + Enter/Space.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       className={cn(
-        "relative flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left",
+        "relative flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left",
         "border border-transparent transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary)/0.6)]",
         isSelected
           ? "bg-[hsl(var(--primary)/0.20)] border-[hsl(var(--primary)/0.55)]"
           : "hover:bg-[hsl(var(--surface-raised))]",
@@ -1336,7 +1348,7 @@ function AvatarRow({
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1431,7 +1443,7 @@ function PublicAvatarSearch() {
   );
 }
 
-function Avatars() {
+function Avatars({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const { report, loading, error } = useReport();
@@ -2194,19 +2206,21 @@ function Avatars() {
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] font-semibold leading-none tracking-tight">
-            {t("avatars.title")}
-          </h1>
-          <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
-            {t("avatars.subtitle")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
-          <span>{t("avatars.totalCount", { count: items.length })}</span>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-[22px] font-semibold leading-none tracking-tight">
+              {t("avatars.title")}
+            </h1>
+            <p className="mt-1.5 text-[12px] text-[hsl(var(--muted-foreground))]">
+              {t("avatars.subtitle")}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+            <span>{t("avatars.totalCount", { count: items.length })}</span>
+          </div>
+        </header>
+      )}
 
       {loading && !report ? (
         <Card>

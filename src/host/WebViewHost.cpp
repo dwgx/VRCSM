@@ -13,6 +13,30 @@
 
 #include "../core/plugins/PluginRegistry.h"
 
+#include <cctype>
+#include <shellapi.h>
+
+namespace
+{
+// Lowercased host of a URI, e.g. "https://app.vrcsm/index.html" → "app.vrcsm".
+// Used to gate top-level navigation to the trusted SPA origin only.
+std::string HostOfUri(const std::wstring& uri)
+{
+    const std::string u = WideToUtf8(uri);
+    auto schemeEnd = u.find("://");
+    if (schemeEnd == std::string::npos) return {};
+    const auto hostStart = schemeEnd + 3;
+    const auto hostEnd = u.find_first_of("/?#", hostStart);
+    std::string host = u.substr(hostStart, hostEnd == std::string::npos ? std::string::npos : hostEnd - hostStart);
+    // Strip any userinfo@ and :port.
+    if (auto at = host.find('@'); at != std::string::npos) host = host.substr(at + 1);
+    if (auto colon = host.find(':'); colon != std::string::npos) host = host.substr(0, colon);
+    std::transform(host.begin(), host.end(), host.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return host;
+}
+} // namespace
+
 WebViewHost::WebViewHost()
     : m_ipcBridge(std::make_unique<IpcBridge>(*this))
 {
@@ -457,6 +481,66 @@ void WebViewHost::ConfigureWebView()
                 .Get(),
             &frameCreatedToken));
     }
+
+    // ── Containment: block popups and out-of-app top-level navigation ──
+    // Without these, page/plugin script can window.open() to an arbitrary
+    // origin (which would open a full WebView2 window outside our gating) or
+    // navigate the top frame away from the app.vrcsm SPA into an attacker-
+    // controlled origin that can still reach chrome.webview.postMessage.
+    //
+    // NewWindowRequested: never spawn a second WebView window. If the target
+    // is a normal web URL, hand it to the OS browser via shell.openUrl (the
+    // same allow-list applies); otherwise just swallow it.
+    EventRegistrationToken newWindowToken{};
+    THROW_IF_FAILED(m_webview->add_NewWindowRequested(
+        Microsoft::WRL::Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+            [this](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* args) noexcept -> HRESULT
+            {
+                args->put_Handled(TRUE);  // suppress the new WebView2 window
+                wil::unique_cotaskmem_string uri;
+                if (SUCCEEDED(args->get_Uri(&uri)) && uri)
+                {
+                    const std::string u = WideToUtf8(uri.get());
+                    if (u.rfind("https://", 0) == 0 || u.rfind("http://", 0) == 0)
+                    {
+                        // Route external links to the OS browser, not a popup.
+                        ShellExecuteW(nullptr, L"open", uri.get(), nullptr, nullptr, SW_SHOWNORMAL);
+                    }
+                }
+                return S_OK;
+            })
+            .Get(),
+        &newWindowToken));
+
+    // NavigationStarting: only the top frame is gated here. Allow the trusted
+    // SPA origin and our virtual hosts; cancel anything else so script can't
+    // drive the top frame to a foreign origin. (Plugin iframes navigate within
+    // their own frames and are isolated by DENY_CORS, so this top-level guard
+    // does not touch them.)
+    EventRegistrationToken navStartToken{};
+    THROW_IF_FAILED(m_webview->add_NavigationStarting(
+        Microsoft::WRL::Callback<ICoreWebView2NavigationStartingEventHandler>(
+            [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* args) noexcept -> HRESULT
+            {
+                wil::unique_cotaskmem_string uri;
+                if (FAILED(args->get_Uri(&uri)) || !uri) return S_OK;
+                const std::string host = HostOfUri(uri.get());
+                static const std::unordered_set<std::string> kAllowedTopHosts = {
+                    "app.vrcsm",
+                };
+                // about:blank / data: have no host; allow them (WebView2 uses
+                // them internally and NavigateToString lands on about:blank).
+                const std::string u = WideToUtf8(uri.get());
+                const bool schemeless = u.rfind("about:", 0) == 0 || u.rfind("data:", 0) == 0;
+                if (!schemeless && kAllowedTopHosts.count(host) == 0)
+                {
+                    args->put_Cancel(TRUE);
+                    spdlog::warn("[webview] blocked top-level navigation to '{}'", u);
+                }
+                return S_OK;
+            })
+            .Get(),
+        &navStartToken));
 
     // Navigation self-heal: if a stray reload/replace sends the view to
     // a stale preview.local or plugin.*.vrcsm URL after a cache clear or

@@ -15,11 +15,22 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 ## Current Continuity Snapshot
 
 - Current branch: `main`.
-- Release status: `v0.14.6` shipped on 2026-06-24; active development is paused after this checkpoint unless the user explicitly resumes feature work.
+- Release status: `v0.14.6` shipped on 2026-06-24. A large uncommitted **Wave-2** change set is in the working tree (new atoms/harvest/OSC/telemetry/social features + a whole-project security review). The "development paused / clean tree" wording from the v0.14.6 checkpoint is stale — the tree is NOT clean.
 - Current user priority: repository hygiene, release stability, and critical fixes over speculative feature growth.
 - Last verified release artifact: `build\release\VRCSM_v0.14.6_x64_Installer.msi`.
 - Last verified runtime: `build\x64-release\src\host\VRCSM.exe`.
-- Current version: `0.14.6` (release checkpoint on 2026-06-24; development paused after this version unless a critical fix is explicitly requested).
+- Current version: `0.14.6`.
+
+## Memories
+
+- [session-persist-diagnosis](memory/session-persist-diagnosis.md) — "每次重登" 真凶是快捷方式指向 7/1 旧 release,持久化层本身正常
+
+### 2026-07-03 review-remediation session
+
+- A prior session ran a 6-area multi-agent review; reports are in `docs/review-2026-07/` (`REVIEW-SUMMARY.md` is the master). It was cut off at 100% context mid-fix.
+- This session verified/finished all HIGH + security-MEDIUM fixes. Most had already landed; the remaining gaps closed here were **lib H2** (LRU `memoSet` cap added to `thumbnails.ts` + `assets-cache.ts`, matching `image-cache.ts`) and **build-docs H1** (`.gitignore` now covers `_build_*.bat`, `_tmp_*.bat`, `*-review.png`).
+- Verified 2026-07-03: `pnpm build` clean, `pnpm test` 238/238, `test:smoke` 27/27, C++ release build up-to-date, `ctest` 100/100 (1 skipped: `RealLogClassificationTally`).
+- See `docs/review-2026-07/REVIEW-SUMMARY.md` → "Remediation Status" for the per-finding evidence table and remaining non-security carry-overs.
 
 ## Release Workflow
 

@@ -34,6 +34,20 @@ public:
     static nlohmann::json ResolveTargets(const nlohmann::json& params);
 
     static nlohmann::json Execute(const nlohmann::json& params);
+
+    // Root-scoped safe delete for VRCSM's own AppData caches (thumb cache,
+    // preview cache, screenshot thumbs, updates, feed/index JSON). Unlike the
+    // VRChat-category API above, this validates `target` only against `root`
+    // (typically getAppDataRoot()); it does NOT require the target to be a
+    // known VRChat cache category. It keeps the same hardening: the target
+    // must resolve strictly inside `root`, may not be `root` itself, and the
+    // recursive removal refuses to follow NTFS junctions / reparse points
+    // (it removes the link entry rather than descending through it). Missing
+    // targets return 0 deleted, not an error. Returns the number of files +
+    // directories removed.
+    static Result<std::size_t> DeleteWithinRoot(
+        const std::filesystem::path& root,
+        const std::filesystem::path& target);
 };
 
 } // namespace vrcsm::core

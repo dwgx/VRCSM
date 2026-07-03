@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
 } from "react";
 import { ipc } from "./ipc";
-import { invalidateThumbnails } from "./thumbnails";
+import { resetAccountScopedCaches } from "./cache-ownership";
 import { subscribePipelineEvent } from "./pipeline-events";
 import type { AuthStatus } from "./types";
 
@@ -130,23 +130,44 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const pipelineRef = useRef(pipelineState);
   pipelineRef.current = pipelineState;
   const mountedRef = useRef(true);
+  const statusRef = useRef<AuthStatus>(fallbackStatus);
+  const statusReadyRef = useRef(false);
+
+  const commitStatus = useCallback((
+    next: AuthStatus,
+    options: { suppressCacheReset?: boolean } = {},
+  ) => {
+    const prev = statusRef.current;
+    if (!options.suppressCacheReset && statusReadyRef.current) {
+      const prevUserId = prev.userId ?? null;
+      const nextUserId = next.userId ?? null;
+      if (prev.authed && !next.authed) {
+        resetAccountScopedCaches("auth-expired");
+      } else if (prev.authed && next.authed && prevUserId && nextUserId && prevUserId !== nextUserId) {
+        resetAccountScopedCaches("account-switch");
+      }
+    }
+    statusRef.current = next;
+    statusReadyRef.current = true;
+    setStatus(next);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
       const s = await ipc.call<undefined, AuthStatus>("auth.status");
       if (mountedRef.current) {
-        setStatus(s);
+        commitStatus(s);
         setError(null);
       }
     } catch (e) {
       if (mountedRef.current) {
         setError(e instanceof Error ? e.message : String(e));
-        setStatus(fallbackStatus);
+        commitStatus(fallbackStatus);
       }
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [commitStatus]);
 
   const login = useCallback(
     async (username: string, password: string): Promise<LoginResult> => {
@@ -156,12 +177,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
           LoginResult
         >("auth.login", { username, password });
         if (result.status === "success" && mountedRef.current) {
+          resetAccountScopedCaches("login");
           setError(null);
           // The host also broadcasts `auth.loginCompleted`, but pushing
           // the status directly here shaves one round-trip off the UI
           // update so the badge flips the instant the user closes the
           // login dialog.
-          setStatus(result.user);
+          commitStatus(result.user, { suppressCacheReset: true });
         } else if (result.status === "error" && mountedRef.current) {
           setError(result.error);
         }
@@ -172,7 +194,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return { status: "error", error: msg };
       }
     },
-    [],
+    [commitStatus],
   );
 
   const verifyTwoFactor = useCallback(
@@ -186,8 +208,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
           VerifyTwoFactorResult
         >("auth.verify2FA", { method, code });
         if (result.ok && mountedRef.current) {
+          resetAccountScopedCaches("login");
           setError(null);
-          setStatus(result.user);
+          commitStatus(result.user, { suppressCacheReset: true });
         } else if (!result.ok && mountedRef.current) {
           setError(result.error);
         }
@@ -198,24 +221,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return { ok: false, error: msg };
       }
     },
-    [],
+    [commitStatus],
   );
 
   const logout = useCallback(async () => {
     try {
       await ipc.call<undefined, { ok: boolean }>("auth.logout");
     } finally {
-      // Drop memoised thumbnail URLs so private-avatar fetches that
-      // succeeded while signed in aren't served back from cache after
-      // the cookie is gone (the host will return null, but we want the
-      // cards to re-ask and fall back to the procedural placeholder).
-      invalidateThumbnails();
+      resetAccountScopedCaches("logout");
       if (mountedRef.current) {
-        setStatus(fallbackStatus);
+        commitStatus(fallbackStatus, { suppressCacheReset: true });
         setError(null);
       }
     }
-  }, []);
+  }, [commitStatus]);
 
   // Subscribe to the host-side login completion event. Success triggers
   // a status refresh so the AuthChip / Friends page update even when
@@ -227,6 +246,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       (event) => {
         if (!mountedRef.current) return;
         if (event.ok) {
+          const current = statusRef.current;
+          const eventUserId = event.user?.userId ?? null;
+          if (!current.authed || !eventUserId || current.userId !== eventUserId) {
+            resetAccountScopedCaches("login");
+          }
           setError(null);
           void refresh();
         } else if (event.error && event.error !== "cancelled") {

@@ -98,7 +98,36 @@ namespace VRCAutoUploader
         {
             if (!File.Exists(TaskFilePath)) return;
             Log("=== VRC Auto Uploader Initialized ===");
+            LogEnvironment();
             EditorApplication.delayCall += OnEditorReady;
+        }
+
+        // Record the Unity/runtime context up front. The VRChat SDK only ships
+        // against a narrow Unity band (2019.4.31f1 for SDK <=3.4.2, 2022.3.x for
+        // SDK 3.6.0+). When a batch fails mysteriously the very first question is
+        // "which Unity?" — logging it here turns a cryptic "SDK not available"
+        // into an actionable line at the top of autouploader.log.
+        private static void LogEnvironment()
+        {
+            try
+            {
+                Log($"Unity {Application.unityVersion} · {Application.platform}");
+                var major = ParseUnityMajor(Application.unityVersion);
+                if (major != 0 && major != 2019 && major != 2022)
+                {
+                    Log($"WARNING: Unity {Application.unityVersion} is outside the VRChat-supported band " +
+                        "(2019.4.x or 2022.3.x). Upload may fail if the installed SDK does not match this editor.");
+                }
+            }
+            catch (Exception ex) { LogError($"LogEnvironment failed: {ex.Message}"); }
+        }
+
+        private static int ParseUnityMajor(string version)
+        {
+            if (string.IsNullOrEmpty(version)) return 0;
+            int dot = version.IndexOf('.');
+            var head = dot > 0 ? version.Substring(0, dot) : version;
+            return int.TryParse(head, out var year) ? year : 0;
         }
 
         public static void Execute()

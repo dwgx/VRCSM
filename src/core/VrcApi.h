@@ -132,6 +132,18 @@ public:
     static Result<std::vector<nlohmann::json>> fetchFavoritedAvatars();
     static Result<std::vector<nlohmann::json>> fetchFavoritedWorlds();
 
+    // GET /favorite/groups — the user's named favorite groups (avatars1..4,
+    // worlds1..4, etc). Each row carries the internal `name` plus the
+    // user-customisable `displayName`, so sync can label lists the way the
+    // player sees them in-game.
+    static Result<std::vector<nlohmann::json>> fetchFavoriteGroups();
+
+    // GET /favorites?type=<type> — favorite records that map a target id
+    // (`favoriteId`) to the group it lives in (carried in `tags`). This is the
+    // only endpoint that exposes group membership; the detail endpoints above
+    // do not. `type` is "avatar" or "world".
+    static Result<std::vector<nlohmann::json>> fetchFavoriteRecords(const std::string& type);
+
     // GET /calendar — upcoming VRChat official events. Returns an array
     // of event objects (id, name, starts_at, ends_at, world_id, image_url,
     // region, etc). Public-ish endpoint but we still send the cookie so
@@ -177,6 +189,13 @@ public:
     /// Full world detail record for a `wrld_*` id. Returns raw JSON
     /// from `/api/1/worlds/{id}`. Error on 401/404 with structured code.
     static Result<nlohmann::json> fetchWorldDetails(const std::string& worldId);
+
+    /// Live instance record for a full location `wrld_*:instanceId`.
+    /// Returns raw JSON from `/api/1/instances/{worldId}:{instanceId}`,
+    /// whose `n_users` field is the canonical live occupant count
+    /// (`users[]` is owner-only and must not be used for crowd counts).
+    /// Caller passes the full colon-joined location string.
+    static Result<nlohmann::json> fetchInstance(const std::string& location);
 
     /// Look up a user by id via `/api/1/users/{id}`. Raw payload is passed
     /// through for the frontend. Returns structured Error on 401/404/network.
@@ -325,6 +344,158 @@ public:
         const std::string& targetUserId,
         const std::string& instanceLocation,
         int messageSlot = 0);
+
+    // ── Wave 2 / Section B: online social + VRC+ media ──────────────────
+    //
+    // A single multipart field (a form value, not a file). The file part is
+    // modelled separately by MultipartFile.
+    struct MultipartField
+    {
+        std::string name;
+        std::string value;
+    };
+
+    // The binary file part of a multipart/form-data body. `bytes` is the raw
+    // (already-decoded) file content — callers pass the decoded image bytes.
+    struct MultipartFile
+    {
+        std::string fieldName;   // form field name, e.g. "file" or "image"
+        std::string filename;    // e.g. "icon.png"
+        std::string contentType; // e.g. "image/png"
+        std::string bytes;       // raw binary content (binary-safe std::string)
+    };
+
+    // Result of building a multipart/form-data request: the raw body (which
+    // is binary-safe in a std::string — WinHTTP sends .data()/.size()) plus
+    // the matching `Content-Type` header value carrying the boundary.
+    struct MultipartBody
+    {
+        std::string body;
+        std::string contentType; // "multipart/form-data; boundary=..."
+    };
+
+    /// Build a multipart/form-data body. `boundary` must not appear in any
+    /// field value or file content (callers use a random token). Pure
+    /// string assembly — no network, fully unit-testable.
+    static MultipartBody buildMultipartFormData(
+        const std::string& boundary,
+        const std::vector<MultipartField>& fields,
+        const std::optional<MultipartFile>& file);
+
+    /// Decode standard base64 (with optional `data:` URI prefix stripped by
+    /// the caller) into raw bytes. Returns nullopt on malformed input.
+    static std::optional<std::string> decodeBase64(const std::string& input);
+
+    /// Send a boop to a user via POST `/api/1/users/{userId}/boop`.
+    /// Body is `{}` or `{"emojiId": "..."}`. 400 if the users are not
+    /// friends, 404 if the user does not exist. LIVE — lightweight,
+    /// reversible social action.
+    static Result<nlohmann::json> sendBoop(
+        const std::string& userId,
+        std::optional<std::string> emojiId = std::nullopt);
+
+    /// List the signed-in user's inventory via GET `/api/1/inventory`.
+    /// `types` is an optional comma-joined filter (`sticker`/`emoji`/`prop`).
+    /// Returns the raw `{data:[...], totalCount}` payload. Read-only / LIVE.
+    static Result<nlohmann::json> fetchInventory(
+        std::optional<std::string> types = std::nullopt,
+        int n = 100,
+        int offset = 0);
+
+    /// List the signed-in user's prints via GET `/api/1/prints/user/{selfId}`.
+    /// Must be self (403 otherwise). Read-only / LIVE.
+    static Result<std::vector<nlohmann::json>> fetchPrints();
+
+    /// Fetch a single print via GET `/api/1/prints/{printId}`.
+    static Result<nlohmann::json> fetchPrint(const std::string& printId);
+
+    /// Upload a print via POST `/api/1/prints` (multipart/form-data).
+    /// `imageBytes` is the raw PNG content. WRITE — explicit user action.
+    static Result<nlohmann::json> uploadPrint(
+        const std::string& imageBytes,
+        const std::string& timestamp,
+        std::optional<std::string> note = std::nullopt,
+        std::optional<std::string> worldId = std::nullopt,
+        std::optional<std::string> worldName = std::nullopt);
+
+    /// Delete a print via DELETE `/api/1/prints/{printId}`. DESTRUCTIVE,
+    /// not reversible — caller must double-confirm.
+    static Result<nlohmann::json> deletePrint(const std::string& printId);
+
+    /// List the signed-in user's files via GET `/api/1/files?tag=<tag>`.
+    /// `tag` is e.g. `gallery` or `icon`. Read-only / LIVE.
+    static Result<std::vector<nlohmann::json>> fetchFiles(const std::string& tag);
+
+    /// Upload an image via POST `/api/1/file/image` (multipart/form-data).
+    /// `tag` is an ImagePurpose enum value (gallery|sticker|emoji|
+    /// emojianimated|icon|avatarimage). `matchingDimensions` forces square
+    /// (stickers/emoji). Returns the created File object. WRITE — explicit
+    /// user action.
+    static Result<nlohmann::json> uploadImage(
+        const std::string& imageBytes,
+        const std::string& tag,
+        bool matchingDimensions = false);
+
+    /// Extra multipart fields for an *animated* emoji upload (tag ==
+    /// `emojianimated`). VRChat treats the uploaded PNG as a vertical sprite
+    /// sheet of `frames` cells played back at `framesOverTime` fps with the
+    /// given `animationStyle` (e.g. "stop", "bounce"). All fields are required
+    /// by the server when the tag is animated; ignored otherwise.
+    struct AnimatedEmojiParams
+    {
+        int frames = 0;          ///< number of frames in the sprite sheet
+        int framesOverTime = 0;  ///< playback fps
+        std::string animationStyle; ///< VRChat animation style id
+    };
+
+    /// As uploadImage, but threads the animated-emoji sprite-sheet metadata
+    /// into the multipart body. Use for tag == `emojianimated`. WRITE.
+    static Result<nlohmann::json> uploadAnimatedEmoji(
+        const std::string& imageBytes,
+        const AnimatedEmojiParams& anim,
+        bool matchingDimensions = true);
+
+
+    /// Delete a file via DELETE `/api/1/file/{fileId}`. DESTRUCTIVE — not
+    /// reversible for gallery/icon/print files; caller must double-confirm.
+    static Result<nlohmann::json> deleteFile(const std::string& fileId);
+
+    /// Update an avatar's image url via PUT `/api/1/avatars/{avatarId}` with
+    /// body `{"imageUrl": "<url>"}`. Used by the model-management page after
+    /// uploading a new avatarimage. WRITE — single confirm (reversible).
+    static Result<nlohmann::json> updateAvatarImage(
+        const std::string& avatarId,
+        const std::string& imageUrl);
+
+    // ─── Section C: model-management page (account-owned avatars) ───────
+
+    /// List the signed-in user's own avatars via GET
+    /// `/api/1/avatars?user=me&releaseStatus=<status>` (paginated).
+    /// `releaseStatus` is one of `all|public|private|hidden`; the `user`
+    /// query param only accepts `me`. Returns a normalized
+    /// `{avatars:[...]}` array shape (same fields as searchAvatars plus
+    /// `unityPackages`). Read-only / LIVE.
+    static Result<nlohmann::json> fetchOwnedAvatars(
+        const std::string& releaseStatus = "all",
+        int count = 100,
+        int offset = 0);
+
+    /// Partial update of an owned avatar via PUT `/api/1/avatars/{avatarId}`.
+    /// Only the fields present in `patch` are sent (name/description/
+    /// releaseStatus/tags/imageUrl) — everything else is preserved
+    /// server-side. WRITE — single confirm (reversible profile edit). The
+    /// caller MUST gate this behind an explicit user action.
+    static Result<nlohmann::json> updateAvatar(
+        const std::string& avatarId,
+        const nlohmann::json& patch);
+
+    /// Delete an owned avatar via DELETE `/api/1/avatars/{avatarId}`.
+    /// DESTRUCTIVE and effectively irreversible: VRChat performs a SOFT
+    /// delete (sets releaseStatus=hidden, deletes the linked asset Files,
+    /// and permanently reserves the avatar id). The caller MUST
+    /// double-confirm naming the exact avatar before invoking. No
+    /// ProcessGuard needed (online op, not a local-file mutation).
+    static Result<nlohmann::json> deleteAvatar(const std::string& avatarId);
 };
 
 } // namespace vrcsm::core

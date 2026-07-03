@@ -10,6 +10,7 @@ add_library(vrcsm_core STATIC
     LogParser.cpp
     LogTailer.cpp
     LogEventClassifier.cpp
+    AvatarIdHarvest.cpp
     AvatarData.cpp
     AvatarPreview.cpp
     JunctionUtil.cpp
@@ -27,6 +28,8 @@ add_library(vrcsm_core STATIC
     VrcApi.cpp
     Pipeline.cpp
     DiscordRpc.cpp
+    ToastNotifier.cpp
+    VrOverlayNotifier.cpp
     OscBridge.cpp
     PngMetadata.cpp
     ScreenshotWatcher.cpp
@@ -111,6 +114,11 @@ if(MSVC)
         Version
         Winhttp
         Ws2_32
+        # WinRT toast notifications (ToastNotifier.cpp):
+        #   RuntimeObject — RoGetActivationFactory/RoActivateInstance, WindowsCreateString
+        #   Propsys       — InitPropVariantFromString for the shortcut AUMID property
+        RuntimeObject
+        Propsys
     )
 endif()
 

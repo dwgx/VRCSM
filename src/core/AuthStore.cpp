@@ -89,6 +89,8 @@ bool AuthStore::Load()
 
     const auto path = ResolveSessionPath();
     const auto encryptedBytes = ReadFileBytes(path);
+    // [session-diag] Trace every load attempt and whether the file was there.
+    spdlog::warn("[session-diag] AuthStore::Load() — read {} bytes from session.dat", encryptedBytes.size());
     if (encryptedBytes.empty())
     {
         return false;
@@ -192,6 +194,8 @@ bool AuthStore::Save() const
         return false;
     }
 
+    // [session-diag] Confirm the write landed.
+    spdlog::warn("[session-diag] AuthStore::Save() wrote {} bytes to session.dat", encryptedBytes.size());
     return true;
 }
 
@@ -212,15 +216,23 @@ void AuthStore::SetCookies(std::string auth, std::string twoFactor)
     secureClearString(twoFactor);
 }
 
-void AuthStore::Clear()
+void AuthStore::Clear(std::string_view reason)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    const bool hadSession = !m_authCookie.empty();
     secureClearString(m_authCookie);
     secureClearString(m_twoFactorCookie);
 
+    std::error_code existsEc;
+    const bool fileExisted = std::filesystem::exists(ResolveSessionPath(), existsEc);
     std::error_code ec;
     std::filesystem::remove(ResolveSessionPath(), ec);
+    // [session-diag] Loud on purpose: we're hunting a spurious logout. Log
+    // every Clear with the caller-supplied reason and whether it actually had
+    // a live session / on-disk file to wipe.
+    spdlog::warn("[session-diag] AuthStore::Clear(reason={}) — hadSession={} fileExisted={}",
+                 reason, hadSession, fileExisted);
     if (ec)
     {
         spdlog::warn("AuthStore: failed to delete session.dat: {}", ec.message());

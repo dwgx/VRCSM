@@ -21,6 +21,9 @@ import {
   LogIn,
   LogOut,
   Shirt,
+  Bookmark,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +31,12 @@ import { IdBadge } from "@/components/IdBadge";
 import { ImageZoom } from "@/components/ImageZoom";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { ipc } from "@/lib/ipc";
+import { useCachedImageUrl } from "@/lib/image-cache";
 import { cn } from "@/lib/utils";
-import { trustRank, trustColorClass, trustLabelKey } from "@/lib/vrcFriends";
+import { trustRank, trustColorClass, trustLabelKey, statusShape, statusShapeClass } from "@/lib/vrcFriends";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { useStatusPresets } from "@/lib/status-presets";
+import { userColor } from "@/lib/user-color";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "react-i18next";
 import type { VrcStatus, VrcUserProfile } from "@/lib/types";
@@ -221,9 +228,13 @@ export function ProfileCard({
   className,
 }: ProfileCardProps) {
   const { t, i18n } = useTranslation();
+  const [a11yStatusShapes] = useUiPrefBoolean("vrcsm.a11y.statusShapes", false);
+  const [userColorEnabled] = useUiPrefBoolean("vrcsm.a11y.userColor", false);
+  const { presets: statusPresets, add: addStatusPreset, remove: removeStatusPreset } =
+    useStatusPresets();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { status: authStatus } = useAuth();
+  const { status: authStatus, logout } = useAuth();
   const isSelf = authStatus.userId === user.id;
 
   // Edit draft state
@@ -289,6 +300,22 @@ export function ProfileCard({
   // Assets prep
   const bannerUrl = user.currentAvatarImageUrl || user.currentAvatarThumbnailImageUrl;
   const avatarUrl = user.profilePicOverride || user.currentAvatarThumbnailImageUrl || user.currentAvatarImageUrl;
+  const {
+    localUrl: bannerLocalUrl,
+    loading: bannerCacheLoading,
+  } = useCachedImageUrl(
+    `profile-banner:${user.id}`,
+    bannerUrl,
+  );
+  const {
+    localUrl: avatarLocalUrl,
+    loading: avatarCacheLoading,
+  } = useCachedImageUrl(
+    `profile-avatar:${user.id}`,
+    avatarUrl,
+  );
+  const bannerDisplayUrl = bannerLocalUrl ?? (bannerCacheLoading ? null : bannerUrl);
+  const avatarDisplayUrl = avatarLocalUrl ?? (avatarCacheLoading ? null : avatarUrl);
   const rank = trustRank(user.tags || []);
   
   const niceTags = (user.tags || [])
@@ -308,9 +335,9 @@ export function ProfileCard({
     >
       {/* ── Banner ── */}
       <div className="relative h-[90px] w-full shrink-0 bg-[hsl(var(--muted))] overflow-hidden">
-        {bannerUrl ? (
+        {bannerDisplayUrl ? (
           <img
-            src={bannerUrl}
+            src={bannerDisplayUrl}
             className="absolute inset-0 w-full h-full object-cover blur-[6px] scale-110 opacity-70 select-none animate-in fade-in duration-500"
             alt=""
             loading="lazy"
@@ -342,18 +369,27 @@ export function ProfileCard({
         <div className="flex gap-3 w-full">
           {/* Avatar Float */}
           <div className="relative size-[72px] shrink-0 rounded-full border-[3px] border-[hsl(var(--surface))] bg-[hsl(var(--surface))] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.15)] z-10 transition-transform duration-300 hover:scale-[1.03]">
-            {avatarUrl ? (
-               <ImageZoom src={avatarUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
+            {avatarDisplayUrl ? (
+               <ImageZoom src={avatarDisplayUrl} className="h-full w-full" imgClassName="h-full w-full object-cover" />
             ) : (
                <div className="flex h-full w-full items-center justify-center bg-[hsl(var(--muted))]"><User className="size-8 text-[hsl(var(--muted-foreground))]" /></div>
             )}
-            <div className={cn("absolute bottom-0 right-1 size-3 rounded-full border-2 border-[hsl(var(--surface))] z-20", statusDot(user.status))} />
+            <div
+              className={cn(
+                "absolute bottom-0 right-1 size-3 rounded-full border-2 border-[hsl(var(--surface))] z-20",
+                statusDot(user.status),
+                a11yStatusShapes && statusShapeClass(statusShape(user.status)),
+              )}
+              title={statusLabel(t, user.status)}
+              aria-label={statusLabel(t, user.status)}
+            />
           </div>
 
           {/* Name & Status Text */}
           <div className="flex min-w-0 flex-1 flex-col pt-10 pb-1">
             <div className="flex items-center gap-2">
-              <span className="truncate text-base font-bold text-[hsl(var(--foreground))] drop-shadow-sm tracking-tight">
+              <span className="truncate text-base font-bold text-[hsl(var(--foreground))] drop-shadow-sm tracking-tight"
+                style={userColorEnabled && user.id?.startsWith("usr_") ? { color: userColor(user.id).css } : undefined}>
                 {user.displayName}
               </span>
               {user.pronouns && (
@@ -371,11 +407,11 @@ export function ProfileCard({
             {/* Online indicator */}
             {!editing && (
               <div className="flex items-center gap-1.5 text-[11px] font-medium opacity-90 mt-0.5">
-                <span className={statusColor(user.status)}>{statusLabel(t, user.status)}</span>
+                <span className={cn("shrink-0 whitespace-nowrap", statusColor(user.status))}>{statusLabel(t, user.status)}</span>
                 {user.statusDescription && (
                   <>
-                    <span className="text-[hsl(var(--muted-foreground))]">·</span>
-                    <span className="truncate text-[hsl(var(--muted-foreground))] w-full">
+                    <span className="shrink-0 text-[hsl(var(--muted-foreground))]">·</span>
+                    <span className="min-w-0 flex-1 truncate text-[hsl(var(--muted-foreground))]">
                       {user.statusDescription}
                     </span>
                   </>
@@ -417,6 +453,69 @@ export function ProfileCard({
                    className="h-7 text-[11px] bg-[hsl(var(--canvas))] border-[hsl(var(--border)/0.5)] focus:ring-[hsl(var(--primary))]"
                    maxLength={32}
                  />
+
+                 {/* Status presets: saved {status + description} combos for
+                     one-click reuse. Purely local (localStorage); applying one
+                     just fills the draft fields, which the existing Save path
+                     pushes to VRChat. */}
+                 <div className="flex flex-col gap-1 mt-0.5">
+                   <div className="flex items-center justify-between">
+                     <span className="flex items-center gap-1 text-[9.5px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))]">
+                       <Bookmark className="size-2.5" />
+                       {t("profile.statusPresets", { defaultValue: "Status presets" })}
+                     </span>
+                     <button
+                       type="button"
+                       onClick={() =>
+                         addStatusPreset({
+                           label: (draftStatusDesc.trim() || t(`friends.bucket.${draftStatus === "join me" ? "joinMe" : draftStatus === "ask me" ? "askMe" : draftStatus}`)).slice(0, 24),
+                           status: draftStatus,
+                           statusDescription: draftStatusDesc.trim(),
+                         })
+                       }
+                       className="flex items-center gap-0.5 rounded border border-[hsl(var(--border))] px-1.5 py-0.5 text-[9px] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--foreground))] transition-colors cursor-pointer"
+                       title={t("profile.saveStatusPreset", { defaultValue: "Save current status as a preset" })}
+                     >
+                       <Plus className="size-2.5" />
+                       {t("common.save", { defaultValue: "Save" })}
+                     </button>
+                   </div>
+                   {statusPresets.length === 0 ? (
+                     <p className="text-[9.5px] italic text-[hsl(var(--muted-foreground)/0.6)] select-none">
+                       {t("profile.noStatusPresets", { defaultValue: "Save a status + description combo to reuse it later." })}
+                     </p>
+                   ) : (
+                     <div className="flex flex-wrap gap-1">
+                       {statusPresets.map((preset) => (
+                         <span
+                           key={preset.id}
+                           className="group flex items-center gap-1 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] pl-1.5 pr-0.5 py-0.5 text-[10px] transition-colors hover:border-[hsl(var(--primary))]"
+                         >
+                           <button
+                             type="button"
+                             onClick={() => {
+                               setDraftStatus(preset.status);
+                               setDraftStatusDesc(preset.statusDescription);
+                             }}
+                             className="flex items-center gap-1 cursor-pointer"
+                             title={t("profile.applyStatusPreset", { defaultValue: "Apply this preset" })}
+                           >
+                             <span className={cn("inline-block size-1.5 rounded-full", statusDot(preset.status))} />
+                             {preset.label}
+                           </button>
+                           <button
+                             type="button"
+                             onClick={() => removeStatusPreset(preset.id)}
+                             className="flex items-center justify-center rounded-full p-0.5 text-[hsl(var(--muted-foreground)/0.5)] hover:text-red-400 cursor-pointer"
+                             aria-label={t("profile.deleteStatusPreset", { defaultValue: "Delete preset" })}
+                           >
+                             <Trash2 className="size-2.5" />
+                           </button>
+                         </span>
+                       ))}
+                     </div>
+                   )}
+                 </div>
                </div>
             )}
           </div>
@@ -696,7 +795,7 @@ export function ProfileCard({
             type="button"
             onClick={async () => {
               try {
-                await ipc.call("auth.logout");
+                await logout();
                 toast.success(t("auth.signedOut"));
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : t("profileCard.logoutFailed", { defaultValue: "Sign out failed" }));

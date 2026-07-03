@@ -1,11 +1,16 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Users } from "lucide-react";
+import { toast } from "sonner";
+import { Users, LogIn, Trash2 } from "lucide-react";
 import { ipc } from "@/lib/ipc";
+import { rejoinLocationFromVisit, openVrchatLocation } from "@/lib/shell-api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
+import { ActivityHeatmap } from "@/components/ActivityHeatmap";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { cn } from "@/lib/utils";
 
 const LIMIT_STORAGE_KEY = "vrcsm.worldHistory.limit";
 const DEFAULT_LIMIT = 250;
@@ -144,7 +149,10 @@ function LimitControl({
 
 export default function WorldHistory() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [limit, setLimitState] = useState(readInitialLimit);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const setLimit = (next: number) => {
     const clamped = clampLimit(next);
     setLimitState(clamped);
@@ -160,6 +168,27 @@ export default function WorldHistory() {
   });
 
   const items = ((data?.items ?? []) as WorldVisit[]).slice();
+
+  async function handleClear() {
+    setClearing(true);
+    try {
+      await ipc.dataClear(["history.worldVisits"]);
+      await queryClient.invalidateQueries({ queryKey: ["db.worldVisits.list"] });
+      toast.success(
+        t("worldHistory.clearSuccess", { defaultValue: "World history cleared." }),
+      );
+    } catch (e) {
+      toast.error(
+        t("worldHistory.clearFailed", {
+          error: e instanceof Error ? e.message : String(e),
+          defaultValue: "Failed to clear: {{error}}",
+        }),
+      );
+    } finally {
+      setClearing(false);
+      setClearOpen(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in max-w-5xl mx-auto w-full">
@@ -181,7 +210,33 @@ export default function WorldHistory() {
           </span>
         </div>
         <LimitControl value={limit} onChange={setLimit} />
+        <button
+          type="button"
+          onClick={() => setClearOpen(true)}
+          disabled={clearing || items.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 py-1 text-[11px] font-medium hover:bg-[hsl(var(--surface-raised))] disabled:opacity-50"
+        >
+          <Trash2 className={cn("size-3.5", clearing && "animate-pulse")} />
+          {t("worldHistory.clear", { defaultValue: "Clear" })}
+        </button>
       </header>
+
+      <ConfirmDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        title={t("worldHistory.clearTitle", { defaultValue: "Clear world history?" })}
+        description={t("worldHistory.clearDesc", {
+          defaultValue:
+            "This permanently deletes all logged world visits. This cannot be undone.",
+        })}
+        confirmLabel={t("worldHistory.clear", { defaultValue: "Clear" })}
+        cancelLabel={t("common.cancel", { defaultValue: "Cancel" })}
+        onConfirm={handleClear}
+        loading={clearing}
+        tone="destructive"
+      />
+
+      <ActivityHeatmap />
 
       {isLoading && (
         <p className="text-[11px] text-[hsl(var(--muted-foreground))] font-mono">
@@ -267,17 +322,37 @@ export default function WorldHistory() {
                 </div>
               </div>
               {v.world_id && (
-                <button
-                  className="shrink-0 text-[10px] text-[hsl(var(--primary))] hover:underline"
-                  onClick={() => {
-                    void ipc.call<{ url: string }, { ok: boolean }>(
-                      "shell.openUrl",
-                      { url: `https://vrchat.com/home/world/${v.world_id}` },
+                <div className="shrink-0 flex items-center gap-2">
+                  {(() => {
+                    // One-click rejoin the *exact* instance (VRCX-parity
+                    // "previous instances"), only when we can form a valid
+                    // location tag. Falls back to nothing for private/closed
+                    // instances we can't deeplink into.
+                    const loc = rejoinLocationFromVisit(v.world_id, v.instance_id);
+                    if (!loc) return null;
+                    return (
+                      <button
+                        className="flex items-center gap-0.5 text-[10px] text-[hsl(var(--primary))] hover:underline"
+                        onClick={() => void openVrchatLocation(loc)}
+                        title={t("worldHistory.rejoinHint", { defaultValue: "Launch VRChat into this exact instance" })}
+                      >
+                        <LogIn className="size-3" />
+                        {t("worldHistory.rejoinAction", { defaultValue: "Rejoin" })}
+                      </button>
                     );
-                  }}
-                >
-                  {t("worldHistory.openAction")}
-                </button>
+                  })()}
+                  <button
+                    className="text-[10px] text-[hsl(var(--primary))] hover:underline"
+                    onClick={() => {
+                      void ipc.call<{ url: string }, { ok: boolean }>(
+                        "shell.openUrl",
+                        { url: `https://vrchat.com/home/world/${v.world_id}` },
+                      );
+                    }}
+                  >
+                    {t("worldHistory.openAction")}
+                  </button>
+                </div>
               )}
             </CardContent>
           </Card>

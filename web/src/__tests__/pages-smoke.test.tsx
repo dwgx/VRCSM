@@ -86,8 +86,11 @@ describe("mock IPC", () => {
 /**
  * Drive the HashRouter to a specific path and render App inside act().
  * App.tsx exports the inner shell — main.tsx wraps it in HashRouter in
- * production, so we do the same here.  Waits a few microtask turns so
- * lazy-loaded chunks have a chance to resolve before we assert.
+ * production, so we do the same here.  Polls until the lazy-loaded chunk
+ * actually paints (body has content past the Suspense fallback) rather
+ * than spinning a fixed number of turns — a fixed loop is fragile under
+ * load (e.g. a concurrent native build starving the event loop), which
+ * used to surface as spurious empty-body failures.
  */
 async function renderAt(path: string) {
   window.location.hash = `#${path}`;
@@ -100,9 +103,19 @@ async function renderAt(path: string) {
       </HashRouter>,
     );
   });
-  for (let i = 0; i < 5; i += 1) {
+  // Poll up to ~3s for the route chunk to resolve and paint. Each turn
+  // flushes microtasks + a macrotask so lazy import() + state updates land.
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline) {
+    if ((document.body.textContent ?? "").trim().length > 0) {
+      // One extra flush so child effects (data fetch skeletons) settle.
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      break;
+    }
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 10));
     });
   }
   return root;
@@ -117,14 +130,17 @@ const ROUTES: Array<{ path: string; marker: RegExp }> = [
   { path: "/bundles", marker: /./ },
   { path: "/library", marker: /./ },
   { path: "/avatars", marker: /./ },
+  { path: "/models", marker: /./ },
   { path: "/worlds", marker: /./ },
   { path: "/friends", marker: /./ },
   { path: "/groups", marker: /./ },
   { path: "/profile", marker: /./ },
+  { path: "/vrcplus", marker: /./ },
   { path: "/vrchat", marker: /./ },
   { path: "/screenshots", marker: /./ },
   { path: "/logs", marker: /./ },
   { path: "/radar", marker: /./ },
+  { path: "/social", marker: /social|graph|rankings|encounter/i },
   { path: "/calendar", marker: /calendar|events|jams/i },
   { path: "/benchmark", marker: /avatar|benchmark|performance/i },
   { path: "/history/worlds", marker: /./ },
@@ -133,6 +149,22 @@ const ROUTES: Array<{ path: string; marker: RegExp }> = [
   { path: "/tools/osc", marker: /osc|studio/i },
 ];
 
+/**
+ * Poll the document body until `probe` is satisfied or we time out.
+ * Returns the final lowercased body text either way so callers can assert.
+ */
+async function waitForBody(probe: (body: string) => boolean, timeoutMs = 3000): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let body = (document.body.textContent ?? "").toLowerCase();
+  while (Date.now() < deadline && !probe(body)) {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    body = (document.body.textContent ?? "").toLowerCase();
+  }
+  return body;
+}
+
 describe("pages smoke", () => {
   for (const { path, marker } of ROUTES) {
     it(`renders ${path} without throwing`, async () => {
@@ -140,9 +172,10 @@ describe("pages smoke", () => {
       // At minimum the DOM body must contain *something* (the app shell).
       expect(document.body.textContent ?? "").not.toHaveLength(0);
       // Case-insensitive marker probe — won't be picky about translation,
-      // just ensures we made it past the Suspense fallback.
+      // just ensures we made it past the Suspense fallback. Poll so a
+      // slow lazy chunk under load doesn't flake the assertion.
       if (marker.source !== ".") {
-        const body = (document.body.textContent ?? "").toLowerCase();
+        const body = await waitForBody((b) => marker.test(b));
         expect(body.match(marker)).toBeTruthy();
       }
     });
@@ -160,13 +193,42 @@ describe("pages smoke", () => {
 
   it("Calendar tab switcher renders all three tabs", async () => {
     await renderAt("/calendar");
-    const body = (document.body.textContent ?? "").toLowerCase();
     // Tabs are now: My Groups (default), Jams, Featured. The Discover tab
     // was folded into My Groups since discover events are filtered by
-    // membership now.
+    // membership now. Poll until the tab labels paint.
+    const body = await waitForBody((b) => b.includes("featured") && b.includes("jams"));
     expect(body).toContain("featured");
     expect(body).toContain("jams");
     expect(body.includes("groups") || body.includes("团体") || body.includes("グループ")).toBe(true);
+  });
+
+  it("Social Analytics renders the relationship graph tab", async () => {
+    await renderAt("/social");
+    // The page defaults to the Rankings tab; switching to the graph tab must
+    // mount the SVG ego-network without throwing. Find the graph tab button
+    // and click it, then assert the co-presence SVG (role="img") is present.
+    const body = await waitForBody((b) => b.includes("relationship") || b.includes("graph"));
+    expect(body.includes("relationship") || body.includes("graph")).toBe(true);
+
+    const graphTab = Array.from(document.querySelectorAll("button")).find((b) =>
+      /relationship graph/i.test(b.textContent ?? ""),
+    );
+    expect(graphTab).toBeTruthy();
+    await act(async () => {
+      graphTab!.click();
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    // The graph tab mounts either the SVG ego-network (when a logged-in user
+    // id is available to center on) or the empty/loading state. Both prove the
+    // tab switched and the RelationshipGraph subtree mounted without throwing.
+    const svg = document.querySelector('svg[role="img"]');
+    const bodyAfter = (document.body.textContent ?? "").toLowerCase();
+    expect(
+      svg !== null ||
+      bodyAfter.includes("co-presence") ||
+      bodyAfter.includes("no co-presence") ||
+      bodyAfter.includes("building"),
+    ).toBe(true);
   });
 });
 

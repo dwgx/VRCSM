@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
@@ -59,8 +60,14 @@ export function MenuBar({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
+  // Viewport-space anchor for the open dropdown. The menu is portaled to
+  // <body> and positioned `fixed` so it escapes the TitleBar <header>'s
+  // overflow clipping — otherwise the panel is trapped inside the bar and
+  // becomes an inner scroll area instead of floating down over the page.
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
   const [, setSidebarHidden] = useUiPrefBoolean("vrcsm.layout.sidebar.hidden", false);
   const [, setDockHidden] = useUiPrefBoolean("vrcsm.layout.dock.hidden", false);
   const panelPlugins = useInstalledPanelPlugins();
@@ -337,7 +344,13 @@ export function MenuBar({
   useEffect(() => {
     if (openIndex === null) return;
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // The dropdown is portaled outside rootRef, so clicks inside it must
+      // not count as "outside" — check the portaled panel too.
+      if (
+        !rootRef.current?.contains(target) &&
+        !dropdownRef.current?.contains(target)
+      ) {
         closeMenu();
       }
     };
@@ -347,6 +360,27 @@ export function MenuBar({
     return () => {
       window.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [openIndex]);
+
+  // Anchor the portaled dropdown to its trigger in viewport coordinates.
+  useLayoutEffect(() => {
+    if (openIndex === null) {
+      setMenuPos(null);
+      return;
+    }
+    const updatePosition = () => {
+      const trigger = triggerRefs.current[openIndex];
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      setMenuPos({ left: rect.left, top: rect.bottom + 1 });
+    };
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
     };
   }, [openIndex]);
 
@@ -475,56 +509,61 @@ export function MenuBar({
               <ChevronDown className="size-3 text-[hsl(var(--muted-foreground))]" />
             </button>
 
-            {isOpen ? (
-              <div
-                id={`${menuId}-${menu.id}`}
-                role="menu"
-                aria-label={menu.label}
-                className="absolute left-0 top-[calc(100%+1px)] z-30 min-w-56 overflow-hidden rounded-[var(--radius-md)] m3-surface-bright animate-scale-in py-1"
-                onKeyDown={(event) => handleMenuKeyDown(event, menuIndex)}
-              >
-                {menu.items.map((item, itemIndex) => {
-                  if (item.kind === "separator") {
-                    return (
-                      <div
-                        key={item.id}
-                        role="separator"
-                        className="my-1 h-px bg-[hsl(var(--border)/0.5)]"
-                      />
-                    );
-                  }
-                  return (
-                    <button
-                      key={item.id}
-                      ref={(node) => {
-                        itemRefs.current[itemIndex] = node;
-                      }}
-                      type="button"
-                      role="menuitem"
-                      disabled={item.disabled}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-6 px-3 py-1.5 text-left text-[12px]",
-                        "hover:bg-[hsl(var(--surface-raised))] disabled:opacity-50",
-                        itemIndex === activeItemIndex &&
-                          "bg-[hsl(var(--surface-raised))] text-[hsl(var(--foreground))]",
-                      )}
-                      onMouseEnter={() => setActiveItemIndex(itemIndex)}
-                      onClick={() => {
-                        item.action();
-                        closeMenu(menuIndex);
-                      }}
-                    >
-                      <span>{item.label}</span>
-                      {item.shortcut ? (
-                        <span className="font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                          {item.shortcut}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
+            {isOpen && menuPos
+              ? createPortal(
+                  <div
+                    ref={dropdownRef}
+                    id={`${menuId}-${menu.id}`}
+                    role="menu"
+                    aria-label={menu.label}
+                    style={{ left: menuPos.left, top: menuPos.top }}
+                    className="fixed z-[100] max-h-[calc(100vh-2.5rem)] min-w-56 overflow-y-auto rounded-[var(--radius-md)] m3-surface-bright animate-scale-in py-1"
+                    onKeyDown={(event) => handleMenuKeyDown(event, menuIndex)}
+                  >
+                    {menu.items.map((item, itemIndex) => {
+                      if (item.kind === "separator") {
+                        return (
+                          <div
+                            key={item.id}
+                            role="separator"
+                            className="my-1 h-px bg-[hsl(var(--border)/0.5)]"
+                          />
+                        );
+                      }
+                      return (
+                        <button
+                          key={item.id}
+                          ref={(node) => {
+                            itemRefs.current[itemIndex] = node;
+                          }}
+                          type="button"
+                          role="menuitem"
+                          disabled={item.disabled}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-6 px-3 py-1.5 text-left text-[12px]",
+                            "hover:bg-[hsl(var(--surface-raised))] disabled:opacity-50",
+                            itemIndex === activeItemIndex &&
+                              "bg-[hsl(var(--surface-raised))] text-[hsl(var(--foreground))]",
+                          )}
+                          onMouseEnter={() => setActiveItemIndex(itemIndex)}
+                          onClick={() => {
+                            item.action();
+                            closeMenu(menuIndex);
+                          }}
+                        >
+                          <span>{item.label}</span>
+                          {item.shortcut ? (
+                            <span className="font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                              {item.shortcut}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>,
+                  document.body,
+                )
+              : null}
           </div>
         );
       })}

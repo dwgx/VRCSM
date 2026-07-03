@@ -106,6 +106,43 @@ export interface ScreenshotEvent {
   path: string;
 }
 
+/** `[Video Playback] Attempting to resolve URL '<url>'` — a video player started loading media. */
+export interface VideoPlayEvent {
+  iso_time: string | null;
+  url: string;
+  world_id: string | null;
+  instance_id: string | null;
+}
+
+/** `[Behaviour] Instantiated a (Clone [N] Portals/PortalInternalDynamic)` — a portal was dropped. */
+export interface PortalSpawnEvent {
+  iso_time: string | null;
+}
+
+/** Vote-kick lifecycle. phase: "initiated" | "succeeded" (target set) | "self" (message set). */
+export interface VoteKickEvent {
+  iso_time: string | null;
+  phase: string;
+  target: string | null;
+  message: string | null;
+}
+
+/** Instance join problem. reason_kind: "failed" (location/reason set) | "blocked". */
+export interface JoinBlockedEvent {
+  iso_time: string | null;
+  reason_kind: string;
+  location: string | null;
+  reason: string | null;
+}
+
+/** `[StickersManager] User usr_… (Name) spawned sticker inv_…`. */
+export interface StickerSpawnEvent {
+  iso_time: string | null;
+  user_id: string;
+  display_name: string;
+  inventory_id: string;
+}
+
 /** `[Behaviour] Joining wrld_...:port~tags` — detailed map instance connection streams. */
 export interface WorldSwitchEvent {
   iso_time: string | null;
@@ -114,6 +151,84 @@ export interface WorldSwitchEvent {
   access_type: string;
   owner_id: string | null;
   region: string | null;
+}
+
+// ── Wave 2 Section A events ──────────────────────────────────────────────
+/** A1 — `[API] Received Notification: <...>`. Inbound friend request/invite/etc. */
+export interface NotificationEvent {
+  iso_time: string | null;
+  sender_id: string;
+  sender_name: string;
+  type: string;
+  notification_id: string;
+}
+
+/** A2 — `[Video Playback] ERROR:` / `[AVProVideo] Error:`. */
+export interface VideoErrorEvent {
+  iso_time: string | null;
+  error_message: string;
+}
+
+/** A3 — Attributed video play (SDK2 / USharpVideo) carrying the requester. */
+export interface AttributedVideoEvent {
+  iso_time: string | null;
+  url: string;
+  requester: string | null;
+}
+
+/** A3 — `[USharpVideo] Syncing video to <url>`. */
+export interface VideoSyncEvent {
+  iso_time: string | null;
+  url: string;
+}
+
+/** A4 — `RPC invoked SwitchAvatar on AvatarPedestal for <name>` (medium confidence). */
+export interface AvatarPedestalEvent {
+  iso_time: string | null;
+  display_name: string;
+  user_id: string | null;
+}
+
+/** A5 — `VRCApplication: On/HandleApplicationQuit at <uptime>`. */
+export interface AppQuitEvent {
+  iso_time: string | null;
+  uptime_seconds: string | null;
+}
+
+/** A6 — VR vs Desktop session marker. */
+export interface SessionModeEvent {
+  iso_time: string | null;
+  mode: string;
+  hmd_model: string | null;
+}
+
+/** A7 — `Could not Start OSC: <reason>`. */
+export interface OscFailEvent {
+  iso_time: string | null;
+  reason: string;
+}
+
+/** A7 — `VRC.Udon.VM.UdonVMException: <message>`. */
+export interface UdonExceptionEvent {
+  iso_time: string | null;
+  message: string;
+}
+
+/** A7 — `[ModerationManager] This instance will be reset in <n> minutes ...`. */
+export interface InstanceResetEvent {
+  iso_time: string | null;
+  minutes: string;
+}
+
+/** A8 — shader global keyword limit exceeded (deduped per world context). */
+export interface ShaderKeywordEvent {
+  iso_time: string | null;
+}
+
+/** A8 — `[Always] uSpeak: SetInputDevice 0 (<n> total) '<device>'` (change-only). */
+export interface AudioDeviceEvent {
+  iso_time: string | null;
+  device_name: string;
 }
 
 export interface LogReport {
@@ -138,6 +253,23 @@ export interface LogReport {
   avatar_switches: AvatarSwitchEvent[];
   screenshots: ScreenshotEvent[];
   world_switches: WorldSwitchEvent[];
+  video_plays: VideoPlayEvent[];
+  portal_spawns: PortalSpawnEvent[];
+  vote_kicks: VoteKickEvent[];
+  join_blocked: JoinBlockedEvent[];
+  sticker_spawns: StickerSpawnEvent[];
+  notifications: NotificationEvent[];
+  video_errors: VideoErrorEvent[];
+  attributed_video_plays: AttributedVideoEvent[];
+  video_syncs: VideoSyncEvent[];
+  avatar_pedestals: AvatarPedestalEvent[];
+  app_quits: AppQuitEvent[];
+  session_modes: SessionModeEvent[];
+  osc_fails: OscFailEvent[];
+  udon_exceptions: UdonExceptionEvent[];
+  instance_resets: InstanceResetEvent[];
+  shader_keywords: ShaderKeywordEvent[];
+  audio_devices: AudioDeviceEvent[];
 }
 
 export interface BrokenLink {
@@ -642,6 +774,82 @@ export interface VrcSavedMessagesResult {
   messages: VrcSavedMessage[];
 }
 
+// ── Wave 2 / Section B: online social + VRC+ media ─────────────────────
+
+// A single VRChat inventory item (sticker / emoji / prop). The API returns
+// a large object; we keep the fields the UI actually renders and allow the
+// rest through for forward-compat.
+export interface VrcInventoryItem {
+  id: string;
+  name?: string;
+  description?: string;
+  itemType?: string; // "sticker" | "emoji" | "prop" | ...
+  itemSubType?: string;
+  imageUrl?: string;
+  thumbnailImageUrl?: string;
+  holderId?: string;
+  isArchived?: boolean;
+  isSeen?: boolean;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+export interface VrcInventoryResult {
+  data: VrcInventoryItem[];
+  totalCount?: number;
+}
+
+// A VRChat "print" — the in-game photo feature. Owned by the signed-in user.
+export interface VrcPrint {
+  id: string;
+  authorId?: string;
+  authorName?: string;
+  note?: string;
+  files?: { fileId?: string; image?: string };
+  // Some payloads inline the image url directly.
+  image?: string;
+  worldId?: string;
+  worldName?: string;
+  createdAt?: string;
+  timestamp?: string;
+  [key: string]: unknown;
+}
+
+export interface VrcPrintsResult {
+  prints: VrcPrint[];
+}
+
+// A VRChat file record (gallery image, icon, emoji, sticker, etc). The
+// `versions` array holds the actual image url under the latest version.
+export interface VrcFile {
+  id: string;
+  name?: string;
+  ownerId?: string;
+  mimeType?: string;
+  tags?: string[];
+  versions?: Array<{
+    version?: number;
+    status?: string;
+    file?: { url?: string };
+    deleted?: boolean;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface VrcFilesResult {
+  files: VrcFile[];
+}
+
+// VRChat image upload purposes (the `tag` field of POST /file/image).
+export type VrcImagePurpose =
+  | "gallery"
+  | "sticker"
+  | "emoji"
+  | "emojianimated"
+  | "icon"
+  | "avatarimage";
+
+
 export interface AvatarHistoryItem {
   avatar_id: string;
   avatar_name: string | null;
@@ -814,6 +1022,8 @@ export interface FavoriteListSummary {
   type: string | null;
   item_count: number;
   latest_added_at: string | null;
+  /** 'official' for VRChat-synced groups, 'local' for user-curated lists. */
+  source?: string | null;
 }
 
 export interface FavoriteItem {
@@ -831,7 +1041,14 @@ export interface FavoriteItem {
 
 export interface FavoritesSyncResult {
   ok: boolean;
-  list_name: string;
+  /** Names of the lists written this sync. One per VRChat favorite group when
+   *  grouping is available, otherwise the single legacy list. */
+  lists: string[];
+  /** Number of lists written (== lists.length). */
+  list_count: number;
+  /** True when sync mirrored VRChat's native groups; false when it fell back
+   *  to the single "VRChat Official Favorites" bucket. */
+  grouped: boolean;
   imported: number;
   avatars: number;
   worlds: number;

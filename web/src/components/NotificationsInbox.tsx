@@ -223,12 +223,32 @@ export function NotificationsInbox() {
     };
   }, [open]);
 
+  // A notification can go stale between render and action: the user may have
+  // already accepted the friend request / invite inside VRChat, or the sender
+  // cancelled it. VRChat then answers with a "could not be found" style error.
+  // In that case the entry is already gone server-side, so drop it locally and
+  // re-sync rather than leaving a dead row the user can't get rid of.
+  function isStaleNotificationError(err: unknown): boolean {
+    const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+    return (
+      msg.includes("could not be found") ||
+      msg.includes("not found") ||
+      msg.includes("404") ||
+      msg.includes("already")
+    );
+  }
+
   async function accept(id: string) {
     try {
       await acceptNotification(id);
       setItems((prev) => prev.filter((n) => n.id !== id));
       toast.success(t("notifications.accepted"));
     } catch (err) {
+      if (isStaleNotificationError(err)) {
+        setItems((prev) => prev.filter((n) => n.id !== id));
+        void refresh();
+        return;
+      }
       toast.error(err instanceof Error ? err.message : String(err));
     }
   }
@@ -238,6 +258,10 @@ export function NotificationsInbox() {
       await hideNotification(id);
       setItems((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
+      if (isStaleNotificationError(err)) {
+        setItems((prev) => prev.filter((n) => n.id !== id));
+        return;
+      }
       toast.error(err instanceof Error ? err.message : String(err));
     }
   }
@@ -248,6 +272,11 @@ export function NotificationsInbox() {
       setItems((prev) => prev.filter((n) => n.id !== id));
       toast.success(t("notifications.replied"));
     } catch (err) {
+      if (isStaleNotificationError(err)) {
+        setItems((prev) => prev.filter((n) => n.id !== id));
+        void refresh();
+        return;
+      }
       toast.error(err instanceof Error ? err.message : String(err));
     }
   }

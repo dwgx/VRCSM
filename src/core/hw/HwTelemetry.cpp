@@ -13,10 +13,12 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <charconv>
 #include <functional>
 #include <limits>
+#include <mutex>
 #include <regex>
 #include <span>
 #include <string_view>
@@ -826,6 +828,18 @@ void ProbeDxgiGpuAdapters(TelemetrySnapshot& snapshot)
         {
             snapshot.gpu.primarySource = "dxgi";
         }
+
+        // Vendor-neutral live VRAM usage. NVML (NVIDIA) runs later and may refine
+        // this with its own reading, but this is the only source AMD/Intel get.
+        if (snapshot.gpu.memoryUsedBytes == 0 && best->hasLuid)
+        {
+            if (auto used = QueryDxgiVideoMemoryUsed(best->luid); used.has_value())
+            {
+                snapshot.gpu.memoryUsedBytes = *used;
+                snapshot.sources.push_back(TelemetrySourceStatus{
+                    "dxgi_video_memory", true, "IDXGIAdapter3 live VRAM usage"});
+            }
+        }
     }
 
     snapshot.gpuAdapters = std::move(adapters);
@@ -1498,6 +1512,145 @@ std::optional<double> AcpiTenthsKelvinToCelsiusForTest(double value)
     return AcpiTenthsKelvinToCelsius(value);
 }
 
+// Pure delta math, extracted so it can be unit-tested without touching the OS.
+std::optional<double> CpuLoadFromTicks(
+    std::uint64_t idle0, std::uint64_t kernel0, std::uint64_t user0,
+    std::uint64_t idle1, std::uint64_t kernel1, std::uint64_t user1)
+{
+    // The second triple is the newer sample. Counters are monotonic; guard wrap.
+    if (idle1 < idle0 || kernel1 < kernel0 || user1 < user0)
+    {
+        return std::nullopt;
+    }
+    const std::uint64_t idleDelta = idle1 - idle0;
+    const std::uint64_t kernelDelta = kernel1 - kernel0;
+    const std::uint64_t userDelta = user1 - user0;
+    const std::uint64_t total = kernelDelta + userDelta; // kernel already counts idle
+    if (total == 0)
+    {
+        return std::nullopt;
+    }
+    const double busy = static_cast<double>(total - idleDelta);
+    double pct = (busy / static_cast<double>(total)) * 100.0;
+    if (pct < 0.0) pct = 0.0;
+    if (pct > 100.0) pct = 100.0;
+    return pct;
+}
+
+std::optional<double> CpuLoadFromTicksForTest(
+    std::uint64_t idle0, std::uint64_t kernel0, std::uint64_t user0,
+    std::uint64_t idle1, std::uint64_t kernel1, std::uint64_t user1)
+{
+    return CpuLoadFromTicks(idle0, kernel0, user0, idle1, kernel1, user1);
+}
+
+// Native, dependency-free system-wide CPU load %, computed from GetSystemTimes
+// deltas. GetSystemTimes returns cumulative counters, so a single reading is
+// meaningless — we keep the previous sample across calls (the OSC auto-loop
+// polls telemetry repeatedly, which drives the delta). When no recent prior
+// sample exists (first call, or a long gap that would skew the average), we
+// take one short blocking sample so even a one-shot read returns a value.
+// Guarded by the caller so a real sensor source (LHM/AIDA64) still wins.
+std::optional<double> ComputeCpuLoadFromSystemTimes()
+{
+    struct CpuSample
+    {
+        std::uint64_t idle = 0;
+        std::uint64_t kernel = 0;
+        std::uint64_t user = 0;
+        bool valid = false;
+        std::chrono::steady_clock::time_point at{};
+    };
+
+    static std::mutex sampleMutex;
+    static CpuSample previous;
+
+    auto readSample = [](CpuSample& out) -> bool
+    {
+        FILETIME idleFt{};
+        FILETIME kernelFt{};
+        FILETIME userFt{};
+        if (GetSystemTimes(&idleFt, &kernelFt, &userFt) == 0)
+        {
+            return false;
+        }
+        auto toU64 = [](const FILETIME& ft)
+        {
+            return (static_cast<std::uint64_t>(ft.dwHighDateTime) << 32) |
+                   static_cast<std::uint64_t>(ft.dwLowDateTime);
+        };
+        // Note: kernel time includes idle time, per GetSystemTimes contract.
+        out.idle = toU64(idleFt);
+        out.kernel = toU64(kernelFt);
+        out.user = toU64(userFt);
+        out.at = std::chrono::steady_clock::now();
+        out.valid = true;
+        return true;
+    };
+
+    std::unique_lock<std::mutex> lock(sampleMutex);
+
+    CpuSample current;
+    if (!readSample(current))
+    {
+        return std::nullopt;
+    }
+
+    constexpr auto kMaxUsableAge = std::chrono::seconds(10);
+    if (previous.valid)
+    {
+        const auto age = current.at - previous.at;
+        if (age > std::chrono::milliseconds(0) && age <= kMaxUsableAge)
+        {
+            auto pct = CpuLoadFromTicks(
+                previous.idle, previous.kernel, previous.user,
+                current.idle, current.kernel, current.user);
+            previous = current;
+            if (pct.has_value())
+            {
+                return pct;
+            }
+            // fall through to a fresh blocking sample on a degenerate delta
+        }
+    }
+
+    // No usable prior sample: take a short blocking second reading so this call
+    // still produces a value. 250ms is enough to be meaningful without stalling.
+    // Release the lock across the Sleep so a concurrent telemetry collection is
+    // not blocked behind our delay; baseline/after are local and need no lock.
+    // We re-acquire only to publish `previous` (a cache for the next delta) —
+    // if two callers race here, the last writer wins, which is harmless.
+    CpuSample baseline = current;
+    lock.unlock();
+    Sleep(250);
+    CpuSample after;
+    if (!readSample(after))
+    {
+        lock.lock();
+        previous = baseline;
+        return std::nullopt;
+    }
+    lock.lock();
+    previous = after;
+    return CpuLoadFromTicks(
+        baseline.idle, baseline.kernel, baseline.user,
+        after.idle, after.kernel, after.user);
+}
+
+void ProbeCpuLoad(TelemetrySnapshot& snapshot)
+{
+    if (snapshot.cpu.loadPct.has_value())
+    {
+        return; // a real sensor source already provided it
+    }
+    if (auto pct = ComputeCpuLoadFromSystemTimes(); pct.has_value())
+    {
+        snapshot.cpu.loadPct = *pct;
+        snapshot.sources.push_back(TelemetrySourceStatus{
+            "system_times_cpu_load", true, "Windows GetSystemTimes CPU load fallback"});
+    }
+}
+
 Result<TelemetrySnapshot> CollectTelemetry()
 {
     try
@@ -1555,6 +1708,10 @@ Result<TelemetrySnapshot> CollectTelemetry()
         ProbeMonitorSensors(kOpenHardwareMonitorNamespace, "openhardwaremonitor_wmi", snapshot);
         ProbeAida64SharedMemory(snapshot);
         ProbeNvml(snapshot);
+
+        // Native CPU-load fallback. Runs last so any real sensor source
+        // (LHM/OHM/AIDA64) that already filled cpu.load_pct keeps priority.
+        ProbeCpuLoad(snapshot);
 
         return snapshot;
     }

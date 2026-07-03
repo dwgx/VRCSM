@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import {
@@ -15,21 +16,48 @@ import { UserPopupBadge } from "@/components/UserPopupBadge";
 import { ipc } from "@/lib/ipc";
 import { useReport } from "@/lib/report-context";
 import type {
+  AppQuitEvent,
+  AttributedVideoEvent,
+  AudioDeviceEvent,
+  AvatarPedestalEvent,
   AvatarSwitchEvent,
+  InstanceResetEvent,
+  JoinBlockedEvent,
   LogEnvironment,
   LogSettingsSection,
+  NotificationEvent,
+  OscFailEvent,
   PlayerEvent,
+  PortalSpawnEvent,
   ScreenshotEvent,
+  SessionModeEvent,
+  ShaderKeywordEvent,
+  StickerSpawnEvent,
+  UdonExceptionEvent,
+  VideoErrorEvent,
+  VideoPlayEvent,
+  VideoSyncEvent,
+  VoteKickEvent,
   WorldSwitchEvent,
 } from "@/lib/types";
 import {
+  AlertTriangle,
+  Ban,
+  Bell,
   Camera,
   ChevronDown,
   ChevronUp,
+  DoorOpen,
+  Gavel,
   Globe2,
+  Headset,
   Loader2,
+  LogOut,
+  PlayCircle,
   Search,
   Shirt,
+  Smile,
+  TerminalSquare,
   Trash2,
   UserRound,
   Users,
@@ -113,7 +141,24 @@ type TimelineEventKind =
   | "player_left"
   | "avatar_switch"
   | "screenshot"
-  | "world_switch";
+  | "video_play"
+  | "portal_spawn"
+  | "vote_kick"
+  | "join_blocked"
+  | "sticker_spawn"
+  | "world_switch"
+  | "notification"
+  | "video_error"
+  | "attributed_video"
+  | "video_sync"
+  | "avatar_pedestal"
+  | "vrc_quit"
+  | "session_mode"
+  | "osc_fail"
+  | "udon_exception"
+  | "instance_reset"
+  | "shader_keyword"
+  | "audio_device";
 
 interface TimelineEvent {
   kind: TimelineEventKind;
@@ -158,6 +203,70 @@ function screenshotToTimeline(ev: ScreenshotEvent): TimelineEvent {
   };
 }
 
+function videoPlayToTimeline(ev: VideoPlayEvent): TimelineEvent {
+  return {
+    kind: "video_play",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: ev.url,
+    meta: ev.url,
+  };
+}
+
+function portalSpawnToTimeline(ev: PortalSpawnEvent): TimelineEvent {
+  return {
+    kind: "portal_spawn",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "Portal dropped",
+  };
+}
+
+function voteKickToTimeline(ev: VoteKickEvent): TimelineEvent {
+  const title =
+    ev.phase === "self"
+      ? ev.message ?? "You were kicked"
+      : ev.target ?? "Unknown player";
+  const detail =
+    ev.phase === "initiated"
+      ? "Vote started"
+      : ev.phase === "succeeded"
+        ? "Vote passed"
+        : undefined;
+  return {
+    kind: "vote_kick",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title,
+    detail,
+  };
+}
+
+function joinBlockedToTimeline(ev: JoinBlockedEvent): TimelineEvent {
+  const title =
+    ev.reason_kind === "blocked"
+      ? "Join blocked (master timeout)"
+      : ev.reason ?? "Failed to join instance";
+  return {
+    kind: "join_blocked",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title,
+    detail: ev.location ?? undefined,
+  };
+}
+
+function stickerSpawnToTimeline(ev: StickerSpawnEvent): TimelineEvent {
+  return {
+    kind: "sticker_spawn",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: ev.display_name,
+    detail: "Spawned a sticker",
+    meta: ev.user_id,
+  };
+}
+
 function worldToTimeline(ev: WorldSwitchEvent): TimelineEvent {
   return {
     kind: "world_switch",
@@ -166,6 +275,131 @@ function worldToTimeline(ev: WorldSwitchEvent): TimelineEvent {
     title: ev.world_id,
     detail: ev.access_type + (ev.region ? ` \u00B7 ${ev.region.toUpperCase()}` : ""),
     meta: ev.instance_id,
+  };
+}
+
+// \u2500\u2500 Wave 2 Section A timeline mappers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function notificationToTimeline(ev: NotificationEvent): TimelineEvent {
+  return {
+    kind: "notification",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: ev.sender_name || ev.sender_id,
+    detail: ev.type,
+    meta: ev.sender_id,
+  };
+}
+
+function videoErrorToTimeline(ev: VideoErrorEvent): TimelineEvent {
+  return {
+    kind: "video_error",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "Video error",
+    detail: ev.error_message,
+  };
+}
+
+function attributedVideoToTimeline(ev: AttributedVideoEvent): TimelineEvent {
+  return {
+    kind: "attributed_video",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: ev.requester ?? ev.url,
+    detail: ev.url,
+    meta: ev.url,
+  };
+}
+
+function videoSyncToTimeline(ev: VideoSyncEvent): TimelineEvent {
+  return {
+    kind: "video_sync",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "Video synced",
+    detail: ev.url,
+    meta: ev.url,
+  };
+}
+
+function avatarPedestalToTimeline(ev: AvatarPedestalEvent): TimelineEvent {
+  return {
+    kind: "avatar_pedestal",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: ev.display_name,
+    detail: "Avatar from pedestal",
+    meta: ev.user_id ?? undefined,
+  };
+}
+
+function appQuitToTimeline(ev: AppQuitEvent): TimelineEvent {
+  return {
+    kind: "vrc_quit",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "VRChat closed",
+    detail: ev.uptime_seconds ? `Uptime ${ev.uptime_seconds}s` : undefined,
+  };
+}
+
+function sessionModeToTimeline(ev: SessionModeEvent): TimelineEvent {
+  return {
+    kind: "session_mode",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: ev.mode === "vr" ? "VR session" : "Desktop session",
+    detail: ev.hmd_model ?? undefined,
+  };
+}
+
+function oscFailToTimeline(ev: OscFailEvent): TimelineEvent {
+  return {
+    kind: "osc_fail",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "OSC failed to start",
+    detail: ev.reason,
+  };
+}
+
+function udonExceptionToTimeline(ev: UdonExceptionEvent): TimelineEvent {
+  return {
+    kind: "udon_exception",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "Udon exception",
+    detail: ev.message,
+  };
+}
+
+function instanceResetToTimeline(ev: InstanceResetEvent): TimelineEvent {
+  return {
+    kind: "instance_reset",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "Instance reset scheduled",
+    detail: `In ${ev.minutes} minutes`,
+  };
+}
+
+function shaderKeywordToTimeline(ev: ShaderKeywordEvent): TimelineEvent {
+  return {
+    kind: "shader_keyword",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "Shader keyword limit",
+    detail: "Maximum global keywords exceeded",
+  };
+}
+
+function audioDeviceToTimeline(ev: AudioDeviceEvent): TimelineEvent {
+  return {
+    kind: "audio_device",
+    iso_time: ev.iso_time,
+    sortKey: isoToSortKey(ev.iso_time),
+    title: "Input device changed",
+    detail: ev.device_name,
   };
 }
 
@@ -211,12 +445,131 @@ const KIND_STYLES: Record<
     icon: Camera,
     label: "Screenshot",
   },
+  video_play: {
+    border: "border-l-pink-500",
+    iconBg: "bg-pink-500/15",
+    iconColor: "text-pink-400",
+    icon: PlayCircle,
+    label: "Video",
+  },
+  portal_spawn: {
+    border: "border-l-cyan-500",
+    iconBg: "bg-cyan-500/15",
+    iconColor: "text-cyan-400",
+    icon: DoorOpen,
+    label: "Portal",
+  },
+  vote_kick: {
+    border: "border-l-orange-500",
+    iconBg: "bg-orange-500/15",
+    iconColor: "text-orange-400",
+    icon: Gavel,
+    label: "Vote kick",
+  },
+  join_blocked: {
+    border: "border-l-rose-500",
+    iconBg: "bg-rose-500/15",
+    iconColor: "text-rose-400",
+    icon: Ban,
+    label: "Join blocked",
+  },
+  sticker_spawn: {
+    border: "border-l-teal-500",
+    iconBg: "bg-teal-500/15",
+    iconColor: "text-teal-400",
+    icon: Smile,
+    label: "Sticker",
+  },
   world_switch: {
     border: "border-l-blue-500",
     iconBg: "bg-blue-500/15",
     iconColor: "text-blue-400",
     icon: Globe2,
     label: "World",
+  },
+  notification: {
+    border: "border-l-sky-500",
+    iconBg: "bg-sky-500/15",
+    iconColor: "text-sky-400",
+    icon: Bell,
+    label: "Notification",
+  },
+  video_error: {
+    border: "border-l-rose-500",
+    iconBg: "bg-rose-500/15",
+    iconColor: "text-rose-400",
+    icon: AlertTriangle,
+    label: "Video error",
+  },
+  attributed_video: {
+    border: "border-l-pink-500",
+    iconBg: "bg-pink-500/15",
+    iconColor: "text-pink-400",
+    icon: PlayCircle,
+    label: "Video",
+  },
+  video_sync: {
+    border: "border-l-pink-500",
+    iconBg: "bg-pink-500/15",
+    iconColor: "text-pink-400",
+    icon: PlayCircle,
+    label: "Video sync",
+  },
+  avatar_pedestal: {
+    border: "border-l-violet-500",
+    iconBg: "bg-violet-500/15",
+    iconColor: "text-violet-400",
+    icon: Shirt,
+    label: "Pedestal",
+  },
+  vrc_quit: {
+    border: "border-l-zinc-500",
+    iconBg: "bg-zinc-500/15",
+    iconColor: "text-zinc-400",
+    icon: LogOut,
+    label: "Quit",
+  },
+  session_mode: {
+    border: "border-l-indigo-500",
+    iconBg: "bg-indigo-500/15",
+    iconColor: "text-indigo-400",
+    icon: Headset,
+    label: "Session",
+  },
+  osc_fail: {
+    border: "border-l-amber-500",
+    iconBg: "bg-amber-500/15",
+    iconColor: "text-amber-400",
+    icon: TerminalSquare,
+    label: "OSC",
+  },
+  udon_exception: {
+    border: "border-l-amber-500",
+    iconBg: "bg-amber-500/15",
+    iconColor: "text-amber-400",
+    icon: TerminalSquare,
+    label: "Udon",
+  },
+  instance_reset: {
+    border: "border-l-orange-500",
+    iconBg: "bg-orange-500/15",
+    iconColor: "text-orange-400",
+    icon: AlertTriangle,
+    label: "Instance reset",
+  },
+  shader_keyword: {
+    border: "border-l-amber-500",
+    iconBg: "bg-amber-500/15",
+    iconColor: "text-amber-400",
+    icon: TerminalSquare,
+    label: "Shader",
+  },
+  audio_device: {
+    border: "border-l-zinc-500",
+    iconBg: "bg-zinc-500/15",
+    iconColor: "text-zinc-400",
+    icon: TerminalSquare,
+    label: "Audio device",
   },
 };
 
@@ -227,37 +580,126 @@ const KIND_STYLES: Record<
 const LIVE_DELTA_CAP = 200;
 
 interface ClassifiedStreamPayload {
-  kind: "player" | "avatarSwitch" | "screenshot";
-  data: PlayerEvent | AvatarSwitchEvent | ScreenshotEvent;
+  kind:
+    | "player"
+    | "avatarSwitch"
+    | "screenshot"
+    | "videoPlay"
+    | "portalSpawn"
+    | "voteKick"
+    | "joinBlocked"
+    | "stickerSpawn"
+    | "notification"
+    | "videoError"
+    | "attributedVideoPlay"
+    | "videoSync"
+    | "avatarPedestal"
+    | "vrcQuit"
+    | "sessionMode"
+    | "oscFail"
+    | "udonException"
+    | "instanceReset"
+    | "shaderKeyword"
+    | "audioDevice";
+  data:
+    | PlayerEvent
+    | AvatarSwitchEvent
+    | ScreenshotEvent
+    | VideoPlayEvent
+    | PortalSpawnEvent
+    | VoteKickEvent
+    | JoinBlockedEvent
+    | StickerSpawnEvent
+    | NotificationEvent
+    | VideoErrorEvent
+    | AttributedVideoEvent
+    | VideoSyncEvent
+    | AvatarPedestalEvent
+    | AppQuitEvent
+    | SessionModeEvent
+    | OscFailEvent
+    | UdonExceptionEvent
+    | InstanceResetEvent
+    | ShaderKeywordEvent
+    | AudioDeviceEvent;
 }
 
 // ---------------------------------------------------------------------------
 // Filter toggles
 // ---------------------------------------------------------------------------
 
-type FilterKey = "players" | "avatars" | "screenshots" | "worlds";
+type FilterKey =
+  | "players"
+  | "avatars"
+  | "screenshots"
+  | "videos"
+  | "portals"
+  | "moderation"
+  | "stickers"
+  | "worlds"
+  | "notifications"
+  | "session"
+  | "diagnostic";
 
-const FILTER_KEYS: FilterKey[] = ["players", "avatars", "screenshots", "worlds"];
+const FILTER_KEYS: FilterKey[] = [
+  "players",
+  "avatars",
+  "screenshots",
+  "videos",
+  "portals",
+  "moderation",
+  "stickers",
+  "worlds",
+  "notifications",
+  "session",
+  "diagnostic",
+];
 
 const FILTER_LABELS: Record<FilterKey, string> = {
   players: "Players",
   avatars: "Avatars",
   screenshots: "Screenshots",
+  videos: "Videos",
+  portals: "Portals",
+  moderation: "Moderation",
+  stickers: "Stickers",
   worlds: "Worlds",
+  notifications: "Notifications",
+  session: "Session",
+  diagnostic: "Diagnostics",
 };
 
 const FILTER_COLORS: Record<FilterKey, string> = {
   players: "bg-emerald-500",
   avatars: "bg-violet-500",
   screenshots: "bg-amber-500",
+  videos: "bg-pink-500",
+  portals: "bg-cyan-500",
+  moderation: "bg-orange-500",
+  stickers: "bg-teal-500",
   worlds: "bg-blue-500",
+  notifications: "bg-sky-500",
+  session: "bg-indigo-500",
+  diagnostic: "bg-amber-400",
 };
 
 function matchesFilter(kind: TimelineEventKind, filters: Record<FilterKey, boolean>): boolean {
   if (kind === "player_join" || kind === "player_left") return filters.players;
-  if (kind === "avatar_switch") return filters.avatars;
+  if (kind === "avatar_switch" || kind === "avatar_pedestal") return filters.avatars;
   if (kind === "screenshot") return filters.screenshots;
+  if (kind === "video_play" || kind === "video_error"
+    || kind === "attributed_video" || kind === "video_sync")
+    return filters.videos;
+  if (kind === "portal_spawn") return filters.portals;
+  if (kind === "vote_kick" || kind === "join_blocked" || kind === "instance_reset")
+    return filters.moderation;
+  if (kind === "sticker_spawn") return filters.stickers;
   if (kind === "world_switch") return filters.worlds;
+  if (kind === "notification") return filters.notifications;
+  if (kind === "vrc_quit" || kind === "session_mode") return filters.session;
+  if (kind === "osc_fail" || kind === "udon_exception"
+    || kind === "shader_keyword" || kind === "audio_device")
+    return filters.diagnostic;
   return true;
 }
 
@@ -287,7 +729,15 @@ function Logs() {
     players: true,
     avatars: true,
     screenshots: true,
+    videos: true,
+    portals: true,
+    moderation: true,
+    stickers: true,
     worlds: true,
+    notifications: true,
+    session: true,
+    // Diagnostics (A7/A8) are noisy — default OFF so they stay opt-in.
+    diagnostic: false,
   });
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -318,48 +768,109 @@ function Logs() {
   const [livePlayer, setLivePlayer] = useState<PlayerEvent[]>([]);
   const [liveSwitch, setLiveSwitch] = useState<AvatarSwitchEvent[]>([]);
   const [liveScreenshot, setLiveScreenshot] = useState<ScreenshotEvent[]>([]);
+  const [liveVideo, setLiveVideo] = useState<VideoPlayEvent[]>([]);
+  const [livePortal, setLivePortal] = useState<PortalSpawnEvent[]>([]);
+  const [liveVoteKick, setLiveVoteKick] = useState<VoteKickEvent[]>([]);
+  const [liveJoinBlocked, setLiveJoinBlocked] = useState<JoinBlockedEvent[]>([]);
+  const [liveSticker, setLiveSticker] = useState<StickerSpawnEvent[]>([]);
+  const [liveNotification, setLiveNotification] = useState<NotificationEvent[]>([]);
+  const [liveVideoError, setLiveVideoError] = useState<VideoErrorEvent[]>([]);
+  const [liveAttributedVideo, setLiveAttributedVideo] = useState<AttributedVideoEvent[]>([]);
+  const [liveVideoSync, setLiveVideoSync] = useState<VideoSyncEvent[]>([]);
+  const [liveAvatarPedestal, setLiveAvatarPedestal] = useState<AvatarPedestalEvent[]>([]);
+  const [liveAppQuit, setLiveAppQuit] = useState<AppQuitEvent[]>([]);
+  const [liveSessionMode, setLiveSessionMode] = useState<SessionModeEvent[]>([]);
+  const [liveOscFail, setLiveOscFail] = useState<OscFailEvent[]>([]);
+  const [liveUdonException, setLiveUdonException] = useState<UdonExceptionEvent[]>([]);
+  const [liveInstanceReset, setLiveInstanceReset] = useState<InstanceResetEvent[]>([]);
+  const [liveShaderKeyword, setLiveShaderKeyword] = useState<ShaderKeywordEvent[]>([]);
+  const [liveAudioDevice, setLiveAudioDevice] = useState<AudioDeviceEvent[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
 
   const pendingRef = useRef<{
     player: PlayerEvent[];
     switches: AvatarSwitchEvent[];
     screenshots: ScreenshotEvent[];
-  }>({ player: [], switches: [], screenshots: [] });
+    videos: VideoPlayEvent[];
+    portals: PortalSpawnEvent[];
+    voteKicks: VoteKickEvent[];
+    joinBlocked: JoinBlockedEvent[];
+    stickers: StickerSpawnEvent[];
+    notifications: NotificationEvent[];
+    videoErrors: VideoErrorEvent[];
+    attributedVideos: AttributedVideoEvent[];
+    videoSyncs: VideoSyncEvent[];
+    avatarPedestals: AvatarPedestalEvent[];
+    appQuits: AppQuitEvent[];
+    sessionModes: SessionModeEvent[];
+    oscFails: OscFailEvent[];
+    udonExceptions: UdonExceptionEvent[];
+    instanceResets: InstanceResetEvent[];
+    shaderKeywords: ShaderKeywordEvent[];
+    audioDevices: AudioDeviceEvent[];
+  }>({
+    player: [],
+    switches: [],
+    screenshots: [],
+    videos: [],
+    portals: [],
+    voteKicks: [],
+    joinBlocked: [],
+    stickers: [],
+    notifications: [],
+    videoErrors: [],
+    attributedVideos: [],
+    videoSyncs: [],
+    avatarPedestals: [],
+    appQuits: [],
+    sessionModes: [],
+    oscFails: [],
+    udonExceptions: [],
+    instanceResets: [],
+    shaderKeywords: [],
+    audioDevices: [],
+  });
   const flushTimerRef = useRef<number | null>(null);
 
   const flushPending = useCallback(() => {
     flushTimerRef.current = null;
     const buf = pendingRef.current;
-    if (buf.player.length > 0) {
-      const incoming = buf.player;
-      buf.player = [];
-      setLivePlayer((prev) => {
+    // Generic drain: move a pending bucket into its capped live-state array.
+    const drain = <T,>(
+      bucket: T[],
+      clear: () => void,
+      setLive: Dispatch<SetStateAction<T[]>>,
+    ) => {
+      if (bucket.length === 0) return;
+      const incoming = bucket;
+      clear();
+      setLive((prev) => {
         const merged = prev.concat(incoming);
         return merged.length > LIVE_DELTA_CAP
           ? merged.slice(merged.length - LIVE_DELTA_CAP)
           : merged;
       });
-    }
-    if (buf.switches.length > 0) {
-      const incoming = buf.switches;
-      buf.switches = [];
-      setLiveSwitch((prev) => {
-        const merged = prev.concat(incoming);
-        return merged.length > LIVE_DELTA_CAP
-          ? merged.slice(merged.length - LIVE_DELTA_CAP)
-          : merged;
-      });
-    }
-    if (buf.screenshots.length > 0) {
-      const incoming = buf.screenshots;
-      buf.screenshots = [];
-      setLiveScreenshot((prev) => {
-        const merged = prev.concat(incoming);
-        return merged.length > LIVE_DELTA_CAP
-          ? merged.slice(merged.length - LIVE_DELTA_CAP)
-          : merged;
-      });
-    }
+    };
+    drain(buf.player, () => (buf.player = []), setLivePlayer);
+    drain(buf.switches, () => (buf.switches = []), setLiveSwitch);
+    drain(buf.screenshots, () => (buf.screenshots = []), setLiveScreenshot);
+    drain(buf.videos, () => (buf.videos = []), setLiveVideo);
+    drain(buf.portals, () => (buf.portals = []), setLivePortal);
+    drain(buf.voteKicks, () => (buf.voteKicks = []), setLiveVoteKick);
+    drain(buf.joinBlocked, () => (buf.joinBlocked = []), setLiveJoinBlocked);
+    drain(buf.stickers, () => (buf.stickers = []), setLiveSticker);
+    drain(buf.notifications, () => (buf.notifications = []), setLiveNotification);
+    drain(buf.videoErrors, () => (buf.videoErrors = []), setLiveVideoError);
+    drain(buf.attributedVideos, () => (buf.attributedVideos = []), setLiveAttributedVideo);
+    drain(buf.videoSyncs, () => (buf.videoSyncs = []), setLiveVideoSync);
+    drain(buf.avatarPedestals, () => (buf.avatarPedestals = []), setLiveAvatarPedestal);
+    drain(buf.appQuits, () => (buf.appQuits = []), setLiveAppQuit);
+    drain(buf.sessionModes, () => (buf.sessionModes = []), setLiveSessionMode);
+    drain(buf.oscFails, () => (buf.oscFails = []), setLiveOscFail);
+    drain(buf.udonExceptions, () => (buf.udonExceptions = []), setLiveUdonException);
+    drain(buf.instanceResets, () => (buf.instanceResets = []), setLiveInstanceReset);
+    drain(buf.shaderKeywords, () => (buf.shaderKeywords = []), setLiveShaderKeyword);
+    drain(buf.audioDevices, () => (buf.audioDevices = []), setLiveAudioDevice);
     setIsStreaming(true);
   }, []);
 
@@ -380,6 +891,40 @@ function Logs() {
         buf.switches.push(payload.data as AvatarSwitchEvent);
       } else if (payload.kind === "screenshot") {
         buf.screenshots.push(payload.data as ScreenshotEvent);
+      } else if (payload.kind === "videoPlay") {
+        buf.videos.push(payload.data as VideoPlayEvent);
+      } else if (payload.kind === "portalSpawn") {
+        buf.portals.push(payload.data as PortalSpawnEvent);
+      } else if (payload.kind === "voteKick") {
+        buf.voteKicks.push(payload.data as VoteKickEvent);
+      } else if (payload.kind === "joinBlocked") {
+        buf.joinBlocked.push(payload.data as JoinBlockedEvent);
+      } else if (payload.kind === "stickerSpawn") {
+        buf.stickers.push(payload.data as StickerSpawnEvent);
+      } else if (payload.kind === "notification") {
+        buf.notifications.push(payload.data as NotificationEvent);
+      } else if (payload.kind === "videoError") {
+        buf.videoErrors.push(payload.data as VideoErrorEvent);
+      } else if (payload.kind === "attributedVideoPlay") {
+        buf.attributedVideos.push(payload.data as AttributedVideoEvent);
+      } else if (payload.kind === "videoSync") {
+        buf.videoSyncs.push(payload.data as VideoSyncEvent);
+      } else if (payload.kind === "avatarPedestal") {
+        buf.avatarPedestals.push(payload.data as AvatarPedestalEvent);
+      } else if (payload.kind === "vrcQuit") {
+        buf.appQuits.push(payload.data as AppQuitEvent);
+      } else if (payload.kind === "sessionMode") {
+        buf.sessionModes.push(payload.data as SessionModeEvent);
+      } else if (payload.kind === "oscFail") {
+        buf.oscFails.push(payload.data as OscFailEvent);
+      } else if (payload.kind === "udonException") {
+        buf.udonExceptions.push(payload.data as UdonExceptionEvent);
+      } else if (payload.kind === "instanceReset") {
+        buf.instanceResets.push(payload.data as InstanceResetEvent);
+      } else if (payload.kind === "shaderKeyword") {
+        buf.shaderKeywords.push(payload.data as ShaderKeywordEvent);
+      } else if (payload.kind === "audioDevice") {
+        buf.audioDevices.push(payload.data as AudioDeviceEvent);
       } else {
         return;
       }
@@ -412,6 +957,23 @@ function Logs() {
     for (const ev of logs.player_events) events.push(playerToTimeline(ev));
     for (const ev of logs.avatar_switches) events.push(avatarToTimeline(ev));
     for (const ev of logs.screenshots) events.push(screenshotToTimeline(ev));
+    for (const ev of logs.video_plays ?? []) events.push(videoPlayToTimeline(ev));
+    for (const ev of logs.portal_spawns ?? []) events.push(portalSpawnToTimeline(ev));
+    for (const ev of logs.vote_kicks ?? []) events.push(voteKickToTimeline(ev));
+    for (const ev of logs.join_blocked ?? []) events.push(joinBlockedToTimeline(ev));
+    for (const ev of logs.sticker_spawns ?? []) events.push(stickerSpawnToTimeline(ev));
+    for (const ev of logs.notifications ?? []) events.push(notificationToTimeline(ev));
+    for (const ev of logs.video_errors ?? []) events.push(videoErrorToTimeline(ev));
+    for (const ev of logs.attributed_video_plays ?? []) events.push(attributedVideoToTimeline(ev));
+    for (const ev of logs.video_syncs ?? []) events.push(videoSyncToTimeline(ev));
+    for (const ev of logs.avatar_pedestals ?? []) events.push(avatarPedestalToTimeline(ev));
+    for (const ev of logs.app_quits ?? []) events.push(appQuitToTimeline(ev));
+    for (const ev of logs.session_modes ?? []) events.push(sessionModeToTimeline(ev));
+    for (const ev of logs.osc_fails ?? []) events.push(oscFailToTimeline(ev));
+    for (const ev of logs.udon_exceptions ?? []) events.push(udonExceptionToTimeline(ev));
+    for (const ev of logs.instance_resets ?? []) events.push(instanceResetToTimeline(ev));
+    for (const ev of logs.shader_keywords ?? []) events.push(shaderKeywordToTimeline(ev));
+    for (const ev of logs.audio_devices ?? []) events.push(audioDeviceToTimeline(ev));
     for (const ev of logs.world_switches ?? []) {
       const te = worldToTimeline(ev);
       const name = worldNames[ev.world_id];
@@ -429,9 +991,47 @@ function Logs() {
     for (const ev of livePlayer) events.push(playerToTimeline(ev));
     for (const ev of liveSwitch) events.push(avatarToTimeline(ev));
     for (const ev of liveScreenshot) events.push(screenshotToTimeline(ev));
+    for (const ev of liveVideo) events.push(videoPlayToTimeline(ev));
+    for (const ev of livePortal) events.push(portalSpawnToTimeline(ev));
+    for (const ev of liveVoteKick) events.push(voteKickToTimeline(ev));
+    for (const ev of liveJoinBlocked) events.push(joinBlockedToTimeline(ev));
+    for (const ev of liveSticker) events.push(stickerSpawnToTimeline(ev));
+    for (const ev of liveNotification) events.push(notificationToTimeline(ev));
+    for (const ev of liveVideoError) events.push(videoErrorToTimeline(ev));
+    for (const ev of liveAttributedVideo) events.push(attributedVideoToTimeline(ev));
+    for (const ev of liveVideoSync) events.push(videoSyncToTimeline(ev));
+    for (const ev of liveAvatarPedestal) events.push(avatarPedestalToTimeline(ev));
+    for (const ev of liveAppQuit) events.push(appQuitToTimeline(ev));
+    for (const ev of liveSessionMode) events.push(sessionModeToTimeline(ev));
+    for (const ev of liveOscFail) events.push(oscFailToTimeline(ev));
+    for (const ev of liveUdonException) events.push(udonExceptionToTimeline(ev));
+    for (const ev of liveInstanceReset) events.push(instanceResetToTimeline(ev));
+    for (const ev of liveShaderKeyword) events.push(shaderKeywordToTimeline(ev));
+    for (const ev of liveAudioDevice) events.push(audioDeviceToTimeline(ev));
     events.sort((a, b) => b.sortKey - a.sortKey);
     return events;
-  }, [livePlayer, liveSwitch, liveScreenshot]);
+  }, [
+    livePlayer,
+    liveSwitch,
+    liveScreenshot,
+    liveVideo,
+    livePortal,
+    liveVoteKick,
+    liveJoinBlocked,
+    liveSticker,
+    liveNotification,
+    liveVideoError,
+    liveAttributedVideo,
+    liveVideoSync,
+    liveAvatarPedestal,
+    liveAppQuit,
+    liveSessionMode,
+    liveOscFail,
+    liveUdonException,
+    liveInstanceReset,
+    liveShaderKeyword,
+    liveAudioDevice,
+  ]);
 
   // Merge: live (newest, at top) + historical (already sorted). Live size is
   // bounded by current session, historical by parsed log cap, so this is at
@@ -473,13 +1073,30 @@ function Logs() {
       players: 0,
       avatars: 0,
       screenshots: 0,
+      videos: 0,
+      portals: 0,
+      moderation: 0,
+      stickers: 0,
       worlds: 0,
+      notifications: 0,
+      session: 0,
+      diagnostic: 0,
     };
     for (const ev of timeline) {
       if (ev.kind === "player_join" || ev.kind === "player_left") counts.players++;
-      else if (ev.kind === "avatar_switch") counts.avatars++;
+      else if (ev.kind === "avatar_switch" || ev.kind === "avatar_pedestal") counts.avatars++;
       else if (ev.kind === "screenshot") counts.screenshots++;
+      else if (ev.kind === "video_play" || ev.kind === "video_error"
+        || ev.kind === "attributed_video" || ev.kind === "video_sync") counts.videos++;
+      else if (ev.kind === "portal_spawn") counts.portals++;
+      else if (ev.kind === "vote_kick" || ev.kind === "join_blocked"
+        || ev.kind === "instance_reset") counts.moderation++;
+      else if (ev.kind === "sticker_spawn") counts.stickers++;
       else if (ev.kind === "world_switch") counts.worlds++;
+      else if (ev.kind === "notification") counts.notifications++;
+      else if (ev.kind === "vrc_quit" || ev.kind === "session_mode") counts.session++;
+      else if (ev.kind === "osc_fail" || ev.kind === "udon_exception"
+        || ev.kind === "shader_keyword" || ev.kind === "audio_device") counts.diagnostic++;
     }
     return counts;
   }, [timeline]);
@@ -658,6 +1275,22 @@ function Logs() {
         <Badge className="border-amber-500/40 bg-amber-500/12 text-amber-400 text-[11px]">
           <Camera className="size-3" />
           {stats.screenshots}
+        </Badge>
+        <Badge className="border-pink-500/40 bg-pink-500/12 text-pink-400 text-[11px]">
+          <PlayCircle className="size-3" />
+          {stats.videos}
+        </Badge>
+        <Badge className="border-cyan-500/40 bg-cyan-500/12 text-cyan-400 text-[11px]">
+          <DoorOpen className="size-3" />
+          {stats.portals}
+        </Badge>
+        <Badge className="border-orange-500/40 bg-orange-500/12 text-orange-400 text-[11px]">
+          <Gavel className="size-3" />
+          {stats.moderation}
+        </Badge>
+        <Badge className="border-teal-500/40 bg-teal-500/12 text-teal-400 text-[11px]">
+          <Smile className="size-3" />
+          {stats.stickers}
         </Badge>
         <Badge className="border-blue-500/40 bg-blue-500/12 text-blue-400 text-[11px]">
           <Globe2 className="size-3" />
@@ -859,16 +1492,16 @@ function Logs() {
                         </span>
                       </div>
 
-                      {/* Detail line for avatar switches */}
-                      {ev.kind === "avatar_switch" && ev.detail ? (
-                        <div className="mt-0.5 truncate text-[10px] text-[hsl(var(--muted-foreground))]">
-                          {ev.detail}
-                        </div>
-                      ) : null}
-
-                      {/* Detail line for player IDs */}
-                      {(isJoin || isLeft) && ev.detail ? (
-                        <div className="mt-0.5 truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {/* Detail subtext. Player IDs render mono; everything else
+                          (avatar name, vote outcome, join location, sticker note)
+                          uses the regular muted style. */}
+                      {ev.detail ? (
+                        <div
+                          className={[
+                            "mt-0.5 truncate text-[10px] text-[hsl(var(--muted-foreground))]",
+                            isJoin || isLeft ? "font-mono" : "",
+                          ].join(" ")}
+                        >
                           {ev.detail}
                         </div>
                       ) : null}

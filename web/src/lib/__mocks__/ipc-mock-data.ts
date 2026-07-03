@@ -288,6 +288,23 @@ export function buildMockReport(): Report {
           region: "us"
         }
       ],
+      video_plays: [],
+      portal_spawns: [],
+      vote_kicks: [],
+      join_blocked: [],
+      sticker_spawns: [],
+      notifications: [],
+      video_errors: [],
+      attributed_video_plays: [],
+      video_syncs: [],
+      avatar_pedestals: [],
+      app_quits: [],
+      session_modes: [],
+      osc_fails: [],
+      udon_exceptions: [],
+      instance_resets: [],
+      shader_keywords: [],
+      audio_devices: [],
     },
   };
 }

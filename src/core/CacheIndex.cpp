@@ -13,6 +13,62 @@
 
 namespace vrcsm::core
 {
+namespace
+{
+
+bool IsValidAvatarId(std::string_view avatarId)
+{
+    if (avatarId.size() != 41 || avatarId.substr(0, 5) != "avtr_")
+    {
+        return false;
+    }
+
+    for (std::size_t i = 5; i < 41; ++i)
+    {
+        const char c = avatarId[i];
+        if (i == 13 || i == 18 || i == 23 || i == 28)
+        {
+            if (c != '-')
+            {
+                return false;
+            }
+        }
+        else if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool IsUsablePersistedBundlePath(
+    const std::filesystem::path& cwpDir,
+    const std::filesystem::path& bundlePath)
+{
+    if (bundlePath.empty())
+    {
+        return false;
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::is_directory(bundlePath, ec) || ec)
+    {
+        return false;
+    }
+
+    if (!ensureWithinBase(cwpDir, bundlePath))
+    {
+        return false;
+    }
+
+    const bool hasData = std::filesystem::exists(bundlePath / L"__data", ec) && !ec;
+    ec.clear();
+    const bool hasInfo = std::filesystem::exists(bundlePath / L"__info", ec) && !ec;
+    return hasData || hasInfo;
+}
+
+} // namespace
 
 CacheIndex& CacheIndex::Instance()
 {
@@ -31,7 +87,7 @@ CacheIndex::~CacheIndex()
 
 void CacheIndex::StartScan(const std::filesystem::path& cacheWindowsPlayerDir)
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     if (m_cwpDir == cacheWindowsPlayerDir && (m_scanning || m_ready))
     {
@@ -43,9 +99,9 @@ void CacheIndex::StartScan(const std::filesystem::path& cacheWindowsPlayerDir)
     if (m_worker.joinable())
     {
         // Release the lock briefly to let the worker finish.
-        m_mutex.unlock();
+        lock.unlock();
         m_worker.join();
-        m_mutex.lock();
+        lock.lock();
     }
 
     m_cwpDir = cacheWindowsPlayerDir;
@@ -107,15 +163,28 @@ void CacheIndex::LoadPersisted()
         const auto entriesIt = doc.find("entries");
         if (entriesIt == doc.end() || !entriesIt->is_object()) return;
 
+        std::size_t loaded = 0;
+        std::size_t skipped = 0;
         for (auto it = entriesIt->begin(); it != entriesIt->end(); ++it)
         {
-            if (it.value().is_string())
+            if (!it.value().is_string() || !IsValidAvatarId(it.key()))
             {
-                m_index[it.key()] = utf8Path(it.value().get<std::string>());
+                ++skipped;
+                continue;
             }
+
+            const auto bundlePath = utf8Path(it.value().get<std::string>());
+            if (!IsUsablePersistedBundlePath(m_cwpDir, bundlePath))
+            {
+                ++skipped;
+                continue;
+            }
+
+            m_index[it.key()] = bundlePath;
+            ++loaded;
         }
 
-        spdlog::info("CacheIndex: loaded {} persisted entries", m_index.size());
+        spdlog::info("CacheIndex: loaded {} persisted entries, skipped {}", loaded, skipped);
     }
     catch (const std::exception& ex)
     {
@@ -128,14 +197,22 @@ void CacheIndex::SavePersisted() const
     const auto path = PersistPath();
     if (path.empty()) return;
 
+    std::filesystem::path cwpDir;
+    std::unordered_map<std::string, std::filesystem::path> index;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        cwpDir = m_cwpDir;
+        index = m_index;
+    }
+
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
 
     nlohmann::json doc;
-    doc["cwpDir"] = toUtf8(m_cwpDir.wstring());
+    doc["cwpDir"] = toUtf8(cwpDir.wstring());
 
     nlohmann::json entries = nlohmann::json::object();
-    for (const auto& [avatarId, bundlePath] : m_index)
+    for (const auto& [avatarId, bundlePath] : index)
     {
         entries[avatarId] = toUtf8(bundlePath.wstring());
     }
@@ -148,7 +225,7 @@ void CacheIndex::SavePersisted() const
         return;
     }
     out << doc.dump();
-    spdlog::info("CacheIndex: persisted {} entries", m_index.size());
+    spdlog::info("CacheIndex: persisted {} entries", index.size());
 }
 
 void CacheIndex::ScanWorker(std::filesystem::path cwpDir)
@@ -241,7 +318,6 @@ void CacheIndex::ScanWorker(std::filesystem::path cwpDir)
 
     if (!m_stopping)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
         SavePersisted();
     }
 

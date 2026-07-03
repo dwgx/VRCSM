@@ -47,8 +47,34 @@ let generation = 0;
 const listeners = new Set<() => void>();
 const RESOLVED_TTL_MS = 10 * 60_000;
 const NEGATIVE_TTL_MS = 5 * 60_000;
+const STALE_RETRY_MS = 1_000;
 const LOW_PRIORITY_DELAY_MS = 250;
 const LOW_PRIORITY_BATCH_SIZE = 48;
+
+// Hard ceiling on memo entries. Entries carry finite TTLs but nothing purges an
+// expired entry until it's read again, so a multi-hour browse over thousands of
+// distinct assets grows the map without bound in the long-lived WebView2
+// process. Evict in insertion order (Map preserves it) once the ceiling is
+// crossed — a cheap LRU-on-write.
+const MAX_ENTRIES = 4_000;
+
+function memoSet(key: string, entry: CacheEntry): void {
+  // Re-insert moves the key to the most-recent position so churned keys stay
+  // and cold keys age out first.
+  if (memo.has(key)) memo.delete(key);
+  memo.set(key, entry);
+  if (memo.size > MAX_ENTRIES) {
+    const overflow = memo.size - MAX_ENTRIES;
+    let removed = 0;
+    for (const oldKey of memo.keys()) {
+      if (removed >= overflow) break;
+      // Never evict the entry we just wrote.
+      if (oldKey === key) continue;
+      memo.delete(oldKey);
+      removed += 1;
+    }
+  }
+}
 
 function cacheKey(type: AssetType, id: string): string {
   return `${type}|${id}`;
@@ -65,9 +91,19 @@ function isFresh(entry: CacheEntry, now: number): entry is { state: "resolved"; 
   return entry.state === "resolved" && entry.expiresAt > now;
 }
 
+function parseFutureTimestamp(value: string | null | undefined, now: number): number | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed > now ? parsed : now + STALE_RETRY_MS;
+}
+
 function assetExpiresAt(asset: AssetCacheItem): number {
-  if (asset.negative) return Date.now() + NEGATIVE_TTL_MS;
-  return Date.now() + RESOLVED_TTL_MS;
+  const now = Date.now();
+  if (asset.negative) {
+    return parseFutureTimestamp(asset.negativeUntil, now) ?? now + NEGATIVE_TTL_MS;
+  }
+  return parseFutureTimestamp(asset.expiresAt, now) ?? now + RESOLVED_TTL_MS;
 }
 
 function notify(): void {
@@ -95,7 +131,7 @@ function normalizedItems(items: AssetResolveItem[]): AssetResolveItem[] {
 }
 
 function mergeAsset(asset: AssetCacheItem): void {
-  memo.set(cacheKey(asset.type, asset.id), {
+  memoSet(cacheKey(asset.type, asset.id), {
     state: "resolved",
     asset,
     expiresAt: assetExpiresAt(asset),
@@ -137,7 +173,7 @@ async function fetchBatch(items: AssetResolveItem[], refresh = false): Promise<A
   for (const item of normalized) {
     const key = cacheKey(item.type, item.id);
     if (!seen.has(key)) {
-      memo.set(key, {
+      memoSet(key, {
         state: "resolved",
         asset: placeholderFromItem(item),
         expiresAt: Date.now() + NEGATIVE_TTL_MS,
@@ -174,6 +210,15 @@ export function invalidateAsset(type: AssetType, id: string): void {
   notify();
 }
 
+export async function invalidateAssetsCoherent(target?: { type: AssetType; id: string }): Promise<void> {
+  await ipc.call("assets.invalidate", target ?? {});
+  if (target) {
+    invalidateAsset(target.type, target.id);
+  } else {
+    invalidateAssets();
+  }
+}
+
 export async function resolveAssets(items: AssetResolveItem[], options: { refresh?: boolean } = {}): Promise<AssetCacheItem[]> {
   const now = Date.now();
   const need = normalizedItems(items).filter((item) => options.refresh || needsFetch(item, now));
@@ -193,7 +238,7 @@ export async function resolveAssets(items: AssetResolveItem[], options: { refres
   });
 
   for (const item of need) {
-    memo.set(cacheKey(item.type, item.id), {
+    memoSet(cacheKey(item.type, item.id), {
       state: "pending",
       promise: batchPromise.then((rows) => (
         rows.find((row) => row.type === item.type && row.id === item.id) ?? null
@@ -308,7 +353,3 @@ export function useAsset(
 
   return state;
 }
-
-ipc.on("auth.loginCompleted", () => {
-  invalidateAssets();
-});

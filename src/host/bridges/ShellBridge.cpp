@@ -458,7 +458,7 @@ nlohmann::json IpcBridge::HandleAppFactoryReset(const nlohmann::json&, const std
     // 1. Wipe in-memory auth state. Cookie eviction in WebView2 is a COM
     //    call and must run on the UI thread — defer that to the
     //    WM_APP_FACTORY_RESET_QUIT handler at the end.
-    vrcsm::core::AuthStore::Instance().Clear();
+    vrcsm::core::AuthStore::Instance().Clear("FactoryReset");
     removed.push_back("session.dat");
 
     // 2. Stop every background worker that holds a file handle inside

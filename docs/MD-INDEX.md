@@ -1,6 +1,6 @@
 # VRCSM Markdown Index
 
-Last updated: 2026-06-24
+Last updated: 2026-06-25
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
@@ -52,6 +52,18 @@ This file maps the repo's Markdown documents so the next agent can start from th
   - Current execution plan for fixing visible UI issues, sequencing VRCX-parity work, and keeping new frontend API/IPC calls centralized in `web/src/lib` domain modules.
   - Read before adding Notification Center, Quick Search, My Avatars, social analytics, table behavior, or other VRCX-inspired UI features.
 
+- `docs/BEAT-VRCX-PLAN.md`
+  - 2026-06-29 execution plan to beat (not just match) VRCX on three tracks: hardware telemetry (vendor-neutral CPU/GPU/VRAM), persistent searchable Feed/GameLog, and relationship chains + GUI click-convenience.
+  - Carries verified-against-code facts (Pipeline already emits all events but doesn't persist a feed; `db.playerEncounters` is unused by any page; VRChat `GET /users/{userId}/mutuals/friends` DOES exist so real mutual-friend edges are obtainable). Mutual-friends fetch is opt-in + rate-limited. Read before starting telemetry/social/GUI feature slices.
+
+- `docs/CACHE-ARCHITECTURE.md`
+  - Cache ownership and registry for SQLite, `%LocalAppData%\VRCSM`, WebView2, React Query, localStorage, thumbnails, previews, updates, and plugin data.
+  - Read before changing cache behavior, adding prefetch, changing invalidation, or touching account-scoped warm caches.
+
+- `docs/ENHANCEMENT-ROADMAP.md`
+  - Consolidated audit-fix + deep-research plan (2026-06-29): bundle inspection/preview boundary, hardware telemetry, VRCX parity gaps, relationship-graph + GUI click-convenience design, and the remaining open audit findings (M3/M4/M5/M7/M8/H2/L5).
+  - Read before resuming feature work on cache/bundle/telemetry/social tracks; it carries the legal boundary (inspection only, no avatar-export-for-redistribution) and a suggested execution order.
+
 - `docs/FRIENDS-RELATIONSHIP-REDESIGN-RESEARCH.md`
   - Current 2026-06-23 research baseline for rebuilding Friends into a VRCX-class social/relationship workspace.
   - Maps VRCX Friends Locations, Friend List, mutual graph, relationship feed, local stats, public VRChat API boundaries, proposed Social/Relationship modules, data model, UI target, and phased implementation order.
@@ -90,6 +102,13 @@ This file maps the repo's Markdown documents so the next agent can start from th
 - `docs/NEXT-AGENT-HANDOFF.md`
   - Current branch, latest commits, verification commands, sensitive decisions, likely next work.
   - Read before changing avatar thumbnails, global search, VRLink repair, plugin permissions, cache deletion, downloads, or release packaging.
+
+## Internal Reference Documentation
+
+- `docs/reference/` (start at `docs/reference/README.md`)
+  - Evidence-backed internal technical reference for the whole codebase, in Chinese with `path:line` citations.
+  - Index + nav tree, architecture/layer model, per-subsystem C++ core docs, host + IPC bridge method catalog, web frontend, three cross-cutting flow chapters (IPC round-trip / data & cache lifecycle / plugin security model), and build & release.
+  - Aligned with (does not contradict) `CLAUDE.md` and `docs/CACHE-ARCHITECTURE.md`. Read the relevant subsystem page before changing cache, avatar preview, SteamVR repair, plugin IPC, or packaging behavior.
 
 ## Plugin Docs
 

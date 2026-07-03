@@ -29,6 +29,73 @@ const std::regex kPlayerJoinedRe(
 const std::regex kPlayerLeftRe(
     R"(\[Behaviour\] OnPlayerLeft (.+?)(?: \((usr_[0-9a-fA-F-]+)\))?\s*$)");
 const std::regex kScreenshotRe(R"(\[VRC Camera\] Took screenshot to: (.+?)\s*$)");
+// VRChat resolves video player URLs through several code paths; the
+// `[Video Playback]` resolve line is the most reliable and carries the raw URL.
+// Matches both "Attempting to resolve URL '<url>'" and "Resolving URL '<url>'".
+const std::regex kVideoResolveRe(
+    R"(\[Video Playback\] (?:Attempting to resolve|Resolving) URL '([^']+)')");
+// Portal drop. Modern VRChat (2023+) emits only the nameless form below — no
+// dropper name or destination world is present on the line anymore.
+const std::regex kPortalSpawnRe(
+    R"(\[Behaviour\] Instantiated a \(Clone \[\d+\] Portals/PortalInternalDynamic\))");
+// Vote-kick: three shapes. Self-kicked executive message, plus the instance-wide
+// [ModerationManager] initiation / success pair (target display name captured).
+const std::regex kVoteKickSelfRe(
+    R"(\[Behaviour\] Received executive message: (.+?)\s*$)");
+const std::regex kVoteKickInitiatedRe(
+    R"(\[ModerationManager\] A vote kick has been initiated against (.+?), do you agree\?\s*$)");
+const std::regex kVoteKickSucceededRe(
+    R"(\[ModerationManager\] Vote to kick (.+?) succeeded\s*$)");
+// Join problems. "Failed to join instance '<loc>' due to '<reason>'" carries the
+// useful fields. Real logs often omit the closing quote on the reason (and the
+// reason may be localized / multi-byte), so the trailing quote is optional.
+const std::regex kFailedToJoinRe(
+    R"(\[Behaviour\] Failed to join instance '([^']*)'(?: due to '([^']*)'?)?)");
+const std::regex kJoinBlockedRe(
+    R"(Master is not sending any events! Moving to a new instance\.)");
+// Sticker spawn. NOTE the "flipped" order: usr_ id comes BEFORE the (display name).
+const std::regex kStickerSpawnRe(
+    R"(\[StickersManager\] User (usr_[0-9a-fA-F-]+) \((.+?)\) spawned sticker (inv_[0-9a-fA-F-]+))");
+
+// ── Wave 2 Section A atoms ───────────────────────────────────────────────
+// A1 Notification. VRCX ParseLogNotification (LogWatcher.cs:860): the body
+// starts `[API] Received Notification: <Notification ...> received at`.
+const std::regex kNotificationRe(
+    R"(\[API\] Received Notification: <Notification from username:(.+?), sender user id:(usr_[0-9a-fA-F-]+) to of type: (\w+), id: (not_[0-9a-fA-F-]+).*?, type:(\w+).*?> received at)");
+// A2 Video playback error. Both the legacy `[Video Playback] ERROR:` and the
+// AVPro `[AVProVideo] Error:` shapes.
+const std::regex kVideoErrorRe(
+    R"(\[(?:Video Playback|AVProVideo)\] (?:ERROR|Error): (.+?)\s*$)");
+// A3 Attributed video play. SDK2 (`User <name> added URL <url>`) and USharp
+// (`[USharpVideo] Started video load for URL: <url>, requested by <name>`).
+const std::regex kSdk2VideoRe(R"(User (.+?) added URL (\S+))");
+const std::regex kUsharpVideoPlayRe(
+    R"(\[USharpVideo\] Started video load for URL: (\S+), requested by (.+?)\s*$)");
+const std::regex kUsharpVideoSyncRe(R"(\[USharpVideo\] Syncing video to (.+?)\s*$)");
+// A4 Avatar pedestal change. VERIFIED 2026-06 against VRCX master
+// LogWatcher.cs:609 — still active (fixed 68-char string.Compare on
+// "[Network Processing] RPC invoked SwitchAvatar on AvatarPedestal for ",
+// display name is the substring after it). Body matches byte-for-byte.
+const std::regex kAvatarPedestalRe(
+    R"(\[Network Processing\] RPC invoked SwitchAvatar on AvatarPedestal for (.+?)\s*$)");
+// A5 Session-end marker. Client renamed OnApplicationQuit→HandleApplicationQuit
+// on 2024.10.23 — match both.
+const std::regex kAppQuitRe(
+    R"(VRCApplication: (?:OnApplicationQuit|HandleApplicationQuit) at ([\d.]+))");
+// A6 VR vs Desktop session marker.
+const std::regex kSessionModeRe(
+    R"(^(Initializing VRSDK\.|STEAMVR HMD Model: (.+?)|VR Disabled)\s*$)");
+// A7 Diagnostics batch.
+const std::regex kOscFailRe(R"(Could not Start OSC: (.+?)\s*$)");
+const std::regex kUdonExceptionRe(R"(VRC\.Udon\.VM\.UdonVMException: (.+?)$)");
+const std::regex kInstanceResetRe(
+    R"(\[ModerationManager\] This instance will be reset in (\d+) minutes due to its age\.)");
+// A8 Stateful diagnostics (the dedupe lives in the batch/live callers; the
+// regexes themselves are stateless like every other atom).
+const std::regex kShaderKeywordRe(
+    R"(Maximum number \(384\) of shader global keywords exceeded)");
+const std::regex kAudioDeviceRe(
+    R"(\[Always\] uSpeak: SetInputDevice 0 \(\d+ total\) '(.+?)'\s*$)");
 
 const std::regex kHashSuffixRe(R"(_[0-9a-f]{4,}$)");
 const std::regex kTrailingHexRe(R"(\s+[0-9a-f]{7,}$|(?:_[0-9a-f]{4,})?[0-9a-f]{7,}$)");
@@ -316,6 +383,185 @@ std::optional<LogAtom> ParseVrchatLogAtom(std::string_view bodyView)
     {
         LogAtom atom{LogAtomKind::Screenshot, {}};
         put(atom, "path", match[1].str());
+        return atom;
+    }
+
+    if (std::regex_search(body, match, kVideoResolveRe))
+    {
+        LogAtom atom{LogAtomKind::VideoPlay, {}};
+        put(atom, "url", match[1].str());
+        return atom;
+    }
+
+    if (std::regex_search(body, match, kPortalSpawnRe))
+    {
+        // Current VRChat logs carry no dropper/destination — record the event only.
+        return LogAtom{LogAtomKind::PortalSpawn, {}};
+    }
+
+    if (std::regex_search(body, match, kVoteKickInitiatedRe))
+    {
+        LogAtom atom{LogAtomKind::VoteKick, {}};
+        put(atom, "phase", "initiated");
+        put(atom, "target", match[1].str());
+        return atom;
+    }
+
+    if (std::regex_search(body, match, kVoteKickSucceededRe))
+    {
+        LogAtom atom{LogAtomKind::VoteKick, {}};
+        put(atom, "phase", "succeeded");
+        put(atom, "target", match[1].str());
+        return atom;
+    }
+
+    if (std::regex_search(body, match, kVoteKickSelfRe))
+    {
+        LogAtom atom{LogAtomKind::VoteKick, {}};
+        put(atom, "phase", "self");
+        put(atom, "message", match[1].str());
+        return atom;
+    }
+
+    if (std::regex_search(body, match, kFailedToJoinRe))
+    {
+        LogAtom atom{LogAtomKind::JoinBlocked, {}};
+        put(atom, "reason_kind", "failed");
+        put(atom, "location", match[1].str());
+        if (match.size() > 2 && match[2].matched)
+        {
+            put(atom, "reason", match[2].str());
+        }
+        return atom;
+    }
+
+    if (std::regex_search(body, match, kJoinBlockedRe))
+    {
+        LogAtom atom{LogAtomKind::JoinBlocked, {}};
+        put(atom, "reason_kind", "blocked");
+        return atom;
+    }
+
+    if (std::regex_search(body, match, kStickerSpawnRe))
+    {
+        LogAtom atom{LogAtomKind::StickerSpawn, {}};
+        put(atom, "user_id", match[1].str());
+        put(atom, "display_name", match[2].str());
+        put(atom, "inventory_id", match[3].str());
+        return atom;
+    }
+
+    // A1 — Notification.
+    if (std::regex_search(body, match, kNotificationRe))
+    {
+        LogAtom atom{LogAtomKind::Notification, {}};
+        put(atom, "sender_name", match[1].str());
+        put(atom, "sender_id", match[2].str());
+        // group 5 is the trailing `type:` (the canonical one); group 3 is the
+        // earlier `of type:` — both carry the same value in practice. Prefer 5.
+        put(atom, "type", match[5].str());
+        put(atom, "notification_id", match[4].str());
+        return atom;
+    }
+
+    // A2 — Video playback error.
+    if (std::regex_search(body, match, kVideoErrorRe))
+    {
+        LogAtom atom{LogAtomKind::VideoError, {}};
+        put(atom, "error_message", match[1].str());
+        return atom;
+    }
+
+    // A3 — Attributed video play (SDK2 / USharpVideo) + USharp sync.
+    if (std::regex_search(body, match, kUsharpVideoPlayRe))
+    {
+        LogAtom atom{LogAtomKind::AttributedVideoPlay, {}};
+        put(atom, "url", match[1].str());
+        put(atom, "requester", match[2].str());
+        return atom;
+    }
+    if (std::regex_search(body, match, kUsharpVideoSyncRe))
+    {
+        LogAtom atom{LogAtomKind::VideoSync, {}};
+        put(atom, "url", match[1].str());
+        return atom;
+    }
+    if (std::regex_search(body, match, kSdk2VideoRe))
+    {
+        LogAtom atom{LogAtomKind::AttributedVideoPlay, {}};
+        put(atom, "requester", match[1].str());
+        put(atom, "url", match[2].str());
+        return atom;
+    }
+
+    // A4 — Avatar pedestal change (MEDIUM confidence).
+    if (std::regex_search(body, match, kAvatarPedestalRe))
+    {
+        LogAtom atom{LogAtomKind::AvatarPedestalChange, {}};
+        put(atom, "display_name", match[1].str());
+        return atom;
+    }
+
+    // A5 — Application quit / session-end marker.
+    if (std::regex_search(body, match, kAppQuitRe))
+    {
+        LogAtom atom{LogAtomKind::AppQuit, {}};
+        put(atom, "uptime_seconds", match[1].str());
+        return atom;
+    }
+
+    // A6 — VR vs Desktop session marker.
+    if (std::regex_search(body, match, kSessionModeRe))
+    {
+        LogAtom atom{LogAtomKind::SessionMode, {}};
+        if (match[2].matched && !match[2].str().empty())
+        {
+            atom.params["mode"] = "vr";
+            put(atom, "hmd_model", match[2].str());
+        }
+        else if (match[1].str() == "VR Disabled")
+        {
+            atom.params["mode"] = "desktop";
+        }
+        else
+        {
+            // "Initializing VRSDK." — VR anchor without an HMD model yet.
+            atom.params["mode"] = "vr";
+        }
+        return atom;
+    }
+
+    // A7 — Diagnostics batch: OSC fail, Udon exception, instance reset.
+    if (std::regex_search(body, match, kOscFailRe))
+    {
+        LogAtom atom{LogAtomKind::OscFail, {}};
+        put(atom, "reason", match[1].str());
+        return atom;
+    }
+    if (std::regex_search(body, match, kUdonExceptionRe))
+    {
+        LogAtom atom{LogAtomKind::UdonException, {}};
+        std::string msg = match[1].str();
+        if (msg.size() > 200) msg.resize(200);
+        put(atom, "message", msg);
+        return atom;
+    }
+    if (std::regex_search(body, match, kInstanceResetRe))
+    {
+        LogAtom atom{LogAtomKind::InstanceReset, {}};
+        put(atom, "minutes", match[1].str());
+        return atom;
+    }
+
+    // A8 — Stateful diagnostics (callers do the dedupe; the atoms are stateless).
+    if (std::regex_search(body, match, kShaderKeywordRe))
+    {
+        return LogAtom{LogAtomKind::ShaderKeyword, {}};
+    }
+    if (std::regex_search(body, match, kAudioDeviceRe))
+    {
+        LogAtom atom{LogAtomKind::AudioDevice, {}};
+        put(atom, "device_name", match[1].str());
         return atom;
     }
 

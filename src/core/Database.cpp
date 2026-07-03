@@ -2172,6 +2172,334 @@ namespace
     }
 }
 
+namespace
+{
+    // One reconstructed presence interval for a user inside a single
+    // (world_id, instance_id) session: [start, end] in absolute seconds.
+    struct PresenceInterval
+    {
+        std::time_t start = 0;
+        std::time_t end = 0;
+    };
+
+    // Overlap in seconds between two intervals (0 if disjoint).
+    std::time_t IntervalOverlap(const PresenceInterval& a, const PresenceInterval& b)
+    {
+        const std::time_t lo = std::max(a.start, b.start);
+        const std::time_t hi = std::min(a.end, b.end);
+        return hi > lo ? hi - lo : 0;
+    }
+}
+
+Result<nlohmann::json> Database::CoPresenceEgoNetwork(
+    const std::string& center_user_id,
+    int since_days,
+    int min_overlap_sec)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+    if (center_user_id.empty())
+    {
+        return MakeError("db_invalid_argument", "center_user_id is empty");
+    }
+
+    // Clamp inputs to sane bounds so a malformed request can't ask for an
+    // unbounded scan or a negative window.
+    if (since_days <= 0) since_days = 90;
+    if (since_days > 3650) since_days = 3650;
+    if (min_overlap_sec < 0) min_overlap_sec = 0;
+
+    // Lower time bound. player_events.occurred_at is wall-clock ISO; we
+    // filter loosely in SQL by lexical comparison (ISO sorts lexically)
+    // and rely on ParsePresenceInstant for exact overlap math.
+    const std::time_t nowT = std::time(nullptr);
+    const std::time_t sinceT = nowT - static_cast<std::time_t>(since_days) * 86400;
+
+    // Pull raw join/left events newest-last so we can pair them per user
+    // within each instance session. We over-fetch a little (no lexical
+    // cutoff that could drop a session straddling the boundary) and apply
+    // the time window during pairing instead.
+    const char* sql =
+        "SELECT user_id, display_name, world_id, instance_id, kind, occurred_at "
+        "FROM player_events "
+        "WHERE user_id IS NOT NULL AND world_id IS NOT NULL AND instance_id IS NOT NULL "
+        "ORDER BY world_id, instance_id, occurred_at ASC;";
+
+    sqlite3_stmt* rawStmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard stmt(rawStmt);
+
+    // Per-(world,instance) accumulation of each user's intervals.
+    struct UserPresence
+    {
+        std::string display_name;
+        std::vector<PresenceInterval> intervals;
+        // Open "joined" awaiting a matching "left" within this session.
+        std::optional<std::time_t> openStart;
+    };
+
+    // Edge accumulator keyed by ordered user pair.
+    struct EdgeAccum
+    {
+        std::int64_t overlapCount = 0;
+        std::time_t overlapSeconds = 0;
+        std::time_t lastOverlap = 0;
+        bool touchesCenter = false;
+    };
+
+    // Node accumulator keyed by user_id.
+    struct NodeAccum
+    {
+        std::string display_name;
+        std::int64_t sessions = 0;
+        std::time_t totalSeconds = 0;
+        std::time_t lastSeen = 0;
+    };
+
+    std::unordered_map<std::string, NodeAccum> nodes;
+    std::map<std::pair<std::string, std::string>, EdgeAccum> edges;
+
+    // Default interval length when a "left" is missing (crash / lost log):
+    // cap an open session at this many seconds so a dropped left can't
+    // stretch a presence to infinity and over-connect the graph.
+    const std::time_t kMaxOpenSessionSec = 4 * 3600;
+
+    std::string curWorld;
+    std::string curInstance;
+    // user_id -> presence within the current session.
+    std::unordered_map<std::string, UserPresence> sessionUsers;
+
+    auto flushSession = [&]()
+    {
+        if (sessionUsers.empty())
+        {
+            curWorld.clear();
+            curInstance.clear();
+            return;
+        }
+
+        // Close any still-open intervals with the capped fallback end.
+        for (auto& [uid, up] : sessionUsers)
+        {
+            if (up.openStart.has_value())
+            {
+                up.intervals.push_back(
+                    PresenceInterval{*up.openStart, *up.openStart + kMaxOpenSessionSec});
+                up.openStart.reset();
+            }
+        }
+
+        // Keep only users with at least one interval inside the window.
+        // Build a flat list for pairwise comparison.
+        std::vector<std::string> uids;
+        uids.reserve(sessionUsers.size());
+        for (auto& [uid, up] : sessionUsers)
+        {
+            // Drop intervals entirely before the time window.
+            std::vector<PresenceInterval> kept;
+            kept.reserve(up.intervals.size());
+            for (const auto& iv : up.intervals)
+            {
+                if (iv.end >= sinceT)
+                {
+                    kept.push_back(iv);
+                }
+            }
+            up.intervals = std::move(kept);
+            if (!up.intervals.empty())
+            {
+                uids.push_back(uid);
+            }
+        }
+
+        // Node-level rollup: one "session" credit per user present here,
+        // plus their summed in-session seconds and latest end.
+        for (const auto& uid : uids)
+        {
+            const auto& up = sessionUsers[uid];
+            auto& node = nodes[uid];
+            if (node.display_name.empty()) node.display_name = up.display_name;
+            else node.display_name = up.display_name; // prefer most recent
+            node.sessions += 1;
+            for (const auto& iv : up.intervals)
+            {
+                node.totalSeconds += (iv.end - iv.start);
+                node.lastSeen = std::max(node.lastSeen, iv.end);
+            }
+        }
+
+        // Pairwise overlap → edges.
+        for (std::size_t i = 0; i < uids.size(); ++i)
+        {
+            for (std::size_t j = i + 1; j < uids.size(); ++j)
+            {
+                const auto& a = sessionUsers[uids[i]];
+                const auto& b = sessionUsers[uids[j]];
+                std::time_t best = 0;
+                std::time_t lastEnd = 0;
+                for (const auto& ia : a.intervals)
+                {
+                    for (const auto& ib : b.intervals)
+                    {
+                        const std::time_t ov = IntervalOverlap(ia, ib);
+                        if (ov > 0)
+                        {
+                            best += ov;
+                            lastEnd = std::max(lastEnd, std::min(ia.end, ib.end));
+                        }
+                    }
+                }
+                if (best < min_overlap_sec || best == 0)
+                {
+                    continue;
+                }
+                // Order the pair deterministically.
+                std::string s = uids[i];
+                std::string t = uids[j];
+                if (s > t) std::swap(s, t);
+                auto& edge = edges[{s, t}];
+                edge.overlapCount += 1;
+                edge.overlapSeconds += best;
+                edge.lastOverlap = std::max(edge.lastOverlap, lastEnd);
+                if (s == center_user_id || t == center_user_id)
+                {
+                    edge.touchesCenter = true;
+                }
+            }
+        }
+
+        sessionUsers.clear();
+        curWorld.clear();
+        curInstance.clear();
+    };
+
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawStmt)) == SQLITE_ROW)
+    {
+        const std::string userId = ColumnTextOrNull(rawStmt, 0).is_string()
+            ? ColumnTextOrNull(rawStmt, 0).get<std::string>() : std::string();
+        const auto dnJson = ColumnTextOrNull(rawStmt, 1);
+        const std::string displayName = dnJson.is_string() ? dnJson.get<std::string>() : std::string();
+        const auto wJson = ColumnTextOrNull(rawStmt, 2);
+        const std::string worldId = wJson.is_string() ? wJson.get<std::string>() : std::string();
+        const auto iJson = ColumnTextOrNull(rawStmt, 3);
+        const std::string instanceId = iJson.is_string() ? iJson.get<std::string>() : std::string();
+        const auto kJson = ColumnTextOrNull(rawStmt, 4);
+        const std::string kind = kJson.is_string() ? kJson.get<std::string>() : std::string();
+        const auto tJson = ColumnTextOrNull(rawStmt, 5);
+        const std::string occurredAt = tJson.is_string() ? tJson.get<std::string>() : std::string();
+
+        if (userId.empty() || worldId.empty() || instanceId.empty())
+        {
+            continue;
+        }
+
+        // Boundary between sessions = change in (world,instance). Rows are
+        // ordered by (world,instance,time), so a key change flushes.
+        if (worldId != curWorld || instanceId != curInstance)
+        {
+            flushSession();
+            curWorld = worldId;
+            curInstance = instanceId;
+        }
+
+        const auto instant = ParsePresenceInstant(occurredAt);
+        if (!instant.has_value())
+        {
+            continue;
+        }
+
+        auto& up = sessionUsers[userId];
+        if (up.display_name.empty() || !displayName.empty())
+        {
+            up.display_name = displayName.empty() ? up.display_name : displayName;
+        }
+
+        if (kind == "joined")
+        {
+            // A second "joined" with no intervening "left" closes the prior
+            // open interval with the capped fallback, then opens a new one.
+            if (up.openStart.has_value())
+            {
+                const std::time_t cappedEnd =
+                    std::min(*instant, *up.openStart + kMaxOpenSessionSec);
+                up.intervals.push_back(PresenceInterval{*up.openStart, cappedEnd});
+            }
+            up.openStart = *instant;
+        }
+        else if (kind == "left")
+        {
+            if (up.openStart.has_value())
+            {
+                std::time_t end = *instant;
+                if (end < *up.openStart) end = *up.openStart; // clock skew guard
+                if (end - *up.openStart > kMaxOpenSessionSec)
+                {
+                    end = *up.openStart + kMaxOpenSessionSec;
+                }
+                up.intervals.push_back(PresenceInterval{*up.openStart, end});
+                up.openStart.reset();
+            }
+            // A "left" with no matching "joined" is dropped (we never saw
+            // them arrive — likely a session that began before our window).
+        }
+    }
+    flushSession();
+
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+
+    // Materialize JSON. Only keep nodes that are the center or are linked
+    // to it by at least one edge path of length 1 OR appear in any edge —
+    // we expose the full co-presence graph (center + its instance-mates +
+    // the mates' mutual co-presence) which is exactly the ego-network.
+    nlohmann::json nodesJson = nlohmann::json::array();
+    for (const auto& [uid, node] : nodes)
+    {
+        nlohmann::json n = nlohmann::json::object();
+        n["user_id"] = uid;
+        n["display_name"] = node.display_name;
+        n["sessions"] = node.sessions;
+        n["total_seconds"] = static_cast<std::int64_t>(node.totalSeconds);
+        n["last_seen"] = static_cast<std::int64_t>(node.lastSeen);
+        n["is_center"] = (uid == center_user_id);
+        nodesJson.push_back(std::move(n));
+    }
+
+    nlohmann::json edgesJson = nlohmann::json::array();
+    for (const auto& [pair, edge] : edges)
+    {
+        nlohmann::json e = nlohmann::json::object();
+        e["source"] = pair.first;
+        e["target"] = pair.second;
+        // Honest labeling: edges that include the center are confirmed
+        // co-presence (we logged it from our own instance); edges between
+        // two others are co-presence inference only.
+        e["kind"] = edge.touchesCenter ? "confirmed" : "co_presence";
+        e["overlap_count"] = edge.overlapCount;
+        e["overlap_seconds"] = static_cast<std::int64_t>(edge.overlapSeconds);
+        e["last_overlap"] = static_cast<std::int64_t>(edge.lastOverlap);
+        edgesJson.push_back(std::move(e));
+    }
+
+    nlohmann::json out = nlohmann::json::object();
+    out["center"] = center_user_id;
+    out["since_days"] = since_days;
+    out["min_overlap_sec"] = min_overlap_sec;
+    out["nodes"] = std::move(nodesJson);
+    out["edges"] = std::move(edgesJson);
+    return out;
+}
+
 Result<nlohmann::json> Database::PredictFriendOnlineWindows(
     const std::string& user_id,
     int top_n,
@@ -2706,19 +3034,227 @@ Result<nlohmann::json> Database::ClearHistory(bool include_friend_notes)
     };
 }
 
+namespace
+{
+// Tables surfaced in the data-management panel's usage report. Fixed list;
+// each is existence-checked before COUNT so an older schema (missing a
+// table) is skipped rather than erroring.
+constexpr std::array<std::string_view, 16> kUsageCountTables{
+    "world_visits",
+    "player_events",
+    "player_encounters",
+    "avatar_history",
+    "friend_log",
+    "sessions",
+    "log_events",
+    "friend_presence_events",
+    "avatar_embeddings_meta",
+    "asset_cache",
+    "avatar_benchmark",
+    "owned_avatars",
+    "online_prints",
+    "online_inventory",
+    "online_files",
+    "local_favorites",
+};
+
+// Allowlist of tables the data-management panel is permitted to bulk-DELETE.
+// ClearTables validates every requested name against this set before any SQL
+// is built — caller-supplied strings never reach a SQL literal directly.
+bool isClearableTable(std::string_view name)
+{
+    static constexpr std::array<std::string_view, 19> kClearable{
+        // rebuildable caches
+        "asset_cache",
+        "avatar_benchmark",
+        "owned_avatars",
+        "online_prints",
+        "online_inventory",
+        "online_files",
+        // history
+        "world_visits",
+        "player_events",
+        "player_encounters",
+        "avatar_history",
+        "friend_log",
+        "friend_presence_events",
+        "sessions",
+        "log_events",
+        // experimental embeddings
+        "avatar_embeddings_meta",
+        "avatar_embeddings_vec",
+        // user assets (favorites)
+        "local_favorites",
+        "local_favorite_notes",
+        "local_favorite_tags",
+    };
+    for (const auto& t : kClearable)
+    {
+        if (t == name) return true;
+    }
+    return false;
+}
+} // namespace
+
+Result<nlohmann::json> Database::TableCounts()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    // Prepared existence probe reused across all tables. sqlite_master lists
+    // ordinary, virtual, and view objects, so vec0 virtual tables show up too.
+    const char* existsSql =
+        "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name = ?;";
+    sqlite3_stmt* rawExists = nullptr;
+    if (sqlite3_prepare_v2(m_db, existsSql, -1, &rawExists, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard existsGuard(rawExists);
+
+    nlohmann::json counts = nlohmann::json::object();
+    for (const auto tableView : kUsageCountTables)
+    {
+        const std::string table(tableView);
+
+        sqlite3_reset(rawExists);
+        sqlite3_clear_bindings(rawExists);
+        if (BindText(rawExists, 1, table) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        if (sqlite3_step(rawExists) != SQLITE_ROW)
+        {
+            continue; // table absent on this schema; skip silently
+        }
+
+        // Table name comes from the compile-time allowlist above, never from
+        // caller input, so string-building the COUNT statement is safe here.
+        const std::string countSql = "SELECT COUNT(*) FROM \"" + table + "\";";
+        sqlite3_stmt* rawCount = nullptr;
+        if (sqlite3_prepare_v2(m_db, countSql.c_str(), -1, &rawCount, nullptr) != SQLITE_OK)
+        {
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard countGuard(rawCount);
+        if (sqlite3_step(rawCount) != SQLITE_ROW)
+        {
+            return MakeError("db_step_failed");
+        }
+        counts[table] = static_cast<std::int64_t>(sqlite3_column_int64(rawCount, 0));
+    }
+
+    return counts;
+}
+
+Result<nlohmann::json> Database::ClearTables(const std::vector<std::string>& tables)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+
+    // Validate the entire request against the allowlist *before* touching the
+    // DB. An unknown name is a hard error — we never silently ignore it here
+    // (the IPC layer maps target keys → known tables; anything else is a bug).
+    for (const auto& table : tables)
+    {
+        if (!isClearableTable(table))
+        {
+            return MakeError("db_invalid_argument", "Table not clearable: " + table);
+        }
+    }
+
+    if (tables.empty())
+    {
+        return nlohmann::json::object();
+    }
+
+    const auto beginResult = ExecSimple("BEGIN;");
+    if (std::holds_alternative<Error>(beginResult))
+    {
+        return std::get<Error>(beginResult);
+    }
+
+    nlohmann::json cleared = nlohmann::json::object();
+    for (const auto& table : tables)
+    {
+        // Skip a table that doesn't exist on this schema without failing the
+        // transaction (e.g. embeddings tables on a pre-v4 DB).
+        const char* existsSql =
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name = ?;";
+        sqlite3_stmt* rawExists = nullptr;
+        if (sqlite3_prepare_v2(m_db, existsSql, -1, &rawExists, nullptr) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard existsGuard(rawExists);
+        if (BindText(rawExists, 1, table) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_bind_failed");
+        }
+        if (sqlite3_step(rawExists) != SQLITE_ROW)
+        {
+            cleared[table] = 0;
+            continue;
+        }
+
+        // Table name is allowlisted above, so quoting it into the statement is
+        // safe — no caller-controlled text reaches the SQL literal.
+        const std::string sql = "DELETE FROM \"" + table + "\";";
+        char* errorMessage = nullptr;
+        const int rc = sqlite3_exec(m_db, sql.c_str(), nullptr, nullptr, &errorMessage);
+        if (rc != SQLITE_OK)
+        {
+            std::string detail = errorMessage != nullptr ? errorMessage : sqlite3_errmsg(m_db);
+            if (errorMessage != nullptr)
+            {
+                sqlite3_free(errorMessage);
+            }
+            RollbackIfNeeded(m_db);
+            return MakeError("db_exec_failed", detail);
+        }
+        cleared[table] = static_cast<std::int64_t>(sqlite3_changes(m_db));
+    }
+
+    // Reset AUTOINCREMENT counters for any cleared table that has one. Harmless
+    // if the table isn't in sqlite_sequence.
+    (void)ExecSimple("DELETE FROM sqlite_sequence "
+                     "WHERE name IN ('world_visits','player_events','friend_log',"
+                     "'sessions','log_events','friend_presence_events');");
+
+    const auto commitResult = ExecSimple("COMMIT;");
+    if (std::holds_alternative<Error>(commitResult))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(commitResult);
+    }
+
+    return cleared;
+}
+
 Result<std::monostate> Database::AddFavorite(const FavoriteInsert& f)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     const char* sql =
         "INSERT INTO local_favorites ("
-        "type, target_id, list_name, display_name, thumbnail_url, added_at, sort_order"
-        ") VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "type, target_id, list_name, display_name, thumbnail_url, added_at, sort_order, source"
+        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
         "ON CONFLICT(type, target_id, list_name) DO UPDATE SET "
         "display_name = excluded.display_name, "
         "thumbnail_url = excluded.thumbnail_url, "
         "added_at = excluded.added_at, "
-        "sort_order = excluded.sort_order;";
+        "sort_order = excluded.sort_order, "
+        "source = excluded.source;";
 
     return RunOnce(sql, [this, &f](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
@@ -2728,7 +3264,8 @@ Result<std::monostate> Database::AddFavorite(const FavoriteInsert& f)
             BindOptionalText(stmt, 4, f.display_name) != SQLITE_OK ||
             BindOptionalText(stmt, 5, f.thumbnail_url) != SQLITE_OK ||
             BindText(stmt, 6, f.added_at) != SQLITE_OK ||
-            BindInt(stmt, 7, f.sort_order) != SQLITE_OK)
+            BindInt(stmt, 7, f.sort_order) != SQLITE_OK ||
+            BindText(stmt, 8, f.source) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }
@@ -2769,6 +3306,24 @@ Result<std::monostate> Database::ClearFavoriteList(const std::string& list_name)
     return RunOnce(sql, [this, &list_name](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
         if (BindText(stmt, 1, list_name) != SQLITE_OK)
+        {
+            return MakeError("db_bind_failed");
+        }
+        return std::monostate{};
+    });
+}
+
+Result<std::monostate> Database::ClearFavoritesBySource(const std::string& source)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    const char* sql =
+        "DELETE FROM local_favorites "
+        "WHERE source = ?;";
+
+    return RunOnce(sql, [this, &source](sqlite3_stmt* stmt) -> Result<std::monostate>
+    {
+        if (BindText(stmt, 1, source) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }
@@ -2837,7 +3392,8 @@ Result<nlohmann::json> Database::FavoriteLists()
     }
 
     const char* sql =
-        "SELECT list_name, type, COUNT(*) AS item_count, MAX(added_at) AS latest_added_at "
+        "SELECT list_name, type, COUNT(*) AS item_count, MAX(added_at) AS latest_added_at, "
+        "MAX(source) AS source "
         "FROM local_favorites "
         "GROUP BY list_name, type "
         "ORDER BY latest_added_at DESC;";
@@ -2860,6 +3416,7 @@ Result<nlohmann::json> Database::FavoriteLists()
         row["type"] = ColumnTextOrNull(rawStmt, 1);
         row["item_count"] = static_cast<std::int64_t>(sqlite3_column_int64(rawStmt, 2));
         row["latest_added_at"] = ColumnTextOrNull(rawStmt, 3);
+        row["source"] = ColumnTextOrNull(rawStmt, 4);
         rows.push_back(std::move(row));
     }
 
@@ -4337,6 +4894,7 @@ CREATE TABLE IF NOT EXISTS local_favorites (
     thumbnail_url TEXT,
     added_at TEXT NOT NULL,
     sort_order INTEGER DEFAULT 0,
+    source TEXT NOT NULL DEFAULT 'local',
     PRIMARY KEY (type, target_id, list_name)
 );
 CREATE INDEX IF NOT EXISTS idx_local_favorites_list ON local_favorites(list_name, sort_order);
@@ -4859,6 +5417,59 @@ CREATE INDEX IF NOT EXISTS idx_avatar_benchmark_params
     }
 
     if (const auto r = ExecSimple("PRAGMA user_version = 17;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v18: tag favorites with their origin ──
+    // Official favorites sync now mirrors VRChat's native groups (avatars1..4,
+    // worlds1..4) as separate lists named after each group's displayName. Group
+    // displayNames can change between syncs, so we can't clear stale official
+    // lists by name alone. The `source` column lets sync wipe everything it owns
+    // ('official') without touching the user's own local lists ('local').
+    // Existing rows predate grouping and all live in the single legacy
+    // "VRChat Official Favorites" list or the local "Library" list; backfill
+    // them so the first post-upgrade sync clears the legacy list cleanly.
+    {
+        bool hasSource = false;
+        sqlite3_stmt* rawInfo = nullptr;
+        if (sqlite3_prepare_v2(m_db, "PRAGMA table_info(local_favorites);", -1, &rawInfo, nullptr) == SQLITE_OK)
+        {
+            StatementGuard infoGuard(rawInfo);
+            while (sqlite3_step(rawInfo) == SQLITE_ROW)
+            {
+                const auto* col = reinterpret_cast<const char*>(sqlite3_column_text(rawInfo, 1));
+                if (col != nullptr && std::string_view(col) == "source")
+                {
+                    hasSource = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasSource)
+        {
+            if (const auto r = ExecSimple(
+                    "ALTER TABLE local_favorites ADD COLUMN source TEXT NOT NULL DEFAULT 'local';");
+                std::holds_alternative<Error>(r))
+            {
+                RollbackIfNeeded(m_db);
+                return std::get<Error>(r);
+            }
+
+            if (const auto r = ExecSimple(
+                    "UPDATE local_favorites SET source = 'official' "
+                    "WHERE list_name = 'VRChat Official Favorites';");
+                std::holds_alternative<Error>(r))
+            {
+                RollbackIfNeeded(m_db);
+                return std::get<Error>(r);
+            }
+        }
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 18;"); std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
         return std::get<Error>(r);

@@ -30,9 +30,17 @@ export const EXPERIMENTAL_FLAGS: readonly ExperimentalFlag[] = [
     warningKey: "settings.experimental.flags.avatarVisualSearch.warning",
     defaultValue: false,
   },
+  {
+    key: "vrcsm:experimental:amplitudeHarvest",
+    nameKey: "settings.experimental.flags.amplitudeHarvest.name",
+    descriptionKey: "settings.experimental.flags.amplitudeHarvest.description",
+    warningKey: "settings.experimental.flags.amplitudeHarvest.warning",
+    defaultValue: false,
+  },
 ] as const;
 
 export const FLAG_AVATAR_VISUAL_SEARCH = EXPERIMENTAL_FLAGS[0].key;
+export const FLAG_AMPLITUDE_HARVEST = "vrcsm:experimental:amplitudeHarvest";
 
 /**
  * Hook for reading/writing an experimental flag. Thin wrapper over
