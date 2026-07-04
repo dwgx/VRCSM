@@ -2332,7 +2332,7 @@ Result<nlohmann::json> VrcApi::fetchWorldDetails(const std::string& worldId)
     const std::string cookieHeader = getLoadedCookieHeader();
     std::optional<std::string> authHeader = cookieHeader.empty() ? std::nullopt : std::make_optional(cookieHeader);
 
-    const std::wstring path = toWide(fmt::format("/api/1/worlds/{}?apiKey={}", worldId, kApiKey));
+    const std::wstring path = toWide(fmt::format("/api/1/worlds/{}?apiKey={}", percentEncode(worldId), kApiKey));
     const auto response = httpGet(kApiHostW, path, authHeader);
 
     if (auto err = checkStandardHttpError(response, "")) return *err;
@@ -2356,7 +2356,7 @@ Result<nlohmann::json> VrcApi::fetchInstance(const std::string& location)
     std::optional<std::string> authHeader = cookieHeader.empty() ? std::nullopt : std::make_optional(cookieHeader);
 
     // World + instance ride together in a single colon-joined path segment.
-    const std::wstring path = toWide(fmt::format("/api/1/instances/{}?apiKey={}", location, kApiKey));
+    const std::wstring path = toWide(fmt::format("/api/1/instances/{}?apiKey={}", percentEncode(location), kApiKey));
     const auto response = httpGet(kApiHostW, path, authHeader);
 
     if (auto err = checkStandardHttpError(response, "")) return *err;

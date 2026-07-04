@@ -929,7 +929,15 @@ Result<std::filesystem::path> VrcSettings::ExportReg(const std::filesystem::path
         wil::unique_handle processHandle(processInfo.hProcess);
         wil::unique_handle threadHandle(processInfo.hThread);
 
-        const DWORD waitStatus = WaitForSingleObject(processHandle.get(), INFINITE);
+        // Bound the wait so a wedged reg.exe can't hang the caller forever.
+        constexpr DWORD kExportTimeoutMs = 30000;
+        const DWORD waitStatus = WaitForSingleObject(processHandle.get(), kExportTimeoutMs);
+        if (waitStatus == WAIT_TIMEOUT)
+        {
+            TerminateProcess(processHandle.get(), 1);
+            WaitForSingleObject(processHandle.get(), 5000);
+            return MakeError("export_failed", "reg export timed out and was terminated");
+        }
         if (waitStatus != WAIT_OBJECT_0)
         {
             return MakeError("export_failed", MakeWin32Message("Failed while waiting for reg export", GetLastError()));

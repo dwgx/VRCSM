@@ -395,8 +395,15 @@ IpcBridge::~IpcBridge()
     }
     vrcsm::core::ProcessGuard::StopWatcher();
     {
+        // Bound the drain so a wedged worker thread can't hang shutdown forever.
+        // Under normal shutdown tasks finish promptly and this returns immediately.
         std::unique_lock<std::mutex> lk(m_asyncMutex);
-        m_asyncCv.wait(lk, [this] { return m_activeAsyncTasks == 0; });
+        constexpr auto kAsyncDrainTimeout = std::chrono::seconds(5);
+        if (!m_asyncCv.wait_for(lk, kAsyncDrainTimeout, [this] { return m_activeAsyncTasks == 0; }))
+        {
+            spdlog::warn("IpcBridge shutdown: {} async task(s) still running after {}s drain wait; proceeding",
+                         m_activeAsyncTasks, kAsyncDrainTimeout.count());
+        }
     }
 
     // Stop the log tailer before any IpcBridge member it touches is destroyed.
