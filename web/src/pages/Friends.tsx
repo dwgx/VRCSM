@@ -19,6 +19,7 @@ import { IdBadge } from "@/components/IdBadge";
 import { ThumbImage } from "@/components/ThumbImage";
 
 
+import { useQueries } from "@tanstack/react-query";
 import { ipc } from "@/lib/ipc";
 import { useAuth } from "@/lib/auth-context";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
@@ -397,6 +398,7 @@ const FriendRow = memo(function FriendRow({
   friend,
   colocatedFriends = [],
   nickname,
+  worldName,
   onOpenDetail,
   onSelect,
   selected = false,
@@ -404,6 +406,12 @@ const FriendRow = memo(function FriendRow({
   friend: Friend;
   colocatedFriends?: Friend[];
   nickname?: string;
+  /**
+   * Resolved world name for this friend's location, looked up ONCE in the
+   * parent (see Friends()'s `worldNames` batch). Previously each row fired its
+   * own `world.details` query — an N+1 that hammered the API on large lists.
+   */
+  worldName?: string;
   onOpenDetail: (friend: Friend) => void;
   onSelect: (friend: Friend) => void;
   selected?: boolean;
@@ -432,16 +440,12 @@ const FriendRow = memo(function FriendRow({
     return t(`friends.location.${loc.kind}`);
   })();
 
-  const { data: worldData } = useIpcQuery<{ id: string }, { details: WorldDetails | null }>(
-    "world.details",
-    { id: loc.worldId ?? "" },
-    { enabled: loc.kind === "world" && !!loc.worldId, staleTime: 300_000 }
-  );
-
-  // World name: use worldId truncated when there's a world location
+  // World name: use the parent-resolved name when available, else a truncated
+  // world ID. The lookup is batched/deduped in Friends() so this row issues no
+  // IPC of its own (was a per-row `world.details` query → N+1).
   const worldLabel = (() => {
     if (loc.kind !== "world" || !loc.worldId) return null;
-    if (worldData?.details?.name) return worldData.details.name;
+    if (worldName) return worldName;
     // Show a truncated world ID (wrld_xxxx...)
     const wid = loc.worldId;
     return wid.length > 20 ? wid.slice(0, 18) + "..." : wid;
@@ -1036,6 +1040,40 @@ export default function Friends() {
     return map;
   }, [notesData]);
 
+  // Batched world-name resolution. Each visible friend in a world used to fire
+  // its own `world.details` query from inside FriendRow — with many friends
+  // sharing an instance (or across many worlds) that is an N+1 that hammers the
+  // API and mounts one query observer per row. Instead we resolve the DISTINCT
+  // set of worldIds once here via useQueries (React Query still dedupes by key
+  // and caches for 5min), then hand each row its resolved name as a prop.
+  const worldIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const f of data?.friends ?? []) {
+      const loc = parseLocation(f.location);
+      if (loc.kind === "world" && loc.worldId) ids.add(loc.worldId);
+    }
+    return [...ids];
+  }, [data?.friends]);
+
+  const worldQueries = useQueries({
+    queries: worldIds.map((id) => ({
+      queryKey: ["world.details", { id }] as const,
+      queryFn: () =>
+        ipc.call<{ id: string }, { details: WorldDetails | null }>("world.details", { id }),
+      enabled: status.authed && !!id,
+      staleTime: 300_000,
+    })),
+  });
+
+  const worldNames = useMemo(() => {
+    const map = new Map<string, string>();
+    worldIds.forEach((id, i) => {
+      const name = worldQueries[i]?.data?.details?.name;
+      if (name) map.set(id, name);
+    });
+    return map;
+  }, [worldIds, worldQueries]);
+
   const openDetail = useCallback((friend: Friend) => {
     setDialogFriend(friend);
   }, []);
@@ -1088,8 +1126,9 @@ export default function Friends() {
         offline: showOffline,
       })
       .then((result) => {
-        setData(result);
-        writeFriendsCache(result);
+        const stamped = { ...result, __touchedAt: Date.now() };
+        setData(stamped);
+        writeFriendsCache(stamped);
       })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e);
@@ -1145,10 +1184,11 @@ export default function Friends() {
           .then((result) => {
             if (!cancelled) {
               setData((prev) => {
-                // If pipeline events have been merged since this poll
-                // was issued, the poll result is stale — keep prev.
-                if ((prev as any).__polledAt && (prev as any).__polledAt > started) return prev;
-                return Object.assign(result, { __polledAt: Date.now() });
+                // If the list was touched (a poll refresh OR an in-place
+                // Pipeline merge) after this poll was issued, this response
+                // is stale — keep prev so it can't clobber a newer merge.
+                if (prev?.__touchedAt && prev.__touchedAt > started) return prev;
+                return { ...result, __touchedAt: Date.now() };
               });
             }
           })
@@ -1492,12 +1532,14 @@ export default function Friends() {
                           const colocated = locationGroups[f.location || ""]?.filter(
                             (x) => x.id !== f.id
                           );
+                          const wid = parseLocation(f.location).worldId;
                           return (
                             <FriendRow
                               key={f.id}
                               friend={f}
                               colocatedFriends={colocated}
                               nickname={nicknames.get(f.id)}
+                              worldName={wid ? worldNames.get(wid) : undefined}
                               onOpenDetail={openDetail}
                               onSelect={selectFriend}
                               selected={selectedFriend?.id === f.id}

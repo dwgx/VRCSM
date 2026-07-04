@@ -14,6 +14,9 @@ import type {
   IpcEnvelopeRequest,
   IpcEnvelopeResponse,
   MarketFeedDto,
+  DbStatsOverview,
+  DbStatsHeatmapMatrix,
+  DbHistoryClearResult,
   MigratePlan,
   PluginInstallResult,
   ProcessStatus,
@@ -330,6 +333,8 @@ type Pending = {
   resolve: (value: unknown) => void;
   reject: (reason: unknown) => void;
   timerId: number | null;
+  /** Method name — used to look up an opt-in result-shape validator. */
+  method: string;
 };
 
 // Default 60-second ceiling for any IPC call. If the host handler hangs
@@ -390,6 +395,91 @@ export class IpcError extends Error {
   get isAuthExpired(): boolean {
     return this.code === "auth_expired" || this.httpStatus === 401;
   }
+}
+
+/**
+ * Opt-in result-shape validation.
+ *
+ * The IPC response path resolves `resp.result` by casting `unknown` to the
+ * caller's `TResult` — a compile-time-only guarantee. If the C++ host ever
+ * drifts from the shape the frontend expects (renamed field, wrong nesting,
+ * error object returned as a success), the cast silently succeeds and the bad
+ * value propagates deep into React state before failing far from the source.
+ *
+ * A validator returns `true` when the payload has the expected shape. It is
+ * OPT-IN and INCREMENTAL: only methods registered here are checked; every
+ * other method keeps its current cast-only behaviour, so this is fully
+ * backward compatible. Register only hot/critical methods whose drift would be
+ * expensive to debug.
+ *
+ * On drift the caller's Promise rejects with a structured
+ * `IpcError("shape_mismatch", ...)` naming the method, so the failure surfaces
+ * at the IPC boundary instead of somewhere downstream.
+ */
+export type IpcResultValidator = (result: unknown) => boolean;
+
+const resultValidators = new Map<string, IpcResultValidator>();
+
+/**
+ * Register (or, with `null`, clear) a result-shape validator for one method.
+ * Idempotent; a second registration replaces the first.
+ */
+export function registerResultValidator(
+  method: string,
+  validator: IpcResultValidator | null,
+): void {
+  if (validator) {
+    resultValidators.set(method, validator);
+  } else {
+    resultValidators.delete(method);
+  }
+}
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+// Built-in validators for the hot/critical methods. Kept intentionally
+// lightweight — presence + primitive type of the load-bearing fields, not a
+// full schema — so they catch real drift (missing/renamed key, wrong nesting)
+// without rejecting benign additive changes the host may make.
+registerResultValidator("auth.status", (r) => isObject(r) && typeof r.authed === "boolean");
+registerResultValidator(
+  "auth.user",
+  (r) => isObject(r) && typeof r.authed === "boolean" && "user" in r,
+);
+registerResultValidator(
+  "friends.list",
+  (r) => isObject(r) && Array.isArray((r as { friends?: unknown }).friends),
+);
+registerResultValidator(
+  "scan",
+  (r) => isObject(r) && typeof r.base_dir === "string" && Array.isArray(r.category_summaries),
+);
+registerResultValidator(
+  // Guards the real Database::StatsOverview shape — `total_world_visits`, not
+  // the shorter `total_visits` an earlier draft checked (which would have
+  // rejected every real host response).
+  "db.stats.overview",
+  (r) => isObject(r) && typeof r.total_world_visits === "number",
+);
+
+/**
+ * Run the registered validator (if any) for `method` against `result`.
+ * Returns a structured `IpcError` on drift, or `null` when there is no
+ * validator or the shape is valid. Pure — the response path uses it to decide
+ * whether to resolve or reject.
+ */
+export function checkResultShape(method: string, result: unknown): IpcError | null {
+  const validator = resultValidators.get(method);
+  if (validator && !validator(result)) {
+    return new IpcError(
+      "shape_mismatch",
+      `IPC '${method}' returned an unexpected result shape`,
+      0,
+    );
+  }
+  return null;
 }
 
 function uuid(): string {
@@ -541,7 +631,16 @@ class IpcClient {
 
         slot.reject(err);
       } else {
-        slot.resolve(resp.result);
+        // Opt-in result-shape validation: only registered (hot/critical)
+        // methods are checked. On drift the Promise rejects with a
+        // structured shape_mismatch instead of leaking a bad value into
+        // React state. Unregistered methods keep the cast-only path.
+        const shapeErr = checkResultShape(slot.method, resp.result);
+        if (shapeErr) {
+          slot.reject(shapeErr);
+        } else {
+          slot.resolve(resp.result);
+        }
       }
     }
   }
@@ -581,6 +680,7 @@ class IpcClient {
         resolve: (v) => resolve(v as TResult),
         reject,
         timerId,
+        method,
       });
     });
     this.bridge.postMessage(JSON.stringify(envelope));
@@ -2071,14 +2171,14 @@ class IpcClient {
       }
 
       // ── db.stats.overview (dashboard headline counters) ────────────────
+      // Field names must mirror Database::StatsOverview's SQL aliases exactly;
+      // a prior mock used a divergent `total_visits` shape the host never emits.
       case "db.stats.overview":
         return {
-          total_visits: 0,
-          unique_worlds: 0,
-          unique_users: 0,
-          total_seconds: 0,
-          first_seen_at: null,
-          last_seen_at: null,
+          total_world_visits: 0,
+          total_players_encountered: 0,
+          total_avatars_seen: 0,
+          total_hours_in_world: 0,
         } as unknown as TResult;
 
       // ── data.usage (unified data-management panel, read-only) ──────────
@@ -2844,6 +2944,11 @@ class IpcClient {
   }
 
   // ── Database / History ──────────────────────────────────────────────
+  // The list methods below intentionally keep `{ items: any[] }`: each caller
+  // (history-api.ts, WorldHistory, AvatarBenchmark, SocialGraph, ...) casts the
+  // rows to its own local row type at the use site, so a typed row here would
+  // buy nothing and force edits across out-of-scope pages. Row shapes are
+  // instead pinned in web/src/lib/types.ts (DbWorldVisit, DbPlayerEvent, ...).
 
   async dbWorldVisits(limit = 250, offset = 0) {
     return this.call<{ limit: number; offset: number }, { items: any[] }>(
@@ -2930,15 +3035,16 @@ class IpcClient {
   }
 
   async dbStatsHeatmap(days = 30) {
-    return this.call<{ days: number }, any>("db.stats.heatmap", { days });
+    // Raw 7×24 count matrix; consumers coerce via activity-heatmap helpers.
+    return this.call<{ days: number }, DbStatsHeatmapMatrix>("db.stats.heatmap", { days });
   }
 
   async dbStatsOverview() {
-    return this.call<undefined, any>("db.stats.overview");
+    return this.call<undefined, DbStatsOverview>("db.stats.overview");
   }
 
   async dbHistoryClear(includeFriendNotes = false) {
-    return this.call<{ include_friend_notes: boolean }, any>(
+    return this.call<{ include_friend_notes: boolean }, DbHistoryClearResult>(
       "db.history.clear",
       { include_friend_notes: includeFriendNotes },
     );

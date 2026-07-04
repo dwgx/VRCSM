@@ -55,7 +55,7 @@ export function applyFriendPipelineEvent(
             typeof c.location === "string" ? c.location : f.location,
         } as Partial<Friend>);
       });
-      return { ...current, friends };
+      return { ...current, friends, __touchedAt: Date.now() };
     }
 
     case "friend-location": {
@@ -68,7 +68,7 @@ export function applyFriendPipelineEvent(
           last_activity: new Date().toISOString(),
         } as Partial<Friend>);
       });
-      return { ...current, friends };
+      return { ...current, friends, __touchedAt: Date.now() };
     }
 
     case "friend-offline": {
@@ -81,7 +81,7 @@ export function applyFriendPipelineEvent(
           last_activity: new Date().toISOString(),
         } as Partial<Friend>);
       });
-      return { ...current, friends };
+      return { ...current, friends, __touchedAt: Date.now() };
     }
 
     case "friend-add": {
@@ -90,13 +90,13 @@ export function applyFriendPipelineEvent(
       // De-dup on id so re-adds (or stale-cache races) don't double up.
       const friends = current.friends.filter((f) => f.id !== userPatch.id);
       friends.unshift(userPatch as Friend);
-      return { ...current, friends };
+      return { ...current, friends, __touchedAt: Date.now() };
     }
 
     case "friend-delete": {
       const friends = current.friends.filter((f) => f.id !== userId);
       if (friends.length === current.friends.length) return null;
-      return { ...current, friends };
+      return { ...current, friends, __touchedAt: Date.now() };
     }
 
     default:

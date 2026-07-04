@@ -703,6 +703,15 @@ export interface Friend {
 
 export interface FriendsListResult {
   friends: Friend[];
+  /**
+   * Client-only monotonic marker (`Date.now()`) stamped whenever the list is
+   * mutated locally — by a full poll/refresh or by an in-place Pipeline merge.
+   * The background live-poll compares it against the timestamp it captured
+   * when the poll was issued so a poll response that resolves *after* a newer
+   * Pipeline event was already merged is discarded instead of clobbering it.
+   * Never sent by the host.
+   */
+  __touchedAt?: number;
 }
 
 export interface WorkspaceGroup {
@@ -916,6 +925,26 @@ export interface FriendLogEvent {
 
 export interface PagedItems<T> {
   items: T[];
+}
+
+// Headline counters from `db.stats.overview` (Database::StatsOverview).
+// Field names mirror the C++ SQL aliases exactly — the host emits
+// `total_world_visits` etc., NOT the shorter `total_visits` a mock once used.
+export interface DbStatsOverview {
+  total_world_visits: number;
+  total_players_encountered: number;
+  total_avatars_seen: number;
+  total_hours_in_world: number;
+}
+
+// 7×24 world-visit count matrix from `db.stats.heatmap`
+// (Database::ActivityHeatmap): row = day-of-week (Sun..Sat), col = hour 0..23.
+export type DbStatsHeatmapMatrix = number[][];
+
+// Per-table row counts deleted by `db.history.clear` (Database::ClearHistory).
+// Keys are table names (player_events, world_visits, ...); absent tables omitted.
+export interface DbHistoryClearResult {
+  [table: string]: number;
 }
 
 export interface DbPlayerEventsFilter {
