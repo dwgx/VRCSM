@@ -4,10 +4,6 @@
 
 #include <fmt/format.h>
 
-#include <Windows.h>
-#include <KnownFolders.h>
-#include <ShlObj.h>
-
 #include <array>
 #include <algorithm>
 #include <cctype>
@@ -55,17 +51,64 @@ Result<nlohmann::json> Database::InsertRule(const RuleInsert& r)
 
 Result<nlohmann::json> Database::UpdateRule(int64_t id, const nlohmann::json& patch)
 {
-    std::lock_guard lock(m_mutex);
-    std::string sets;
-    if (patch.contains("name")) sets += "name = '" + patch["name"].get<std::string>() + "', ";
-    if (patch.contains("description")) sets += "description = '" + patch["description"].get<std::string>() + "', ";
-    if (patch.contains("dsl_yaml")) sets += "dsl_yaml = '" + patch["dsl_yaml"].get<std::string>() + "', ";
-    if (patch.contains("cooldown_seconds")) sets += "cooldown_seconds = " + std::to_string(patch["cooldown_seconds"].get<int>()) + ", ";
-    sets += "updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+    {
+        std::lock_guard lock(m_mutex);
 
-    std::string sql = "UPDATE rules SET " + sets + " WHERE id = " + std::to_string(id) + ";";
-    const auto r = ExecSimple(sql.c_str());
-    if (std::holds_alternative<Error>(r)) return std::get<Error>(r);
+        // Collect the settable columns in a fixed order so the bind indices
+        // line up with the placeholders we emit into the SET clause.
+        std::vector<std::string> sets;
+        std::vector<std::string> textValues;
+        bool hasCooldown = false;
+        int cooldownValue = 0;
+
+        if (patch.contains("name"))
+        {
+            sets.push_back("name = ?");
+            textValues.push_back(patch["name"].get<std::string>());
+        }
+        if (patch.contains("description"))
+        {
+            sets.push_back("description = ?");
+            textValues.push_back(patch["description"].get<std::string>());
+        }
+        if (patch.contains("dsl_yaml"))
+        {
+            sets.push_back("dsl_yaml = ?");
+            textValues.push_back(patch["dsl_yaml"].get<std::string>());
+        }
+        if (patch.contains("cooldown_seconds"))
+        {
+            sets.push_back("cooldown_seconds = ?");
+            hasCooldown = true;
+            cooldownValue = patch["cooldown_seconds"].get<int>();
+        }
+
+        std::string setClause;
+        for (const auto& s : sets) setClause += s + ", ";
+        setClause += "updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+
+        const std::string sql = "UPDATE rules SET " + setClause + " WHERE id = ?;";
+        sqlite3_stmt* stmt = nullptr;
+        int rc = sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK) return MakeError("db_prepare", sqlite3_errmsg(m_db));
+
+        int bindIdx = 1;
+        for (const auto& v : textValues)
+        {
+            sqlite3_bind_text(stmt, bindIdx++, v.c_str(), -1, SQLITE_TRANSIENT);
+        }
+        if (hasCooldown)
+        {
+            sqlite3_bind_int(stmt, bindIdx++, cooldownValue);
+        }
+        sqlite3_bind_int64(stmt, bindIdx++, id);
+
+        rc = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+        if (rc != SQLITE_DONE) return MakeError("db_update", sqlite3_errmsg(m_db));
+    }
+    // Lock released above: GetRule acquires m_mutex itself, so calling it while
+    // still holding the lock would deadlock (m_mutex is non-recursive).
     return GetRule(id);
 }
 

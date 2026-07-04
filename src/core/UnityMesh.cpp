@@ -514,6 +514,11 @@ Result<UnityMesh> parseUnityMesh(
             (void)r.u32();   // m_CurrentChannels
         }
         vertexCount = r.u32();
+        if (vertexCount > 0x4000000)
+        {
+            return Error{"mesh_vertex_insane",
+                         fmt::format("vertex count {} > 67108864", vertexCount)};
+        }
 
         const std::uint32_t chanCount = r.u32();
         if (chanCount > 64)
@@ -598,7 +603,7 @@ Result<UnityMesh> parseUnityMesh(
                                      mesh.name, streamPath)};
         }
         auto [p, n] = resolver(streamPath);
-        if (p == nullptr || streamOffset + streamSize > n)
+        if (p == nullptr || streamOffset > n || streamSize > n - streamOffset)
         {
             return Error{"mesh_streamed_unresolved",
                          fmt::format("Mesh '{}' streamed data '{}' (+{}..{}) not found",
@@ -642,7 +647,7 @@ Result<UnityMesh> parseUnityMesh(
     for (std::size_t ci = 0; ci < channels.size(); ++ci)
     {
         const auto& c = channels[ci];
-        if (c.dimension == 0) continue;
+        if (c.dimension == 0 || c.stream >= streamStride.size()) continue;
         const auto sem = static_cast<ChannelSemantic>(ci);
         std::vector<float>* target = nullptr;
         std::uint8_t wanted = 0;

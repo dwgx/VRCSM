@@ -4,9 +4,7 @@
 
 #include <fmt/format.h>
 
-#include <Windows.h>
-#include <KnownFolders.h>
-#include <ShlObj.h>
+#include <Windows.h>   // GetTimeZoneInformation / TIME_ZONE_INFORMATION (local offset)
 
 #include <array>
 #include <algorithm>

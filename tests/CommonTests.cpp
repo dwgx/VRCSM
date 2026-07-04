@@ -2559,3 +2559,295 @@ TEST(CommonTests, LogAtomsClassifyUdonVmException)
 }
 
 
+// ── SafeDelete unlinks a nested junction without recursing (Audit #12) ────
+// A junction planted inside a deletable Cache-WindowsPlayer entry must be
+// unlinked (its link entry dropped) rather than followed — otherwise the
+// walk would delete data living outside the cache root. Exercises the
+// reparse branch in removeTreeNoFollow (SafeDelete.cpp:116-122).
+TEST(CommonTests, SafeDeleteUnlinksNestedJunctionWithoutRecursing)
+{
+    if (vrcsm::core::ProcessGuard::IsVRChatRunning().running)
+    {
+        GTEST_SKIP() << "VRChat is running; ExecutePlan short-circuits before the walk";
+    }
+
+    const auto dir = MakeTempTestDir(L"vrcsm-delete-junction");
+    const auto cwp = dir / L"Cache-WindowsPlayer";
+    const auto entry = cwp / L"deadbeefdeadbeef";   // a normal deletable cache entry
+    std::filesystem::create_directories(entry);
+    WriteBytes(entry / L"__data", "payload");
+
+    // Data that lives OUTSIDE the cache root and must survive the delete.
+    const auto outside = dir / L"outside-precious";
+    std::filesystem::create_directories(outside);
+    WriteBytes(outside / L"keep.txt", "must-not-be-deleted");
+
+    // Plant a junction inside the deletable entry pointing at the outside dir.
+    const auto link = entry / L"link-to-outside";
+    const auto created = vrcsm::core::JunctionUtil::createJunction(link, outside);
+    if (!vrcsm::core::isOk(created))
+    {
+        std::error_code cleanupEc;
+        std::filesystem::remove_all(dir, cleanupEc);
+        GTEST_SKIP() << "Junction creation unsupported here: "
+                     << vrcsm::core::error(created).message;
+    }
+    ASSERT_TRUE(vrcsm::core::JunctionUtil::isReparsePoint(link));
+
+    vrcsm::core::DeletePlan plan;
+    plan.targets.push_back(vrcsm::core::toUtf8(entry.wstring()));
+    const auto result = vrcsm::core::SafeDelete::ExecutePlan(dir, plan);
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+
+    // The entry (and its junction link entry) are gone …
+    EXPECT_FALSE(std::filesystem::exists(entry));
+    // … but the data the junction pointed at was never followed/deleted.
+    EXPECT_TRUE(std::filesystem::exists(outside / L"keep.txt"));
+
+    vrcsm::core::Database::Instance().Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+
+// ── ClearHistory / ClearTables allowlist behavior (Audit #13) ─────────────
+// ClearHistory wipes only the history tables it owns and leaves rebuildable
+// caches (avatar_benchmark) untouched. ClearTables clears exactly the
+// allowlisted names it is handed, and an unknown table name is a HARD error
+// (Database_Analytics.cpp:530-534) rather than a silent skip.
+TEST(CommonTests, ClearHistoryAndClearTablesRespectAllowlist)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-clear-history");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+
+    // Seed a history row (avatar_history) and a rebuildable-cache row
+    // (avatar_benchmark) that ClearHistory must NOT touch.
+    vrcsm::core::Database::AvatarSeenInsert seen;
+    seen.avatar_id = "avtr_clear-history-0000-0000-000000000000";
+    seen.avatar_name = "Seen Avatar";
+    seen.first_seen_at = "2026-05-01T12:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordAvatarSeen(seen)));
+
+    vrcsm::core::Database::AvatarBenchmarkInsert bench;
+    bench.avatar_id = "avtr_bench-0000-0000-0000-000000000000";
+    bench.parameter_count = 128;
+    bench.seen_at = "2026-05-01T12:00:00Z";
+    ASSERT_TRUE(vrcsm::core::isOk(db.RecordAvatarBenchmark(bench)));
+
+    // ClearHistory clears avatar_history but preserves the benchmark cache.
+    ASSERT_TRUE(vrcsm::core::isOk(db.ClearHistory()));
+
+    // Unknown table name must hard-error, never silently skip.
+    {
+        auto bad = db.ClearTables({"avatar_benchmark", "not_a_real_table"});
+        ASSERT_FALSE(vrcsm::core::isOk(bad));
+        EXPECT_EQ(vrcsm::core::error(bad).code, "db_invalid_argument");
+    }
+
+    // Because the whole request is validated before any DELETE, the failed
+    // call above must NOT have cleared avatar_benchmark. Clear it explicitly.
+    ASSERT_TRUE(vrcsm::core::isOk(db.ClearTables({"avatar_benchmark"})));
+
+    db.Close();
+
+    sqlite3* rawDb = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(
+        vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+        &rawDb, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+    {
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        // History cleared by ClearHistory.
+        EXPECT_EQ(QueryInt64(rawDb, "SELECT COUNT(*) FROM avatar_history;"), 0);
+        // Benchmark survived ClearHistory AND the failed ClearTables call, and
+        // was only removed by the final explicit (valid) ClearTables call.
+        EXPECT_EQ(QueryInt64(rawDb, "SELECT COUNT(*) FROM avatar_benchmark;"), 0);
+    }
+
+    std::error_code clearEc;
+    std::filesystem::remove_all(dir, clearEc);
+}
+
+
+// ── v18 source backfill touches only legacy rows, idempotently (Audit #14) ─
+// A pre-v18 local_favorites table lacks the `source` column. On re-open the
+// v18 migration (Database.cpp:826-861) adds the column (default 'local') and
+// backfills source='official' for exactly the legacy "VRChat Official
+// Favorites" list, leaving the user's own lists as 'local'. A second re-open
+// must be a no-op (the column-probe short-circuits the whole block).
+TEST(CommonTests, DatabaseV18SourceBackfillTouchesOnlyLegacyOfficialRows)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-v18-backfill");
+    const auto dbPath = dir / L"vrcsm.db";
+
+    // Hand-build a pre-v18 database: local_favorites WITHOUT the source column,
+    // one legacy official row + one local row, user_version pinned below 18.
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+
+        ExecSql(rawDb,
+            "CREATE TABLE local_favorites ("
+            "  type TEXT NOT NULL, target_id TEXT NOT NULL, list_name TEXT NOT NULL,"
+            "  display_name TEXT, thumbnail_url TEXT, added_at TEXT NOT NULL,"
+            "  sort_order INTEGER DEFAULT 0,"
+            "  PRIMARY KEY (type, target_id, list_name));");
+        ExecSql(rawDb,
+            "INSERT INTO local_favorites (type, target_id, list_name, added_at) VALUES "
+            "('avatar', 'avtr_legacy-0000-0000-0000-000000000000',"
+            "  'VRChat Official Favorites', '2026-01-01T00:00:00Z'),"
+            "('avatar', 'avtr_mine-0000-0000-0000-000000000000',"
+            "  'My Library', '2026-01-01T00:00:00Z');");
+        ExecSql(rawDb, "PRAGMA user_version = 17;");
+    }
+
+    auto& db = vrcsm::core::Database::Instance();
+
+    // First re-open runs the v18 backfill.
+    db.Close();
+    {
+        auto opened = db.Open(dbPath);
+        ASSERT_TRUE(vrcsm::core::isOk(opened)) << vrcsm::core::error(opened).message;
+    }
+    db.Close();
+
+    const auto officialCountSql =
+        "SELECT COUNT(*) FROM local_favorites WHERE source = 'official';";
+    const auto legacySourceSql =
+        "SELECT source FROM local_favorites "
+        "WHERE list_name = 'VRChat Official Favorites';";
+    const auto mineSourceSql =
+        "SELECT source FROM local_favorites WHERE list_name = 'My Library';";
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        EXPECT_GE(QueryInt64(rawDb, "PRAGMA user_version;"), 18);
+        // Only the legacy official list was backfilled.
+        EXPECT_EQ(QueryInt64(rawDb, officialCountSql), 1);
+        EXPECT_EQ(QueryText(rawDb, legacySourceSql), "official");
+        EXPECT_EQ(QueryText(rawDb, mineSourceSql), "local");
+    }
+
+    // Second re-open must be idempotent: the column already exists so the whole
+    // backfill block is skipped and counts are unchanged.
+    {
+        auto opened = db.Open(dbPath);
+        ASSERT_TRUE(vrcsm::core::isOk(opened)) << vrcsm::core::error(opened).message;
+    }
+    db.Close();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        EXPECT_EQ(QueryInt64(rawDb, officialCountSql), 1);
+        EXPECT_EQ(QueryText(rawDb, legacySourceSql), "official");
+        EXPECT_EQ(QueryText(rawDb, mineSourceSql), "local");
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+
+// ── Post-split TU round-trips: Recordings / Rules / Embeddings (Audit #16) ─
+// Smoke the bindings that moved when Database was split into per-domain TUs.
+// The Rules leg doubles as the A4 regression: UpdateRule must bind values via
+// sqlite3_bind_text, so a name containing a single quote round-trips verbatim
+// instead of breaking (or injecting into) the SQL.
+TEST(CommonTests, PostSplitTranslationUnitsRoundTrip)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-tu-roundtrip");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+
+    // ── Recordings TU ──
+    {
+        vrcsm::core::Database::EventRecordingInsert rec;
+        rec.name = "Weekly Meetup";
+        rec.world_id = "wrld_meetup-0000-0000-0000-000000000000";
+        auto started = db.StartRecording(rec);
+        ASSERT_TRUE(vrcsm::core::isOk(started)) << vrcsm::core::error(started).message;
+        const auto recId = vrcsm::core::value(started).at("id").get<std::int64_t>();
+
+        ASSERT_TRUE(vrcsm::core::isOk(
+            db.AddAttendee(recId, "usr_attendee-0000", "Attendee One")));
+        ASSERT_TRUE(vrcsm::core::isOk(db.StopRecording(recId)));
+
+        auto listed = db.ListRecordings(10);
+        ASSERT_TRUE(vrcsm::core::isOk(listed)) << vrcsm::core::error(listed).message;
+        const auto& recordings = vrcsm::core::value(listed).at("recordings");
+        ASSERT_EQ(recordings.size(), 1u);
+        EXPECT_EQ(recordings[0].at("name").get<std::string>(), "Weekly Meetup");
+
+        auto attendees = db.RecordingAttendees(recId);
+        ASSERT_TRUE(vrcsm::core::isOk(attendees)) << vrcsm::core::error(attendees).message;
+        EXPECT_EQ(vrcsm::core::value(attendees).at("attendees").size(), 1u);
+    }
+
+    // ── Rules TU (+ A4 injection regression) ──
+    {
+        vrcsm::core::Database::RuleInsert rule;
+        rule.name = "Original Rule";
+        rule.dsl_yaml = "when: join\nthen: noop";
+        rule.cooldown_seconds = 5;
+        auto inserted = db.InsertRule(rule);
+        ASSERT_TRUE(vrcsm::core::isOk(inserted)) << vrcsm::core::error(inserted).message;
+        const auto ruleId = vrcsm::core::value(inserted).at("id").get<std::int64_t>();
+
+        // A single quote in the new name must survive verbatim through the
+        // parameterized UpdateRule (pre-fix this broke/injected the SQL).
+        const std::string trickyName = "Ksana's rule -- ' OR '1'='1";
+        auto updated = db.UpdateRule(ruleId, nlohmann::json{
+            {"name", trickyName},
+            {"description", "desc with ' quote"},
+        });
+        ASSERT_TRUE(vrcsm::core::isOk(updated)) << vrcsm::core::error(updated).message;
+        EXPECT_EQ(vrcsm::core::value(updated).at("name").get<std::string>(), trickyName);
+
+        auto fetched = db.GetRule(ruleId);
+        ASSERT_TRUE(vrcsm::core::isOk(fetched)) << vrcsm::core::error(fetched).message;
+        EXPECT_EQ(vrcsm::core::value(fetched).at("name").get<std::string>(), trickyName);
+        EXPECT_EQ(vrcsm::core::value(fetched).at("description").get<std::string>(),
+                  "desc with ' quote");
+        // Other rows untouched by the injection-shaped payload.
+        auto all = db.ListRules();
+        ASSERT_TRUE(vrcsm::core::isOk(all)) << vrcsm::core::error(all).message;
+        EXPECT_EQ(vrcsm::core::value(all).at("rules").size(), 1u);
+    }
+
+    // ── Embeddings TU ──
+    {
+        vrcsm::core::Database::AvatarEmbeddingInsert emb;
+        emb.avatar_id = "avtr_embed-0000-0000-0000-000000000000";
+        emb.model_version = "clip-vit-b32-test";
+        emb.embedding.assign(512, 0.0f);
+        emb.embedding[0] = 1.0f;
+        ASSERT_TRUE(vrcsm::core::isOk(db.UpsertAvatarEmbedding(emb)))
+            << "embedding upsert failed";
+
+        auto matches = db.SearchAvatarEmbeddings(emb.embedding, 1);
+        ASSERT_TRUE(vrcsm::core::isOk(matches)) << vrcsm::core::error(matches).message;
+        ASSERT_EQ(vrcsm::core::value(matches).size(), 1u);
+        EXPECT_EQ(vrcsm::core::value(matches)[0].avatar_id, emb.avatar_id);
+
+        ASSERT_TRUE(vrcsm::core::isOk(db.DeleteAvatarEmbedding(emb.avatar_id)));
+    }
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+

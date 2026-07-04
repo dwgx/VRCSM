@@ -9,10 +9,6 @@
 
 #include <fmt/format.h>
 
-#include <Windows.h>
-#include <KnownFolders.h>
-#include <ShlObj.h>
-
 #include <array>
 #include <algorithm>
 #include <cctype>
