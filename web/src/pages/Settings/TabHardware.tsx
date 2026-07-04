@@ -11,35 +11,40 @@ import {
   CheckCircle2, AlertTriangle, MonitorSmartphone,
 } from "lucide-react";
 
+// Field names are snake_case to match the payload emitted verbatim by the
+// C++ host (HwBridge.cpp HwReportToJson / RecommendationToJson). The IPC path
+// does not transform keys, so the TS shape must mirror the wire format exactly.
 interface HwReport {
-  cpuName?: string;
-  cpuCores?: number;
-  cpuThreads?: number;
-  cpuClockMhz?: number;
-  gpuName?: string;
-  gpuVramBytes?: number;
-  gpuDriver?: string;
-  ramBytes?: number;
-  hmdModel?: string;
-  hmdManufacturer?: string;
-  osBuild?: string;
+  cpu_name?: string;
+  cpu_cores?: number;
+  cpu_threads?: number;
+  cpu_clock_mhz?: number;
+  gpu_name?: string;
+  gpu_vram_bytes?: number;
+  gpu_driver?: string;
+  ram_bytes?: number;
+  hmd_model?: string;
+  hmd_manufacturer?: string;
+  os_build?: string;
 }
 
 interface HwRecommendation {
   tier: string;
   score: number;
-  cpuScore: number;
-  gpuScore: number;
-  gpuVramMultiplier: number;
-  ramBonus: number;
-  hmdProfileName?: string;
-  targetBandwidth: number;
-  supersampleScale: number;
-  preferredRefreshRate: number;
-  motionSmoothing: boolean;
-  allowFiltering: boolean;
-  ffrLevel: number;
+  cpu_score: number;
+  gpu_score: number;
+  gpu_vram_multiplier: number;
+  ram_bonus: number;
+  hmd_profile_name?: string;
+  target_bandwidth: number;
+  supersample_scale: number;
+  preferred_refresh_rate: number;
+  motion_smoothing: boolean;
+  allow_filtering: boolean;
+  ffr_level: number;
   rationale?: string;
+  // Not emitted by the host today; pre-existing always-undefined reads kept
+  // for forward-compat with a possible community-preset source.
   fromCommunity?: boolean;
   communityAuthor?: string;
 }
@@ -156,18 +161,18 @@ export default function TabHardware() {
         <>
           {/* Hardware overview */}
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard icon={<Cpu className="size-4 text-blue-400" />} label={t("settings.hardware.cpu", { defaultValue: "CPU" })} value={report.cpuName ?? "—"}>
+            <StatCard icon={<Cpu className="size-4 text-blue-400" />} label={t("settings.hardware.cpu", { defaultValue: "CPU" })} value={report.cpu_name ?? "—"}>
               <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
-                {report.cpuCores}C/{report.cpuThreads}T · {formatMhz(report.cpuClockMhz)}
+                {report.cpu_cores ?? "—"}C/{report.cpu_threads ?? "—"}T · {formatMhz(report.cpu_clock_mhz)}
               </span>
             </StatCard>
-            <StatCard icon={<Monitor className="size-4 text-emerald-400" />} label={t("settings.hardware.gpu", { defaultValue: "GPU" })} value={report.gpuName ?? "—"}>
+            <StatCard icon={<Monitor className="size-4 text-emerald-400" />} label={t("settings.hardware.gpu", { defaultValue: "GPU" })} value={report.gpu_name ?? "—"}>
               <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
-                {formatVram(report.gpuVramBytes)} VRAM
+                {formatVram(report.gpu_vram_bytes)} VRAM
               </span>
             </StatCard>
-            <StatCard icon={<HardDrive className="size-4 text-amber-400" />} label={t("settings.hardware.ram", { defaultValue: "RAM" })} value={formatRam(report.ramBytes)} />
-            <StatCard icon={<MonitorSmartphone className="size-4 text-purple-400" />} label={t("settings.hardware.hmd", { defaultValue: "HMD" })} value={report.hmdModel || report.hmdManufacturer || "—"} />
+            <StatCard icon={<HardDrive className="size-4 text-amber-400" />} label={t("settings.hardware.ram", { defaultValue: "RAM" })} value={formatRam(report.ram_bytes)} />
+            <StatCard icon={<MonitorSmartphone className="size-4 text-purple-400" />} label={t("settings.hardware.hmd", { defaultValue: "HMD" })} value={report.hmd_model || report.hmd_manufacturer || "—"} />
           </div>
 
           {/* Recommendation card */}
@@ -189,12 +194,12 @@ export default function TabHardware() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2 sm:grid-cols-3 mb-3">
-                  <MiniStat label={t("settings.hardware.bandwidth", { defaultValue: "Bandwidth" })} value={`${rec.targetBandwidth} Mbps`} />
-                  <MiniStat label={t("settings.hardware.supersampling", { defaultValue: "Supersampling" })} value={`${rec.supersampleScale.toFixed(2)}x`} />
-                  <MiniStat label={t("settings.hardware.refreshRate", { defaultValue: "Refresh Rate" })} value={`${rec.preferredRefreshRate} Hz`} />
-                  <MiniStat label={t("settings.hardware.motionSmoothing", { defaultValue: "Motion Smoothing" })} value={rec.motionSmoothing ? "On" : "Off"} />
-                  <MiniStat label={t("settings.hardware.ffr", { defaultValue: "FFR Level" })} value={`FFR ${rec.ffrLevel}`} />
-                  <MiniStat label={t("settings.hardware.score", { defaultValue: "HW Score" })} value={`${rec.score}/200`} />
+                  <MiniStat label={t("settings.hardware.bandwidth", { defaultValue: "Bandwidth" })} value={`${rec.target_bandwidth ?? "—"} Mbps`} />
+                  <MiniStat label={t("settings.hardware.supersampling", { defaultValue: "Supersampling" })} value={`${(rec.supersample_scale ?? 0).toFixed(2)}x`} />
+                  <MiniStat label={t("settings.hardware.refreshRate", { defaultValue: "Refresh Rate" })} value={`${rec.preferred_refresh_rate ?? "—"} Hz`} />
+                  <MiniStat label={t("settings.hardware.motionSmoothing", { defaultValue: "Motion Smoothing" })} value={rec.motion_smoothing ? "On" : "Off"} />
+                  <MiniStat label={t("settings.hardware.ffr", { defaultValue: "FFR Level" })} value={`FFR ${rec.ffr_level ?? "—"}`} />
+                  <MiniStat label={t("settings.hardware.score", { defaultValue: "HW Score" })} value={`${rec.score ?? "—"}/200`} />
                 </div>
                 {rec.rationale ? (
                   <p className="text-[11px] text-[hsl(var(--muted-foreground))] leading-relaxed mb-3">{rec.rationale}</p>
@@ -217,13 +222,13 @@ export default function TabHardware() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-1.5">
-                  <ScoreBar label={t("settings.hardware.cpuScore", { defaultValue: "CPU" })} score={rec.cpuScore} max={100} color="bg-blue-400" />
-                  <ScoreBar label={t("settings.hardware.gpuScore", { defaultValue: "GPU" })} score={rec.gpuScore} max={100} color="bg-emerald-400" />
-                  <ScoreBar label={t("settings.hardware.vramBonus", { defaultValue: "VRAM" })} score={Math.round((rec.gpuVramMultiplier - 1) * 100)} max={15} color="bg-purple-400" />
-                  <ScoreBar label={t("settings.hardware.ramBonus", { defaultValue: "RAM" })} score={rec.ramBonus} max={10} color="bg-amber-400" />
+                  <ScoreBar label={t("settings.hardware.cpuScore", { defaultValue: "CPU" })} score={rec.cpu_score ?? 0} max={100} color="bg-blue-400" />
+                  <ScoreBar label={t("settings.hardware.gpuScore", { defaultValue: "GPU" })} score={rec.gpu_score ?? 0} max={100} color="bg-emerald-400" />
+                  <ScoreBar label={t("settings.hardware.vramBonus", { defaultValue: "VRAM" })} score={Math.round(((rec.gpu_vram_multiplier ?? 1) - 1) * 100)} max={15} color="bg-purple-400" />
+                  <ScoreBar label={t("settings.hardware.ramBonus", { defaultValue: "RAM" })} score={rec.ram_bonus ?? 0} max={10} color="bg-amber-400" />
                   <div className="flex items-center justify-between pt-1 border-t border-[hsl(var(--border)/0.4)]">
                     <span className="text-[11px] font-semibold">{t("settings.hardware.totalScore", { defaultValue: "Total" })}</span>
-                    <span className="text-[12px] font-bold">{rec.score}/200</span>
+                    <span className="text-[12px] font-bold">{rec.score ?? "—"}/200</span>
                   </div>
                 </div>
               </CardContent>
@@ -258,7 +263,8 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 }
 
 function ScoreBar({ label, score, max, color }: { label: string; score: number; max: number; color: string }) {
-  const pct = Math.min(100, Math.round((score / max) * 100));
+  const safeScore = Number.isFinite(score) ? score : 0;
+  const pct = max > 0 ? Math.min(100, Math.round((safeScore / max) * 100)) : 0;
   return (
     <div className="flex items-center gap-2">
       <span className="w-10 text-[10px] text-[hsl(var(--muted-foreground))]">{label}</span>

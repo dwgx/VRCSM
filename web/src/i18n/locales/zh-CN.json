@@ -41,7 +41,8 @@
     "fbt": "FBT 监视器",
     "rules": "自动化规则",
     "vrcPlus": "VRC+",
-    "models": "模型库"
+    "models": "模型库",
+    "labSection": "实验室"
   },
   "profile": {
     "title": "我的资料",
@@ -97,6 +98,17 @@
       "ageVerified": "已验证 18+",
       "ageUnverified": "未验证",
       "languages": "语言"
+    },
+    "emailUnverified": "已设置但未验证",
+    "emailVerified": "已验证",
+    "linkedAccounts": "已关联账户",
+    "linkedAccountsDesc": "来自 VRChat 登录会话的已绑定平台与身份字段,原生显示。",
+    "manageOnVrchat": "在 vrchat.com 管理",
+    "notLinked": "未关联",
+    "security": {
+      "avatarCopying": "模型克隆",
+      "clientLogin": "游戏客户端登录",
+      "twoFactor": "双重验证"
     }
   },
   "screenshots": {
@@ -217,7 +229,27 @@
     "myEmoji": "我的表情",
     "emojiBoopSent": "用 {{emoji}} 戳了 {{name}}！",
     "emojiBoopTooltip": "用 {{emoji}} 戳一下",
-    "boopSending": "发送中…"
+    "boopSending": "发送中…",
+    "avatarHistory": "模型历史",
+    "avatarIdCopied": "已复制 Avatar ID",
+    "blocked": "已屏蔽用户",
+    "boopSend": "戳一下 {{name}}",
+    "boopSendEmoji": "用 {{e}} 戳一下",
+    "currentAvatar": "当前模型",
+    "currentWorld": "当前世界",
+    "description": "好友详细信息",
+    "launch": "启动",
+    "muteConfirm": "静音 {{name}}?",
+    "muted": "已静音用户",
+    "noActivity": "暂无活动记录。",
+    "note": "备注",
+    "notePlaceholder": "为该好友写一条私人备注…",
+    "noteSaved": "备注已保存",
+    "recentActivity": "最近活动",
+    "saveNote": "保存",
+    "sharedWorlds": "共同世界",
+    "timesSeen": "见过 {{n}} 次",
+    "vrcProfile": "VRChat 资料"
   },
   "osc": {
     "title": "OSC 工具",
@@ -531,7 +563,13 @@
     "downloadComplete": "已下载到 {{path}}",
     "signInRequired": "登录后才能下载模型资源包。",
     "avatarDetailsFailed": "无法获取模型详情。它可能是私有或已删除。",
-    "noAssetUrl": "未找到该模型可下载的资源 URL。"
+    "noAssetUrl": "未找到该模型可下载的资源 URL。",
+    "joinFailed": "启动失败:{{error}}",
+    "launch": "启动",
+    "launchWorld": "在 VRChat 中启动",
+    "noFavoriteWorlds": "还没有收藏的世界。同步你的 VRChat 收藏后会显示在这里。",
+    "noRecentWorlds": "VRChat 日志中未找到最近的世界。",
+    "recentWorlds": "最近的世界"
   },
   "friends": {
     "title": "好友",
@@ -568,7 +606,8 @@
       "known": "普通玩家",
       "user": "新玩家",
       "new": "访客",
-      "visitor": "访客"
+      "visitor": "访客",
+      "label": "信任等级"
     },
     "badges": {
       "moderator": "VRChat 管理员"
@@ -597,7 +636,20 @@
       "inviteToMyRoom": "邀请到我的房间",
       "inviteSent": "已邀请 {{name}} 到你的房间",
       "sendMessage": "发送消息",
-      "viewProfile": "查看详情"
+      "viewProfile": "查看详情",
+      "copied": "已复制{{label}}",
+      "copyAvatarId": "复制当前模型 ID",
+      "copyDisplayName": "复制显示名称",
+      "copyLocation": "复制位置",
+      "copyUserId": "复制用户 ID",
+      "copyWorldId": "复制世界 ID",
+      "expand": "展开",
+      "favorited": "已收藏 {{name}}",
+      "inviteSelf": "请求发我邀请",
+      "openProfile": "打开资料",
+      "openWorldPage": "打开世界页面",
+      "selfInviteSent": "已请求 {{name}} 当前房间的邀请",
+      "unfavorited": "已取消收藏 {{name}}"
     },
     "views": {
       "all": "全部",
@@ -606,6 +658,17 @@
       "joinable": "可加入",
       "online": "在线",
       "offline": "离线"
+    },
+    "copyLabels": {
+      "avatarId": "模型 ID",
+      "displayName": "显示名称",
+      "location": "位置",
+      "userId": "用户 ID",
+      "worldId": "世界 ID"
+    },
+    "inspector": {
+      "empty": "选择一个好友查看位置、模型和快捷操作。",
+      "title": "好友速览"
     }
   },
   "layout": {
@@ -648,7 +711,12 @@
       "total": "你的团体",
       "online": "在线成员",
       "representing": "代表中"
-    }
+    },
+    "nowRepresenting": "正在代表 {{name}}",
+    "represent": "代表",
+    "representFailed": "更新代表状态失败:{{error}}",
+    "stopRepresenting": "停止代表",
+    "stoppedRepresenting": "已停止代表 {{name}}"
   },
   "menu": {
     "file": "文件",
@@ -797,13 +865,18 @@
         "players": "玩家",
         "noPlayers": "未记录玩家事件。",
         "timeline": "时间线"
-      }
+      },
+      "loginRequired": "需要登录才能扫描本地日志中的会话历史。",
+      "unclosed": "未结束"
     },
     "liveRoster": "实时房间名单",
     "rosterSortAlphabetical": "按字母排序",
     "recentPlayerEvents": "最近玩家事件",
     "noPlayerEvents": "尚无玩家事件记录。请启动 VRChat 并加入一个世界。",
-    "rosterTab": "房间名单"
+    "rosterTab": "房间名单",
+    "wearNotAllowed": "该模型不允许克隆。",
+    "wearNotFound": "找不到该模型,可能为私有。",
+    "wearSuccess": "已切换到:{{name}}"
   },
   "folderPicker": {
     "title": "选择文件夹",
@@ -869,7 +942,18 @@
     "partial": "部分",
     "add": "添加",
     "delete": "删除",
-    "reset": "重置"
+    "reset": "重置",
+    "all": "全部",
+    "allowed": "允许",
+    "blocked": "已屏蔽",
+    "collapse": "折叠",
+    "deleting": "删除中…",
+    "detecting": "检测中…",
+    "expand": "展开",
+    "navigate": "导航",
+    "refreshing": "刷新中",
+    "showAll": "显示全部 ({{count}})",
+    "unavailable": "不可用"
   },
   "about": {
     "title": "关于 VRCSM",
@@ -901,7 +985,9 @@
     "sections": {
       "navigate": "跳转",
       "actions": "操作",
-      "logs": "会话日志"
+      "logs": "会话日志",
+      "globalSearch": "全局搜索",
+      "plugins": "插件"
     }
   },
   "dock": {
@@ -1071,7 +1157,9 @@
     "officialSyncSuccess": "已同步 {{count}} 个官方收藏（{{avatars}} 个模型，{{worlds}} 个地图）",
     "officialSyncSuccessGrouped": "已将 {{count}} 个收藏同步到 {{lists}} 个分组（{{avatars}} 个模型，{{worlds}} 个地图）",
     "officialSyncFailed": "同步 VRChat 收藏失败: {{error}}",
-    "officialLastSync": "VRChat 收藏同步时间 {{date}}"
+    "officialLastSync": "VRChat 收藏同步时间 {{date}}",
+    "favorite": "收藏",
+    "unfavorite": "取消收藏"
   },
   "avatars": {
     "title": "模型",
@@ -1159,7 +1247,19 @@
     "seenThumbnailHow": "见过模型想显示缩略图，需要满足其一：日志里本身带 avtr_*；公开搜索能按模型名和作者精确命中；或者穿戴者当前公开模型还能拿到图。带“参考图”的缩略图只是穿戴者当前模型，不保证就是当时那件。",
     "previewWorkbench": "默认检视器改为更紧凑的尺寸，可点右上角放大查看。当前解包链路仍未把贴图嵌入 GLB，所以“原始”模式暂时只能显示原始材质结果；滚轮缩放，Shift+拖拽平移，右键也可平移。",
     "hiddenCount": "另有 {{count}} 条被隐藏，使用搜索可进一步筛选。",
-    "unityPackages": "{{count}} 个平台包"
+    "unityPackages": "{{count}} 个平台包",
+    "referenceImageHint": "佩戴者当前的模型/头像 —— 并非经过验证的历史匹配。",
+    "referenceImageVerifiedHint": "佩戴者当前模型与记录的名称一致。",
+    "search": {
+      "go": "搜索",
+      "noResults": "未找到结果",
+      "placeholder": "按模型名称搜索…",
+      "searching": "搜索中…",
+      "title": "搜索公开模型"
+    },
+    "unavailable": "模型不可用。",
+    "wearerCurrentReference": "佩戴者当前参考",
+    "wearerReferenceNote": "未知"
   },
   "worlds": {
     "title": "地图",
@@ -1197,7 +1297,8 @@
     "removeFromLibrary": "从资料库移除",
     "saveToLibrary": "保存到资料库",
     "unknownTime": "时间未知",
-    "searchFailed": "搜索失败"
+    "searchFailed": "搜索失败",
+    "unavailable": "世界不可用。"
   },
   "logs": {
     "title": "日志",
@@ -1306,7 +1407,8 @@
     "pointsTo": "指向",
     "alreadyMigrated": "已迁移到 {{target}}",
     "repairSuccess": "Junction 修复成功",
-    "repairFailed": "修复失败：{{error}}"
+    "repairFailed": "修复失败：{{error}}",
+    "junction": "连接点"
   },
   "updates": {
     "availableTitle": "发现新版本",
@@ -1358,7 +1460,8 @@
       "loading": "正在加载备注…",
       "placeholder": "给这个玩家记一条本地备注…",
       "saved": "备注已保存",
-      "saveFailed": "保存备注失败: {{error}}"
+      "saveFailed": "保存备注失败: {{error}}",
+      "loadFailed": "无法加载备注。"
     },
     "relative": {
       "now": "刚刚",
@@ -1372,7 +1475,9 @@
     "clearHistory": "清空历史",
     "clearHistoryConfirm": "确认清空会话与社交变化历史吗？朋友备注会保留。",
     "clearHistoryFailed": "清空失败：{{error}}",
-    "clearHistorySuccess": "历史已清空，朋友备注已保留。"
+    "clearHistorySuccess": "历史已清空，朋友备注已保留。",
+    "loginRequired": "请在设置页登录 VRChat 以查看好友活动历史。",
+    "perPage": "每页条数"
   },
   "settings": {
     "title": "设置",
@@ -3318,7 +3423,8 @@
       "registry": "VRChat 注册表",
       "experimental": "实验性",
       "vrDiag": "VR 诊断",
-      "data": "数据管理"
+      "data": "数据管理",
+      "hardware": "硬件"
     },
     "general": {
       "layoutTitle": "工作区布局",
@@ -3635,7 +3741,15 @@
           "removeQuestBlocks": "从文件移除 Quest / Steam Link 串流设备块：{{path}}",
           "applySafeStreaming": "应用安全 Quest 串流参数：80 Mbps 自动带宽、1.0x 超采样、72 Hz、关闭运动平滑",
           "openValidateAfter": "修复后打开 steam://validate/250820 校验"
-        }
+        },
+        "backupPartial": "Quest Link 备份完成但有警告:{{msg}}",
+        "dryRunWarning": "试运行完成但有警告:{{msg}}",
+        "dryRunWarningShort": "试运行警告",
+        "repairPartial": "修复完成但有警告:{{msg}}",
+        "restorePartial": "还原完成但有警告:{{msg}}",
+        "restoredShort": "已还原",
+        "resultRestoreCount": "还原数量",
+        "reviewFailures": "请查看下方的结果详情。"
       },
       "targetBandwidth": {
         "label": "目标带宽 (Mbps)",
@@ -3664,7 +3778,21 @@
       "supersampleFiltering": {
         "label": "超采样滤波",
         "hint": "以轻微模糊为代价减少锯齿"
-      }
+      },
+      "configNotFoundBadge": "未找到设置",
+      "configNotFoundBody": "VRCSM 无法读取 SteamVR 的设置文件。诊断与“先备份再修复”仍可使用;在 SteamVR 创建该文件前,参数编辑器将保持禁用。",
+      "configNotFoundTitle": "未找到 steamvr.vrsettings",
+      "editorUnavailable": "SteamVR 配置编辑器不可用:steamvr.vrsettings 尚未安装或创建。",
+      "effectiveResolution": {
+        "hint": "Steam Link 显示的 Encoder Resolution 就是这个值。改任一字段会反推 Supersampling Scale (0.5–2.0, 步进 0.1)。",
+        "label": "有效渲染分辨率 (每眼)",
+        "unknown": "未知 HMD"
+      },
+      "knownDevices": "已检测到的 VR 设备:",
+      "profileApplied": "已应用 {{name}} —— 点击“保存设置”以生效。",
+      "unknownGpu": "未知 GPU",
+      "vrIdle": "VR 运行时空闲",
+      "vrRunning": "VR 运行时活动"
     },
     "experimental": {
       "heading": "实验性功能",
@@ -3749,7 +3877,12 @@
       "vrlinkIssues": "vrlink 问题",
       "openSteamLinkRepair": "打开 Steam Link 修复",
       "linkRepairReady": "已准备好 Steam Link 修复面板。无效会话：{{invalid}}，Quest 配对记录：{{questPairs}}。",
-      "virtualAdapterWarning": "虚拟网卡“{{name}}”（{{description}}）正在启用，IP 为 {{ip}}，可能干扰 VR 串流。"
+      "virtualAdapterWarning": "虚拟网卡“{{name}}”（{{description}}）正在启用，IP 为 {{ip}}，可能干扰 VR 串流。",
+      "avgBitrate": "平均码率",
+      "droppedFrames": "丢帧",
+      "linkQuality": "连接质量",
+      "maxLatency": "最大延迟",
+      "supersampleFiltering": "超采样过滤"
     },
     "autoStart": {
       "label": "随 Windows 启动",
@@ -3843,6 +3976,33 @@
           "favorites": "本地收藏、备注与标签"
         }
       }
+    },
+    "hardware": {
+      "applied": "设置已应用!请重启 SteamVR。",
+      "apply": "应用推荐设置",
+      "applying": "应用中…",
+      "bandwidth": "带宽",
+      "community": "社区",
+      "cpu": "CPU",
+      "cpuScore": "CPU",
+      "detecting": "正在检测硬件…",
+      "ffr": "FFR 等级",
+      "gpu": "GPU",
+      "gpuScore": "GPU",
+      "hmd": "头显",
+      "motionSmoothing": "运动平滑",
+      "ram": "内存",
+      "ramBonus": "内存",
+      "recommendedTier": "推荐 {{tier}} 档",
+      "refresh": "重新检测",
+      "refreshRate": "刷新率",
+      "score": "硬件评分",
+      "scoreBreakdown": "评分明细",
+      "subtitle": "检测 GPU 和 CPU,为 Steam Link / Quest 计算推荐的 VRChat 设置。",
+      "supersampling": "超采样",
+      "title": "硬件与 GPU",
+      "totalScore": "总分",
+      "vramBonus": "显存"
     }
   },
   "imageZoom": {
@@ -3980,7 +4140,20 @@
       "legendMore": "较多",
       "cellTooltip": "{{day}} {{hour}}：{{count}} 次访问",
       "totalVisits": "已绘制 {{count}} 次访问"
-    }
+    },
+    "clear": "清除",
+    "clearDesc": "此操作将永久删除所有已记录的世界访问。此操作无法撤销。",
+    "clearFailed": "清除失败:{{error}}",
+    "clearSuccess": "世界历史已清除。",
+    "clearTitle": "清除世界历史?",
+    "customLimit": "自定义世界历史行数上限",
+    "lastPlayerSeen": "最后玩家事件 {{time}}",
+    "limitLabel": "行数",
+    "loggedPlayers": "已记录 {{count}} 名玩家",
+    "noLoggedPlayers": "无玩家记录",
+    "noPlayerCountHint": "此次访问时间段内未记录到本地玩家的加入/离开事件。",
+    "playerCountHint": "此次访问时间段内有 {{count}} 条本地玩家日志事件。",
+    "recentLimit": "最近 {{count}} 次访问"
   },
   "strangerAlert": {
     "title": "陌生人加入了您的 {{access}} 房间",
@@ -4002,7 +4175,11 @@
     "guide1": "实时记录你在 VRChat 实例中遇到的人。",
     "guide2": "1. 输入名称并点击「开始录制」。2. 录制期间，加入你所在实例的玩家会自动被记录。3. 点击「停止」结束录制。选择一条录制记录可查看参与者。",
     "noRecordings": "暂无录制记录。在上方开始录制以追踪谁加入了你的实例。",
-    "noAttendees": "暂无参与者记录。"
+    "noAttendees": "暂无参与者记录。",
+    "delete": "删除录制",
+    "deleteDesc": "此操作将永久删除“{{name}}”及其 {{count}} 条参与者记录。此操作无法撤销。",
+    "deleteTitle": "删除录制?",
+    "deleted": "录制已删除"
   },
   "socialGraph": {
     "title": "社交分析",
@@ -4022,7 +4199,13 @@
     "graphEmpty": "尚无共同在场数据。当 VRCSM 记录到与你同处实例的玩家后才会出现连线。",
     "graphAria": "共同在场关系图",
     "legendConfirmed": "已确认共同在场（你的实例）",
-    "legendInferred": "推断共同在场（他人，非确认好友）"
+    "legendInferred": "推断共同在场（他人，非确认好友）",
+    "clear": "清除",
+    "clearDesc": "此操作将永久删除用于好友排名与共同在场图谱的玩家相遇记录。世界访问排名需在“世界历史”页单独清除。此操作无法撤销。",
+    "clearFailed": "清除失败:{{error}}",
+    "clearSuccess": "社交分析数据已清除。",
+    "clearTitle": "清除社交分析数据?",
+    "nodeFocused": "已聚焦 {{name}}"
   },
   "benchmark": {
     "title": "虚拟形象性能基准测试",
@@ -4049,7 +4232,16 @@
     "referenceImageHint": "此图来自穿戴者当前的模型 / 头像，并非已验证的历史匹配。",
     "wearerCount": "{{count}} 位穿戴者",
     "seenTimes": "看到 {{count}} 次",
-    "showWearers": "穿戴者"
+    "showWearers": "穿戴者",
+    "clear": "清除",
+    "clearBenchmarkDesc": "此操作将删除已保存的性能基准快照。仍在实时扫描中的模型会在下次扫描时重新出现。此操作无法撤销。",
+    "clearBenchmarkTitle": "清除模型性能基准?",
+    "clearFailed": "清除失败:{{error}}",
+    "clearSeenDesc": "此操作将永久删除你已见过的模型记录历史。此操作无法撤销。",
+    "clearSeenTitle": "清除已见模型历史?",
+    "clearSuccess": "已清除。",
+    "copyId": "复制 Avatar ID",
+    "wornBy": "佩戴者"
   },
   "fbt": {
     "title": "FBT 校准监视器",
@@ -4071,7 +4263,8 @@
     "save": "保存规则",
     "empty": "尚无规则。创建一个规则以自动化 VRChat 操作。",
     "namePlaceholder": "规则名称...",
-    "history": "触发历史"
+    "history": "触发历史",
+    "yamlPlaceholder": "trigger: friend.online\ncondition: user.displayName contains 'Natsumi'\naction:\n  type: vrcsm.notification.show\n  title: 好友上线!\n  message: '{{user.displayName}} 上线了'"
   },
   "vrcPlus": {
     "title": "VRC+ 媒体",
@@ -4159,6 +4352,12 @@
       "notHidden": "该模型存在,但不是隐藏状态。",
       "notOwned": "无法解析该 ID——VRChat 只返回你拥有的模型。",
       "noHistory": "本地历史里还没有模型 ID。先玩 VRChat 积累记录,或在上方粘贴 ID。"
+    },
+    "harvest": {
+      "empty": "本地分析缓存中未找到模型 ID(或 VRChat 尚未写入)。",
+      "found": "本地找到 {{total}} 个模型 ID · 其中 {{fresh}} 个不在你的拥有列表中。",
+      "scan": "扫描本地缓存",
+      "tooltip": "只读扫描 VRChat 本地分析缓存中的模型 ID(实验性)。"
     }
   },
   "feed": {

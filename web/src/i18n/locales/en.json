@@ -41,7 +41,8 @@
     "social": "Social Analytics",
     "benchmark": "Avatar Benchmark",
     "fbt": "FBT Monitor",
-    "rules": "Automation Rules"
+    "rules": "Automation Rules",
+    "labSection": "Lab"
   },
   "vrcPlus": {
     "title": "VRC+ Media",
@@ -142,6 +143,17 @@
       "ageVerified": "Verified 18+",
       "ageUnverified": "Unverified",
       "languages": "Languages"
+    },
+    "emailUnverified": "Set but unverified",
+    "emailVerified": "Verified",
+    "linkedAccounts": "Linked Accounts",
+    "linkedAccountsDesc": "Bound platforms and identity fields from the VRChat login session, displayed natively.",
+    "manageOnVrchat": "Manage on vrchat.com",
+    "notLinked": "Not linked",
+    "security": {
+      "avatarCopying": "Avatar Cloning",
+      "clientLogin": "Game Client Login",
+      "twoFactor": "Two-Factor Auth"
     }
   },
   "screenshots": {
@@ -262,7 +274,27 @@
     "editSlotsHint": "Edit your saved snippets in the VRChat client (Quick Menu → Notifications → Messages).",
     "inviteToTheirWorld": "Invite myself to their world",
     "inviteSent": "Invite sent",
-    "openVrchatProfile": "Open profile on vrchat.com"
+    "openVrchatProfile": "Open profile on vrchat.com",
+    "avatarHistory": "Avatar History",
+    "avatarIdCopied": "Avatar ID copied",
+    "blocked": "User blocked",
+    "boopSend": "Boop {{name}}",
+    "boopSendEmoji": "Boop with {{e}}",
+    "currentAvatar": "Current Avatar",
+    "currentWorld": "Current World",
+    "description": "Detailed friend information",
+    "launch": "Launch",
+    "muteConfirm": "Mute {{name}}?",
+    "muted": "User muted",
+    "noActivity": "No activity recorded yet.",
+    "note": "Note",
+    "notePlaceholder": "Write a private note about this friend...",
+    "noteSaved": "Note saved",
+    "recentActivity": "Recent Activity",
+    "saveNote": "Save",
+    "sharedWorlds": "Shared Worlds",
+    "timesSeen": "{{n}}x seen",
+    "vrcProfile": "VRChat Profile"
   },
   "osc": {
     "title": "OSC Tools",
@@ -576,7 +608,13 @@
     "downloadComplete": "Downloaded to {{path}}",
     "signInRequired": "Sign in to download avatar asset bundles.",
     "avatarDetailsFailed": "Could not fetch avatar details. It may be private or deleted.",
-    "noAssetUrl": "No downloadable asset URL found for this avatar."
+    "noAssetUrl": "No downloadable asset URL found for this avatar.",
+    "joinFailed": "Failed to launch: {{error}}",
+    "launch": "Launch",
+    "launchWorld": "Launch in VRChat",
+    "noFavoriteWorlds": "No favorite worlds yet. Sync your VRChat favorites to see them here.",
+    "noRecentWorlds": "No recent worlds found in VRChat logs.",
+    "recentWorlds": "Recent Worlds"
   },
   "friends": {
     "title": "Friends",
@@ -613,7 +651,8 @@
       "known": "User",
       "user": "New User",
       "new": "Visitor",
-      "visitor": "Visitor"
+      "visitor": "Visitor",
+      "label": "Trust Rank"
     },
     "badges": {
       "moderator": "VRChat Moderator"
@@ -642,7 +681,20 @@
       "inviteToMyRoom": "Invite to My Room",
       "inviteSent": "Invited {{name}} to your room",
       "sendMessage": "Send Message",
-      "viewProfile": "View Profile"
+      "viewProfile": "View Profile",
+      "copied": "Copied {{label}}",
+      "copyAvatarId": "Copy current avatar ID",
+      "copyDisplayName": "Copy display name",
+      "copyLocation": "Copy location",
+      "copyUserId": "Copy user ID",
+      "copyWorldId": "Copy world ID",
+      "expand": "Expand",
+      "favorited": "Favorited {{name}}",
+      "inviteSelf": "Request invite to me",
+      "openProfile": "Open profile",
+      "openWorldPage": "Open world page",
+      "selfInviteSent": "Requested an invite to {{name}}'s current instance",
+      "unfavorited": "Unfavorited {{name}}"
     },
     "views": {
       "all": "All",
@@ -651,6 +703,17 @@
       "joinable": "Joinable",
       "online": "Online",
       "offline": "Offline"
+    },
+    "copyLabels": {
+      "avatarId": "avatar ID",
+      "displayName": "display name",
+      "location": "location",
+      "userId": "user ID",
+      "worldId": "world ID"
+    },
+    "inspector": {
+      "empty": "Select a friend to see their location, avatar and quick actions.",
+      "title": "Friend at a glance"
     }
   },
   "layout": {
@@ -693,7 +756,12 @@
       "total": "Your groups",
       "online": "Online members",
       "representing": "Representing"
-    }
+    },
+    "nowRepresenting": "Representing {{name}}",
+    "represent": "Represent",
+    "representFailed": "Failed to update representation: {{error}}",
+    "stopRepresenting": "Stop representing",
+    "stoppedRepresenting": "Stopped representing {{name}}"
   },
   "menu": {
     "file": "File",
@@ -842,13 +910,18 @@
         "players": "Players",
         "noPlayers": "No player events recorded.",
         "timeline": "Timeline"
-      }
+      },
+      "loginRequired": "Login required to scan local logs for session history.",
+      "unclosed": "Unclosed"
     },
     "liveRoster": "Live Instance Roster",
     "rosterSortAlphabetical": "Sort alphabetically",
     "recentPlayerEvents": "Recent Player Events",
     "noPlayerEvents": "No player events recorded yet. Launch VRChat and join a world.",
-    "rosterTab": "Instance Roster"
+    "rosterTab": "Instance Roster",
+    "wearNotAllowed": "This avatar does not allow cloning.",
+    "wearNotFound": "Could not find this avatar. It may be private.",
+    "wearSuccess": "Now wearing: {{name}}"
   },
   "folderPicker": {
     "title": "Choose a folder",
@@ -914,7 +987,18 @@
     "partial": "Partial",
     "add": "Add",
     "delete": "Delete",
-    "reset": "Reset"
+    "reset": "Reset",
+    "all": "All",
+    "allowed": "Allowed",
+    "blocked": "Blocked",
+    "collapse": "Collapse",
+    "deleting": "Deleting…",
+    "detecting": "Detecting…",
+    "expand": "Expand",
+    "navigate": "Navigate",
+    "refreshing": "refreshing",
+    "showAll": "Show all ({{count}})",
+    "unavailable": "Unavailable"
   },
   "about": {
     "title": "About VRCSM",
@@ -946,7 +1030,9 @@
     "sections": {
       "navigate": "Navigate",
       "actions": "Actions",
-      "logs": "Session Logs"
+      "logs": "Session Logs",
+      "globalSearch": "Global Search",
+      "plugins": "Plugins"
     }
   },
   "dock": {
@@ -1116,7 +1202,9 @@
     "officialSyncSuccess": "Synced {{count}} official favorites ({{avatars}} avatars, {{worlds}} worlds)",
     "officialSyncSuccessGrouped": "Synced {{count}} favorites into {{lists}} groups ({{avatars}} avatars, {{worlds}} worlds)",
     "officialSyncFailed": "VRChat favorites sync failed: {{error}}",
-    "officialLastSync": "VRChat favorites synced {{date}}"
+    "officialLastSync": "VRChat favorites synced {{date}}",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite"
   },
   "modelDb": {
     "title": "Model Database",
@@ -1159,6 +1247,12 @@
       "notHidden": "That avatar exists but isn't hidden.",
       "notOwned": "Couldn't resolve that id — VRChat only returns avatars you own.",
       "noHistory": "No avatar ids in local history yet. Play VRChat to populate it, or paste an id above."
+    },
+    "harvest": {
+      "empty": "No avatar ids found in the local analytics cache (or VRChat hasn't written one yet).",
+      "found": "Found {{total}} avatar id(s) locally · {{fresh}} not in your owned list.",
+      "scan": "Scan local cache",
+      "tooltip": "Read-only scan of VRChat's local analytics cache for avatar ids (experimental)."
     }
   },
   "avatars": {
@@ -1247,7 +1341,19 @@
     "seenThumbnailHow": "Seen-avatar thumbnails appear when the log has a real avtr_* id, public search finds an exact name/author match, or the wearer's current public avatar image is available. Items marked Reference are current wearer images and may not be the exact avatar seen then.",
     "previewWorkbench": "The inspector preview is now intentionally compact, and the top-right expand button opens a larger centered viewer. The current extractor still does not embed textures into the GLB, so Original mode can only show the raw exported material state for now; scroll to zoom, hold Shift and drag to pan, and right drag also pans.",
     "unityPackages": "{{count}} platform variants",
-    "hiddenCount": "+{{count}} more. Use search to filter."
+    "hiddenCount": "+{{count}} more. Use search to filter.",
+    "referenceImageHint": "Wearer's current avatar/profile picture — not a verified historical match.",
+    "referenceImageVerifiedHint": "Wearer's current avatar matches the logged name.",
+    "search": {
+      "go": "Search",
+      "noResults": "No results found",
+      "placeholder": "Search by avatar name…",
+      "searching": "Searching…",
+      "title": "Search Public Avatars"
+    },
+    "unavailable": "Avatar unavailable.",
+    "wearerCurrentReference": "Wearer current reference",
+    "wearerReferenceNote": "Unknown"
   },
   "worlds": {
     "title": "Worlds",
@@ -1285,7 +1391,8 @@
     "removeFromLibrary": "Remove from library",
     "saveToLibrary": "Save to library",
     "unknownTime": "Unknown time",
-    "searchFailed": "Search failed"
+    "searchFailed": "Search failed",
+    "unavailable": "World unavailable."
   },
   "logs": {
     "title": "Logs",
@@ -1394,7 +1501,8 @@
     "pointsTo": "points to",
     "alreadyMigrated": "Already migrated to {{target}}",
     "repairSuccess": "Junction repaired successfully",
-    "repairFailed": "Repair failed: {{error}}"
+    "repairFailed": "Repair failed: {{error}}",
+    "junction": "junction"
   },
   "updates": {
     "availableTitle": "Update Available",
@@ -1499,7 +1607,8 @@
       "loading": "Loading note...",
       "placeholder": "Add a personal note for this player...",
       "saved": "Note saved",
-      "saveFailed": "Failed to save note: {{error}}"
+      "saveFailed": "Failed to save note: {{error}}",
+      "loadFailed": "Could not load note."
     },
     "relative": {
       "now": "just now",
@@ -1513,7 +1622,9 @@
     "clearHistorySuccess": "History cleared. Friend notes were kept.",
     "clearHistoryFailed": "Failed to clear history: {{error}}",
     "clearHistory": "Clear History",
-    "clearHistoryConfirm": "Clear stored session history and social change history? Friend notes will be kept."
+    "clearHistoryConfirm": "Clear stored session history and social change history? Friend notes will be kept.",
+    "loginRequired": "Log in to VRChat via the Settings page to view friend activity history.",
+    "perPage": "Items per page"
   },
   "settings": {
     "title": "Settings",
@@ -3490,7 +3601,8 @@
       "registry": "VRChat Registry",
       "experimental": "Experimental",
       "vrDiag": "VR Diagnostics",
-      "data": "Data Management"
+      "data": "Data Management",
+      "hardware": "Hardware"
     },
     "general": {
       "layoutTitle": "Workspace Layout",
@@ -3835,8 +3947,30 @@
           "removeQuestBlocks": "Remove Quest / Steam Link streaming device blocks from file: {{path}}",
           "applySafeStreaming": "Apply safe Quest streaming settings: 80 Mbps auto bandwidth, 1.0x supersampling, 72 Hz, motion smoothing off",
           "openValidateAfter": "After repair, open steam://validate/250820 to validate"
-        }
-      }
+        },
+        "backupPartial": "Quest Link backup completed with warnings: {{msg}}",
+        "dryRunWarning": "Dry-run completed with warnings: {{msg}}",
+        "dryRunWarningShort": "Dry-run warning",
+        "repairPartial": "Repair completed with warnings: {{msg}}",
+        "restorePartial": "Restore completed with warnings: {{msg}}",
+        "restoredShort": "Restored",
+        "resultRestoreCount": "Restore count",
+        "reviewFailures": "Review the result details below."
+      },
+      "configNotFoundBadge": "Settings not found",
+      "configNotFoundBody": "VRCSM could not read SteamVR's settings file. Diagnostics and backup-first repair remain available; the parameter editor is disabled until SteamVR creates the file.",
+      "configNotFoundTitle": "steamvr.vrsettings not found",
+      "editorUnavailable": "SteamVR configuration editor unavailable: steamvr.vrsettings is not installed or has not been created yet.",
+      "effectiveResolution": {
+        "hint": "The Encoder Resolution shown by Steam Link is this value. Changing any field back-computes the Supersampling Scale (0.5–2.0, step 0.1).",
+        "label": "Effective render resolution (per eye)",
+        "unknown": "Unknown HMD"
+      },
+      "knownDevices": "Detected VR Devices:",
+      "profileApplied": "Applied {{name}} — click Save Settings to persist.",
+      "unknownGpu": "Unknown GPU",
+      "vrIdle": "VR Runtime Idle",
+      "vrRunning": "VR Runtime Active"
     },
     "experimental": {
       "heading": "Experimental Features",
@@ -3921,7 +4055,12 @@
       "vrlinkIssues": "vrlink Issues",
       "openSteamLinkRepair": "Open Steam Link repair",
       "linkRepairReady": "Steam Link repair panel ready. Invalid sessions: {{invalid}}, Quest pairing records: {{questPairs}}.",
-      "virtualAdapterWarning": "Virtual adapter \"{{name}}\" ({{description}}) is enabled with IP {{ip}} and may interfere with VR streaming."
+      "virtualAdapterWarning": "Virtual adapter \"{{name}}\" ({{description}}) is enabled with IP {{ip}} and may interfere with VR streaming.",
+      "avgBitrate": "Avg Bitrate",
+      "droppedFrames": "Dropped Frames",
+      "linkQuality": "Link Quality",
+      "maxLatency": "Max Latency",
+      "supersampleFiltering": "Supersample Filtering"
     },
     "autoStart": {
       "label": "Launch with Windows",
@@ -3984,6 +4123,33 @@
           "favorites": "Local favorites, notes & tags"
         }
       }
+    },
+    "hardware": {
+      "applied": "Settings applied! Restart SteamVR.",
+      "apply": "Apply recommended settings",
+      "applying": "Applying…",
+      "bandwidth": "Bandwidth",
+      "community": "Community",
+      "cpu": "CPU",
+      "cpuScore": "CPU",
+      "detecting": "Detecting hardware…",
+      "ffr": "FFR Level",
+      "gpu": "GPU",
+      "gpuScore": "GPU",
+      "hmd": "HMD",
+      "motionSmoothing": "Motion Smoothing",
+      "ram": "RAM",
+      "ramBonus": "RAM",
+      "recommendedTier": "{{tier}} Tier Recommended",
+      "refresh": "Re-detect",
+      "refreshRate": "Refresh Rate",
+      "score": "HW Score",
+      "scoreBreakdown": "Score Breakdown",
+      "subtitle": "Detect GPU and CPU to compute recommended VRChat settings for Steam Link / Quest.",
+      "supersampling": "Supersampling",
+      "title": "Hardware & GPU",
+      "totalScore": "Total",
+      "vramBonus": "VRAM"
     }
   },
   "imageZoom": {
@@ -4046,7 +4212,20 @@
       "legendMore": "more",
       "cellTooltip": "{{day}} {{hour}}: {{count}} visits",
       "totalVisits": "{{count}} visits charted"
-    }
+    },
+    "clear": "Clear",
+    "clearDesc": "This permanently deletes all logged world visits. This cannot be undone.",
+    "clearFailed": "Failed to clear: {{error}}",
+    "clearSuccess": "World history cleared.",
+    "clearTitle": "Clear world history?",
+    "customLimit": "Custom world history row limit",
+    "lastPlayerSeen": "last player event {{time}}",
+    "limitLabel": "Rows",
+    "loggedPlayers": "{{count}} logged players",
+    "noLoggedPlayers": "No player log",
+    "noPlayerCountHint": "No local player join/leave events were recorded in this visit window.",
+    "playerCountHint": "{{count}} local player log events in this visit window.",
+    "recentLimit": "Recent {{count}} visits"
   },
   "strangerAlert": {
     "title": "Stranger joined your {{access}} instance",
@@ -4143,7 +4322,11 @@
     "guide1": "Records who you meet in VRChat instances in real-time.",
     "guide2": "1. Enter a name and click Start Recording. 2. While recording, players joining your instance are automatically logged. 3. Click Stop to end the session. Select a recording to see attendees.",
     "noRecordings": "No recordings yet. Start one above to track who joins your instance.",
-    "noAttendees": "No attendees recorded yet."
+    "noAttendees": "No attendees recorded yet.",
+    "delete": "Delete recording",
+    "deleteDesc": "This permanently removes \"{{name}}\" and its {{count}} attendee record(s). This cannot be undone.",
+    "deleteTitle": "Delete recording?",
+    "deleted": "Recording deleted"
   },
   "socialGraph": {
     "title": "Social Analytics",
@@ -4163,7 +4346,13 @@
     "graphEmpty": "No co-presence data yet. Edges appear once VRCSM has logged players sharing your instances.",
     "graphAria": "Co-presence relationship graph",
     "legendConfirmed": "Confirmed co-presence (your instance)",
-    "legendInferred": "Inferred co-presence (others, not confirmed friends)"
+    "legendInferred": "Inferred co-presence (others, not confirmed friends)",
+    "clear": "Clear",
+    "clearDesc": "This permanently deletes logged player encounters used for friend rankings and the co-presence graph. World-visit rankings are cleared separately on the World History page. This cannot be undone.",
+    "clearFailed": "Failed to clear: {{error}}",
+    "clearSuccess": "Social analytics cleared.",
+    "clearTitle": "Clear social analytics?",
+    "nodeFocused": "{{name}} focused"
   },
   "benchmark": {
     "title": "Avatar Performance Benchmark",
@@ -4190,7 +4379,16 @@
     "referenceImageHint": "This image is the wearer's current avatar/profile picture, not a verified historical match.",
     "wearerCount": "{{count}} wearer",
     "seenTimes": "seen {{count}} times",
-    "showWearers": "Wearers"
+    "showWearers": "Wearers",
+    "clear": "Clear",
+    "clearBenchmarkDesc": "This deletes persisted benchmark snapshots. Avatars still in the live scan reappear on the next scan. This cannot be undone.",
+    "clearBenchmarkTitle": "Clear avatar benchmarks?",
+    "clearFailed": "Failed to clear: {{error}}",
+    "clearSeenDesc": "This permanently deletes the logged history of avatars you've seen. This cannot be undone.",
+    "clearSeenTitle": "Clear seen-avatar history?",
+    "clearSuccess": "Cleared.",
+    "copyId": "Copy Avatar ID",
+    "wornBy": "worn by"
   },
   "fbt": {
     "title": "FBT Calibration Monitor",
@@ -4212,7 +4410,8 @@
     "save": "Save Rule",
     "empty": "No rules yet. Create one to automate VRChat actions.",
     "namePlaceholder": "Rule name...",
-    "history": "Firing History"
+    "history": "Firing History",
+    "yamlPlaceholder": "trigger: friend.online\ncondition: user.displayName contains 'Natsumi'\naction:\n  type: vrcsm.notification.show\n  title: Friend online!\n  message: '{{user.displayName}} is online'"
   },
   "models": {
     "tab": {

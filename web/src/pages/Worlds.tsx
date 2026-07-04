@@ -640,20 +640,28 @@ function Worlds() {
 
   const ids = useMemo(() => logs?.recent_world_ids ?? [], [logs]);
 
+  // A world reached via global search / deep-link (?select=<id>) frequently is
+  // NOT in recent_world_ids (search sources from favorites/library/DB). Prepend
+  // it so the tile is visible and the inspector can drive off it, instead of
+  // silently dropping the id or showing the empty state.
+  const effectiveIds = useMemo(
+    () => (selectedId && !ids.includes(selectedId) ? [selectedId, ...ids] : ids),
+    [ids, selectedId],
+  );
+
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return ids;
-    return ids.filter((id) => {
+    if (!q) return effectiveIds;
+    return effectiveIds.filter((id) => {
       if (id.toLowerCase().includes(q)) return true;
       const name = logs?.world_names[id];
       return name?.toLowerCase().includes(q) ?? false;
     });
-  }, [ids, filter, logs?.world_names]);
+  }, [effectiveIds, filter, logs?.world_names]);
 
   const selected = useMemo(() => {
-    if (!filtered.length) return null;
-    if (!selectedId) return filtered[0];
-    return filtered.find((id) => id === selectedId) ?? filtered[0];
+    if (selectedId) return filtered.find((id) => id === selectedId) ?? selectedId;
+    return filtered[0] ?? null;
   }, [filtered, selectedId]);
   const shouldShowInspector = showInspector && Boolean(selected);
 
@@ -1075,7 +1083,7 @@ function Worlds() {
             </CardDescription>
           </CardHeader>
         </Card>
-      ) : ids.length === 0 ? (
+      ) : ids.length === 0 && !selectedId ? (
         <Card>
           <CardContent className="py-8 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
             {t("worlds.empty")}
