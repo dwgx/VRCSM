@@ -8,38 +8,86 @@
     "dashboard": "แดชบอร์ด",
     "radar": "เรดาร์และบันทึก",
     "profile": "โปรไฟล์ของฉัน",
+    "vrcPlus": "VRC+",
     "vrchat": "VRChat",
     "friends": "เพื่อน",
     "bundles": "บันเดิล",
     "library": "คลัง",
     "avatars": "อวาตาร์",
+    "models": "ฐานข้อมูลโมเดล",
     "worlds": "โลก",
     "screenshots": "ภาพหน้าจอ",
     "logs": "บันทึก",
     "migrate": "ย้ายข้อมูล",
     "plugins": "ปลั๊กอิน",
+    "osc": "เครื่องมือ OSC",
     "settings": "การตั้งค่า",
     "language": "ภาษา",
     "friendLog": "บันทึกเพื่อน",
     "groups": "กลุ่ม",
     "category": {
-      "plugins": "ปลั๊กอิน",
+      "workspace": "พื้นที่ทำงาน",
       "assets": "แอสเซท",
+      "social": "โซเชียล",
+      "media": "สื่อ",
       "diagnostics": "การวินิจฉัย",
       "maintenance": "การบำรุงรักษา",
-      "media": "สื่อ",
       "project": "โปรเจกต์",
-      "social": "โซเชียล",
-      "workspace": "พื้นที่ทำงาน"
+      "plugins": "ปลั๊กอิน"
     },
-    "osc": "เครื่องมือ OSC",
     "worldHistory": "ประวัติเวิลด์",
     "calendar": "ปฏิทินและแจม",
     "events": "บันทึกอีเวนต์",
     "social": "วิเคราะห์สังคม",
     "benchmark": "เบนช์มาร์คอวตาร",
     "fbt": "FBT มอนิเตอร์",
-    "rules": "กฎอัตโนมัติ"
+    "rules": "กฎอัตโนมัติ",
+    "labSection": "แล็บ"
+  },
+  "vrcPlus": {
+    "title": "สื่อ VRC+",
+    "subtitle": "จัดการปรินต์ แกลเลอรี ไอคอนโปรไฟล์ และคลังไอเทมของคุณ การอัปโหลดและลบจะมีผลกับ VRChat โดยตรง",
+    "tab": {
+      "prints": "ปรินต์",
+      "gallery": "แกลเลอรี",
+      "icons": "ไอคอน",
+      "inventory": "คลังไอเทม",
+      "emoji": "อีโมจิ",
+      "stickers": "สติกเกอร์"
+    },
+    "uploadPrint": "อัปโหลดปรินต์",
+    "uploadImage": "อัปโหลดรูปภาพ",
+    "uploadIcon": "อัปโหลดไอคอน",
+    "printUploaded": "อัปโหลดปรินต์แล้ว",
+    "printDeleted": "ลบปรินต์แล้ว",
+    "imageUploaded": "อัปโหลดรูปภาพแล้ว",
+    "imageDeleted": "ลบรูปภาพแล้ว",
+    "supporterRequired": "ต้องมีสมาชิก VRC+ ที่ยังใช้งานอยู่",
+    "limitReached": "คุณถึงขีดจำกัด VRC+ ที่ {{limit}} สำหรับช่องนี้แล้ว",
+    "deletePrint": "ลบปรินต์",
+    "deleteImage": "ลบ",
+    "deletePrintTitle": "ลบปรินต์นี้ไหม",
+    "deletePrintBody": "การกระทำนี้จะลบปรินต์ออกจากบัญชี VRChat ของคุณอย่างถาวร ไม่สามารถย้อนกลับได้",
+    "deleteImageTitle": "ลบรูปภาพนี้ไหม",
+    "deleteImageBody": "การกระทำนี้จะลบรูปภาพออกจากบัญชี VRChat ของคุณอย่างถาวร ไม่สามารถย้อนกลับได้",
+    "noPrints": "ยังไม่มีปรินต์",
+    "noFiles": "ยังไม่มีอะไรที่นี่",
+    "noInventory": "คลังไอเทมว่างเปล่า",
+    "uploadEmoji": "อัปโหลดอีโมจิ",
+    "uploadSticker": "อัปโหลดสติกเกอร์",
+    "emoji": {
+      "static": "ภาพนิ่ง",
+      "animated": "เคลื่อนไหว",
+      "explainer": "อีโมจิเคลื่อนไหวคือ sprite sheet แนวตั้ง โดยเรียงแต่ละเฟรมจากบนลงล่างในไฟล์ PNG สี่เหลี่ยมจัตุรัสหนึ่งไฟล์ แล้วตั้งค่าจำนวนเฟรมและความเร็วในการเล่น",
+      "pickSheet": "เลือก sprite sheet",
+      "frames": "เฟรม",
+      "fps": "FPS",
+      "style": "สไตล์",
+      "upload": "อัปโหลดอีโมจิเคลื่อนไหว",
+      "uploaded": "อัปโหลดอีโมจิเคลื่อนไหวแล้ว",
+      "badFrames": "เฟรมและ fps ต้องมีค่าอย่างน้อย 1 ทั้งคู่",
+      "empty": "ยังไม่มีอีโมจิเคลื่อนไหว"
+    }
   },
   "profile": {
     "title": "โปรไฟล์ของฉัน",
@@ -51,6 +99,11 @@
     "bio": "คำอธิบาย",
     "bioPlaceholder": "คำอธิบาย…",
     "statusPlaceholder": "ข้อความสถานะ…",
+    "statusPresets": "พรีเซ็ตสถานะ",
+    "saveStatusPreset": "บันทึกสถานะปัจจุบันเป็นพรีเซ็ต",
+    "applyStatusPreset": "ใช้พรีเซ็ตนี้",
+    "deleteStatusPreset": "ลบพรีเซ็ต",
+    "noStatusPresets": "บันทึกชุดสถานะและคำอธิบายไว้เพื่อใช้ซ้ำในภายหลัง",
     "currentAvatar": "อวาตาร์ปัจจุบัน",
     "currentWorld": "โลกปัจจุบัน",
     "emptyBio": "ไม่มีคำอธิบาย",
@@ -64,10 +117,10 @@
     "quickActions": "พื้นที่ทำงานเนทีฟ",
     "quickActionsDesc": "เปิดพื้นที่ทำงานในตัวของ VRCSM เพื่อจัดการเพื่อน อวาตาร์ โลก และรายการโปรด โดยไม่ต้องสลับออกไปยังเว็บไซต์ VRChat",
     "openProfileWeb": "เปิดเว็บโปรไฟล์",
+    "openNativeWorkspace": "เปิดพื้นที่ทำงาน",
     "openAvatarManager": "เปิดตัวจัดการอวาตาร์",
     "openWorldManager": "เปิดตัวจัดการโลก",
     "openHomePortal": "เปิดหน้าแรก VRChat",
-    "openNativeWorkspace": "เปิดพื้นที่ทำงาน",
     "liveContext": "บริบทปัจจุบัน",
     "liveContextDesc": "id สำคัญและเป้าหมายเซสชันปัจจุบันสำหรับการนำทางอย่างรวดเร็ว",
     "liveContextHint": "ใช้ live id เหล่านี้เป็นจุดยึดสำหรับโฟลว์เพื่อน อวาตาร์ โลก และรายการโปรดแบบเนทีฟภายใน VRCSM",
@@ -90,6 +143,17 @@
       "ageVerified": "ยืนยัน 18+ แล้ว",
       "ageUnverified": "ยังไม่ยืนยัน",
       "languages": "ภาษา"
+    },
+    "emailUnverified": "ตั้งค่าแล้วแต่ยังไม่ยืนยัน",
+    "emailVerified": "ยืนยันแล้ว",
+    "linkedAccounts": "บัญชีที่เชื่อมโยง",
+    "linkedAccountsDesc": "แพลตฟอร์มที่ผูกไว้และข้อมูลตัวตนจากเซสชันการเข้าสู่ระบบ VRChat แสดงตามต้นฉบับ",
+    "manageOnVrchat": "จัดการบน vrchat.com",
+    "notLinked": "ยังไม่เชื่อมโยง",
+    "security": {
+      "avatarCopying": "การโคลนอวาตาร์",
+      "clientLogin": "การเข้าสู่ระบบไคลเอนต์เกม",
+      "twoFactor": "การยืนยันตัวตนสองชั้น"
     }
   },
   "screenshots": {
@@ -146,6 +210,21 @@
   },
   "friendDetail": {
     "title": "รายละเอียดเพื่อน",
+    "nameHistory": "ชื่อเดิม",
+    "liveOccupants": "ผู้อยู่ในห้องแบบเรียลไทม์",
+    "instanceFull": "เต็ม",
+    "ageVerified": "ยืนยันอายุแล้ว",
+    "friendsSince": "เป็นเพื่อนกันตั้งแต่ {{when}}",
+    "bestTime": "ช่วงเวลาที่เจอตัวได้ง่ายที่สุด",
+    "bestTimeWindow": "{{day}} {{start}}–{{end}}",
+    "bestTimeDays": "พบออนไลน์ {{count}} วันที่นี่",
+    "bestTimeHint": "ประเมินจากประวัติการออนไลน์ที่บันทึกไว้",
+    "confidenceHint": "อ้างอิงจากประวัติการออนไลน์ {{days}} วัน",
+    "confidence": {
+      "high": "ความมั่นใจสูง",
+      "medium": "ความมั่นใจปานกลาง",
+      "low": "ความมั่นใจต่ำ"
+    },
     "sendMessage": "ส่งข้อความ",
     "messagePlaceholder": "สวัสดี! ไปเที่ยวเวิลด์กันไหม?",
     "messageSent": "ส่งข้อความแล้ว",
@@ -159,11 +238,183 @@
     "mute": "ปิดเสียง",
     "inviteMe": "เชิญฉัน",
     "joinInstance": "เข้าร่วมอินสแตนซ์",
-    "notSignedIn": "เข้าสู่ระบบ VRChat เพื่อดูรายละเอียดเพื่อน"
+    "notSignedIn": "เข้าสู่ระบบ VRChat เพื่อดูรายละเอียดเพื่อน",
+    "unfriendConfirm1": "เลิกเป็นเพื่อนกับ {{name}} ไหม",
+    "unfriendConfirm2Title": "แน่ใจจริง ๆ นะ",
+    "unfriendConfirm2": "ถ้ากดปุ่มสีแดง {{name}} อาจหายไปจากที่นี่ตลอดกาล QvQ",
+    "unfriendFinal": "ใช่ กดปุ่มแดง",
+    "unfriendNevermind": "ไม่เอาแล้ว!!",
+    "unfriendCancelled": "ยกเลิกแล้ว มิตรภาพยังอยู่ครบดี",
+    "boop": "ทัก / เขี่ย",
+    "boopHint": "เลือกประเภทข้อความ แล้วเลือกข้อความที่บันทึกไว้เพื่อแนบไป ตั้งค่าได้สูงสุด 4 ช่องต่อประเภทในไคลเอนต์ VRChat (Quick Menu → Notifications → Messages)",
+    "boopSent": "ส่งการเขี่ยแล้ว — {{name}} จะเห็นการแจ้งเตือน",
+    "nativeBoop": "เขี่ย {{name}}",
+    "nativeBoopSent": "เขี่ย {{name}} แล้ว!",
+    "myEmoji": "อีโมจิของฉัน",
+    "emojiBoopSent": "เขี่ย {{name}} ด้วย {{emoji}} แล้ว!",
+    "emojiBoopTooltip": "เขี่ยด้วย {{emoji}}",
+    "boopSending": "กำลังส่ง…",
+    "boopSlot": "ช่อง {{n}}",
+    "boopCooldown": "{{m}} น.",
+    "boopEmptySlot": "(ว่าง — ส่งการเขี่ยเปล่า)",
+    "boopEmojiHint": "อีโมจิเขี่ยที่ใช้บ่อยใน VRChat — คลิกเพื่อคัดลอก แล้ววางลงในช่องข้อความที่บันทึกไว้",
+    "boopCopyEmoji": "คลิกเพื่อคัดลอก",
+    "boopEmojiCopied": "คัดลอกแล้ว! วางลงในช่องข้อความที่บันทึกไว้ในไคลเอนต์ VRChat",
+    "boopInviteNeedsWorld": "ข้อความเชิญต้องมีตำแหน่งโลกของคุณเอง เปิดเว็บไซต์ VRChat เพื่อจัดการ",
+    "boopSendTooltip": "ส่งข้อความนี้เป็นการแจ้งเตือนขอคำเชิญ",
+    "boopCooldownTooltip": "อยู่ในช่วงคูลดาวน์ — รอสักครู่ก่อนส่งอีกครั้ง",
+    "boopInviteTypeHint": "ข้อความเชิญและข้อความตอบรับคำเชิญใช้เมื่อเชิญใครสักคนมาที่โลกของคุณ ตัวอย่างเหล่านี้แสดงไว้เพื่ออ้างอิง — ตั้งค่าในไคลเอนต์ VRChat เพื่อใช้กับการเชิญ",
+    "boopTypeRequestInvite": "เขี่ย",
+    "boopTypeInvite": "เชิญ",
+    "boopTypeInviteResponse": "ตอบกลับ",
+    "boopTypeReqInviteReply": "ตอบกลับการเขี่ย",
+    "noSlotsTitle": "ยังไม่ได้ตั้งค่าข้อความที่บันทึกไว้",
+    "noSlotsHint": "VRChat ให้บันทึกข้อความเชิญได้สูงสุด 4 ข้อความต่อประเภท ตั้งค่าในไคลเอนต์ VRChat ที่ Quick Menu → Notifications → Messages แล้วข้อความจะปรากฏที่นี่ให้เลือก",
+    "editSlots": "แก้ไขช่องข้อความใน VRChat",
+    "editSlotsHint": "แก้ไขข้อความที่บันทึกไว้ในไคลเอนต์ VRChat (Quick Menu → Notifications → Messages)",
+    "inviteToTheirWorld": "เชิญตัวเองไปยังโลกของพวกเขา",
+    "inviteSent": "ส่งคำเชิญแล้ว",
+    "openVrchatProfile": "เปิดโปรไฟล์บน vrchat.com",
+    "avatarHistory": "ประวัติอวาตาร์",
+    "avatarIdCopied": "คัดลอก ID อวาตาร์แล้ว",
+    "blocked": "บล็อกผู้ใช้แล้ว",
+    "boopSend": "เขี่ย {{name}}",
+    "boopSendEmoji": "เขี่ยด้วย {{e}}",
+    "currentAvatar": "อวาตาร์ปัจจุบัน",
+    "currentWorld": "โลกปัจจุบัน",
+    "description": "ข้อมูลเพื่อนโดยละเอียด",
+    "launch": "เปิดเกม",
+    "muteConfirm": "ปิดเสียง {{name}} ไหม",
+    "muted": "ปิดเสียงผู้ใช้แล้ว",
+    "noActivity": "ยังไม่มีกิจกรรมที่บันทึกไว้",
+    "note": "โน้ต",
+    "notePlaceholder": "เขียนโน้ตส่วนตัวเกี่ยวกับเพื่อนคนนี้...",
+    "noteSaved": "บันทึกโน้ตแล้ว",
+    "recentActivity": "กิจกรรมล่าสุด",
+    "saveNote": "บันทึก",
+    "sharedWorlds": "โลกที่เคยอยู่ร่วมกัน",
+    "timesSeen": "พบ {{n}} ครั้ง",
+    "vrcProfile": "โปรไฟล์ VRChat"
   },
   "osc": {
     "title": "เครื่องมือ OSC",
     "subtitle": "ส่งและรับข้อความ Open Sound Control กับ VRChat ค่าเริ่มต้น ออก → :9000, เข้า ← :9001",
+    "page": {
+      "subtitle": "สร้างข้อความ OSC ของ VRChat ดูตัวอย่างสิ่งที่จะส่งจริง และติดตามการรับส่งได้ในที่เดียว"
+    },
+    "profile": {
+      "label": "โปรไฟล์",
+      "cardCount": "{{count}} การ์ด",
+      "new": "Profile ใหม่",
+      "rename": "เปลี่ยนชื่อ Profile",
+      "delete": "ลบ Profile",
+      "renameTitle": "เปลี่ยนชื่อ Profile",
+      "deleteTitle": "ลบ Profile นี้?",
+      "deleteBody": "\"{{name}}\" และการ์ดทั้งหมดจะถูกลบ การกระทำนี้ย้อนกลับไม่ได้"
+    },
+    "conn": {
+      "label": "เป้าหมาย",
+      "host": "โฮสต์ OSC",
+      "sendPort": "พอร์ตส่ง",
+      "hardware": "ฮาร์ดแวร์",
+      "hardwareNone": "ไม่มีข้อมูล Hardware"
+    },
+    "io": {
+      "button": "นำเข้า / ส่งออก",
+      "title": "นำเข้า / ส่งออก Profile",
+      "desc": "การส่งออกจะคัดลอกการ์ดใน Profile ที่ใช้งานอยู่เป็น JSON วาง JSON แล้วนำเข้าเพื่อแทนที่การ์ดใน Profile นี้",
+      "export": "ส่งออก",
+      "import": "นำเข้า",
+      "loadFile": "โหลดไฟล์",
+      "copied": "คัดลอก Profile ไปยังคลิปบอร์ดแล้ว",
+      "exportReady": "Profile พร้อมคัดลอก",
+      "imported": "นำเข้า Profile แล้ว"
+    },
+    "list": {
+      "title": "ข้อความ",
+      "reset": "รีเซ็ตเป็นค่าเริ่มต้น",
+      "resetTitle": "รีเซ็ตข้อความ?",
+      "resetBody": "การกระทำนี้จะแทนที่ข้อความใน Profile ปัจจุบันด้วยค่าเริ่มต้นที่มีมาให้",
+      "empty": "ยังไม่มีข้อความ กด \"เพิ่มข้อความ\" เพื่อเริ่ม"
+    },
+    "card": {
+      "emptyPreview": "(ไม่มีเอาต์พุต)",
+      "send": "ส่ง",
+      "autoTitle": "ส่งอัตโนมัติตามช่วงเวลา",
+      "autoStart": "อัตโนมัติ",
+      "autoStop": "หยุด",
+      "enable": "เปิด",
+      "disable": "ปิด",
+      "moveUp": "เลื่อนขึ้น",
+      "moveDown": "เลื่อนลง"
+    },
+    "editor": {
+      "empty": "เลือกข้อความทางซ้าย หรือเพิ่มข้อความใหม่เพื่อเริ่มแก้ไข",
+      "title": "แก้ไขข้อความ",
+      "delete": "ลบข้อความ",
+      "name": "ชื่อ",
+      "group": "กลุ่ม",
+      "template": "ข้อความ chatbox",
+      "templatePlaceholder": "พิมพ์ข้อความและแทรก {variables} เช่น CPU {cpu.loadPct} {cpu.tempC}",
+      "address": "แอดเดรส OSC",
+      "type": "ชนิด",
+      "value": "ค่า",
+      "previewLabel": "จะส่ง",
+      "noOutput": "(ไม่มี — เทมเพลตให้ผลว่างเปล่า)",
+      "interval": "ทุก",
+      "send": "ส่งเลย",
+      "startAuto": "ส่งอัตโนมัติ",
+      "stopAuto": "หยุดอัตโนมัติ",
+      "rateHint": "ขีดจำกัด chatbox: ส่งเองได้ 5 ครั้งต่อ 5 วินาที การส่งอัตโนมัติจำกัดที่ 1 ข้อความทุก 2 วินาที",
+      "insertVariable": "แทรกตัวแปร",
+      "searchVariable": "ค้นหา CPU, GPU, เวลา...",
+      "noVariables": "ไม่มีตัวแปรที่ตรงกัน"
+    },
+    "add": {
+      "button": "เพิ่มข้อความ",
+      "chatbox": "ข้อความ chatbox เปล่า",
+      "raw": "ข้อความค่า OSC เปล่า",
+      "presets": "พรีเซ็ต"
+    },
+    "loop": {
+      "title": "ส่งและรับ",
+      "listening": "กำลังฟัง",
+      "quickSend": "ส่งด่วน",
+      "address": "แอดเดรส",
+      "type": "ชนิดค่า",
+      "value": "ค่า",
+      "send": "ส่ง",
+      "listenPort": "พอร์ตรับฟัง",
+      "start": "ฟัง",
+      "stop": "หยุด",
+      "clear": "ล้าง",
+      "waiting": "รอข้อความ...",
+      "idle": "ส่งข้อความหรือเริ่มการฟัง",
+      "in": "เข้า",
+      "out": "ออก"
+    },
+    "avatar": {
+      "title": "พารามิเตอร์ Avatar",
+      "hint": "อ่านการตั้งค่า OSC ของ Avatar ในเครื่องและเพิ่มพารามิเตอร์เป็นข้อความค่า",
+      "missing": "กรอกหรือเลือก avatar id",
+      "loaded": "โหลด {{count}} พารามิเตอร์แล้ว",
+      "load": "โหลด",
+      "paramName": "ชื่อพารามิเตอร์",
+      "paramType": "ชนิดพารามิเตอร์",
+      "noParams": "ไม่มีพารามิเตอร์ในไฟล์ Avatar นี้"
+    },
+    "hw": {
+      "title": "ค่าฮาร์ดแวร์",
+      "loading": "กำลังโหลด",
+      "identity": "ข้อมูลระบุตัวตน",
+      "live": "เซ็นเซอร์แบบเรียลไทม์",
+      "sensorNeeded": "ต้องมีตัวให้ข้อมูลเซ็นเซอร์"
+    },
+    "auto": {
+      "badge": "AUTO",
+      "stats": "ส่งแล้ว {{sent}} · ข้าม {{skipped}}",
+      "nextIn": "อีก {{seconds}}วิ"
+    },
     "send": "ส่ง",
     "sendDesc": "ส่งข้อความ OSC เดี่ยว ใช้ที่อยู่อย่าง /avatar/parameters/Foo สำหรับพารามิเตอร์อวาตาร์ หรือ /chatbox/input สำหรับ ChatBox",
     "sendButton": "ส่ง",
@@ -213,6 +464,7 @@
       "type": "ชนิด",
       "insertVariable": "แทรกตัวแปร",
       "autoStarted": "เริ่มส่งอัตโนมัติแล้ว",
+      "emptyRendered": "เทมเพลตไม่มีค่าที่ใช้ได้",
       "templatePresets": "เทมเพลต",
       "builder": "ตัวสร้างเทมเพลต",
       "editArea": "พื้นที่แก้ไข",
@@ -236,132 +488,15 @@
       "clickToInsert": "คลิกเพื่อแทรก",
       "noComponents": "ไม่มีองค์ประกอบที่ตรงกับตัวกรองนี้",
       "avatarParamsHint": "สแกนคอนฟิก OSC ของอวตาร์ในเครื่องแล้วแปลงพารามิเตอร์เป็นการ์ดควบคุม ไม่ใช่ตัวแกะโมเดลอวตาร์",
-      "emptyRendered": "เทมเพลตไม่มีค่าที่ใช้ได้",
       "cardDisabled": "ปิดใช้การ์ดนี้อยู่",
       "autoCardMissing": "การ์ดส่งอัตโนมัติถูกลบแล้ว",
       "autoStats": "ส่ง {{sent}} / ข้าม {{skipped}}",
       "nextSendIn": "ส่งถัดไปใน {{seconds}}วิ",
       "stopAutoShort": "หยุด",
       "startAutoShort": "อัตโนมัติ",
-      "noCardSelected": "Select a card first"
+      "noCardSelected": "เลือกการ์ดก่อน"
     },
-    "sendFailed": "OSC ส่งไม่สำเร็จ",
-    "page": {
-      "subtitle": "สร้างข้อความ OSC ของ VRChat ดูตัวอย่างสิ่งที่จะส่งจริง และติดตามการรับส่งได้ในที่เดียว"
-    },
-    "profile": {
-      "label": "Profile",
-      "cardCount": "{{count}} การ์ด",
-      "new": "Profile ใหม่",
-      "rename": "เปลี่ยนชื่อ Profile",
-      "delete": "ลบ Profile",
-      "renameTitle": "เปลี่ยนชื่อ Profile",
-      "deleteTitle": "ลบ Profile นี้?",
-      "deleteBody": "\"{{name}}\" และการ์ดทั้งหมดจะถูกลบ การกระทำนี้ย้อนกลับไม่ได้"
-    },
-    "conn": {
-      "label": "เป้าหมาย",
-      "host": "OSC host",
-      "sendPort": "พอร์ตส่ง",
-      "hardware": "Hardware",
-      "hardwareNone": "ไม่มีข้อมูล Hardware"
-    },
-    "io": {
-      "button": "นำเข้า / ส่งออก",
-      "title": "นำเข้า / ส่งออก Profile",
-      "desc": "การส่งออกจะคัดลอกการ์ดใน Profile ที่ใช้งานอยู่เป็น JSON วาง JSON แล้วนำเข้าเพื่อแทนที่การ์ดใน Profile นี้",
-      "export": "ส่งออก",
-      "import": "นำเข้า",
-      "loadFile": "โหลดไฟล์",
-      "copied": "คัดลอก Profile ไปยังคลิปบอร์ดแล้ว",
-      "exportReady": "Profile พร้อมคัดลอก",
-      "imported": "นำเข้า Profile แล้ว"
-    },
-    "list": {
-      "title": "ข้อความ",
-      "reset": "รีเซ็ตเป็นค่าเริ่มต้น",
-      "resetTitle": "รีเซ็ตข้อความ?",
-      "resetBody": "การกระทำนี้จะแทนที่ข้อความใน Profile ปัจจุบันด้วยค่าเริ่มต้นที่มีมาให้",
-      "empty": "ยังไม่มีข้อความ กด \"เพิ่มข้อความ\" เพื่อเริ่ม"
-    },
-    "card": {
-      "emptyPreview": "(ไม่มีเอาต์พุต)",
-      "send": "ส่ง",
-      "autoTitle": "ส่งอัตโนมัติตามช่วงเวลา",
-      "autoStart": "อัตโนมัติ",
-      "autoStop": "หยุด",
-      "enable": "เปิด",
-      "disable": "ปิด",
-      "moveUp": "เลื่อนขึ้น",
-      "moveDown": "เลื่อนลง"
-    },
-    "editor": {
-      "empty": "เลือกข้อความทางซ้าย หรือเพิ่มข้อความใหม่เพื่อเริ่มแก้ไข",
-      "title": "แก้ไขข้อความ",
-      "delete": "ลบข้อความ",
-      "name": "ชื่อ",
-      "group": "กลุ่ม",
-      "template": "ข้อความ chatbox",
-      "templatePlaceholder": "พิมพ์ข้อความและแทรก {variables} เช่น CPU {cpu.loadPct} {cpu.tempC}",
-      "address": "OSC address",
-      "type": "ชนิด",
-      "value": "ค่า",
-      "previewLabel": "จะส่ง",
-      "noOutput": "(ไม่มี — เทมเพลตให้ผลว่างเปล่า)",
-      "interval": "ทุก",
-      "send": "ส่งเลย",
-      "startAuto": "ส่งอัตโนมัติ",
-      "stopAuto": "หยุดอัตโนมัติ",
-      "rateHint": "ขีดจำกัด chatbox: ส่งเองได้ 5 ครั้งต่อ 5 วินาที การส่งอัตโนมัติจำกัดที่ 1 ข้อความทุก 2 วินาที",
-      "insertVariable": "แทรกตัวแปร",
-      "searchVariable": "ค้นหา CPU, GPU, เวลา...",
-      "noVariables": "ไม่มีตัวแปรที่ตรงกัน"
-    },
-    "add": {
-      "button": "เพิ่มข้อความ",
-      "chatbox": "ข้อความ chatbox เปล่า",
-      "raw": "ข้อความค่า OSC เปล่า",
-      "presets": "Presets"
-    },
-    "loop": {
-      "title": "ส่งและรับ",
-      "listening": "กำลังฟัง",
-      "quickSend": "ส่งด่วน",
-      "address": "Address",
-      "type": "ชนิดค่า",
-      "value": "ค่า",
-      "send": "ส่ง",
-      "listenPort": "พอร์ตรับฟัง",
-      "start": "ฟัง",
-      "stop": "หยุด",
-      "clear": "ล้าง",
-      "waiting": "รอข้อความ...",
-      "idle": "ส่งข้อความหรือเริ่มการฟัง",
-      "in": "เข้า",
-      "out": "ออก"
-    },
-    "avatar": {
-      "title": "พารามิเตอร์ Avatar",
-      "hint": "อ่านการตั้งค่า OSC ของ Avatar ในเครื่องและเพิ่มพารามิเตอร์เป็นข้อความค่า",
-      "missing": "กรอกหรือเลือก avatar id",
-      "loaded": "โหลด {{count}} พารามิเตอร์แล้ว",
-      "load": "โหลด",
-      "paramName": "ชื่อพารามิเตอร์",
-      "paramType": "ชนิดพารามิเตอร์",
-      "noParams": "ไม่มีพารามิเตอร์ในไฟล์ Avatar นี้"
-    },
-    "hw": {
-      "title": "ค่าฮาร์ดแวร์",
-      "loading": "กำลังโหลด",
-      "identity": "ข้อมูลระบุตัวตน",
-      "live": "เซ็นเซอร์แบบเรียลไทม์",
-      "sensorNeeded": "ต้องมีตัวให้ข้อมูลเซ็นเซอร์"
-    },
-    "auto": {
-      "badge": "AUTO",
-      "stats": "ส่งแล้ว {{sent}} · ข้าม {{skipped}}",
-      "nextIn": "อีก {{seconds}}วิ"
-    }
+    "sendFailed": "OSC ส่งไม่สำเร็จ"
   },
   "auth": {
     "signIn": "เข้าสู่ระบบ",
@@ -392,23 +527,18 @@
   },
   "vrchatWorkspace": {
     "title": "พื้นที่ทำงาน VRChat",
+    "tabs": {
+      "overview": "ภาพรวม",
+      "friends": "เพื่อน",
+      "avatars": "อวาตาร์",
+      "worlds": "โลก",
+      "social": "โซเชียล",
+      "vrcPlus": "VRC+"
+    },
     "joinFriend": "เข้าร่วมกับเพื่อน",
     "requestInvite": "ขอรับคำเชิญ",
     "openFriendProfile": "เปิดโปรไฟล์",
     "noSubscriptionSignals": "ไม่มีฟิลด์เฉพาะสำหรับตรวจสอบสถานะการสมัครสมาชิกในเซสชันนี้",
-    "quickFilters": "ตัวกรองด่วน",
-    "onlyOnlineFriends": "เฉพาะเพื่อนออนไลน์",
-    "onlyMyGroups": "เฉพาะกลุ่มของฉัน",
-    "hideModerations": "ซ่อนการมอเดอเรชัน",
-    "runtimeMode": "โหมดการรัน",
-    "trustRankQuick": "ระดับความน่าเชื่อถือ",
-    "vrcPlusQuick": "VRC+",
-    "linkedAccountsQuick": "บัญชีที่เชื่อม",
-    "socialPulse": "สัญญาณสังคม",
-    "marketplaceQuick": "ตลาด",
-    "favoriteAvatars": "อวตารโปรด",
-    "favoriteWorlds": "เวิลด์โปรด",
-    "downloadReady": "พร้อมโหลด",
     "block": "บล็อก",
     "mute": "ปิดเสียง",
     "pickDownloadFolder": "เลือกโฟลเดอร์สำหรับโหลดอวตาร",
@@ -439,6 +569,9 @@
     "noDownloadCandidates": "ยังไม่มีอวตารล่าสุดให้โหลดได้",
     "marketplaceTitle": "ร้านค้า",
     "marketplaceBody": "ข้อมูลการเป็นเจ้าของจากอวตารที่ชอบ, คลังในเครื่อง, ไฟล์ที่โหลดล่าสุด และข้อมูลจากเซสชัน VRChat",
+    "favoriteAvatars": "อวตารโปรด",
+    "favoriteWorlds": "เวิลด์โปรด",
+    "downloadReady": "พร้อมโหลด",
     "downloadFolder": "โฟลเดอร์ดาวน์โหลด",
     "topCreators": "ผู้สร้างยอดฮิตในเครื่อง",
     "inventoryCount": "{{count}} อวตาร",
@@ -456,14 +589,32 @@
     "subscriptionSignals": "สัญญาณ",
     "lastExpiredSubscription": "หมดอายุล่าสุด",
     "liveSignal": "เรียลไทม์",
-    "tabs": {
-      "avatars": "อวาตาร์",
-      "friends": "เพื่อน",
-      "overview": "ภาพรวม",
-      "social": "โซเชียล",
-      "vrcPlus": "VRC+",
-      "worlds": "โลก"
-    }
+    "notOwnedAvatar": "อวาตาร์นี้ไม่ใช่ของคุณ — VRChat ไม่มีให้ดาวน์โหลด",
+    "quickFilters": "ตัวกรองด่วน",
+    "onlyOnlineFriends": "เฉพาะเพื่อนออนไลน์",
+    "onlyMyGroups": "เฉพาะกลุ่มของฉัน",
+    "hideModerations": "ซ่อนการมอเดอเรชัน",
+    "runtimeMode": "โหมดการรัน",
+    "trustRankQuick": "ระดับความน่าเชื่อถือ",
+    "vrcPlusQuick": "VRC+",
+    "linkedAccountsQuick": "บัญชีที่เชื่อม",
+    "socialPulse": "สัญญาณสังคม",
+    "marketplaceQuick": "ตลาด",
+    "avatarHistoryDesc": "อวาตาร์ที่ใส่ล่าสุด ดึงมาจากการแยกวิเคราะห์บันทึก VRChat",
+    "noAvatarHistory": "ยังไม่มีประวัติอวาตาร์ที่บันทึกไว้",
+    "avatarDownloads": "ดาวน์โหลดแพ็กเกจอวาตาร์",
+    "avatarDownloadsDesc": "ดาวน์โหลด asset bundle .vrca ของอวาตาร์ไปยังโฟลเดอร์ในเครื่อง ต้องเข้าสู่ระบบก่อน",
+    "download": "ดาวน์โหลด",
+    "downloadComplete": "ดาวน์โหลดไปยัง {{path}} แล้ว",
+    "signInRequired": "เข้าสู่ระบบเพื่อดาวน์โหลด asset bundle ของอวาตาร์",
+    "avatarDetailsFailed": "ไม่สามารถดึงรายละเอียดอวาตาร์ได้ อาจเป็นแบบส่วนตัวหรือถูกลบไปแล้ว",
+    "noAssetUrl": "ไม่พบ URL ของ asset ที่ดาวน์โหลดได้สำหรับอวาตาร์นี้",
+    "joinFailed": "เปิดเกมไม่สำเร็จ: {{error}}",
+    "launch": "เปิดเกม",
+    "launchWorld": "เปิดใน VRChat",
+    "noFavoriteWorlds": "ยังไม่มีโลกโปรด ซิงก์รายการโปรด VRChat ของคุณเพื่อดูที่นี่",
+    "noRecentWorlds": "ไม่พบโลกล่าสุดในบันทึก VRChat",
+    "recentWorlds": "โลกล่าสุด"
   },
   "friends": {
     "title": "เพื่อน",
@@ -500,7 +651,8 @@
       "known": "User",
       "user": "New User",
       "new": "Visitor",
-      "visitor": "Visitor"
+      "visitor": "Visitor",
+      "label": "ระดับความน่าเชื่อถือ"
     },
     "badges": {
       "moderator": "ผู้ดูแล VRChat"
@@ -520,6 +672,7 @@
     "alsoInInstance": "เพื่อนในอินสแตนซ์เดียวกัน",
     "detailPaneTitle": "รายละเอียด",
     "platform": "แพลตฟอร์ม",
+    "joinRoom": "เข้าร่วมห้อง",
     "actions": {
       "menu": "การกระทำ",
       "joinRoom": "เข้าร่วมห้อง",
@@ -528,7 +681,20 @@
       "inviteToMyRoom": "เชิญเข้าห้องของฉัน",
       "inviteSent": "เชิญ {{name}} เข้าห้องของคุณแล้ว",
       "sendMessage": "ส่งข้อความ",
-      "viewProfile": "ดูโปรไฟล์"
+      "viewProfile": "ดูโปรไฟล์",
+      "copied": "คัดลอก{{label}}แล้ว",
+      "copyAvatarId": "คัดลอก ID อวาตาร์ปัจจุบัน",
+      "copyDisplayName": "คัดลอกชื่อที่แสดง",
+      "copyLocation": "คัดลอกตำแหน่ง",
+      "copyUserId": "คัดลอก ID ผู้ใช้",
+      "copyWorldId": "คัดลอก ID โลก",
+      "expand": "ขยาย",
+      "favorited": "เพิ่ม {{name}} เป็นรายการโปรดแล้ว",
+      "inviteSelf": "ขอคำเชิญมาหาฉัน",
+      "openProfile": "เปิดโปรไฟล์",
+      "openWorldPage": "เปิดหน้าโลก",
+      "selfInviteSent": "ขอคำเชิญไปยังอินสแตนซ์ปัจจุบันของ {{name}} แล้ว",
+      "unfavorited": "นำ {{name}} ออกจากรายการโปรดแล้ว"
     },
     "views": {
       "all": "ทั้งหมด",
@@ -537,6 +703,17 @@
       "joinable": "เข้าร่วมได้",
       "online": "ออนไลน์",
       "offline": "ออฟไลน์"
+    },
+    "copyLabels": {
+      "avatarId": "ID อวาตาร์",
+      "displayName": "ชื่อที่แสดง",
+      "location": "ตำแหน่ง",
+      "userId": "ID ผู้ใช้",
+      "worldId": "ID โลก"
+    },
+    "inspector": {
+      "empty": "เลือกเพื่อนเพื่อดูตำแหน่ง อวาตาร์ และการดำเนินการด่วน",
+      "title": "เพื่อนแบบย่อ"
     }
   },
   "layout": {
@@ -579,7 +756,12 @@
       "total": "กลุ่มของคุณ",
       "online": "สมาชิกที่ออนไลน์",
       "representing": "กำลังเป็นตัวแทน"
-    }
+    },
+    "nowRepresenting": "กำลังเป็นตัวแทน {{name}}",
+    "represent": "เป็นตัวแทน",
+    "representFailed": "อัปเดตการเป็นตัวแทนไม่สำเร็จ: {{error}}",
+    "stopRepresenting": "หยุดเป็นตัวแทน",
+    "stoppedRepresenting": "หยุดเป็นตัวแทน {{name}} แล้ว"
   },
   "menu": {
     "file": "ไฟล์",
@@ -613,13 +795,23 @@
     "goAvatars": "อวตาร์",
     "goWorlds": "เวิลด์",
     "goFriends": "เพื่อน",
+    "goGroups": "กลุ่ม",
     "goScreenshots": "สกรีนช็อต",
     "goProfile": "โปรไฟล์",
-    "goVrchat": "VRChat Workspace",
+    "goVrchat": "พื้นที่ทำงาน VRChat",
+    "goWorldHistory": "ประวัติโลก",
+    "goCalendar": "ปฏิทินและ Jams",
+    "goEvents": "ตัวบันทึกอีเวนต์",
+    "goSocial": "การวิเคราะห์เชิงสังคม",
     "toolsMigrate": "ย้ายแคช",
     "toolsSettings": "ตั้งค่า",
     "toolsSteamVR": "ตั้งค่า SteamVR",
     "toolsConfig": "การตั้งค่าแอป",
+    "toolsVrDiagnostics": "การวินิจฉัย VR",
+    "toolsRules": "กฎอัตโนมัติ",
+    "toolsOsc": "เครื่องมือ OSC",
+    "toolsBenchmark": "เบนช์มาร์กอวาตาร์",
+    "toolsFbt": "ตัวตรวจสอบ FBT",
     "toolsPluginsMarket": "ร้านค้าปลั๊กอิน",
     "toolsPluginsInstalled": "ปลั๊กอินที่ติดตั้ง",
     "windowResetLayout": "รีเซ็ตเลย์เอาต์",
@@ -628,7 +820,14 @@
     "helpCheckUpdates": "ตรวจสอบอัปเดต",
     "helpCheckUpdatesFallback": "ตรวจสอบอัปเดต…",
     "helpReportIssue": "รายงานปัญหา",
-    "helpKeyboard": "แป้นพิมพ์ลัด"
+    "helpKeyboard": "แป้นพิมพ์ลัด",
+    "helpSteamVrRepair": "ซ่อม SteamVR / Quest",
+    "helpVrDiagnostics": "การวินิจฉัย VR",
+    "helpPluginsMarket": "ตลาดปลั๊กอิน",
+    "helpInstalledPlugins": "ปลั๊กอินที่ติดตั้ง",
+    "helpVrchatStatus": "สถานะ VRChat",
+    "helpVrchatHome": "หน้าหลัก VRChat",
+    "helpSteamLink": "หมายเหตุอย่างเป็นทางการของ Steam Link / Quest"
   },
   "update": {
     "title": "อัปเดต VRCSM",
@@ -690,37 +889,53 @@
       "open": "เปิดบันทึก",
       "empty": "ยังไม่มีเหตุการณ์เซสชันที่บันทึกไว้"
     },
-    "analysis": {
-      "aggregate": {
-        "avatarChanges": "การเปลี่ยนอวาตาร์",
-        "totalSessions": "เซสชัน",
-        "uniquePlayers": "ผู้เล่นที่ไม่ซ้ำกัน",
-        "uniqueWorlds": "โลกที่ไม่ซ้ำกัน"
-      },
-      "empty": "ไม่พบเซสชันในบันทึกของเครื่อง",
-      "ongoing": "กำลังดำเนินการ",
-      "openFromOffline": "เรียกดูการวิเคราะห์ย้อนหลัง",
-      "session": {
-        "noPlayers": "ไม่มีบันทึกเหตุการณ์ของผู้เล่น",
-        "players": "ผู้เล่น",
-        "timeline": "ไทม์ไลน์"
-      },
-      "sessions": "ประวัติเซสชัน",
-      "sessionsDesc": "สร้างใหม่จากบันทึกของเครื่อง — ล่าสุดก่อน",
-      "tab": "การวิเคราะห์ย้อนหลัง",
-      "topPlayers": "ผู้เล่นที่พบมากที่สุด",
-      "topWorlds": "โลกที่เยี่ยมชมมากที่สุด"
-    },
     "vrcNotRunning": "VRChat ไม่ได้ทำงานอยู่",
     "vrcNotRunningHint": "เริ่ม VRChat เพื่อตรวจสอบห้องและผู้เล่นแบบเรียลไทม์",
+    "analysis": {
+      "tab": "การวิเคราะห์ย้อนหลัง",
+      "openFromOffline": "เรียกดูการวิเคราะห์ย้อนหลัง",
+      "sessions": "ประวัติเซสชัน",
+      "sessionsDesc": "สร้างใหม่จากบันทึกของเครื่อง — ล่าสุดก่อน",
+      "ongoing": "กำลังดำเนินการ",
+      "empty": "ไม่พบเซสชันในบันทึกของเครื่อง",
+      "topWorlds": "โลกที่เยี่ยมชมมากที่สุด",
+      "topPlayers": "ผู้เล่นที่พบมากที่สุด",
+      "aggregate": {
+        "totalSessions": "เซสชัน",
+        "uniquePlayers": "ผู้เล่นที่ไม่ซ้ำกัน",
+        "uniqueWorlds": "โลกที่ไม่ซ้ำกัน",
+        "avatarChanges": "การเปลี่ยนอวาตาร์"
+      },
+      "session": {
+        "players": "ผู้เล่น",
+        "noPlayers": "ไม่มีบันทึกเหตุการณ์ของผู้เล่น",
+        "timeline": "ไทม์ไลน์"
+      },
+      "loginRequired": "ต้องเข้าสู่ระบบเพื่อสแกนบันทึกในเครื่องหาประวัติเซสชัน",
+      "unclosed": "ยังไม่ปิด"
+    },
     "liveRoster": "รายชื่อในอินสแตนซ์สด",
+    "rosterSortAlphabetical": "เรียงตามตัวอักษร",
     "recentPlayerEvents": "กิจกรรมผู้เล่นล่าสุด",
     "noPlayerEvents": "ยังไม่มีการบันทึกกิจกรรมผู้เล่น เปิด VRChat และเข้าร่วมเวิลด์",
-    "rosterTab": "รายชื่ออินสแตนซ์"
+    "rosterTab": "รายชื่ออินสแตนซ์",
+    "wearNotAllowed": "อวาตาร์นี้ไม่อนุญาตให้โคลน",
+    "wearNotFound": "ไม่พบอวาตาร์นี้ อาจเป็นแบบส่วนตัว",
+    "wearSuccess": "กำลังใส่: {{name}}"
+  },
+  "folderPicker": {
+    "title": "เลือกโฟลเดอร์",
+    "hint": "นำทางไปยังโฟลเดอร์ แล้วคลิกเลือกโฟลเดอร์นี้",
+    "thisPc": "พีซีเครื่องนี้",
+    "up": "ขึ้น",
+    "refresh": "รีเฟรช",
+    "empty": "ไม่มีโฟลเดอร์ย่อยที่นี่",
+    "noDrives": "ไม่พบไดรฟ์",
+    "noSelection": "(ไม่ได้เลือกอะไร)",
+    "truncated": "แสดงรายการสูงสุดที่ 2000 รายการ",
+    "choose": "เลือกโฟลเดอร์นี้"
   },
   "common": {
-    "enabled": "เปิดใช้งาน",
-    "disabled": "ปิดใช้งาน",
     "loading": "กำลังโหลด…",
     "retry": "ลองอีกครั้ง",
     "rescan": "สแกนใหม่",
@@ -730,6 +945,8 @@
     "cancel": "ยกเลิก",
     "confirm": "ยืนยัน",
     "close": "ปิด",
+    "enabled": "เปิดใช้งาน",
+    "disabled": "ปิดใช้งาน",
     "save": "บันทึก",
     "idle": "ว่าง",
     "done": "เสร็จสิ้น",
@@ -747,18 +964,18 @@
     "updated": "อัปเดตเมื่อ",
     "friend": "เพื่อน",
     "player": "ผู้เล่น",
+    "copied": "คัดลอกแล้ว",
+    "copyFailed": "คัดลอกไม่สำเร็จ",
+    "copyId": "คัดลอก ID",
+    "openOnVrchat": "เปิดบนเว็บไซต์ VRChat",
+    "noDescription": "ไม่มีคำอธิบาย...",
+    "openInBrowser": "เปิดในเบราว์เซอร์",
     "hide": "ซ่อน",
     "show": "แสดง",
     "unknown": "ไม่ทราบ",
     "remove": "นำออก",
     "sidebar": "แถบข้าง",
     "experimental": "เบต้า",
-    "copied": "คัดลอกแล้ว",
-    "copyFailed": "คัดลอกไม่สำเร็จ",
-    "copyId": "คัดลอก ID",
-    "noDescription": "ไม่มีคำอธิบาย...",
-    "openInBrowser": "เปิดในเบราว์เซอร์",
-    "openOnVrchat": "เปิดบนเว็บไซต์ VRChat",
     "centimeters": "ซม.",
     "live": "สด",
     "first": "หน้าแรก",
@@ -770,7 +987,18 @@
     "partial": "บางส่วน",
     "add": "เพิ่ม",
     "delete": "ลบ",
-    "reset": "รีเซ็ต"
+    "reset": "รีเซ็ต",
+    "all": "ทั้งหมด",
+    "allowed": "อนุญาต",
+    "blocked": "บล็อก",
+    "collapse": "ยุบ",
+    "deleting": "กำลังลบ…",
+    "detecting": "กำลังตรวจหา…",
+    "expand": "ขยาย",
+    "navigate": "นำทาง",
+    "refreshing": "กำลังรีเฟรช",
+    "showAll": "แสดงทั้งหมด ({{count}})",
+    "unavailable": "ไม่พร้อมใช้งาน"
   },
   "about": {
     "title": "เกี่ยวกับ VRCSM",
@@ -802,18 +1030,31 @@
     "sections": {
       "navigate": "ไปยัง",
       "actions": "การกระทำ",
-      "logs": "ล็อกเซสชัน"
+      "logs": "ล็อกเซสชัน",
+      "globalSearch": "ค้นหาทั่วทั้งแอป",
+      "plugins": "ปลั๊กอิน"
     }
   },
   "dock": {
     "console": "คอนโซล",
     "output": "เอาต์พุต",
     "problems": "ปัญหา",
-    "clear": "ล้าง"
+    "clear": "ล้าง",
+    "hideNoiseHint": "พับข้อความ retry ของ EOS/Stomp telemetry จาก VRChat (ไม่ใช่ข้อผิดพลาดของ VRCSM)",
+    "noiseHidden": "ซ่อนข้อความรบกวน ({{count}})",
+    "showAll": "แสดงทั้งหมด"
   },
   "statusBar": {
     "version": "{{version}}",
-    "cacheTotal": "แคช"
+    "cacheTotal": "แคช",
+    "onlineCount": "เพื่อนออนไลน์ {{count}} คน",
+    "serverStatus": "สถานะเซิร์ฟเวอร์ VRChat",
+    "serverLevel": {
+      "operational": "ทุกระบบทำงานปกติ",
+      "minor": "ขัดข้องเล็กน้อย",
+      "major": "ขัดข้องรุนแรง",
+      "critical": "ขัดข้องขั้นวิกฤต"
+    }
   },
   "dashboard": {
     "title": "แดชบอร์ด",
@@ -905,11 +1146,18 @@
       "collections": "คอลเลกชัน"
     },
     "collections": "คอลเลกชัน",
+    "filterByType": "ประเภท",
     "defaultCollection": "คลัง",
     "defaultCollectionHint": "ชั้นเก็บโลคัลข้ามประเภทเริ่มต้น",
     "emptyCollections": "ยังไม่มีคอลเลกชัน",
     "collectionMeta": "{{count}} รายการ · ล่าสุด {{date}}",
     "searchPlaceholder": "กรองตามชื่อ id แท็ก หรือโน้ต…",
+    "sortLabel": "เรียงลำดับ",
+    "sort": {
+      "added": "เพิ่มล่าสุด",
+      "name": "ชื่อ",
+      "type": "ประเภท"
+    },
     "filters": {
       "all": "ทั้งหมด"
     },
@@ -952,8 +1200,60 @@
     "officialSync": "ซิงก์รายการโปรด VRChat",
     "officialSyncing": "กำลังซิงก์รายการโปรด VRChat…",
     "officialSyncSuccess": "ซิงก์รายการโปรดทางการแล้ว {{count}} รายการ (อวาตาร์ {{avatars}}, โลก {{worlds}})",
+    "officialSyncSuccessGrouped": "ซิงก์รายการโปรด {{count}} รายการเข้า {{lists}} กลุ่ม ({{avatars}} อวาตาร์, {{worlds}} โลก)",
     "officialSyncFailed": "ซิงก์รายการโปรด VRChat ล้มเหลว: {{error}}",
-    "officialLastSync": "ซิงก์รายการโปรด VRChat เมื่อ {{date}}"
+    "officialLastSync": "ซิงก์รายการโปรด VRChat เมื่อ {{date}}",
+    "favorite": "เพิ่มเป็นรายการโปรด",
+    "unfavorite": "นำออกจากรายการโปรด"
+  },
+  "modelDb": {
+    "title": "ฐานข้อมูลโมเดล",
+    "subtitle": "จัดการอวาตาร์ที่บัญชีของคุณเป็นเจ้าของ: เปลี่ยนชื่อ แก้ไขการมองเห็น เปลี่ยนรูป หรือลบ",
+    "searchPlaceholder": "กรองอวาตาร์ของคุณ",
+    "empty": "ไม่พบอวาตาร์ที่คุณเป็นเจ้าของ",
+    "loadFailed": "โหลดอวาตาร์ของคุณไม่สำเร็จ",
+    "manage": "จัดการ",
+    "manageTitle": "จัดการอวาตาร์",
+    "noChanges": "ไม่มีการเปลี่ยนแปลงให้บันทึก",
+    "saved": "อัปเดตอวาตาร์แล้ว",
+    "deleted": "ลบอวาตาร์แล้ว",
+    "imageReplaced": "เปลี่ยนรูปอวาตาร์แล้ว",
+    "replaceImage": "เปลี่ยนรูป",
+    "replaceImageConfirmTitle": "เปลี่ยนรูปของอวาตาร์นี้ไหม",
+    "replaceImageConfirmBody": "อัปโหลดรูปใหม่สำหรับ \"{{name}}\" และชี้ไปยังบัญชี VRChat ที่ใช้งานจริงของคุณ ภาพย่อสาธารณะของอวาตาร์จะเปลี่ยนทันที",
+    "delete": "ลบอวาตาร์",
+    "deleteConfirmTitle": "ลบอวาตาร์นี้ไหม",
+    "deleteConfirmBody": "ลบ \"{{name}}\" อย่างถาวรไหม VRChat จะซ่อนอวาตาร์ ลบไฟล์ asset และจองไอดีไว้ตลอดกาล ไม่สามารถย้อนกลับได้",
+    "filter": {
+      "all": "ทั้งหมด",
+      "public": "สาธารณะ",
+      "private": "ส่วนตัว",
+      "hidden": "ซ่อน"
+    },
+    "field": {
+      "name": "ชื่อ",
+      "description": "คำอธิบาย",
+      "visibility": "การมองเห็น",
+      "image": "รูปอวาตาร์"
+    },
+    "hidden": {
+      "explainer": "VRChat ไม่สามารถแสดงรายการอวาตาร์ที่ซ่อน (ถูกลบ) ได้ ให้ค้นหาด้วยไอดีแทน — สแกนไอดีที่พบในบันทึกในเครื่อง หรือวางไอดี avtr_ ที่ต้องการ จะดึงได้เฉพาะอวาตาร์ที่คุณเป็นเจ้าของเท่านั้น",
+      "lookup": "ค้นหาไอดี",
+      "scanHistory": "สแกนประวัติบันทึก",
+      "scanning": "กำลังตรวจสอบ {{done}} / {{total}} ไอดี…",
+      "scanDone": "ตรวจสอบ {{checked}} ไอดี · พบอวาตาร์ที่ซ่อน {{found}} รายการ",
+      "badId": "กรอกไอดี avtr_ ที่ถูกต้อง",
+      "foundOne": "ดึงอวาตาร์ที่ซ่อนได้แล้ว",
+      "notHidden": "อวาตาร์นั้นมีอยู่แต่ไม่ได้ถูกซ่อน",
+      "notOwned": "ดึงไอดีนั้นไม่ได้ — VRChat จะคืนเฉพาะอวาตาร์ที่คุณเป็นเจ้าของ",
+      "noHistory": "ยังไม่มีไอดีอวาตาร์ในประวัติในเครื่อง เล่น VRChat เพื่อเพิ่มข้อมูล หรือวางไอดีด้านบน"
+    },
+    "harvest": {
+      "empty": "ไม่พบไอดีอวาตาร์ในแคชการวิเคราะห์ในเครื่อง (หรือ VRChat ยังไม่ได้เขียนไว้)",
+      "found": "พบไอดีอวาตาร์ {{total}} รายการในเครื่อง · {{fresh}} รายการไม่อยู่ในรายการที่คุณเป็นเจ้าของ",
+      "scan": "สแกนแคชในเครื่อง",
+      "tooltip": "สแกนแบบอ่านอย่างเดียวจากแคชการวิเคราะห์ในเครื่องของ VRChat เพื่อหาไอดีอวาตาร์ (ทดลอง)"
+    }
   },
   "avatars": {
     "title": "อวาตาร์",
@@ -987,7 +1287,7 @@
       "fit": "พอดี",
       "expand": "ขยาย",
       "modeTextured": "ต้นฉบับ",
-      "modeClay": "Clay",
+      "modeClay": "ดินปั้น",
       "modeWireframe": "โครงเส้น",
       "controlsTitle": "การควบคุมแบบ Blender",
       "controlsBody": "ลากซ้ายหมุน · Shift+ลากซ้ายแพน · ล้อเมาส์ซูม · ลากขวาแพน",
@@ -1015,9 +1315,45 @@
     "pickOne": "เลือกอวาตาร์",
     "noMatch": "ไม่มีอวาตาร์ที่ตรงกับตัวกรอง",
     "nameNote": "ชื่ออวาตาร์ถูกดึงมาจาก output log ของ VRChat ชื่อจะแสดงเฉพาะอวาตาร์ที่เคยถูกโหลดอย่างน้อยหนึ่งครั้งบนเครื่องนี้",
+    "encounterLog": "พบเห็น",
+    "logOnly": "จากบันทึกเท่านั้น",
+    "wornBy": "ใส่โดย",
+    "seenTimes": "พบ {{count}} ครั้ง",
+    "wearerCount": "ผู้ใส่ {{count}} คน",
+    "encounterSummary": "พบบน {{wearer}} · {{count}} เหตุการณ์ในบันทึก",
+    "encounterLogNote": "แถวนี้จัดทำดัชนีจากบันทึก VRChat ในเครื่อง บันทึกเปิดเผยชื่ออวาตาร์และผู้ใส่ แต่ไม่มี avtr_* หรือ URL ภาพย่ออย่างเป็นทางการ VRCSM จะลองจับคู่อวาตาร์สาธารณะที่ยืนยันแล้วก่อน หากไม่สำเร็จ อาจแสดงภาพอวาตาร์ปัจจุบันของผู้ใส่เป็นภาพอ้างอิง ซึ่งอาจไม่ใช่อวาตาร์ที่พบในตอนนั้น",
+    "filterSeen": "พบเห็น",
+    "filterLocal": "ในเครื่อง",
+    "thumbnailResolved": "ดึงภาพย่อได้แล้ว",
+    "thumbnailResolving": "กำลังดึงภาพย่อ…",
+    "thumbnailMiss": "ไม่พบภาพย่อที่ยืนยันตรงกัน",
+    "referenceImageLoading": "กำลังตรวจสอบภาพอวาตาร์ปัจจุบันของผู้ใส่…",
+    "referenceImageBadge": "อ้างอิง",
+    "referenceImageBadgeShort": "อ้างอิง",
+    "profileFallbackKnownUser": "โปรไฟล์ผู้ใส่",
+    "profileFallbackNameMatch": "ตรงชื่อ",
+    "profileFallbackAmbiguous": "เดาจากชื่อ",
+    "profileFallbackNote": "ไม่พบภาพย่อที่เชื่อถือได้ VRCSM จึงแสดงภาพโปรไฟล์ปัจจุบันของผู้ใส่เป็นภาพอ้างอิงสำหรับ {{name}}",
+    "profileFallbackUnavailable": "โหลดโปรไฟล์ผู้ใส่ไม่ได้ ผู้ใช้อาจกำกวม ไม่พร้อมใช้งาน หรือ VRChat API ไม่ได้คืนข้อมูล",
+    "localNameWas": "แคชไว้เป็น: {{name}}",
+    "renamedHint": "เปลี่ยนชื่อแล้ว",
+    "noThumbnail": "ไม่มีภาพย่อ",
+    "seenThumbnailHow": "ภาพย่อของอวาตาร์ที่พบจะปรากฏเมื่อบันทึกมีไอดี avtr_* จริง การค้นหาสาธารณะพบชื่อ/ผู้สร้างที่ตรงกันพอดี หรือมีภาพอวาตาร์สาธารณะปัจจุบันของผู้ใส่ รายการที่ทำเครื่องหมายว่า อ้างอิง คือภาพปัจจุบันของผู้ใส่ และอาจไม่ใช่อวาตาร์ที่พบในตอนนั้น",
     "previewWorkbench": "ตัวอย่างใน inspector ถูกออกแบบให้กะทัดรัด และปุ่มขยายด้านขวาบนจะเปิด viewer ขนาดใหญ่ตรงกลาง ขณะนี้ extractor ยังไม่ฝัง texture ลงใน GLB ดังนั้นโหมด Original จะแสดงเพียงสถานะวัสดุที่ส่งออกได้ ใช้ล้อเมาส์ซูม และใช้ Shift+ลากหรือคลิกขวาลากเพื่อแพน",
     "unityPackages": "{{count}} แพลตฟอร์ม",
-    "hiddenCount": "ซ่อนอยู่อีก {{count}} รายการ ใช้ค้นหาเพื่อกรอง"
+    "hiddenCount": "ซ่อนอยู่อีก {{count}} รายการ ใช้ค้นหาเพื่อกรอง",
+    "referenceImageHint": "ภาพอวาตาร์/โปรไฟล์ปัจจุบันของผู้ใส่ — ไม่ใช่ภาพที่ยืนยันย้อนหลังว่าตรงกัน",
+    "referenceImageVerifiedHint": "อวาตาร์ปัจจุบันของผู้ใส่ตรงกับชื่อที่บันทึกไว้",
+    "search": {
+      "go": "ค้นหา",
+      "noResults": "ไม่พบผลลัพธ์",
+      "placeholder": "ค้นหาด้วยชื่ออวาตาร์…",
+      "searching": "กำลังค้นหา…",
+      "title": "ค้นหาอวาตาร์สาธารณะ"
+    },
+    "unavailable": "อวาตาร์ไม่พร้อมใช้งาน",
+    "wearerCurrentReference": "ภาพอ้างอิงปัจจุบันของผู้ใส่",
+    "wearerReferenceNote": "ไม่ทราบ"
   },
   "worlds": {
     "title": "โลก",
@@ -1044,7 +1380,7 @@
     "launchFailed": "เปิดล้มเหลว: {{error}}",
     "joinHistory": "ประวัติการเข้าร่วม",
     "accessPublic": "สาธารณะ",
-    "accessFriends": "Friends",
+    "accessFriends": "เพื่อน",
     "accessHidden": "Friends+",
     "accessPrivate": "เชิญเท่านั้น",
     "accessGroup": "กลุ่ม",
@@ -1055,7 +1391,8 @@
     "removeFromLibrary": "นำออกจากไลบรารี",
     "saveToLibrary": "บันทึกลงไลบรารี",
     "unknownTime": "ไม่ทราบเวลา",
-    "searchFailed": "ค้นหาไม่สำเร็จ"
+    "searchFailed": "ค้นหาไม่สำเร็จ",
+    "unavailable": "โลกไม่พร้อมใช้งาน"
   },
   "logs": {
     "title": "บันทึก",
@@ -1162,32 +1499,68 @@
     "junctionState": "ตรวจพบ junction ที่มีอยู่",
     "junctionStateDesc": "พาธต้นทางเป็น NTFS junction อยู่แล้ว คุณสามารถซ่อมได้หากปลายทางหายไปหรือเสีย",
     "pointsTo": "ชี้ไปที่",
+    "alreadyMigrated": "ย้ายไปยัง {{target}} แล้ว",
     "repairSuccess": "ซ่อม junction สำเร็จ",
-    "repairFailed": "ซ่อมล้มเหลว: {{error}}"
+    "repairFailed": "ซ่อมล้มเหลว: {{error}}",
+    "junction": "junction"
   },
   "updates": {
-    "title": "มีอัปเดตใหม่",
-    "checking": "กำลังตรวจสอบอัปเดต…",
-    "availableDesc": "มี VRCSM เวอร์ชันใหม่ให้ใช้งาน ติดตั้งตอนนี้หรืออยู่กับเวอร์ชันปัจจุบันก็ได้",
-    "readyDesc": "ดาวน์โหลดและตรวจสอบตัวติดตั้งเรียบร้อยแล้ว กดติดตั้งเพื่อใช้งานต่อได้เลย โดย VRCSM จะรีสตาร์ต",
-    "downloadingDesc": "กำลังดาวน์โหลด อย่าปิด VRCSM จนกว่าจะเสร็จ",
-    "upToDateDesc": "คุณใช้เวอร์ชันล่าสุดอยู่แล้ว",
-    "errorDesc": "ไม่สามารถตรวจสอบอัปเดตได้ในตอนนี้",
-    "currentLabel": "เวอร์ชันปัจจุบัน",
-    "latestLabel": "เวอร์ชันที่มี",
-    "sizeLabel": "ขนาดดาวน์โหลด",
-    "verifying": "กำลังตรวจสอบ SHA-256…",
-    "downloading": "กำลังดาวน์โหลด {{done}} / {{total}}",
-    "viewNotes": "บันทึกประจำรุ่น",
-    "skip": "ข้ามเวอร์ชันนี้",
-    "skipped": "ข้ามเวอร์ชัน {{version}} แล้ว",
-    "skipFailed": "ข้ามไม่สำเร็จ: {{msg}}",
-    "downloadFailed": "ดาวน์โหลดไม่สำเร็จ: {{msg}}",
-    "installFailed": "ติดตั้งไม่สำเร็จ: {{msg}}",
-    "retry": "ตรวจสอบใหม่",
-    "later": "ไว้ทีหลัง",
-    "download": "ดาวน์โหลดและติดตั้ง",
-    "installNow": "ติดตั้งตอนนี้ (รีสตาร์ต)"
+    "availableTitle": "มีอัปเดตใหม่",
+    "availableBody": "VRCSM {{version}} พร้อมให้ใช้งานแล้ว",
+    "download": "ดาวน์โหลดและติดตั้ง"
+  },
+  "feed": {
+    "tab": "ฟีด",
+    "title": "ฟีดกิจกรรม",
+    "subtitle": "ไทม์ไลน์รวมที่บันทึกถาวรของสถานะการออนไลน์ของเพื่อน เซสชัน และการเปลี่ยนอวาตาร์",
+    "searchPlaceholder": "ค้นหาชื่อ โลก รายละเอียด…",
+    "muteHint": "คลิกขวาเพื่อซ่อนจากมุมมองทั้งหมด",
+    "loginRequired": "เข้าสู่ระบบ VRChat ผ่านหน้าการตั้งค่าเพื่อดูฟีดกิจกรรมของคุณ",
+    "loadFailed": "โหลดฟีดไม่ได้",
+    "empty": "ยังไม่มีกิจกรรม เหตุการณ์จะปรากฏที่นี่เมื่อเพื่อนของคุณออนไลน์และย้ายระหว่างอินสแตนซ์",
+    "unknownUser": "ไม่ทราบ",
+    "category": {
+      "all": "ทั้งหมด",
+      "online": "ออนไลน์",
+      "offline": "ออฟไลน์",
+      "location": "ตำแหน่ง",
+      "status": "สถานะ",
+      "avatar": "อวาตาร์",
+      "joined": "เข้าร่วม",
+      "left": "ออกไป",
+      "friend-added": "เพิ่มเพื่อนแล้ว",
+      "friend-removed": "ลบเพื่อนแล้ว",
+      "video": "วิดีโอ",
+      "portal": "พอร์ทัล",
+      "moderation": "การกำกับดูแล",
+      "sticker": "สติกเกอร์",
+      "notification": "การแจ้งเตือน",
+      "session": "เซสชัน",
+      "diagnostic": "การวินิจฉัย",
+      "other": "อื่น ๆ"
+    }
+  },
+  "gameLog": {
+    "tab": "บันทึกเกม",
+    "title": "บันทึกเกม",
+    "subtitle": "แสดงบันทึกเอาต์พุตดิบของ VRChat แบบเรียลไทม์",
+    "searchPlaceholder": "กรองบรรทัด…",
+    "lineCount": "{{n}} บรรทัด",
+    "pause": "หยุดชั่วคราว",
+    "resume": "เล่นต่อ",
+    "clear": "ล้าง",
+    "jumpToBottom": "ไปที่ล่าสุด",
+    "paused": "หยุดสตรีมชั่วคราว กด เล่นต่อ เพื่อรับบรรทัดใหม่",
+    "waiting": "กำลังรอเอาต์พุตบันทึกของ VRChat… เปิด VRChat เพื่อดูบรรทัดแบบเรียลไทม์",
+    "level": {
+      "all": "ทั้งหมด",
+      "info": "ข้อมูล",
+      "warn": "คำเตือน",
+      "error": "ข้อผิดพลาด"
+    },
+    "hideNoiseHint": "พับข้อความ retry ของ EOS/Stomp telemetry จาก VRChat (ไม่ใช่ข้อผิดพลาดของ VRCSM)",
+    "noiseHidden": "กำลังซ่อนข้อความรบกวน",
+    "showAll": "แสดงทั้งหมด"
   },
   "friendLog": {
     "subtitle": "ประวัติการพบกันในเซสชันและการเปลี่ยนแปลงทางสังคมที่เก็บไว้ในฐานข้อมูลโลคัล",
@@ -1234,7 +1607,8 @@
       "loading": "กำลังโหลดโน้ต…",
       "placeholder": "เพิ่มโน้ตส่วนตัวสำหรับผู้เล่นคนนี้…",
       "saved": "บันทึกโน้ตแล้ว",
-      "saveFailed": "บันทึกโน้ตล้มเหลว: {{error}}"
+      "saveFailed": "บันทึกโน้ตล้มเหลว: {{error}}",
+      "loadFailed": "โหลดโน้ตไม่ได้"
     },
     "relative": {
       "now": "เมื่อกี้นี้",
@@ -1248,7 +1622,9 @@
     "clearHistorySuccess": "ล้างประวัติแล้ว หมายเหตุเพื่อนยังอยู่",
     "clearHistoryFailed": "ล้างประวัติล้มเหลว: {{error}}",
     "clearHistory": "ล้างประวัติ",
-    "clearHistoryConfirm": "แน่ใจไหมว่าจะล้างประวัติเซสชันและการเปลี่ยนแปลงของเพื่อน? (หมายเหตุเพื่อนจะไม่ถูกลบ)"
+    "clearHistoryConfirm": "แน่ใจไหมว่าจะล้างประวัติเซสชันและการเปลี่ยนแปลงของเพื่อน? (หมายเหตุเพื่อนจะไม่ถูกลบ)",
+    "loginRequired": "เข้าสู่ระบบ VRChat ผ่านหน้าการตั้งค่าเพื่อดูประวัติกิจกรรมของเพื่อน",
+    "perPage": "รายการต่อหน้า"
   },
   "settings": {
     "title": "การตั้งค่า",
@@ -1264,6 +1640,37 @@
         "label": "ID แอปพลิเคชัน",
         "desc": "รหัส 18-19 หลักจากแดชบอร์ดนักพัฒนา Discord ของคุณ",
         "placeholder": "1234567890000000000"
+      }
+    },
+    "notify": {
+      "title": "การแจ้งเตือนบนเดสก์ท็อป",
+      "desc": "แสดงการแจ้งเตือนแบบเนทีฟของ Windows สำหรับเหตุการณ์ VRChat แบบเรียลไทม์ขณะที่ VRCSM ทำงานอยู่ แต่ละประเภทปิดไว้ตามค่าเริ่มต้น",
+      "friendOnline": {
+        "label": "เพื่อนออนไลน์",
+        "desc": "แจ้งเตือนเมื่อเพื่อนเข้าสู่ระบบ VRChat"
+      },
+      "invite": {
+        "label": "คำเชิญ",
+        "desc": "แจ้งเตือนเมื่อคุณได้รับคำเชิญเข้าอินสแตนซ์"
+      },
+      "friendRequest": {
+        "label": "คำขอเป็นเพื่อน",
+        "desc": "แจ้งเตือนเมื่อมีคนส่งคำขอเป็นเพื่อนถึงคุณ"
+      },
+      "vrOverlay": {
+        "label": "แสดงในเฮดเซต VR",
+        "desc": "แสดงการแจ้งเตือนที่เปิดไว้ด้านบนในเฮดเซตของคุณผ่าน XSOverlay ด้วย ต้องเปิด XSOverlay อยู่"
+      },
+      "tts": {
+        "label": "อ่านการแจ้งเตือนออกเสียง",
+        "desc": "อ่านเหตุการณ์แบบเรียลไทม์ออกเสียงผ่านเสียงระบบของคุณขณะอยู่ใน VR",
+        "unsupported": "การสังเคราะห์เสียงพูดไม่พร้อมใช้งานในรันไทม์นี้"
+      },
+      "ttsScope": {
+        "label": "จะอ่านอะไรบ้าง",
+        "desc": "เฉพาะเพื่อน จะประกาศเฉพาะเมื่อเพื่อนออนไลน์ ส่วน ทั้งหมด จะอ่านคำเชิญและคำขอเป็นเพื่อนด้วย",
+        "all": "ทุกเหตุการณ์",
+        "friends": "เฉพาะเพื่อน"
       }
     },
     "screenshots": {
@@ -1392,9 +1799,1818 @@
         "next": "ถัดไป",
         "page": "หน้า {{page}} / {{total}}",
         "range": "{{from}}–{{to}} จาก {{total}}"
+      },
+      "keys": {
+        "AUDIO_GAME_AVATARS_ENABLED": {
+          "description": "สลับปิดเสียงเสียงของอวาตาร์"
+        },
+        "AUDIO_GAME_AVATARS_STEAMAUDIO": {
+          "description": "ระดับเสียงเสียงของอวาตาร์"
+        },
+        "AUDIO_GAME_PROPS_ENABLED": {
+          "description": "สลับปิดเสียงเสียงของพร็อพ"
+        },
+        "AUDIO_GAME_PROPS_STEAMAUDIO": {
+          "description": "ระดับเสียงเสียงของพร็อพ"
+        },
+        "AUDIO_GAME_SFX_ENABLED": {
+          "description": "สลับปิดเสียงเอฟเฟกต์เสียงของโลก"
+        },
+        "AUDIO_GAME_SFX_STEAMAUDIO": {
+          "description": "ระดับเสียงเอฟเฟกต์เสียงของโลก"
+        },
+        "AUDIO_GAME_VOICE_ENABLED": {
+          "description": "สลับปิดเสียงแชทด้วยเสียง"
+        },
+        "AUDIO_GAME_VOICE_STEAMAUDIO": {
+          "description": "ระดับเสียงแชทด้วยเสียง"
+        },
+        "AUDIO_MASTER_ENABLED": {
+          "description": "สลับปิดเสียงหลัก"
+        },
+        "AUDIO_MASTER_STEAMAUDIO": {
+          "description": "ระดับเสียงเอาต์พุตหลัก"
+        },
+        "AUDIO_UI_ENABLED": {
+          "description": "สลับปิดเสียง UI"
+        },
+        "AUDIO_UI_STEAMAUDIO": {
+          "description": "ระดับเสียง UI"
+        },
+        "VRC_ANDROID_MIC_MODE": {
+          "description": "โหมดไมโครโฟน Android"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_ENABLED": {
+          "description": "เปิดเสียงบับเบิลแชท"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_VOLUME": {
+          "description": "ระดับเสียงบับเบิลแชท"
+        },
+        "VRC_EARMUFF_MODE": {
+          "description": "โหมดปิดหู"
+        },
+        "VRC_EARMUFF_MODE_AVATARS": {
+          "description": "อวาตาร์ในโหมดปิดหู"
+        },
+        "VRC_EARMUFF_MODE_CONE_VALUE": {
+          "description": "ค่ากรวยของโหมดปิดหู"
+        },
+        "VRC_EARMUFF_MODE_FALLOFF": {
+          "description": "การลดทอนของโหมดปิดหู"
+        },
+        "VRC_EARMUFF_MODE_FOLLOW_HEAD": {
+          "description": "โหมดปิดหูตามศีรษะ"
+        },
+        "VRC_EARMUFF_MODE_LOCK_ROTATION": {
+          "description": "โหมดปิดหูล็อกการหมุน"
+        },
+        "VRC_EARMUFF_MODE_OFFSET_VALUE": {
+          "description": "ออฟเซตของโหมดปิดหู"
+        },
+        "VRC_EARMUFF_MODE_RADIUS": {
+          "description": "รัศมีของโหมดปิดหู"
+        },
+        "VRC_EARMUFF_MODE_REDUCED_VOLUME": {
+          "description": "ระดับเสียงที่ลดลงของโหมดปิดหู"
+        },
+        "VRC_EARMUFF_MODE_SHOW_ICON_IN_NAMEPLATE": {
+          "description": "แสดงไอคอนปิดหูบนป้ายชื่อ"
+        },
+        "VRC_EARMUFF_MODE_VISUAL_AIDE": {
+          "description": "ตัวช่วยแสดงผลของโหมดปิดหู"
+        },
+        "VRC_HUD_MIC_OPACITY": {
+          "description": "ความทึบของ HUD ไมโครโฟน"
+        },
+        "VRC_INPUT_DISABLE_MIC_BUTTON": {
+          "description": "ปิดปุ่มไมโครโฟนในเกม"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_Desktop": {
+          "description": "ชื่ออุปกรณ์ไมโครโฟนบนเดสก์ท็อป"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_VR": {
+          "description": "ชื่ออุปกรณ์ไมโครโฟน VR"
+        },
+        "VRC_INPUT_MIC_ENABLED": {
+          "description": "สวิตช์ไมโครโฟนหลัก"
+        },
+        "VRC_INPUT_MIC_LEVEL_DESK": {
+          "description": "เกนอินพุตไมโครโฟนบนเดสก์ท็อป"
+        },
+        "VRC_INPUT_MIC_LEVEL_VR": {
+          "description": "ระดับอินพุตไมโครโฟน VR"
+        },
+        "VRC_INPUT_MIC_MODE": {
+          "description": "โหมดอินพุตไมโครโฟน"
+        },
+        "VRC_INPUT_MIC_NOISE_GATE": {
+          "description": "เกณฑ์ noise gate ของไมโครโฟน"
+        },
+        "VRC_INPUT_MIC_NOISE_SUPPRESSION": {
+          "description": "การลดเสียงรบกวนของไมโครโฟน"
+        },
+        "VRC_INPUT_MIC_ON_JOIN": {
+          "description": "เปิดไมโครโฟนเมื่อเข้าร่วม"
+        },
+        "VRC_INPUT_TALK_DEFAULT_ON": {
+          "description": "ไมโครโฟนเริ่มต้นเมื่อเข้าเซสชัน"
+        },
+        "VRC_INPUT_TALK_TOGGLE": {
+          "description": "กดเพื่อพูดหรือสลับเพื่อพูด"
+        },
+        "VRC_MIC_ICON_VISIBILITY": {
+          "description": "การมองเห็นไอคอนไมโครโฟน"
+        },
+        "VRC_MIC_TOGGLE_VOLUME": {
+          "description": "ระดับเสียงสลับไมโครโฟน"
+        },
+        "VRC_USE_OUTLINE_MIC_ICON": {
+          "description": "ไอคอนไมโครโฟนแบบเส้นขอบ"
+        },
+        "COLOR_PALETTES_CURRENT_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "จานสีของผู้ใช้ปัจจุบัน"
+        },
+        "FIELD_OF_VIEW": {
+          "description": "การตั้งค่า FOV บนเดสก์ท็อป"
+        },
+        "FPSCapType": {
+          "description": "โหมดจำกัด FPS"
+        },
+        "FPSType": {
+          "description": "โหมดแสดง FPS"
+        },
+        "FPS_LIMIT": {
+          "description": "ขีดจำกัด FPS แบบกำหนดเอง"
+        },
+        "FaceMirrorOwner": {
+          "description": "เจ้าของกระจกสะท้อนใบหน้า"
+        },
+        "LOD_QUALITY": {
+          "description": "พรีเซ็ตคุณภาพระดับรายละเอียด (LOD)"
+        },
+        "PARTICLE_PHYSICS_QUALITY": {
+          "description": "พรีเซ็ตคุณภาพฟิสิกส์ของพาร์ติเคิล"
+        },
+        "PIXEL_LIGHT_COUNT": {
+          "description": "จำนวนแสงพิกเซลแบบเรียลไทม์สูงสุด"
+        },
+        "PersonalMirror.FaceMirrorOpacity": {
+          "description": "ความทึบของกระจกสะท้อนใบหน้า VR"
+        },
+        "PersonalMirror.FaceMirrorOpacityDesktop": {
+          "description": "ความทึบของกระจกสะท้อนใบหน้าบนเดสก์ท็อป"
+        },
+        "PersonalMirror.FaceMirrorPosX": {
+          "description": "ออฟเซต X ของกระจกสะท้อนใบหน้า VR"
+        },
+        "PersonalMirror.FaceMirrorPosXDesktop": {
+          "description": "ออฟเซต X ของกระจกสะท้อนใบหน้าบนเดสก์ท็อป"
+        },
+        "PersonalMirror.FaceMirrorPosY": {
+          "description": "ออฟเซต Y ของกระจกสะท้อนใบหน้า VR"
+        },
+        "PersonalMirror.FaceMirrorPosYDesktop": {
+          "description": "ออฟเซต Y ของกระจกสะท้อนใบหน้าบนเดสก์ท็อป"
+        },
+        "PersonalMirror.FaceMirrorScale": {
+          "description": "สเกลของกระจกสะท้อนใบหน้า VR"
+        },
+        "PersonalMirror.FaceMirrorScaleDesktop": {
+          "description": "สเกลของกระจกสะท้อนใบหน้าบนเดสก์ท็อป"
+        },
+        "PersonalMirror.FaceMirrorSpoutEnabled": {
+          "description": "เปิดสตรีมกระจกสะท้อนใบหน้าส่วนตัว"
+        },
+        "PersonalMirror.FaceMirrorZoom": {
+          "description": "การซูมของกระจกสะท้อนใบหน้า VR"
+        },
+        "PersonalMirror.FaceMirrorZoomDesktop": {
+          "description": "การซูมของกระจกสะท้อนใบหน้าบนเดสก์ท็อป"
+        },
+        "PersonalMirror.Grabbable": {
+          "description": "กระจกจับได้"
+        },
+        "PersonalMirror.ImmersiveMove": {
+          "description": "โหมดเลื่อนกระจกแบบอิมเมอร์ซีฟ"
+        },
+        "PersonalMirror.MirrorOpacity": {
+          "description": "ความทึบของกระจกส่วนตัว"
+        },
+        "PersonalMirror.MirrorScaleX": {
+          "description": "สเกล X ของกระจกส่วนตัว"
+        },
+        "PersonalMirror.MirrorScaleY": {
+          "description": "สเกล Y ของกระจกส่วนตัว"
+        },
+        "PersonalMirror.MirrorSnapping": {
+          "description": "พฤติกรรมการสแนปของกระจก"
+        },
+        "PersonalMirror.MovementMode": {
+          "description": "โหมดการเคลื่อนที่ของกระจกส่วนตัว"
+        },
+        "PersonalMirror.ShowBorder": {
+          "description": "แสดงขอบกระจกส่วนตัว"
+        },
+        "PersonalMirror.ShowCalibrationMirror": {
+          "description": "แสดงกระจกปรับเทียบ"
+        },
+        "PersonalMirror.ShowEnvironmentInMirror": {
+          "description": "แสดงสภาพแวดล้อมในกระจก"
+        },
+        "PersonalMirror.ShowFaceMirror": {
+          "description": "แสดงกระจกสะท้อนใบหน้าส่วนตัวใน VR"
+        },
+        "PersonalMirror.ShowFaceMirrorDesktop": {
+          "description": "แสดงกระจกสะท้อนใบหน้าส่วนตัวบนเดสก์ท็อป"
+        },
+        "PersonalMirror.ShowRemotePlayerInMirror": {
+          "description": "แสดงผู้เล่นระยะไกลในกระจก"
+        },
+        "PersonalMirror.ShowUIInMirror": {
+          "description": "แสดง UI ในกระจก"
+        },
+        "SHADOW_QUALITY": {
+          "description": "พรีเซ็ตคุณภาพเงา"
+        },
+        "USER_CAMERA_RESOLUTION": {
+          "description": "ความละเอียดกล้องของผู้ใช้"
+        },
+        "USER_CAMERA_ROLL_WHILE_FLYING": {
+          "description": "การหมุนกล้องขณะบิน"
+        },
+        "USER_CAMERA_SAVE_METADATA": {
+          "description": "บันทึกเมทาดาทาของกล้อง"
+        },
+        "USER_CAMERA_STREAM_RESOLUTION": {
+          "description": "ความละเอียดสตรีมของกล้อง"
+        },
+        "USER_CAMERA_TRIGGER_TAKES_PHOTOS": {
+          "description": "ทริกเกอร์ถ่ายภาพ"
+        },
+        "UnityGraphicsQuality": {
+          "description": "พรีเซ็ตคุณภาพกราฟิก"
+        },
+        "UnitySelectMonitor": {
+          "description": "จอที่เลือกใน Unity"
+        },
+        "VRC_ADVANCED_GRAPHICS_ANTIALIASING": {
+          "description": "จำนวนแซมเปิล anti-aliasing"
+        },
+        "VRC_ADVANCED_GRAPHICS_QUALITY": {
+          "description": "พรีเซ็ตคุณภาพกราฟิกขั้นสูง"
+        },
+        "VRC_BLOOM_INTENSITY": {
+          "description": "การแทนที่ความเข้มของ bloom"
+        },
+        "VRC_CAMERA_NEAR_CLIP_OVERRIDE_MODE": {
+          "description": "โหมดแทนที่ near clip ของกล้อง"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW": {
+          "description": "มุมมองบุคคลที่สามของกล้อง"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW_DISTANCE": {
+          "description": "ระยะมุมมองบุคคลที่สาม"
+        },
+        "VRC_COLOR_BLINDNESS_SIMULATE": {
+          "description": "จำลองโปรไฟล์ตาบอดสี"
+        },
+        "VRC_DEFAULT_DRONE_SKIN_PALETTE": {
+          "description": "จานสีสกินโดรนเริ่มต้น"
+        },
+        "VRC_LANDSCAPE_FOV": {
+          "description": "FOV แนวนอนบนมือถือ"
+        },
+        "VRC_MIRROR_RESOLUTION": {
+          "description": "ความละเอียดกระจก"
+        },
+        "VRC_PORTRAIT_FOV": {
+          "description": "FOV แนวตั้งบนมือถือ"
+        },
+        "VRC_RANDOMIZE_DRONE": {
+          "description": "สุ่มโดรน"
+        },
+        "VRC_RANDOMIZE_LOADING_SCREEN": {
+          "description": "สุ่มหน้าจอโหลด"
+        },
+        "VRC_RANDOMIZE_WARP_EFFECT": {
+          "description": "สุ่มเอฟเฟกต์วาร์ป"
+        },
+        "VRC_SCREEN_BRIGHTNESS": {
+          "description": "การปรับความสว่างหน้าจอ"
+        },
+        "VRC_SCREEN_CONTRAST": {
+          "description": "การปรับคอนทราสต์หน้าจอ"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING_AUTO_QUALITY": {
+          "description": "คุณภาพอัตโนมัติของการติดตามใบหน้าแบบเซลฟี"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_QUALITY_LEVEL": {
+          "description": "คุณภาพการติดตามใบหน้าแบบเซลฟี"
+        },
+        "BestRegionCache": {
+          "description": "แคชการเลือกภูมิภาคที่ดีที่สุด"
+        },
+        "LocationContext": {
+          "description": "บริบทตำแหน่ง"
+        },
+        "LocationContext_World": {
+          "description": "โลกในบริบทตำแหน่ง"
+        },
+        "VRC_ASK_TO_PORTAL": {
+          "description": "ถามก่อนเข้าพอร์ทัล"
+        },
+        "VRC_COMFORT_MODE_PRE_HOLOPORT": {
+          "description": "โหมดสบายก่อน holoport"
+        },
+        "VRC_HOME_REGION": {
+          "description": "ภูมิภาคของโลกหลัก"
+        },
+        "VRC_ONLY_SHOW_FRIEND_JOIN_LEAVE_PORTAL_NOTIFICATIONS": {
+          "description": "การแจ้งเตือนพอร์ทัลเข้า/ออกเฉพาะเพื่อน"
+        },
+        "VRC_PORTAL_MODE_V2": {
+          "description": "โหมดพอร์ทัล v2"
+        },
+        "VRC_RANDOMIZE_PORTAL": {
+          "description": "สุ่มพอร์ทัล"
+        },
+        "VRC_SELECTED_NETWORK_REGION": {
+          "description": "ภูมิภาค Photon ที่ต้องการ"
+        },
+        "VRC_SHOW_PORTAL_NOTIFICATIONS": {
+          "description": "แสดงการแจ้งเตือนพอร์ทัล"
+        },
+        "AVATAR_WORN_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ประวัติอวาตาร์ที่ผู้ใช้เคยใส่"
+        },
+        "SortSelection_UGCAvatars": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "VRC_ALLOW_AVATAR_COPYING": {
+          "description": "อนุญาตให้คัดลอกอวาตาร์"
+        },
+        "VRC_AVATAR_FALLBACK_HIDDEN": {
+          "description": "ซ่อนอวาตาร์สำรอง"
+        },
+        "VRC_AVATAR_HAPTICS_ENABLED": {
+          "description": "การตั้งค่าดาวน์โหลดการแสดงอวาตาร์"
+        },
+        "VRC_AVATAR_MAXIMUM_DOWNLOAD_SIZE": {
+          "description": "ขนาดดาวน์โหลดสูงสุดของอวาตาร์แบบบีบอัด"
+        },
+        "VRC_AVATAR_MAXIMUM_UNCOMPRESSED_SIZE": {
+          "description": "ขนาดสูงสุดของอวาตาร์แบบไม่บีบอัด"
+        },
+        "VRC_AVATAR_PERFORMANCE_RATING_MINIMUM_TO_DISPLAY": {
+          "description": "เรตติงประสิทธิภาพอวาตาร์ขั้นต่ำที่จะแสดง"
+        },
+        "VRC_AV_INTERACT_LEVEL": {
+          "description": "ระดับการโต้ตอบกับอวาตาร์"
+        },
+        "VRC_AV_INTERACT_SELF": {
+          "description": "การโต้ตอบกับอวาตาร์ของตัวเอง"
+        },
+        "VRC_DISABLE_AVATAR_CLONING_ON_ENTER_WORLD": {
+          "description": "ปิดการโคลนอวาตาร์เมื่อเข้าโลก"
+        },
+        "VRC_FINGERTRACKING_AVATARS_USE": {
+          "description": "การใช้การติดตามนิ้วกับอวาตาร์"
+        },
+        "VRC_GESTURE_BAR_ENABLED": {
+          "description": "เปิดแถบท่าทาง"
+        },
+        "VRC_IK_AVATAR_MEASUREMENT_TYPE": {
+          "description": "ประเภทการวัดอวาตาร์ IK"
+        },
+        "VRC_IK_PER_AVATAR_CALIBRATION_ADJUSTMENT": {
+          "description": "การปรับเทียบเฉพาะอวาตาร์"
+        },
+        "VRC_IMPOSTOR_WHEN_AVAILABLE": {
+          "description": "ใช้ impostor เมื่อมีให้ใช้"
+        },
+        "VRC_INPUT_SELECTED_SAFETY_RANK": {
+          "description": "ระดับความปลอดภัยของอินพุต"
+        },
+        "VRC_PLAYER_GESTURE_TOGGLE": {
+          "description": "สลับท่าทางผู้เล่น"
+        },
+        "VRC_SAFETY_LEVEL": {
+          "description": "พรีเซ็ตความปลอดภัยอวาตาร์ทั่วไป"
+        },
+        "VRC_SHOW_SOCIAL_RANK": {
+          "description": "แสดงอันดับทางสังคม"
+        },
+        "Wing_Right_Avatars_Category": {
+          "description": "สถานะการเลือกของ Wing UI"
+        },
+        "Wing_Right_Avatars_SortBy": {
+          "description": "สถานะการเลือกของ Wing UI"
+        },
+        "avatarProxyAlwaysShowExplicit": {
+          "description": "การตั้งค่าดาวน์โหลดการแสดงอวาตาร์"
+        },
+        "avatarProxyAlwaysShowFriends": {
+          "description": "การตั้งค่าดาวน์โหลดการแสดงอวาตาร์"
+        },
+        "avatarProxyShowAtRange": {
+          "description": "การตั้งค่าดาวน์โหลดการแสดงอวาตาร์"
+        },
+        "avatarProxyShowAtRangeToggle": {
+          "description": "การตั้งค่าดาวน์โหลดการแสดงอวาตาร์"
+        },
+        "avatarProxyShowMaxNumber": {
+          "description": "การตั้งค่าดาวน์โหลดการแสดงอวาตาร์"
+        },
+        "currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "เปิดจำนวนอวาตาร์ที่แสดงสูงสุด"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRange": {
+          "description": "การแสดงอวาตาร์พร็อกซีตามระยะของผู้ใช้"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRangeToggle": {
+          "description": "สลับระยะอวาตาร์พร็อกซีของผู้ใช้"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowMaxNumber": {
+          "description": "จำนวนอวาตาร์พร็อกซีสูงสุดของผู้ใช้"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "สลับขีดจำกัดจำนวนอวาตาร์ของผู้ใช้"
+        },
+        "VRC_ACTION_MENU_FLICK_SELECT": {
+          "description": "การเลือกแบบสะบัดของเมนูแอ็กชัน"
+        },
+        "VRC_ACTION_MENU_ONE_HAND_MOVE": {
+          "description": "การเลื่อนเมนูแอ็กชันด้วยมือเดียว"
+        },
+        "VRC_DOUBLE_TAP_MAIN_MENU_STEAMVR2": {
+          "description": "แตะสองครั้งเปิดเมนูหลัก SteamVR2"
+        },
+        "VRC_FINGER_GRAB_SETTING": {
+          "description": "การตั้งค่าการจับด้วยนิ้ว"
+        },
+        "VRC_FINGER_HAPTIC_SENSITIVITY": {
+          "description": "ความไวการสั่นสะเทือนของนิ้ว"
+        },
+        "VRC_FINGER_HAPTIC_STRENGTH": {
+          "description": "ความแรงการสั่นสะเทือนของนิ้ว"
+        },
+        "VRC_FINGER_JUMP_ENABLED": {
+          "description": "เปิดการกระโดดด้วยนิ้ว"
+        },
+        "VRC_FINGER_WALK_SETTING": {
+          "description": "การตั้งค่าการเดินด้วยนิ้ว"
+        },
+        "VRC_HANDS_MENU_OPEN_MODE": {
+          "description": "โหมดการเปิดเมนูมือ"
+        },
+        "VRC_INPUT_DAYDREAM": {
+          "description": "อินพุต Daydream"
+        },
+        "VRC_INPUT_EMBODIED": {
+          "description": "อินพุต Embodied"
+        },
+        "VRC_INPUT_GAZE": {
+          "description": "อินพุตการจ้องมอง"
+        },
+        "VRC_INPUT_GENERIC": {
+          "description": "อินพุตทั่วไป"
+        },
+        "VRC_INPUT_HPMOTION": {
+          "description": "อินพุต HPMotion"
+        },
+        "VRC_INPUT_MOBILE_INTERACTION_MODE": {
+          "description": "โหมดโต้ตอบบนมือถือ"
+        },
+        "VRC_INPUT_OPENXR": {
+          "description": "อินพุต OpenXR"
+        },
+        "VRC_INPUT_PERSONAL_SPACE": {
+          "description": "พื้นที่ส่วนตัวของอินพุต"
+        },
+        "VRC_INPUT_QUEST_HANDS": {
+          "description": "อินพุตมือ Quest"
+        },
+        "VRC_INPUT_SHOW_TOOLTIPS": {
+          "description": "แสดงคำแนะนำอินพุต"
+        },
+        "VRC_INPUT_STEAMVR2": {
+          "description": "อินพุต SteamVR2"
+        },
+        "VRC_INPUT_THIRD_PERSON_ROTATION": {
+          "description": "การหมุนบุคคลที่สามของอินพุต"
+        },
+        "VRC_INPUT_TOUCH": {
+          "description": "อินพุตแบบสัมผัส"
+        },
+        "VRC_INPUT_VALVE_INDEX": {
+          "description": "อินพุต Valve Index"
+        },
+        "VRC_INPUT_VIVE": {
+          "description": "อินพุต Vive"
+        },
+        "VRC_INPUT_VIVE_ADVANCED": {
+          "description": "อินพุต Vive ขั้นสูง"
+        },
+        "VRC_INPUT_WAVE": {
+          "description": "อินพุต Wave"
+        },
+        "VRC_INTERACT_HAPTICS_ENABLED": {
+          "description": "เปิดการสั่นสะเทือนเมื่อโต้ตอบ"
+        },
+        "VRC_INVERTED_MOUSE": {
+          "description": "กลับด้านเมาส์"
+        },
+        "VRC_INVERT_CONTROLLER_VERTICAL_LOOK": {
+          "description": "กลับด้านการมองแนวตั้งของคอนโทรลเลอร์"
+        },
+        "VRC_IS_BOOPING_ENABLED": {
+          "description": "เปิดการเขี่ย (Boop)"
+        },
+        "VRC_MOBILE_QUICK_SELECT_ENABLED": {
+          "description": "เปิดการเลือกด่วนบนมือถือ"
+        },
+        "VRC_MOUSE_SENSITIVITY": {
+          "description": "ความไวเมาส์"
+        },
+        "VRC_SHOW_FRIEND_REQUESTS": {
+          "description": "แสดงการแจ้งเตือนคำขอเป็นเพื่อน"
+        },
+        "VRC_TOUCH_AUTO_ROTATE_SPEED": {
+          "description": "ความเร็วการหันอัตโนมัติแบบสัมผัส"
+        },
+        "VRC_TOUCH_SENSITIVITY": {
+          "description": "ความไวการสัมผัส"
+        },
+        "VRC_UI_HAPTICS_ENABLED": {
+          "description": "เปิดการสั่นสะเทือนของ UI"
+        },
+        "VRC_USE_GENERIC_INSTANCE_NAMES": {
+          "description": "ใช้ชื่ออินสแตนซ์แบบทั่วไป"
+        },
+        "VRC_WEBCAM_DEVICE_NAME": {
+          "description": "ชื่ออุปกรณ์เว็บแคม"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneControllerSettings": {
+          "description": "การตั้งค่าคอนโทรลเลอร์โดรนของผู้ใช้"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneFlightPresetValues": {
+          "description": "พรีเซ็ตการบินโดรนของผู้ใช้"
+        },
+        "UI.Settings.Osc": {
+          "description": "สถานะการตั้งค่า OSC"
+        },
+        "VRC_INPUT_OSC": {
+          "description": "เปิดอินพุต/เอาต์พุต OSC"
+        },
+        "PREF_HAND_TRACKING_TUTORIAL_COMPLETED": {
+          "description": "เรียนรู้การติดตามมือเสร็จแล้ว"
+        },
+        "PlayerHeight": {
+          "description": "ความสูงผู้เล่น"
+        },
+        "SeatedPlayEnabled": {
+          "description": "เปิดการเล่นแบบนั่ง"
+        },
+        "VRC_COMFORT_MODE": {
+          "description": "โหมดสบาย"
+        },
+        "VRC_FINGERTRACKING_SHOW_PINCHUI": {
+          "description": "การติดตามนิ้วแสดง UI การหยิบ"
+        },
+        "VRC_FINGERTRACKING_USE_EXCLUSIVE": {
+          "description": "โหมดเฉพาะของการติดตามนิ้ว"
+        },
+        "VRC_FINGERTRACKING_USE_GHOSTHAND": {
+          "description": "มือเงาของการติดตามนิ้ว"
+        },
+        "VRC_IK_CALIBRATION_RANGE": {
+          "description": "ช่วงการปรับเทียบ IK"
+        },
+        "VRC_IK_CALIBRATION_VIS": {
+          "description": "การแสดงภาพการปรับเทียบ IK"
+        },
+        "VRC_IK_DEBUG_LOGGING": {
+          "description": "การบันทึกดีบัก IK"
+        },
+        "VRC_IK_DISABLE_SHOULDER_TRACKING": {
+          "description": "ปิดการมีส่วนร่วมของการติดตามไหล่"
+        },
+        "VRC_IK_FBT_CONFIRM_CALIBRATE": {
+          "description": "ยืนยันการปรับเทียบ FBT"
+        },
+        "VRC_IK_FBT_LOCOMOTION": {
+          "description": "สลับการเคลื่อนที่ของ Full-Body Tracking"
+        },
+        "VRC_IK_FBT_SPINE_MODE": {
+          "description": "โหมดกระดูกสันหลัง FBT"
+        },
+        "VRC_IK_FREEZE_TRACKING_ON_DISCONNECT": {
+          "description": "ตรึงท่า FBT เมื่อตัวติดตามหลุดการเชื่อมต่อ"
+        },
+        "VRC_IK_HEIGHT_RATIO": {
+          "description": "อัตราส่วนความสูง IK"
+        },
+        "VRC_IK_KNEE_ANGLE": {
+          "description": "มุมเข่า IK"
+        },
+        "VRC_IK_LEGACY": {
+          "description": "IK แบบเดิม"
+        },
+        "VRC_IK_LEGACY_CALIBRATION": {
+          "description": "ขั้นตอนการปรับเทียบ full-body แบบเดิม"
+        },
+        "VRC_IK_ONE_HANDED_CALIBRATION": {
+          "description": "สลับขั้นตอนการปรับเทียบด้วยมือเดียว"
+        },
+        "VRC_IK_SHOULDER_WIDTH_COMPENSATION": {
+          "description": "สลับการชดเชยความกว้างไหล่"
+        },
+        "VRC_IK_TRACKER_MODEL": {
+          "description": "โมเดลตัวติดตาม IK"
+        },
+        "VRC_IK_USE_METRIC_HEIGHT": {
+          "description": "ใช้หน่วยเมตริกสำหรับความสูงในการปรับเทียบ"
+        },
+        "VRC_IK_WRIST_ANGLE": {
+          "description": "มุมข้อมือ IK"
+        },
+        "VRC_INPUT_COMFORT_TURNING": {
+          "description": "การหันแบบสบาย"
+        },
+        "VRC_INPUT_LOCOMOTION_METHOD": {
+          "description": "โหมดการเคลื่อนที่"
+        },
+        "VRC_MAIN_MENU_MOVEMENT_LOCKED": {
+          "description": "ล็อกการเคลื่อนที่ขณะเปิดเมนูหลัก"
+        },
+        "VRC_MOBILE_AUTO_HOLD_ENABLED": {
+          "description": "เปิดการจับอัตโนมัติบนมือถือ"
+        },
+        "VRC_MOBILE_AUTO_WALK_ENABLED": {
+          "description": "เปิดการเดินอัตโนมัติบนมือถือ"
+        },
+        "VRC_TRACKING_CAN_SHOW_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "แสดงป็อปอัปการติดตามใบหน้าแบบเซลฟีได้"
+        },
+        "VRC_TRACKING_CAN_SHOW_TRY_WEBCAM_FACE_TRACKING_BUTTON": {
+          "description": "แสดงปุ่มการติดตามใบหน้าด้วยกล้องได้"
+        },
+        "VRC_TRACKING_DISABLE_EYELIDTRACKING": {
+          "description": "ปิดการติดตามเปลือกตา"
+        },
+        "VRC_TRACKING_DISABLE_EYELOOKTRACKING": {
+          "description": "ปิดการติดตามการจ้องของดวงตา"
+        },
+        "VRC_TRACKING_DISABLE_EYETRACKING_ON_MUTE": {
+          "description": "ปิดการติดตามดวงตาเมื่อปิดเสียง"
+        },
+        "VRC_TRACKING_DISPLAY_EYETRACKING_DEBUG": {
+          "description": "แสดงดีบักการติดตามดวงตา"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING": {
+          "description": "เปิดการติดตามใบหน้าแบบเซลฟี"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_HAND_TRACKING": {
+          "description": "เปิดการติดตามมือแบบเซลฟี"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST": {
+          "description": "บังคับรังสีการติดตามดวงตา"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST_DESKTOP2": {
+          "description": "บังคับรังสีการติดตามดวงตาบนเดสก์ท็อป"
+        },
+        "VRC_TRACKING_GRACEFUL_QUIT": {
+          "description": "การออกจากการปรับเรียบการติดตาม"
+        },
+        "VRC_TRACKING_NUM_TIMES_DISABLED_SELFIE_FACE_TRACKING": {
+          "description": "จำนวนครั้งที่ปิดการติดตามใบหน้าแบบเซลฟี"
+        },
+        "VRC_TRACKING_NUM_TIMES_ENABLED_SELFIE_FACE_TRACKING": {
+          "description": "จำนวนครั้งที่เปิดการติดตามใบหน้าแบบเซลฟี"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "จำนวนครั้งที่ปิดป็อปอัปการติดตามใบหน้าแบบเซลฟี"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS": {
+          "description": "จำนวนครั้งที่ปิดป็อปอัป VRC+ การติดตามใบหน้าแบบเซลฟี"
+        },
+        "VRC_TRACKING_NUM_TIMES_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS_CLICKED": {
+          "description": "จำนวนคลิก VRC+ การติดตามใบหน้าแบบเซลฟี"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_RECENTER_SPEED": {
+          "description": "ความเร็วการจัดกึ่งกลางของการติดตามใบหน้าแบบเซลฟี"
+        },
+        "VRC_TRACKING_SEND_VR_SYSTEM_HEAD_AND_WRIST_OSC_DATA": {
+          "description": "ส่งการติดตามข้อมือของเฮดเซตผ่าน OSC"
+        },
+        "VRC_TRACKING_SHOULD_SHOW_OSC_TRACKING_DATA_REMINDER": {
+          "description": "แสดงการเตือนการติดตาม OSC"
+        },
+        "VRC_TRACKING_TRACKER_PREDICTION": {
+          "description": "การคาดการณ์ตัวติดตาม"
+        },
+        "BACKGROUND_MATERIAL_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "วัสดุพื้นหลังของผู้ใช้"
+        },
+        "CosmeticsSectionRedirect_Settings": {
+          "description": "การตั้งค่าเปลี่ยนเส้นทางส่วนเครื่องสำอาง"
+        },
+        "FOLDOUT_STATES": {
+          "description": "สถานะการพับ"
+        },
+        "FRIEND_LAST_VISIT_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ประวัติการเยี่ยมล่าสุดของเพื่อน"
+        },
+        "HasSeenCameraDollyUserCameraCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "เห็นคำแนะนำ camera dolly แล้ว"
+        },
+        "HasSeenHolidayEvent2025QMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "เห็นคำแนะนำอีเวนต์วันหยุดปี 2025 แล้ว"
+        },
+        "HasSeenShopRabbidsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "เห็นคำแนะนำร้าน Rabbids แล้ว"
+        },
+        "HasSeenVRCPlusExclusiveItemsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "เห็นคำแนะนำไอเทมพิเศษ VRC+ แล้ว"
+        },
+        "InQueueWidgetInfoShowcaseID": {
+          "description": "ID โชว์เคสของวิดเจ็ตคิว"
+        },
+        "RECENTLY_VISITED_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ประวัติการเยี่ยมล่าสุดของผู้ใช้"
+        },
+        "SavedWorldSearchesusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "การค้นหาโลกที่บันทึกไว้"
+        },
+        "SortSelection_AllFriends": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_Authored": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_Favorites0": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_FriendLocations": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_GroupActivity": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_InRoom": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_Recent": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_Sdk": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_UGCPlaylist1": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_UGCWorlds": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "SortSelection_WorldInstances": {
+          "description": "ตัวเลือกการเรียงรายการ"
+        },
+        "UI.Emojis.CustomGroup0": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "UI.Emojis.CustomGroup1": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "UI.Emojis.CustomGroup2": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "UI.MenuPlacementZDepthVR": {
+          "description": "การตั้งค่าสถานะ UI"
+        },
+        "UI.MotionSmoothingEnabled": {
+          "description": "การตั้งค่าสถานะ UI"
+        },
+        "UI.Props.CustomGroup0": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "UI.Stickers.CustomGroup0": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "UI.Stickers.CustomGroup1": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "UI.Stickers.CustomGroup2": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "UI.usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726.WingState": {
+          "description": "การตั้งค่าสถานะ UI"
+        },
+        "VRC.UI.QuickMenu.ShowQMDebugInfo": {
+          "description": "แสดงข้อมูลดีบักในเมนูด่วน"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_X": {
+          "description": "มุม X ของ HUD เมนูแอ็กชันซ้าย"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_Y": {
+          "description": "มุม Y ของ HUD เมนูแอ็กชันซ้าย"
+        },
+        "VRC_ACTION_MENU_L_MENU_OPACITY": {
+          "description": "ความทึบของเมนูแอ็กชันซ้าย"
+        },
+        "VRC_ACTION_MENU_L_MENU_SIZE_PERCENTAGE": {
+          "description": "เปอร์เซ็นต์ขนาดของเมนูแอ็กชันซ้าย"
+        },
+        "VRC_ACTION_MENU_L_SHOW_ON_HUD": {
+          "description": "แสดงเมนูแอ็กชันซ้ายบน HUD"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_X": {
+          "description": "มุม X ของ HUD เมนูแอ็กชันขวา"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_Y": {
+          "description": "มุม Y ของ HUD เมนูแอ็กชันขวา"
+        },
+        "VRC_ACTION_MENU_R_MENU_OPACITY": {
+          "description": "ความทึบของเมนูแอ็กชันขวา"
+        },
+        "VRC_ACTION_MENU_R_MENU_SIZE_PERCENTAGE": {
+          "description": "เปอร์เซ็นต์ขนาดของเมนูแอ็กชันขวา"
+        },
+        "VRC_ACTION_MENU_R_SHOW_ON_HUD": {
+          "description": "แสดงเมนูแอ็กชันขวาบน HUD"
+        },
+        "VRC_BOOP_EMOJI_EFFECT_ENABLED": {
+          "description": "เปิดเอฟเฟกต์อีโมจิการเขี่ย"
+        },
+        "VRC_CHAT_BUBBLE_ABOVE_HEAD_V2": {
+          "description": "บับเบิลแชทเหนือศีรษะ v2"
+        },
+        "VRC_CHAT_BUBBLE_AUTO_SEND": {
+          "description": "ส่งบับเบิลแชทอัตโนมัติ"
+        },
+        "VRC_CHAT_BUBBLE_OPACITY": {
+          "description": "ความทึบของบับเบิลแชท"
+        },
+        "VRC_CHAT_BUBBLE_POS_HEIGHT": {
+          "description": "ความสูงของบับเบิลแชท"
+        },
+        "VRC_CHAT_BUBBLE_PROFANITY_FILTER": {
+          "description": "ตัวกรองคำหยาบของบับเบิลแชท"
+        },
+        "VRC_CHAT_BUBBLE_SCALE": {
+          "description": "สเกลของบับเบิลแชท"
+        },
+        "VRC_CHAT_BUBBLE_SHOW_OWN": {
+          "description": "แสดงบับเบิลแชทของตัวเอง"
+        },
+        "VRC_CHAT_BUBBLE_TIMEOUT": {
+          "description": "เวลาหมดอายุของบับเบิลแชท"
+        },
+        "VRC_CHAT_BUBBLE_VISIBILITY": {
+          "description": "การมองเห็นบับเบิลแชท"
+        },
+        "VRC_CLOCK_VARIANT": {
+          "description": "รูปแบบนาฬิกา"
+        },
+        "VRC_COLOR_FILTER_INTENSITY": {
+          "description": "ความเข้มของฟิลเตอร์สี"
+        },
+        "VRC_COLOR_FILTER_SELECTION": {
+          "description": "พรีเซ็ตฟิลเตอร์สี"
+        },
+        "VRC_COLOR_FILTER_TO_WORLD": {
+          "description": "ใช้ฟิลเตอร์กับการเรนเดอร์โลก"
+        },
+        "VRC_CURRENT_LANGUAGE": {
+          "description": "รหัสภาษา"
+        },
+        "VRC_DESKTOP_RETICLE": {
+          "description": "เรติเคิลบนเดสก์ท็อป"
+        },
+        "VRC_ENABLE_GROUP_INTEREST_AUTO_NOTIFICATIONS": {
+          "description": "เปิดการแจ้งเตือนความสนใจกลุ่มอัตโนมัติ"
+        },
+        "VRC_GROUP_ON_NAMEPLATE": {
+          "description": "แสดงกลุ่มบนป้ายชื่อ"
+        },
+        "VRC_GROUP_ORDER_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ลำดับกลุ่มของผู้ใช้"
+        },
+        "VRC_HIDE_NOTIFICATION_PHOTOS": {
+          "description": "ซ่อนตัวอย่างรูปในการแจ้งเตือน"
+        },
+        "VRC_HUD_ANCHOR": {
+          "description": "ตำแหน่งยึดของ HUD"
+        },
+        "VRC_HUD_MODE": {
+          "description": "โหมดเลย์เอาต์ HUD"
+        },
+        "VRC_HUD_OPACITY": {
+          "description": "ความทึบของ HUD"
+        },
+        "VRC_HUD_SMOOTHING_Desktop": {
+          "description": "การตั้งค่าการแสดงตำแหน่ง HUD"
+        },
+        "VRC_HUD_SMOOTHING_VR": {
+          "description": "การตั้งค่าการแสดงตำแหน่ง HUD"
+        },
+        "VRC_MM_FREE_PLACEMENT_ENABLED": {
+          "description": "เปิดการวางเมนูหลักแบบอิสระ"
+        },
+        "VRC_MOBILE_DPI_SCALING": {
+          "description": "การปรับสเกล DPI บนมือถือ"
+        },
+        "VRC_MOBILE_NOTIFICATIONS_SERVICE_ENABLED": {
+          "description": "เปิดบริการแจ้งเตือนบนมือถือ"
+        },
+        "VRC_MOBILE_PERFORMANCE_SECONDARY_UI_ENABLED": {
+          "description": "เปิด UI ประสิทธิภาพรองบนมือถือ"
+        },
+        "VRC_NAMEPLATE_FALLBACK_ICON_VISIBLE": {
+          "description": "การตั้งค่าการแสดงป้ายชื่อ"
+        },
+        "VRC_NAMEPLATE_MODE": {
+          "description": "โหมดแสดงป้ายชื่อหลัก"
+        },
+        "VRC_NAMEPLATE_OPACITY": {
+          "description": "ความทึบของป้ายชื่อ"
+        },
+        "VRC_NAMEPLATE_QUICK_MENU_INFO": {
+          "description": "การตั้งค่าการแสดงป้ายชื่อ"
+        },
+        "VRC_NAMEPLATE_SCALE_V2": {
+          "description": "สเกลของป้ายชื่อ"
+        },
+        "VRC_NAMEPLATE_STATUS_MODE": {
+          "description": "เนื้อหาสถานะเพิ่มเติมบนป้ายชื่อ"
+        },
+        "VRC_PLAY_NOTIFICATION_AUDIO": {
+          "description": "เล่นเสียงการแจ้งเตือน"
+        },
+        "VRC_REDUCE_ANIMATIONS": {
+          "description": "ลดแอนิเมชันที่ไม่จำเป็น"
+        },
+        "VRC_SHOW_COMMUNITY_LABS": {
+          "description": "แสดง Community Labs"
+        },
+        "VRC_SHOW_COMMUNITY_LAB_WORLDS_IN_SEARCH": {
+          "description": "แสดงโลก Community Labs ในการค้นหา"
+        },
+        "VRC_SHOW_GO_BUTTON_IN_LOAD": {
+          "description": "แสดงปุ่ม Go ขณะโหลด"
+        },
+        "VRC_SHOW_GROUP_BADGES": {
+          "description": "แสดงตราสัญลักษณ์กลุ่ม"
+        },
+        "VRC_SHOW_INVITES_NOTIFICATION": {
+          "description": "แสดงการแจ้งเตือนคำเชิญ"
+        },
+        "VRC_SHOW_JOIN_NOTIFICATIONS": {
+          "description": "แสดงการแจ้งเตือนเมื่อเพื่อนเข้าร่วม"
+        },
+        "VRC_SHOW_LEAVE_NOTIFICATIONS": {
+          "description": "แสดงการแจ้งเตือนเมื่อเพื่อนออก"
+        },
+        "VRC_SLIDER_SNAPPING": {
+          "description": "การสแนปของสไลเดอร์"
+        },
+        "VRC_STORE_LAST_SEEN_SHELF_UPDATE": {
+          "description": "จัดเก็บการอัปเดตชั้นวางที่เห็นล่าสุด"
+        },
+        "VRC_TIME_FORMAT_MODE": {
+          "description": "โหมดรูปแบบเวลา"
+        },
+        "VRC_UI_HEADER_CLICK_SCROLL_RESET_ENABLED": {
+          "description": "เปิดการรีเซ็ตการเลื่อนเมื่อคลิกส่วนหัว"
+        },
+        "VRC_USE_COLOR_FILTER": {
+          "description": "เปิดฟิลเตอร์สีเพื่อการเข้าถึง"
+        },
+        "VRC_USE_PIXEL_SHIFTING_HUD": {
+          "description": "ใช้ HUD แบบ pixel-shifting"
+        },
+        "VRC_WING_PERSISTENCE_ENABLED": {
+          "description": "เปิดการจดจำสถานะ Wing"
+        },
+        "VRC_WORLD_TOOLTIP_MODE": {
+          "description": "โหมดคำแนะนำของโลก"
+        },
+        "has_opened_live_now_page": {
+          "description": "เปิดหน้า live-now แล้ว"
+        },
+        "has_seen_avm-explore-to-cm-migration": {
+          "description": "เห็นคำแนะนำการย้าย AVM แล้ว"
+        },
+        "has_seen_event_discovery_in_beta": {
+          "description": "เห็นการค้นพบอีเวนต์ในเบต้าแล้ว"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenMenuHelpShownCount": {
+          "description": "จำนวนครั้งที่แสดงคำช่วยเหลือเปิดเมนูของผู้ใช้"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenedQuickMenu": {
+          "description": "ผู้ใช้เคยเปิดเมนูด่วนแล้ว"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Emojis.CustomGroup0": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Props.CustomGroup0": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedEmojis": {
+          "description": "อีโมจิที่ผู้ใช้ใช้ล่าสุด"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedStickers": {
+          "description": "สติกเกอร์ที่ผู้ใช้ใช้ล่าสุด"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Stickers.CustomGroup0": {
+          "description": "กลุ่มอีโมจิ/สติกเกอร์แบบกำหนดเอง"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_has_opened_live_now_page": {
+          "description": "ผู้ใช้เคยเปิดหน้า live-now แล้ว"
+        },
+        "BACKGROUND_DEBUG_LOG_COLLECTION": {
+          "description": "สลับการเก็บบันทึกดีบักในพื้นหลัง"
+        },
+        "VRC_ALLOW_DIRECT_SHARES": {
+          "description": "อนุญาตการแชร์โดยตรง"
+        },
+        "VRC_ALLOW_DISCORD_FRIENDS": {
+          "description": "อนุญาตการเชื่อมต่อเพื่อน Discord"
+        },
+        "VRC_ALLOW_FOCUS_VIEW": {
+          "description": "อนุญาต focus view"
+        },
+        "VRC_ALLOW_PEDESTAL_SHARES": {
+          "description": "อนุญาตการแชร์ผ่านแท่น (pedestal)"
+        },
+        "VRC_ALLOW_PRINTS": {
+          "description": "อนุญาตการแชร์ปรินต์"
+        },
+        "VRC_ALLOW_SHARED_CONNECTIONS": {
+          "description": "อนุญาตการเชื่อมต่อร่วม"
+        },
+        "VRC_ALLOW_UNTRUSTED_URL": {
+          "description": "อนุญาตการเปิด URL ที่ไม่น่าเชื่อถือ"
+        },
+        "VRC_DIRECT_SHARING_VISIBILITY": {
+          "description": "การมองเห็นการแชร์โดยตรง"
+        },
+        "VRC_HOME_ACCESS_TYPE": {
+          "description": "พรีเซ็ตความเป็นส่วนตัวของโลกหลัก"
+        },
+        "VRC_PEDESTAL_SHARING_VISIBILITY": {
+          "description": "การมองเห็นการแชร์ผ่านแท่น"
+        },
+        "VRC_PRINT_VISIBILITY": {
+          "description": "การมองเห็นการแชร์ปรินต์"
+        },
+        "VRC_SHOW_GROUP_BADGE_TO_OTHERS": {
+          "description": "แสดงตราสัญลักษณ์กลุ่มให้ผู้อื่นเห็น"
+        },
+        "VRC_STREAMER_MODE_ENABLED": {
+          "description": "เปิดโหมดสตรีมเมอร์"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanSpeak": {
+          "description": "ระดับสูง 1 พูดได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "ระดับสูง 1 ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAvatarAudio": {
+          "description": "ระดับสูง 1 ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAnimations": {
+          "description": "ระดับสูง 1 ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAvatar": {
+          "description": "ระดับสูง 1 ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomShaders": {
+          "description": "ระดับสูง 1 ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseDrone": {
+          "description": "ระดับสูง 1 ใช้โดรนได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "ระดับสูง 1 แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseParticleSystems": {
+          "description": "ระดับสูง 1 ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseTriggers": {
+          "description": "ระดับสูง 1 ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseUserIcons": {
+          "description": "ระดับสูง 1 ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanSpeak": {
+          "description": "ระดับสูง 2 พูดได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "ระดับสูง 2 ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAvatarAudio": {
+          "description": "ระดับสูง 2 ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAnimations": {
+          "description": "ระดับสูง 2 ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAvatar": {
+          "description": "ระดับสูง 2 ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomShaders": {
+          "description": "ระดับสูง 2 ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseDrone": {
+          "description": "ระดับสูง 2 ใช้โดรนได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "ระดับสูง 2 แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseParticleSystems": {
+          "description": "ระดับสูง 2 ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseTriggers": {
+          "description": "ระดับสูง 2 ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseUserIcons": {
+          "description": "ระดับสูง 2 ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanSpeak": {
+          "description": "ระดับพื้นฐาน พูดได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "ระดับพื้นฐาน ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAvatarAudio": {
+          "description": "ระดับพื้นฐาน ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAnimations": {
+          "description": "ระดับพื้นฐาน ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAvatar": {
+          "description": "ระดับพื้นฐาน ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomShaders": {
+          "description": "ระดับพื้นฐาน ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseDrone": {
+          "description": "ระดับพื้นฐาน ใช้โดรนได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "ระดับพื้นฐาน แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseParticleSystems": {
+          "description": "ระดับพื้นฐาน ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseTriggers": {
+          "description": "ระดับพื้นฐาน ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseUserIcons": {
+          "description": "ระดับพื้นฐาน ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanSpeak": {
+          "description": "ระดับพื้นฐาน พูดได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAnimatedEmoji": {
+          "description": "ระดับพื้นฐาน ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAvatarAudio": {
+          "description": "ระดับพื้นฐาน ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAnimations": {
+          "description": "ระดับพื้นฐาน ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAvatar": {
+          "description": "ระดับพื้นฐาน ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomShaders": {
+          "description": "ระดับพื้นฐาน ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseDrone": {
+          "description": "ระดับพื้นฐาน ใช้โดรนได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "ระดับพื้นฐาน แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseParticleSystems": {
+          "description": "ระดับพื้นฐาน ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseTriggers": {
+          "description": "ระดับพื้นฐาน ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseUserIcons": {
+          "description": "ระดับพื้นฐาน ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanSpeak": {
+          "description": "นักพัฒนา พูดได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAnimatedEmoji": {
+          "description": "นักพัฒนา ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAvatarAudio": {
+          "description": "นักพัฒนา ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAnimations": {
+          "description": "นักพัฒนา ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAvatar": {
+          "description": "นักพัฒนา ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomShaders": {
+          "description": "นักพัฒนา ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseDrone": {
+          "description": "นักพัฒนา ใช้โดรนได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "นักพัฒนา แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseParticleSystems": {
+          "description": "นักพัฒนา ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseTriggers": {
+          "description": "นักพัฒนา ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseUserIcons": {
+          "description": "นักพัฒนา ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_Friend_CanSpeak": {
+          "description": "เพื่อน พูดได้"
+        },
+        "CustomTrustLevel_Friend_CanUseAnimatedEmoji": {
+          "description": "เพื่อน ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_Friend_CanUseAvatarAudio": {
+          "description": "เพื่อน ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAnimations": {
+          "description": "เพื่อน ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAvatar": {
+          "description": "เพื่อน ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomShaders": {
+          "description": "เพื่อน ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_Friend_CanUseDrone": {
+          "description": "เพื่อน ใช้โดรนได้"
+        },
+        "CustomTrustLevel_Friend_CanUseEmojiStickersSharing": {
+          "description": "เพื่อน แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_Friend_CanUseParticleSystems": {
+          "description": "เพื่อน ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_Friend_CanUseTriggers": {
+          "description": "เพื่อน ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_Friend_CanUseUserIcons": {
+          "description": "เพื่อน ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanSpeak": {
+          "description": "ระดับกลาง 1 พูดได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "ระดับกลาง 1 ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAvatarAudio": {
+          "description": "ระดับกลาง 1 ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAnimations": {
+          "description": "ระดับกลาง 1 ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAvatar": {
+          "description": "ระดับกลาง 1 ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomShaders": {
+          "description": "ระดับกลาง 1 ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseDrone": {
+          "description": "ระดับกลาง 1 ใช้โดรนได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "ระดับกลาง 1 แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseParticleSystems": {
+          "description": "ระดับกลาง 1 ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseTriggers": {
+          "description": "ระดับกลาง 1 ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseUserIcons": {
+          "description": "ระดับกลาง 1 ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanSpeak": {
+          "description": "ระดับกลาง 2 พูดได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "ระดับกลาง 2 ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAvatarAudio": {
+          "description": "ระดับกลาง 2 ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAnimations": {
+          "description": "ระดับกลาง 2 ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAvatar": {
+          "description": "ระดับกลาง 2 ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomShaders": {
+          "description": "ระดับกลาง 2 ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseDrone": {
+          "description": "ระดับกลาง 2 ใช้โดรนได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "ระดับกลาง 2 แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseParticleSystems": {
+          "description": "ระดับกลาง 2 ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseTriggers": {
+          "description": "ระดับกลาง 2 ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseUserIcons": {
+          "description": "ระดับกลาง 2 ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanSpeak": {
+          "description": "Known พูดได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Known ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAvatarAudio": {
+          "description": "Known ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAnimations": {
+          "description": "Known ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAvatar": {
+          "description": "Known ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomShaders": {
+          "description": "Known ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseDrone": {
+          "description": "Known ใช้โดรนได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Known แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseParticleSystems": {
+          "description": "Known ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseTriggers": {
+          "description": "Known ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseUserIcons": {
+          "description": "Known ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanSpeak": {
+          "description": "Legend พูดได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Legend ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAvatarAudio": {
+          "description": "Legend ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAnimations": {
+          "description": "Legend ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAvatar": {
+          "description": "Legend ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomShaders": {
+          "description": "Legend ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseDrone": {
+          "description": "Legend ใช้โดรนได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Legend แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseParticleSystems": {
+          "description": "Legend ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseTriggers": {
+          "description": "Legend ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseUserIcons": {
+          "description": "Legend ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanSpeak": {
+          "description": "ผู้เล่นในเครื่อง พูดได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAnimatedEmoji": {
+          "description": "ผู้เล่นในเครื่อง ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAvatarAudio": {
+          "description": "ผู้เล่นในเครื่อง ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAnimations": {
+          "description": "ผู้เล่นในเครื่อง ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAvatar": {
+          "description": "ผู้เล่นในเครื่อง ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomShaders": {
+          "description": "ผู้เล่นในเครื่อง ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseDrone": {
+          "description": "ผู้เล่นในเครื่อง ใช้โดรนได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseEmojiStickersSharing": {
+          "description": "ผู้เล่นในเครื่อง แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseParticleSystems": {
+          "description": "ผู้เล่นในเครื่อง ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseTriggers": {
+          "description": "ผู้เล่นในเครื่อง ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseUserIcons": {
+          "description": "ผู้เล่นในเครื่อง ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanSpeak": {
+          "description": "ระดับติดลบ พูดได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "ระดับติดลบ ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAvatarAudio": {
+          "description": "ระดับติดลบ ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAnimations": {
+          "description": "ระดับติดลบ ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAvatar": {
+          "description": "ระดับติดลบ ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomShaders": {
+          "description": "ระดับติดลบ ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseDrone": {
+          "description": "ระดับติดลบ ใช้โดรนได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "ระดับติดลบ แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseParticleSystems": {
+          "description": "ระดับติดลบ ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseTriggers": {
+          "description": "ระดับติดลบ ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseUserIcons": {
+          "description": "ระดับติดลบ ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanSpeak": {
+          "description": "ระดับติดลบ พูดได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "ระดับติดลบ ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAvatarAudio": {
+          "description": "ระดับติดลบ ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAnimations": {
+          "description": "ระดับติดลบ ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAvatar": {
+          "description": "ระดับติดลบ ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomShaders": {
+          "description": "ระดับติดลบ ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseDrone": {
+          "description": "ระดับติดลบ ใช้โดรนได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "ระดับติดลบ แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseParticleSystems": {
+          "description": "ระดับติดลบ ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseTriggers": {
+          "description": "ระดับติดลบ ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseUserIcons": {
+          "description": "ระดับติดลบ ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanSpeak": {
+          "description": "ระดับติดลบ พูดได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "ระดับติดลบ ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "ระดับติดลบ ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "ระดับติดลบ ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "ระดับติดลบ ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomShaders": {
+          "description": "ระดับติดลบ ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseDrone": {
+          "description": "ระดับติดลบ ใช้โดรนได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "ระดับติดลบ แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseParticleSystems": {
+          "description": "ระดับติดลบ ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseTriggers": {
+          "description": "ระดับติดลบ ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseUserIcons": {
+          "description": "ระดับติดลบ ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanSpeak": {
+          "description": "Trusted พูดได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Trusted ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAvatarAudio": {
+          "description": "Trusted ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAnimations": {
+          "description": "Trusted ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAvatar": {
+          "description": "Trusted ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomShaders": {
+          "description": "Trusted ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseDrone": {
+          "description": "Trusted ใช้โดรนได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Trusted แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseParticleSystems": {
+          "description": "Trusted ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseTriggers": {
+          "description": "Trusted ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseUserIcons": {
+          "description": "Trusted ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_Untrusted_CanSpeak": {
+          "description": "Untrusted พูดได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAnimatedEmoji": {
+          "description": "Untrusted ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAvatarAudio": {
+          "description": "Untrusted ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAnimations": {
+          "description": "Untrusted ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAvatar": {
+          "description": "Untrusted ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomShaders": {
+          "description": "Untrusted ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseDrone": {
+          "description": "Untrusted ใช้โดรนได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseEmojiStickersSharing": {
+          "description": "Untrusted แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseParticleSystems": {
+          "description": "Untrusted ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseTriggers": {
+          "description": "Untrusted ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_Untrusted_CanUseUserIcons": {
+          "description": "Untrusted ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanSpeak": {
+          "description": "ระดับติดลบ พูดได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "ระดับติดลบ ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "ระดับติดลบ ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "ระดับติดลบ ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "ระดับติดลบ ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomShaders": {
+          "description": "ระดับติดลบ ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseDrone": {
+          "description": "ระดับติดลบ ใช้โดรนได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "ระดับติดลบ แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseParticleSystems": {
+          "description": "ระดับติดลบ ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseTriggers": {
+          "description": "ระดับติดลบ ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseUserIcons": {
+          "description": "ระดับติดลบ ใช้ไอคอนผู้ใช้ได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanSpeak": {
+          "description": "Veteran พูดได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Veteran ใช้อีโมจิเคลื่อนไหวได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAvatarAudio": {
+          "description": "Veteran ใช้เสียงของอวาตาร์ได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAnimations": {
+          "description": "Veteran ใช้แอนิเมชันกำหนดเองได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAvatar": {
+          "description": "Veteran ใช้อวาตาร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomShaders": {
+          "description": "Veteran ใช้เชเดอร์กำหนดเองได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseDrone": {
+          "description": "Veteran ใช้โดรนได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Veteran แชร์อีโมจิ/สติกเกอร์ได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseParticleSystems": {
+          "description": "Veteran ใช้ระบบพาร์ติเคิลได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseTriggers": {
+          "description": "Veteran ใช้ทริกเกอร์ได้"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseUserIcons": {
+          "description": "Veteran ใช้ไอคอนผู้ใช้ได้"
+        },
+        "VRC_LIMIT_PARTICLE_SYSTEMS": {
+          "description": "จำกัดระบบพาร์ติเคิล"
+        },
+        "14C4B06B824EC593239362517F538B29": {
+          "description": "โทเคนการยืนยันตัวตนหรือการติดตั้ง"
+        },
+        "5F4DCC3B5AA765D61D8327DEB882CF99": {
+          "description": "โทเคนการยืนยันตัวตนหรือการติดตั้ง"
+        },
+        "785C2BDD2C43070A10BC35E5E687A467": {
+          "description": "โทเคนการยืนยันตัวตนหรือการติดตั้ง"
+        },
+        "93D3AE97F80BEDA8E396065DC4770A93": {
+          "description": "โทเคนการยืนยันตัวตนหรือการติดตั้ง"
+        },
+        "BCD9D91ED8D8F1926B20D3D620647C8E": {
+          "description": "โทเคนการยืนยันตัวตนหรือการติดตั้ง"
+        },
+        "BD2E932A03A19217AB5A1DFB5AA93340": {
+          "description": "โทเคนการยืนยันตัวตนหรือการติดตั้ง"
+        },
+        "E1F946CE2FD302B954E26AD92C0B30BF": {
+          "description": "โทเคนการยืนยันตัวตนหรือการติดตั้ง"
+        },
+        "ForceSettings_AutoWalk": {
+          "description": "เครื่องหมายการย้ายการตั้งค่า"
+        },
+        "ForceSettings_ClearFoldoutPrefKeys": {
+          "description": "เครื่องหมายการย้ายการตั้งค่า"
+        },
+        "ForceSettings_MicToggle": {
+          "description": "เครื่องหมายการย้ายการตั้งค่า"
+        },
+        "ForceSettings_MigrateMicSettings": {
+          "description": "เครื่องหมายการย้ายการตั้งค่า"
+        },
+        "ForceSettings_Mixer": {
+          "description": "เครื่องหมายการย้ายการตั้งค่า"
+        },
+        "ForceSettings_PedestalSharing": {
+          "description": "เครื่องหมายการย้ายการตั้งค่า"
+        },
+        "ForceSettings_SteamAudioSliderRemap": {
+          "description": "เครื่องหมายการย้ายการตั้งค่า"
+        },
+        "ForceSettings_WorldTooltipMode": {
+          "description": "เครื่องหมายการย้ายการตั้งค่า"
+        },
+        "LOGGING_ENABLED": {
+          "description": "เปิดการบันทึก"
+        },
+        "Screenmanager Fullscreen mode": {
+          "description": "โหมดเต็มจอ"
+        },
+        "Screenmanager Fullscreen mode Default": {
+          "description": "โหมดเต็มจอเริ่มต้น"
+        },
+        "Screenmanager Resolution Height": {
+          "description": "ความสูงความละเอียด"
+        },
+        "Screenmanager Resolution Height Default": {
+          "description": "ความสูงความละเอียดเริ่มต้น"
+        },
+        "Screenmanager Resolution Use Native": {
+          "description": "ใช้ความละเอียดเนทีฟ"
+        },
+        "Screenmanager Resolution Use Native Default": {
+          "description": "ความละเอียดเนทีฟเริ่มต้น"
+        },
+        "Screenmanager Resolution Width": {
+          "description": "ความกว้างความละเอียด"
+        },
+        "Screenmanager Resolution Width Default": {
+          "description": "ความกว้างความละเอียดเริ่มต้น"
+        },
+        "Screenmanager Resolution Window Height": {
+          "description": "ความสูงหน้าต่าง"
+        },
+        "Screenmanager Resolution Window Width": {
+          "description": "ความกว้างหน้าต่าง"
+        },
+        "Screenmanager Stereo 3D": {
+          "description": "สเตอริโอ 3D"
+        },
+        "Screenmanager Window Position X": {
+          "description": "ตำแหน่ง X ของหน้าต่าง"
+        },
+        "Screenmanager Window Position Y": {
+          "description": "ตำแหน่ง Y ของหน้าต่าง"
+        },
+        "UserId": {
+          "description": "ID ผู้ใช้"
+        },
+        "VRC_CLEAR_CACHE_ON_START": {
+          "description": "ล้างแคชเนื้อหาเมื่อเริ่มต้น"
+        },
+        "VRC_SHOW_COMPATIBILITY_WARNINGS": {
+          "description": "แสดงคำเตือนความเข้ากันได้"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideAvatar": {
+          "description": "เครื่องหมายการย้ายการซ่อนอวาตาร์"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideDrone": {
+          "description": "เครื่องหมายการย้ายการซ่อนโดรน"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowAvatar": {
+          "description": "เครื่องหมายการย้ายการแสดงอวาตาร์"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowDrone": {
+          "description": "เครื่องหมายการย้ายการแสดงโดรน"
+        },
+        "unity.cloud_userid": {
+          "description": "ID ผู้ใช้ Unity cloud"
+        },
+        "unity.player_session_count": {
+          "description": "เทเลเมทรีเซสชัน Unity"
+        },
+        "unity.player_sessionid": {
+          "description": "เทเลเมทรีเซสชัน Unity"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_LastExpiredSubscription": {
+          "description": "สมาชิกที่หมดอายุล่าสุดของผู้ใช้"
+        },
+        "VRC_AFK_ENABLED": {
+          "description": "เปิด AFK"
+        },
+        "VRC_PREFERRED_TIMEZONE_2": {
+          "description": "เขตเวลาที่ต้องการ 2"
+        }
       }
     },
+    "tabs": {
+      "general": "ทั่วไป",
+      "config": "การตั้งค่าแอป (config.json)",
+      "steamvr": "SteamVR",
+      "registry": "เรจิสทรี VRChat",
+      "experimental": "ทดลอง",
+      "vrDiag": "การวินิจฉัย VR",
+      "data": "จัดการข้อมูล",
+      "hardware": "ฮาร์ดแวร์"
+    },
     "general": {
+      "layoutTitle": "เค้าโครงพื้นที่ทำงาน",
+      "layoutDesc": "ควบคุมแผงด้านข้างให้แสดงเป็นค่าเริ่มต้นในแอป",
+      "worldInspector": "ตัวตรวจสอบโลก",
+      "worldInspectorHint": "เปิดตัวตรวจสอบโลกที่ปรับขนาดได้ไว้ข้างรายการแผนที่",
+      "profileContext": "บริบทโปรไฟล์แบบเรียลไทม์",
+      "profileContextHint": "แสดงบริบทของอวาตาร์และโลกแบบเรียลไทม์ด้านขวาในโปรไฟล์ของฉัน",
       "runtimeVr": "VR",
       "runtimeStandalone": "สแตนด์อโลน",
       "runtimeDesktop": "เดสก์ท็อป",
@@ -1404,21 +3620,90 @@
       "friendsDetailHint": "แสดงหน้าต่างรายละเอียดเพื่อนทางด้านขวาในหน้าเพื่อน",
       "vrchatSidebar": "แถบข้าง VRChat",
       "vrchatSidebarHint": "ถ้าปิด แถบขวาจะไปอยู่ด้านล่างแทนที่จะอยู่ข้างๆ",
+      "showInstanceId": "แสดง ID อินสแตนซ์",
+      "showInstanceIdHint": "เมื่อปิด หมายเลขอินสแตนซ์จะถูกซ่อนจากตำแหน่งของเพื่อน แต่ยังแสดงโลก ประเภท และภูมิภาค",
+      "hideUnfriends": "ซ่อนเหตุการณ์เลิกเป็นเพื่อน",
+      "hideUnfriendsHint": "ซ่อนแถว \"ลบคุณ\" / เลิกเป็นเพื่อน จากบันทึกกิจกรรมเพื่อน เหตุการณ์อื่นยังแสดงอยู่",
+      "statusShapes": "รูปทรงสถานะสำหรับผู้ที่ตาบอดสี",
+      "statusShapesHint": "เพิ่มรูปทรงเฉพาะให้แต่ละตัวบ่งชี้สถานะ (join me, active, ask me, busy, offline) เพื่อให้แยกแยะได้โดยไม่ต้องพึ่งสี",
+      "userColor": "สีชื่อเฉพาะรายผู้ใช้",
+      "userColorHint": "ให้สีเฉพาะที่คงที่กับชื่อของแต่ละผู้ใช้โดยอิงจากไอดี ทำให้จดจำผู้คนได้ง่ายในพริบตาทั้งในฟีดและรายชื่อ",
       "runtimeTitle": "ตรวจสอบระบบ",
       "runtimeDesc": "ข้อมูลสรุประบบที่อ่านจากล็อก VRChat ในเครื่องนี้",
       "runtimeMode": "โหมดระบบ",
-      "runtimeDetail": "รายละเอียดที่พบ",
-      "layoutDesc": "ควบคุมแผงด้านข้างให้แสดงเป็นค่าเริ่มต้นในแอป",
-      "layoutTitle": "เค้าโครงพื้นที่ทำงาน",
-      "profileContext": "บริบทโปรไฟล์แบบเรียลไทม์",
-      "profileContextHint": "แสดงบริบทของอวาตาร์และโลกแบบเรียลไทม์ด้านขวาในโปรไฟล์ของฉัน",
-      "worldInspector": "ตัวตรวจสอบโลก",
-      "worldInspectorHint": "เปิดตัวตรวจสอบโลกที่ปรับขนาดได้ไว้ข้างรายการแผนที่"
+      "runtimeDetail": "รายละเอียดที่พบ"
+    },
+    "configJson": {
+      "title": "การตั้งค่าแอป (config.json)",
+      "description": "พารามิเตอร์ของ Core Engine ที่อยู่ใน AppData/LocalLow ตรวจสอบให้แน่ใจว่าได้บันทึกการเปลี่ยนแปลง",
+      "vrcRunning": "VRChat กำลังทำงาน",
+      "vrcIdle": "VRChat ไม่ได้ใช้งาน",
+      "reload": "โหลดซ้ำ",
+      "save": "บันทึกการตั้งค่า",
+      "saving": "กำลังบันทึก...",
+      "enabled": "เปิดการใช้งาน",
+      "disabled": "ปิดการใช้งาน",
+      "successSave": "อัปเดต config.json สำเร็จ!",
+      "errorSave": "บันทึก config.json ไม่สำเร็จ: {{msg}}",
+      "errorRead": "อ่าน config.json ไม่สำเร็จ: {{msg}}",
+      "cacheDirectory": {
+        "label": "โฟลเดอร์แคช",
+        "hint": "พาธแบบสัมบูรณ์ไปยังโฟลเดอร์แคชที่กำหนดเอง"
+      },
+      "cacheSize": {
+        "label": "ขนาดแคช (GB)",
+        "hint": "ขนาดสูงสุดของแคช VRChat ในหน่วยกิกะไบต์"
+      },
+      "customLoadScreenLogo": {
+        "label": "โลโก้หน้าจอโหลดที่กำหนดเอง",
+        "hint": "พาธแบบสัมบูรณ์ไปยังโลโก้ PNG ที่กำหนดเองสำหรับหน้าจอโหลด"
+      },
+      "cameraResHeight": {
+        "label": "ความสูงรูปภาพกล้อง",
+        "hint": "ความละเอียดของรูปภาพกล้อง"
+      },
+      "cameraResWidth": {
+        "label": "ความกว้างรูปภาพกล้อง",
+        "hint": "ความละเอียดของรูปภาพกล้อง"
+      },
+      "fpsLimitDesktop": {
+        "label": "FPS Limit (เดสก์ท็อป)",
+        "hint": "อัตราเฟรมสูงสุดในโหมดเดสก์ท็อป (0 = ไม่จำกัด)"
+      },
+      "fpsLimitVr": {
+        "label": "จำกัด FPS (VR)",
+        "hint": "อัตราเฟรมสูงสุดในโหมด VR (0 = ไม่จำกัด)"
+      },
+      "desktopReticle": {
+        "label": "เป้าเล็งบนเดสก์ท็อป",
+        "hint": "แสดงจุดกากบาทตรงกลางในโหมดเดสก์ท็อป"
+      },
+      "ignoreParticles": {
+        "label": "ละเว้นพาร์ติเคิล",
+        "hint": "ปรับปรุงประสิทธิภาพอย่างมากในโลกที่มีคนเยอะ"
+      },
+      "defaultPlaceholder": "(ค่าเริ่มต้น)"
     },
     "steamvr": {
-      "saveDirty": "บันทึกการตั้งค่า *",
+      "title": "การตั้งค่าสตรีม VR (SteamVR / Steam Link)",
+      "quickPresets": "พรีเซ็ตด่วน:",
       "presetQuest3": "ปรับให้เหมาะกับ Quest 3",
       "presetQuest3Hint": "จูนมาสำหรับ Quest 3 ผ่าน Steam Link",
+      "presetPerformance": "ประสิทธิภาพ (50Mbps)",
+      "presetBalanced": "สมดุล (100Mbps)",
+      "presetQuality": "คุณภาพ (150Mbps)",
+      "presetApplied": "ใช้พรีเซ็ตแล้ว",
+      "steamvrRunning": "SteamVR กำลังทำงาน",
+      "steamvrIdle": "SteamVR ไม่ได้ทำงาน",
+      "reload": "โหลดซ้ำ",
+      "save": "บันทึกการตั้งค่า",
+      "saveDirty": "บันทึกการตั้งค่า *",
+      "saving": "กำลังบันทึก...",
+      "enabled": "เปิดการใช้งาน",
+      "disabled": "ปิดการใช้งาน",
+      "successSave": "อัปเดต steamvr.vrsettings สำเร็จ!",
+      "errorSave": "บันทึก steamvr.vrsettings ไม่สำเร็จ: {{msg}}",
+      "errorRead": "อ่าน steamvr.vrsettings ไม่สำเร็จ: {{msg}}",
       "questSection": {
         "title": "แก้ปัญหา Quest",
         "body": "อาการภาพสั่นตามขอบ ภาพเบลอ หรือค้างจอดำบน Quest ส่วนใหญ่เป็นปัญหาที่ชั้นรันไทม์ (Steam Link / Virtual Desktop / Oculus Link) ไม่ใช่ตัว VRChat เอง ลองใช้พรีเซ็ต Quest 3 ที่ปรับไว้ด้านบนก่อน ถ้ายังสั่นให้ลด Encoder Resolution ถ้าเห็นภาพซ้อนให้ปิด Space Warp / Motion Smoothing และตรวจสอบว่าเปิด GPU Scheduling ใน Windows แล้ว",
@@ -1426,101 +3711,266 @@
         "gpuScheduling": "GPU Scheduling",
         "guide": "คู่มือ VRCSM"
       },
+      "targetBandwidth": {
+        "label": "แบนด์วิดท์เป้าหมาย (Mbps)",
+        "hint": "ขีดจำกัดบิตเรตสำหรับ Steam Link สูงสุด 150-200 สำหรับเราเตอร์ที่ดี"
+      },
       "automaticBandwidth": {
-        "hint": "ให้ SteamVR ลดบิตเรตแบบไดนามิกเมื่อสัญญาณแย่",
-        "label": "แบนด์วิดท์อัตโนมัติ"
-      },
-      "disabled": "ปิดการใช้งาน",
-      "enabled": "เปิดการใช้งาน",
-      "errorRead": "อ่าน steamvr.vrsettings ไม่สำเร็จ: {{msg}}",
-      "errorSave": "บันทึก steamvr.vrsettings ไม่สำเร็จ: {{msg}}",
-      "motionSmoothing": {
-        "hint": "สร้างเฟรมชดเชยเมื่อแล็ก ดีสำหรับเวลาการเรนเดอร์เฟรมที่แย่ แต่อาจทำให้เกิดภาพซ้อนได้",
-        "label": "การทำภาพเคลื่อนไหวให้ราบรื่น"
-      },
-      "presetApplied": "ใช้พรีเซ็ตแล้ว",
-      "presetBalanced": "สมดุล (100Mbps)",
-      "presetPerformance": "ประสิทธิภาพ (50Mbps)",
-      "presetQuality": "คุณภาพ (150Mbps)",
-      "quickPresets": "พรีเซ็ตด่วน:",
-      "refreshRate": {
-        "hint": "ต้องตรงกับอัตรารีเฟรชที่ชุดหูฟังรองรับ (72, 80, 90, 120)",
-        "label": "อัตรารีเฟรช (Hz)"
-      },
-      "reload": "โหลดซ้ำ",
-      "save": "บันทึกการตั้งค่า",
-      "saving": "กำลังบันทึก...",
-      "steamvrIdle": "SteamVR ไม่ได้ทำงาน",
-      "steamvrRunning": "SteamVR กำลังทำงาน",
-      "successSave": "อัปเดต steamvr.vrsettings สำเร็จ!",
-      "supersampleFiltering": {
-        "hint": "ลดรอยหยัก แต่อาจทำให้ภาพเบลอเล็กน้อย",
-        "label": "การกรอง Supersample"
-      },
-      "supersampleManualOverride": {
-        "hint": "บังคับใช้สเกลที่กำหนดเองแทนการปรับอัตโนมัติ",
-        "label": "ปรับ Supersample แบบกำหนดเอง"
+        "label": "แบนด์วิดท์อัตโนมัติ",
+        "hint": "ให้ SteamVR ลดบิตเรตแบบไดนามิกเมื่อสัญญาณแย่"
       },
       "supersampleScale": {
-        "hint": "สเกลการเรนเดอร์ (1.0 = ปกติ, 1.5 = คมชัดสูง, ต้องใช้ GPU ที่ดี)",
-        "label": "สเกล Supersampling"
+        "label": "สเกล Supersampling",
+        "hint": "สเกลการเรนเดอร์ (1.0 = ปกติ, 1.5 = คมชัดสูง, ต้องใช้ GPU ที่ดี)"
       },
-      "targetBandwidth": {
-        "hint": "ขีดจำกัดบิตเรตสำหรับ Steam Link สูงสุด 150-200 สำหรับเราเตอร์ที่ดี",
-        "label": "แบนด์วิดท์เป้าหมาย (Mbps)"
+      "supersampleManualOverride": {
+        "label": "ปรับ Supersample แบบกำหนดเอง",
+        "hint": "บังคับใช้สเกลที่กำหนดเองแทนการปรับอัตโนมัติ"
       },
-      "title": "การตั้งค่าสตรีม VR (SteamVR / Steam Link)"
-    },
-    "configJson": {
-      "cacheDirectory": {
-        "hint": "พาธแบบสัมบูรณ์ไปยังโฟลเดอร์แคชที่กำหนดเอง",
-        "label": "โฟลเดอร์แคช"
+      "refreshRate": {
+        "label": "อัตรารีเฟรช (Hz)",
+        "hint": "ต้องตรงกับอัตรารีเฟรชที่ชุดหูฟังรองรับ (72, 80, 90, 120)"
       },
-      "cacheSize": {
-        "hint": "ขนาดสูงสุดของแคช VRChat ในหน่วยกิกะไบต์",
-        "label": "ขนาดแคช (GB)"
+      "motionSmoothing": {
+        "label": "การทำภาพเคลื่อนไหวให้ราบรื่น",
+        "hint": "สร้างเฟรมชดเชยเมื่อแล็ก ดีสำหรับเวลาการเรนเดอร์เฟรมที่แย่ แต่อาจทำให้เกิดภาพซ้อนได้"
       },
-      "cameraResHeight": {
-        "hint": "ความละเอียดของรูปภาพกล้อง",
-        "label": "ความสูงรูปภาพกล้อง"
+      "supersampleFiltering": {
+        "label": "การกรอง Supersample",
+        "hint": "ลดรอยหยัก แต่อาจทำให้ภาพเบลอเล็กน้อย"
       },
-      "cameraResWidth": {
-        "hint": "ความละเอียดของรูปภาพกล้อง",
-        "label": "ความกว้างรูปภาพกล้อง"
+      "linkRepair": {
+        "title": "ซ่อมการเชื่อมต่อ Steam Link / Quest",
+        "body": "วินิจฉัยปัญหา session ID ของ VRLink ไม่ตรงกัน, WirelessHmdNotConnected, แคชการจับคู่ Quest ที่ค้างอยู่, เครื่องหมาย SteamVR Beta และการอัปเดต SteamVR ที่ยังไม่เสร็จ การซ่อมจะสำรองข้อมูลก่อนและเป็นการแสดงตัวอย่างแบบ dry-run โดยค่าเริ่มต้น",
+        "diagnose": "วินิจฉัย",
+        "dryRun": "แสดงตัวอย่างการซ่อม",
+        "dryRunShort": "แสดงตัวอย่าง",
+        "apply": "สำรองข้อมูลและซ่อม",
+        "applyShort": "นำไปใช้",
+        "confirm": "การกระทำนี้จะปิด Steam/SteamVR สำรองการตั้งค่า SteamVR, appmanifest และ localconfig.vdf, ล้างแคชการจับคู่ Steam Link, ลบเครื่องหมาย SteamVR Beta และเปิดการตรวจสอบ Steam ดำเนินการต่อไหม",
+        "confirmPlan": "นำ \"{{name}}\" ไปใช้ไหม VRCSM จะสำรองข้อมูลก่อนและรายงานความล้มเหลวในการเขียนทั้งหมด",
+        "invalidSessionToast": "พบแพ็กเก็ตเซสชัน VRLink ที่ไม่ถูกต้อง: {{count}}",
+        "diagnoseDone": "วินิจฉัย Steam Link เสร็จแล้ว",
+        "diagnoseFailed": "วินิจฉัย Steam Link ไม่สำเร็จ: {{msg}}",
+        "dryRunDone": "แสดงตัวอย่างเสร็จแล้ว ตรวจสอบขั้นตอนการซ่อมที่วางแผนไว้",
+        "repairDone": "ใช้การซ่อมแล้วและเปิดการตรวจสอบ Steam",
+        "backupDone": "สร้างการสำรองการตั้งค่า Quest Link/SteamVR แล้ว",
+        "repairFailed": "ซ่อม Steam Link ไม่สำเร็จ: {{msg}}",
+        "previewFailed": "สร้างการแสดงตัวอย่างไม่สำเร็จ: {{msg}}",
+        "restoreDone": "กู้คืนรายการสำรอง {{count}} รายการแล้ว",
+        "restoreFailed": "กู้คืนข้อมูลสำรองไม่สำเร็จ: {{msg}}",
+        "confirmDialogTitle": "ยืนยัน \"{{name}}\"",
+        "confirmDialogDesc": "ตรวจสอบไฟล์และการดำเนินการที่ระบุด้านล่างก่อน จะไม่มีการเปลี่ยนแปลงใด ๆ จนกว่าคุณจะคลิก \"นำไปใช้\"",
+        "restoreDialogTitle": "กู้คืนข้อมูลสำรอง Steam Link",
+        "restoreDialogDesc": "VRCSM จะปิด Steam/SteamVR สำรองไฟล์ปัจจุบันก่อน แล้วจึงกู้คืนข้อมูลสำรองที่คุณเลือก",
+        "previewing": "กำลังสร้างการแสดงตัวอย่าง…",
+        "executing": "กำลังนำไปใช้…",
+        "noPlannedActions": "ไม่มีการดำเนินการในการแสดงตัวอย่าง",
+        "confirmDialogCancel": "ยกเลิก ปล่อยไว้",
+        "confirmDialogApply": "ยืนยันการสำรองข้อมูลและซ่อม",
+        "restoreConfirm": "กู้คืนข้อมูลสำรองนี้",
+        "steamPath": "พาธ Steam",
+        "build": "บิลด์",
+        "beta": "เบต้า",
+        "stable": "เสถียร",
+        "invalidSessions": "แพ็กเก็ตเซสชันที่ไม่ถูกต้อง",
+        "questPairs": "แคชการจับคู่ Quest",
+        "pendingDownload": "อัปเดตที่ค้างอยู่",
+        "lostMaster": "สูญเสียกระบวนการหลัก",
+        "issues": "ปัญหาที่ตรวจพบ",
+        "evidence": "หลักฐานจากบันทึก",
+        "noEvidence": "ไม่มีบรรทัดที่ตรงกันในส่วนท้ายของบันทึกที่สแกน",
+        "recommended": "แนะนำ",
+        "best": "แนะนำ",
+        "settingProfiles": "โปรไฟล์การตั้งค่าที่เสถียร",
+        "actions": "การดำเนินการที่วางแผนไว้",
+        "result": "ผลลัพธ์",
+        "applied": "นำไปใช้แล้ว",
+        "partial": "บางส่วน",
+        "resultBetaKey": "ลบบรรทัด BetaKey",
+        "resultQuestBlocks": "ลบบล็อกอุปกรณ์ Quest",
+        "resultBetaBlocks": "ลบบล็อก 250820-beta",
+        "resultStopped": "หยุดกระบวนการแล้ว",
+        "resultBackups": "สร้างข้อมูลสำรองแล้ว",
+        "resultSettingsApplied": "เขียนการตั้งค่าแล้ว",
+        "resultRestored": "กู้คืนรายการแล้ว",
+        "currentBackupDir": "สำรองไฟล์ปัจจุบันก่อนกู้คืน",
+        "backupsTitle": "การสำรองและกู้คืน",
+        "backupsHint": "ข้อมูลสำรองที่กู้คืนได้ซึ่งสร้างโดย VRCSM จะแสดงที่นี่ การกู้คืนจะสำรองไฟล์ปัจจุบันก่อน",
+        "refreshBackups": "รีเฟรช",
+        "restorable": "กู้คืนได้",
+        "metadataMissing": "ไม่มี manifest",
+        "restore": "กู้คืน",
+        "severity": {
+          "critical": "วิกฤต",
+          "warning": "คำเตือน",
+          "info": "ข้อมูล",
+          "ok": "ปกติ"
+        },
+        "risk": {
+          "low": "ความเสี่ยงต่ำ",
+          "medium": "ความเสี่ยงปานกลาง",
+          "high": "ความเสี่ยงสูง"
+        },
+        "summary": {
+          "vrlinkSessionMismatch": "session ของ VRLink ไม่ตรงกัน: แพ็กเก็ต Quest มาถึง PC แล้ว แต่ SteamVR ปฏิเสธเซสชันเฮดเซตไร้สาย",
+          "betaMarkers": "ตรวจพบเครื่องหมาย SteamVR Beta หรือ Beta ระดับผู้ใช้ ซึ่งอาจตรึง SteamVR ไว้กับบิลด์ VRLink ที่มีปัญหา",
+          "readyNoInvalid": "พบ SteamVR Ready ในบันทึกล่าสุดและไม่มีเซสชันที่ไม่ถูกต้องพุ่งขึ้นในช่วงที่สแกน",
+          "lostMaster": "SteamVR ปิดเพราะสูญเสียกระบวนการหลัก ตรวจสอบการจับคู่ VRLink และความเสถียรของกระบวนการรันไทม์",
+          "pairingRecords": "ตรวจพบระเบียนการจับคู่ Steam Link / Quest ระเบียนเก่าสามารถรีเซ็ตได้อย่างปลอดภัยหลังสำรองข้อมูล",
+          "noSignature": "ไม่พบร่องรอยความล้มเหลวของ VRLink ที่ชัดเจนในบันทึก SteamVR ที่สแกน"
+        },
+        "recommendations": {
+          "resetPairing": "รีเซ็ตแคชการจับคู่ Steam Link / Quest แล้วจับคู่ใหม่จากเฮดเซต",
+          "removeManifestBeta": "ลบ SteamVR BetaKey และตรวจสอบ AppID 250820 เพื่อกลับสู่สาขาเสถียร",
+          "removeUserBeta": "ลบเครื่องหมาย 250820-beta / BetaKey ระดับผู้ใช้ออกจาก Steam localconfig.vdf",
+          "removeQuestDevices": "สำรอง localconfig.vdf ก่อน แล้วจึงลบระเบียนอุปกรณ์สตรีม Oculus Quest / Steam Link เก่า",
+          "finishUpdate": "ปล่อยให้ Steam อัปเดต/ตรวจสอบ SteamVR ให้เสร็จ แล้วลอง Steam Link อีกครั้ง",
+          "retryThenDryRun": "ลองจากเฮดเซตก่อน หากไม่สำเร็จ ให้รันการซ่อมแบบแสดงตัวอย่างและเปรียบเทียบส่วนท้ายบันทึกใหม่"
+        },
+        "issuesMap": {
+          "steamvr_missing": {
+            "title": "ไม่พบไดเรกทอรี SteamVR หรือรันไทม์",
+            "detail": "Steam Link VR ต้องใช้ AppID 250820 ติดตั้ง SteamVR ก่อน แล้วจึงรันการตรวจสอบ"
+          },
+          "steamvr_pending_update": {
+            "title": "SteamVR มีอัปเดตที่ค้างอยู่หรือดาวน์โหลดที่ยังไม่เสร็จ",
+            "detail": "เมื่อ SteamVR อยู่ระหว่างสลับ/ดาวน์โหลด manifest, Steam Link อาจเชื่อมต่อไม่ได้ ปล่อยให้ Steam อัปเดตให้เสร็จ แล้วจับคู่ใหม่"
+          },
+          "vrlink_session_mismatch": {
+            "title": "session ID ของ VRLink ไม่ตรงกัน",
+            "detail": "พบแพ็กเก็ตเซสชันที่ไม่ถูกต้อง {{count}} รายการขณะที่ SteamVR รายงานว่าเฮดเซตไร้สายไม่ได้เชื่อมต่อ"
+          },
+          "vrlink_invalid_session": {
+            "title": "พบแพ็กเก็ตเซสชัน VRLink ที่ไม่ถูกต้อง",
+            "detail": "ส่วนท้ายบันทึก SteamVR ที่สแกนมีแพ็กเก็ตเซสชันที่ไม่ถูกต้อง {{count}} รายการ"
+          },
+          "steamvr_unknown_shutdown": {
+            "title": "SteamVR ปิดด้วยเหตุผลจากกระบวนการหลักที่ไม่ทราบ",
+            "detail": "โดยปกติเกี่ยวข้องกับความล้มเหลวของ handshake ของ VRLink รีเซ็ตการจับคู่ก่อน แล้วลองใหม่จากเฮดเซต"
+          },
+          "quest_pairing_cache": {
+            "title": "ตรวจพบแคชการจับคู่ Quest / Steam Link",
+            "detail": "พบเครื่องหมายการจับคู่ Quest {{count}} รายการใน Steam localconfig.vdf"
+          },
+          "steamvr_beta_marker": {
+            "title": "ตรวจพบเครื่องหมาย SteamVR Beta",
+            "detail": "เครื่องหมาย BetaKey, 250820-beta หรือ Beta ที่เข้ารหัสไว้ อาจตรึง SteamVR ไว้กับบิลด์ VRLink ที่มีสถานะการจับคู่เสียหาย"
+          },
+          "no_physical_ipv4_adapter": {
+            "title": "ไม่พบอะแดปเตอร์เครือข่าย IPv4 จริงที่ใช้งานอยู่",
+            "detail": "Steam Link ทำงานได้ดีที่สุดเมื่อ PC ต่อสาย Ethernet และเฮดเซตอยู่บนเราเตอร์เดียวกัน"
+          },
+          "virtual_network_adapter": {
+            "title": "เปิดใช้งานอะแดปเตอร์เครือข่ายเสมือน",
+            "detail": "ตรวจพบอะแดปเตอร์เครือข่ายเสมือนที่ใช้งานอยู่ {{count}} รายการ VRCSM จะไม่เปลี่ยนโดยอัตโนมัติ หากการจับคู่ยังล้มเหลว ให้ปิด VPN / Hyper-V ชั่วคราว"
+          },
+          "high_bandwidth": {
+            "title": "ตั้งค่าแบนด์วิดท์ Steam Link ไว้สูง",
+            "detail": "{{bandwidth}} Mbps อาจสูงเกินไปสำหรับ Wi-Fi ที่ใช้ร่วมกัน เมื่อแก้ปัญหา ให้เริ่มที่ 80-120 Mbps"
+          },
+          "overscaled_low_vram": {
+            "title": "ตั้ง supersampling สูงบน GPU ที่มี VRAM ต่ำ",
+            "detail": "ลด supersampling ลงเหลือ 0.8-1.0 ขณะตรวจสอบการเชื่อมต่อ แล้วค่อยเพิ่มเมื่อการเชื่อมต่อเสถียร"
+          },
+          "no_blocker_found": {
+            "title": "ไม่พบร่องรอยที่ชัดเจนว่าขวาง Steam Link",
+            "detail": "ไม่มี Beta อัปเดตที่ค้างอยู่ หรือเซสชันที่ไม่ถูกต้องพุ่งขึ้นในส่วนท้ายที่สแกน ลองจากเฮดเซตอีกครั้ง และรันการวินิจฉัยใหม่ทันทีหากล้มเหลว"
+          }
+        },
+        "plans": {
+          "quest-link-backup": {
+            "title": "สำรองการตั้งค่า Quest Link ปัจจุบัน",
+            "description": "สร้างสแนปช็อตที่กู้คืนได้ของ SteamVR, VRLink, การจับคู่ Quest และ manifest ของ SteamVR เท่านั้น โดยไม่เปลี่ยนการตั้งค่าใด ๆ"
+          },
+          "pairing-reset": {
+            "title": "รีเซ็ตการจับคู่",
+            "description": "ล้างระเบียนการจับคู่ Quest / Steam Link ระดับบัญชีและแคชเว็บของ SteamVR แล้วให้เฮดเซตจับคู่ใหม่อย่างสะอาด"
+          },
+          "full-vrlink-reset": {
+            "title": "รีเซ็ต VRLink ทั้งหมด",
+            "description": "ขั้นตอนเต็มรูปแบบที่เคยแก้เซสชัน Quest 3 มาก่อน: แคชการจับคู่, สถานะรันไทม์ในเครื่องของ SteamVR, โฟลเดอร์คอนฟิก VRLink, บันทึกเก่า, เครื่องหมาย Beta และการตรวจสอบ Steam"
+          },
+          "stable-validate": {
+            "title": "การตรวจสอบสาขาเสถียร",
+            "description": "ลบเฉพาะเครื่องหมาย SteamVR Beta และเปิดการตรวจสอบ Steam สำหรับ AppID 250820"
+          },
+          "safe-streaming": {
+            "title": "การตั้งค่าสตรีมที่ปลอดภัย",
+            "description": "เขียนการตั้งค่า Steam Link ที่ปลอดภัยสำหรับ Quest แบบระมัดระวังโดยไม่ล้างข้อมูลการจับคู่"
+          }
+        },
+        "planActions": {
+          "stopSteamVrSteam": "หยุด SteamVR/Steam",
+          "backupLocalconfig": "สำรอง localconfig.vdf",
+          "removeQuestBlocks": "ลบบล็อกอุปกรณ์สตรีม Quest",
+          "clearHtmlcache": "ล้าง htmlcache ของ SteamVR",
+          "stopSteamSteamVr": "หยุด Steam/SteamVR",
+          "backupAll": "สำรองการตั้งค่า appmanifest/localconfig/SteamVR",
+          "moveRuntimeState": "ย้าย steamvr.vrsettings และ vrstats ออก",
+          "moveVrlinkConfig": "ย้าย config/vrlink และ remoteclients.vdf ออก",
+          "archiveLogs": "จัดเก็บบันทึก VRLink เก่า",
+          "openValidate": "เปิด steam://validate/250820",
+          "backupVrlinkConfig": "สำรอง config/vrlink และ remoteclients.vdf",
+          "backupHtmlcache": "สำรอง htmlcache ของ SteamVR",
+          "backupManifestLocalconfig": "สำรอง appmanifest/localconfig",
+          "removeBetaMarkers": "ลบเครื่องหมาย BetaKey / 250820-beta",
+          "backupVrsettings": "สำรอง steamvr.vrsettings",
+          "set80Auto": "ตั้งแบนด์วิดท์อัตโนมัติ 80 Mbps",
+          "set1x": "ตั้ง supersampling 1.0x",
+          "set72hz": "ตั้ง 72 Hz",
+          "disableMotionSmoothing": "ปิด motion smoothing"
+        },
+        "profiles": {
+          "low-stability": {
+            "title": "เสถียรภาพสำหรับเครื่องประสิทธิภาพต่ำ",
+            "note": "ใช้เมื่อเชื่อมต่อสำเร็จแต่กระตุก เบลอ หรือจอดำ"
+          },
+          "balanced-stable": {
+            "title": "เสถียรภาพแบบสมดุล",
+            "note": "คำแนะนำเริ่มต้นสำหรับ Quest 2/3 บนเราเตอร์ Wi-Fi 5/6 ทั่วไป"
+          },
+          "quest3-clarity": {
+            "title": "ความคมชัดสำหรับ Quest 3",
+            "note": "เพิ่มคุณภาพภาพหลังจากการจับคู่/เซสชันเสถียรแล้วเท่านั้น"
+          }
+        },
+        "repairActions": {
+          "stopProcess": "หยุดกระบวนการ {{name}} ({{pid}})",
+          "moveIntoBackup": "ย้ายเข้าที่สำรอง: {{path}}",
+          "archiveLog": "จัดเก็บบันทึก SteamVR เก่า: {{path}}",
+          "backupPath": "สำรอง: {{path}}",
+          "restorePath": "กู้คืนจากข้อมูลสำรอง: {{path}} ← {{backup}}",
+          "backupRemove": "สำรองและลบ: {{path}}",
+          "removeManifestBeta": "ลบบรรทัด BetaKey ออกจากไฟล์: {{path}}",
+          "removeUserBeta": "ลบเครื่องหมาย 250820-beta / BetaKey ออกจากไฟล์: {{path}}",
+          "removeQuestBlocks": "ลบบล็อกอุปกรณ์สตรีม Quest / Steam Link ออกจากไฟล์: {{path}}",
+          "applySafeStreaming": "ใช้การตั้งค่าสตรีม Quest ที่ปลอดภัย: แบนด์วิดท์อัตโนมัติ 80 Mbps, supersampling 1.0x, 72 Hz, ปิด motion smoothing",
+          "openValidateAfter": "หลังซ่อม เปิด steam://validate/250820 เพื่อตรวจสอบ"
+        },
+        "backupPartial": "สำรอง Quest Link เสร็จพร้อมคำเตือน: {{msg}}",
+        "dryRunWarning": "dry-run เสร็จพร้อมคำเตือน: {{msg}}",
+        "dryRunWarningShort": "คำเตือน dry-run",
+        "repairPartial": "ซ่อมเสร็จพร้อมคำเตือน: {{msg}}",
+        "restorePartial": "กู้คืนเสร็จพร้อมคำเตือน: {{msg}}",
+        "restoredShort": "กู้คืนแล้ว",
+        "resultRestoreCount": "จำนวนที่กู้คืน",
+        "reviewFailures": "ตรวจสอบรายละเอียดผลลัพธ์ด้านล่าง"
       },
-      "customLoadScreenLogo": {
-        "hint": "พาธแบบสัมบูรณ์ไปยังโลโก้ PNG ที่กำหนดเองสำหรับหน้าจอโหลด",
-        "label": "โลโก้หน้าจอโหลดที่กำหนดเอง"
+      "configNotFoundBadge": "ไม่พบการตั้งค่า",
+      "configNotFoundBody": "VRCSM อ่านไฟล์การตั้งค่าของ SteamVR ไม่ได้ การวินิจฉัยและการซ่อมแบบสำรองก่อนยังใช้งานได้ ส่วนตัวแก้ไขพารามิเตอร์จะปิดไว้จนกว่า SteamVR จะสร้างไฟล์",
+      "configNotFoundTitle": "ไม่พบ steamvr.vrsettings",
+      "editorUnavailable": "ตัวแก้ไขการตั้งค่า SteamVR ไม่พร้อมใช้งาน: ยังไม่ได้ติดตั้งหรือยังไม่ได้สร้าง steamvr.vrsettings",
+      "effectiveResolution": {
+        "hint": "Encoder Resolution ที่ Steam Link แสดงคือค่านี้ การเปลี่ยนช่องใดก็ตามจะคำนวณ Supersampling Scale กลับ (0.5–2.0, ขั้นละ 0.1)",
+        "label": "ความละเอียดการเรนเดอร์จริง (ต่อตา)",
+        "unknown": "HMD ที่ไม่รู้จัก"
       },
-      "description": "พารามิเตอร์ของ Core Engine ที่อยู่ใน AppData/LocalLow ตรวจสอบให้แน่ใจว่าได้บันทึกการเปลี่ยนแปลง",
-      "desktopReticle": {
-        "hint": "แสดงจุดกากบาทตรงกลางในโหมดเดสก์ท็อป",
-        "label": "เป้าเล็งบนเดสก์ท็อป"
-      },
-      "disabled": "ปิดการใช้งาน",
-      "enabled": "เปิดการใช้งาน",
-      "errorRead": "อ่าน config.json ไม่สำเร็จ: {{msg}}",
-      "errorSave": "บันทึก config.json ไม่สำเร็จ: {{msg}}",
-      "fpsLimitDesktop": {
-        "hint": "อัตราเฟรมสูงสุดในโหมดเดสก์ท็อป (0 = ไม่จำกัด)",
-        "label": "FPS Limit (เดสก์ท็อป)"
-      },
-      "fpsLimitVr": {
-        "hint": "อัตราเฟรมสูงสุดในโหมด VR (0 = ไม่จำกัด)",
-        "label": "FPS Limit (VR)"
-      },
-      "ignoreParticles": {
-        "hint": "ปรับปรุงประสิทธิภาพอย่างมากในโลกที่มีคนเยอะ",
-        "label": "ละเว้นพาร์ติเคิล"
-      },
-      "defaultPlaceholder": "(ค่าเริ่มต้น)",
-      "reload": "โหลดซ้ำ",
-      "save": "บันทึกการตั้งค่า",
-      "saving": "กำลังบันทึก...",
-      "successSave": "อัปเดต config.json สำเร็จ!",
-      "title": "การตั้งค่าแอป (config.json)",
-      "vrcIdle": "VRChat ไม่ได้ใช้งาน",
-      "vrcRunning": "VRChat กำลังทำงาน"
+      "knownDevices": "อุปกรณ์ VR ที่ตรวจพบ:",
+      "profileApplied": "ใช้ {{name}} แล้ว — คลิก บันทึกการตั้งค่า เพื่อบันทึกถาวร",
+      "unknownGpu": "GPU ที่ไม่รู้จัก",
+      "vrIdle": "รันไทม์ VR ว่าง",
+      "vrRunning": "รันไทม์ VR ทำงานอยู่"
     },
     "experimental": {
       "heading": "ฟีเจอร์ทดลอง",
@@ -1532,6 +3982,11 @@
           "name": "ค้นหาอวตารด้วยภาพ",
           "description": "ค้นหาอวตารที่คล้ายกับรูปภาพโดยใช้โมเดล AI ในเครื่อง เพิ่มการกระทำ 'ค้นหาที่คล้ายกัน' เมื่อคลิกขวาบนการ์ดอวตาร",
           "warning": "การใช้งานครั้งแรกจะดาวน์โหลดโมเดล CLIP ขนาด ~150 MB การประมวลผลทั้งหมดทำงานในเครื่อง จะไม่มีอะไรถูกอัปโหลด การจัดทำดัชนีแคชขนาดใหญ่อาจใช้เวลาหลายนาทีและใช้ CPU หนักหากไม่มี WebGPU"
+        },
+        "amplitudeHarvest": {
+          "name": "เก็บ Avatar-ID จาก Amplitude",
+          "description": "อ่านไอดีอวาตาร์ (avtr_...) จากแคชการวิเคราะห์ Amplitude ในเครื่องของ VRChat เอง เพื่อเสริมฐานข้อมูลโมเดลด้วยอวาตาร์ที่คุณเคยพบ อ่านอย่างเดียว: ไม่มีการเขียน ลบ หรืออัปโหลดใด ๆ เพิ่มการดำเนินการ 'สแกนแคชในเครื่อง' ในหน้าฐานข้อมูลโมเดล",
+          "warning": "การอ่านแคชการวิเคราะห์ของ VRChat อาจถือว่าขัดต่อข้อกำหนดการให้บริการ / แนวทางการใช้ข้อมูลของ VRChat ใช้โดยยอมรับความเสี่ยงเอง ทั้งหมดนี้อยู่ในเครื่องและอ่านอย่างเดียวเท่านั้น — ดึงเฉพาะไอดี avtr_ ไม่มีการเปิดเผยหรือส่งข้อมูลการวิเคราะห์อื่นใดไปที่ใด"
         }
       },
       "visualSearch": {
@@ -1563,15 +4018,6 @@
         "indexedSummary": "จัดทำดัชนี {{count}} อวตารแล้วเมื่อ {{time}}",
         "indexedSummarySkipped": "จัดทำดัชนี {{count}} อวตาร (ข้าม {{skipped}}) แล้วเมื่อ {{time}}"
       }
-    },
-    "tabs": {
-      "config": "การตั้งค่าแอป (config.json)",
-      "general": "ทั่วไป",
-      "registry": "เรจิสทรี VRChat",
-      "steamvr": "SteamVR",
-      "experimental": "ทดลอง",
-      "vrDiag": "การวินิจฉัย VR",
-      "data": "จัดการข้อมูล"
     },
     "vrDiag": {
       "heading": "การวินิจฉัย VR",
@@ -1606,7 +4052,15 @@
       "found": "พบ",
       "missing": "ไม่พบ",
       "steamStreamingMicrophone": "ไมโครโฟน Steam Streaming",
-      "vrlinkIssues": "ปัญหา vrlink"
+      "vrlinkIssues": "ปัญหา vrlink",
+      "openSteamLinkRepair": "เปิดการซ่อม Steam Link",
+      "linkRepairReady": "พาเนลซ่อม Steam Link พร้อมแล้ว เซสชันที่ไม่ถูกต้อง: {{invalid}}, ระเบียนการจับคู่ Quest: {{questPairs}}",
+      "virtualAdapterWarning": "อะแดปเตอร์เสมือน \"{{name}}\" ({{description}}) เปิดใช้งานด้วย IP {{ip}} และอาจรบกวนการสตรีม VR",
+      "avgBitrate": "บิตเรตเฉลี่ย",
+      "droppedFrames": "เฟรมที่หลุด",
+      "linkQuality": "คุณภาพการเชื่อมต่อ",
+      "maxLatency": "ค่าหน่วงสูงสุด",
+      "supersampleFiltering": "การกรอง Supersample"
     },
     "autoStart": {
       "label": "เปิดพร้อมกับ Windows",
@@ -1669,10 +4123,119 @@
           "favorites": "รายการโปรด โน้ต และแท็กในเครื่อง"
         }
       }
+    },
+    "hardware": {
+      "applied": "ใช้การตั้งค่าแล้ว! รีสตาร์ต SteamVR",
+      "apply": "ใช้การตั้งค่าที่แนะนำ",
+      "applying": "กำลังนำไปใช้…",
+      "bandwidth": "แบนด์วิดท์",
+      "community": "ชุมชน",
+      "cpu": "CPU",
+      "cpuScore": "CPU",
+      "detecting": "กำลังตรวจหาฮาร์ดแวร์…",
+      "ffr": "ระดับ FFR",
+      "gpu": "GPU",
+      "gpuScore": "GPU",
+      "hmd": "HMD",
+      "motionSmoothing": "Motion Smoothing",
+      "ram": "RAM",
+      "ramBonus": "RAM",
+      "recommendedTier": "แนะนำระดับ {{tier}}",
+      "refresh": "ตรวจหาใหม่",
+      "refreshRate": "อัตรารีเฟรช",
+      "score": "คะแนนฮาร์ดแวร์",
+      "scoreBreakdown": "รายละเอียดคะแนน",
+      "subtitle": "ตรวจหา GPU และ CPU เพื่อคำนวณการตั้งค่า VRChat ที่แนะนำสำหรับ Steam Link / Quest",
+      "supersampling": "Supersampling",
+      "title": "ฮาร์ดแวร์และ GPU",
+      "totalScore": "รวม",
+      "vramBonus": "VRAM"
     }
   },
   "imageZoom": {
     "previewTitle": "ดูภาพ"
+  },
+  "world": {
+    "popup": {
+      "visits": "การเข้าชม",
+      "favorites": "รายการโปรด"
+    }
+  },
+  "avatar": {
+    "popup": {
+      "platforms": "แพลตฟอร์ม",
+      "fileSize": "ขนาดไฟล์",
+      "containsAssetUrl": "มี Asset URL ที่ถูกต้อง",
+      "unspecified": "ไม่ได้ระบุ",
+      "unknown": "ไม่ทราบ"
+    }
+  },
+  "calendar": {
+    "tileTitle": "อีเวนต์ VRChat ที่กำลังจะมาถึง",
+    "loading": "กำลังโหลด...",
+    "untitledEvent": "อีเวนต์ไม่มีชื่อ",
+    "pageTitle": "ปฏิทิน & แจม",
+    "empty": "ไม่พบกิจกรรม",
+    "noJams": "ขณะนี้ไม่มีแจมที่ใช้งานอยู่",
+    "openInBrowser": "เปิดใน VRChat",
+    "openJamPage": "เปิดหน้าแจม",
+    "closesAt": "ปิด {{when}}",
+    "resolvingPreview": "กำลังหาตัวอย่าง...",
+    "noPreview": "ไม่มีภาพตัวอย่าง",
+    "tabDiscover": "ค้นพบ",
+    "tabFeatured": "แนะนำ",
+    "tabJams": "แจม",
+    "tabGroups": "กลุ่มของฉัน",
+    "groupsSignIn": "เข้าสู่ระบบ VRChat เพื่อดูกิจกรรมจากกลุ่มที่คุณเข้าร่วม",
+    "noGroups": "คุณยังไม่ได้เข้าร่วมกลุ่ม VRChat ใดๆ",
+    "noGroupEvents": "กลุ่มของคุณ {{count}} กลุ่ม ไม่มีกิจกรรมสาธารณะในขณะนี้",
+    "openGroupPage": "เปิดหน้ากลุ่ม"
+  },
+  "worldHistory": {
+    "title": "ประวัติเวิลด์",
+    "subtitle": "100 การเยี่ยมชมล่าสุด · บันทึกโดยตัวติดตามล็อกเอาต์พุตของ VRChat",
+    "loading": "กำลังโหลด...",
+    "errorPrefix": "ข้อผิดพลาด: {{detail}}",
+    "empty": "ยังไม่มีการบันทึกการเยี่ยมชมเวิลด์ เปิด VRChat แล้วเข้าร่วมเวิลด์ — VRCSM จะบันทึกการเยี่ยมชมจากล็อกของเกม",
+    "unknownWorld": "(ไม่รู้จักเวิลด์)",
+    "stillInWorld": "ยังอยู่ในเวิลด์",
+    "instanceLabel": "อินสแตนซ์",
+    "openAction": "เปิด",
+    "rejoinAction": "เข้าร่วมอีกครั้ง",
+    "rejoinHint": "เปิด VRChat เข้าอินสแตนซ์นี้โดยตรง",
+    "heatmap": {
+      "title": "ฮีตแมปกิจกรรม",
+      "subtitle": "ช่วงที่คุณเข้าโลก แยกตามวันในสัปดาห์และชั่วโมง ({{days}} วันล่าสุด)",
+      "empty": "ประวัติการเยี่ยมยังไม่พอที่จะสร้างแผนภูมิรูปแบบกิจกรรม",
+      "busiest": "คึกคักที่สุด: {{day}} ราว ๆ {{hour}}",
+      "legendLess": "น้อย",
+      "legendMore": "มาก",
+      "cellTooltip": "{{day}} {{hour}}: {{count}} ครั้ง",
+      "totalVisits": "แสดง {{count}} ครั้งในแผนภูมิ"
+    },
+    "clear": "ล้าง",
+    "clearDesc": "การกระทำนี้จะลบการเยี่ยมโลกที่บันทึกไว้ทั้งหมดอย่างถาวร ไม่สามารถย้อนกลับได้",
+    "clearFailed": "ล้างไม่สำเร็จ: {{error}}",
+    "clearSuccess": "ล้างประวัติโลกแล้ว",
+    "clearTitle": "ล้างประวัติโลกไหม",
+    "customLimit": "ขีดจำกัดจำนวนแถวประวัติโลกแบบกำหนดเอง",
+    "lastPlayerSeen": "เหตุการณ์ผู้เล่นล่าสุด {{time}}",
+    "limitLabel": "แถว",
+    "loggedPlayers": "ผู้เล่นที่บันทึกไว้ {{count}} คน",
+    "noLoggedPlayers": "ไม่มีบันทึกผู้เล่น",
+    "noPlayerCountHint": "ไม่มีเหตุการณ์เข้า/ออกของผู้เล่นในเครื่องที่บันทึกไว้ในช่วงการเยี่ยมนี้",
+    "playerCountHint": "เหตุการณ์บันทึกผู้เล่นในเครื่อง {{count}} รายการในช่วงการเยี่ยมนี้",
+    "recentLimit": "{{count}} ครั้งล่าสุด"
+  },
+  "strangerAlert": {
+    "title": "คนแปลกหน้าเข้าร่วมอินสแตนซ์ {{access}} ของคุณ",
+    "unknownUser": "(ไม่รู้จักผู้ใช้)"
+  },
+  "tts": {
+    "friendOnline": "{{name}} ออนไลน์แล้ว",
+    "invite": "คำเชิญจาก {{who}}",
+    "friendRequest": "คำขอเป็นเพื่อนจาก {{who}}",
+    "someone": "บางคน"
   },
   "profileCard": {
     "home": "หน้าแรก",
@@ -1698,7 +4261,8 @@
       "install": "ติดตั้ง",
       "installing": "กำลังติดตั้ง…",
       "installed": "ติดตั้งแล้ว",
-      "empty": "ยังไม่มีปลั๊กอินให้ใช้งาน"
+      "empty": "ยังไม่มีปลั๊กอินให้ใช้งาน",
+      "fetchErrorHint": "ฟีดร้านค้าระยะไกล dwgx.github.io/VRCSM/plugins.json ไม่สามารถเข้าถึงได้ชั่วคราว Hello Plugin และ VRChat Auto-Uploader ที่มาพร้อมกับ VRCSM ติดตั้งไว้แล้วและเปิดได้จากแถบด้านข้าง มีผลเฉพาะการติดตั้งปลั๊กอินของบุคคลที่สามใหม่เท่านั้น"
     },
     "detail": {
       "notFound": "ไม่พบปลั๊กอินในฟีด",
@@ -1712,7 +4276,14 @@
       "hostMin": "เวอร์ชันโฮสต์ขั้นต่ำ",
       "sha256": "SHA-256",
       "downloadUrl": "URL ดาวน์โหลด",
+      "permissions": "สิทธิ์ตาม Manifest",
       "open": "เปิด"
+    },
+    "install": {
+      "title": "ติดตั้งปลั๊กอิน",
+      "confirm": "คุณกำลังจะติดตั้ง \"{{name}}\" โปรดตรวจสอบสิทธิ์ก่อนดำเนินการต่อ",
+      "permissions": "สิทธิ์ตาม Manifest",
+      "confirmBtn": "ติดตั้ง"
     },
     "installed": {
       "title": "ปลั๊กอินที่ติดตั้ง",
@@ -1741,67 +4312,6 @@
       "noPanel": "ปลั๊กอิน {{id}} ไม่มี UI แผงควบคุม"
     }
   },
-  "avatar": {
-    "popup": {
-      "containsAssetUrl": "มี Asset URL ที่ถูกต้อง",
-      "fileSize": "ขนาดไฟล์",
-      "platforms": "แพลตฟอร์ม",
-      "unknown": "ไม่ทราบ",
-      "unspecified": "ไม่ได้ระบุ"
-    }
-  },
-  "folderPicker": {
-    "choose": "เลือกโฟลเดอร์นี้",
-    "empty": "ไม่มีโฟลเดอร์ย่อยที่นี่",
-    "hint": "นำทางไปยังโฟลเดอร์ แล้วคลิกเลือกโฟลเดอร์นี้",
-    "noDrives": "ไม่พบไดรฟ์",
-    "noSelection": "(ไม่ได้เลือกอะไร)",
-    "refresh": "รีเฟรช",
-    "thisPc": "พีซีเครื่องนี้",
-    "title": "เลือกโฟลเดอร์",
-    "truncated": "แสดงรายการสูงสุดที่ 2000 รายการ",
-    "up": "ขึ้น"
-  },
-  "world": {
-    "popup": {
-      "favorites": "รายการโปรด",
-      "visits": "การเข้าชม"
-    }
-  },
-  "calendar": {
-    "tileTitle": "อีเวนต์ VRChat ที่กำลังจะมาถึง",
-    "loading": "กำลังโหลด...",
-    "untitledEvent": "อีเวนต์ไม่มีชื่อ",
-    "pageTitle": "ปฏิทิน & แจม",
-    "empty": "ไม่พบกิจกรรม",
-    "noJams": "ขณะนี้ไม่มีแจมที่ใช้งานอยู่",
-    "openInBrowser": "เปิดใน VRChat",
-    "openJamPage": "เปิดหน้าแจม",
-    "closesAt": "ปิด {{when}}",
-    "tabDiscover": "ค้นพบ",
-    "tabFeatured": "แนะนำ",
-    "tabJams": "แจม",
-    "tabGroups": "กลุ่มของฉัน",
-    "groupsSignIn": "เข้าสู่ระบบ VRChat เพื่อดูกิจกรรมจากกลุ่มที่คุณเข้าร่วม",
-    "noGroups": "คุณยังไม่ได้เข้าร่วมกลุ่ม VRChat ใดๆ",
-    "noGroupEvents": "กลุ่มของคุณ {{count}} กลุ่ม ไม่มีกิจกรรมสาธารณะในขณะนี้",
-    "openGroupPage": "เปิดหน้ากลุ่ม"
-  },
-  "worldHistory": {
-    "title": "ประวัติเวิลด์",
-    "subtitle": "100 การเยี่ยมชมล่าสุด · บันทึกโดยตัวติดตามล็อกเอาต์พุตของ VRChat",
-    "loading": "กำลังโหลด...",
-    "errorPrefix": "ข้อผิดพลาด: {{detail}}",
-    "empty": "ยังไม่มีการบันทึกการเยี่ยมชมเวิลด์ เปิด VRChat แล้วเข้าร่วมเวิลด์ — VRCSM จะบันทึกการเยี่ยมชมจากล็อกของเกม",
-    "unknownWorld": "(ไม่รู้จักเวิลด์)",
-    "stillInWorld": "ยังอยู่ในเวิลด์",
-    "instanceLabel": "อินสแตนซ์",
-    "openAction": "เปิด"
-  },
-  "strangerAlert": {
-    "title": "คนแปลกหน้าเข้าร่วมอินสแตนซ์ {{access}} ของคุณ",
-    "unknownUser": "(ไม่รู้จักผู้ใช้)"
-  },
   "eventRecorder": {
     "title": "เครื่องบันทึกกิจกรรม",
     "startRecording": "เริ่มบันทึก",
@@ -1812,7 +4322,11 @@
     "guide1": "บันทึกคนที่คุณพบในอินสแตนซ์ VRChat แบบเรียลไทม์",
     "guide2": "1. ใส่ชื่อแล้วกด 'เริ่มบันทึก' 2. ระหว่างบันทึก ผู้เล่นที่เข้ามาในอินสแตนซ์ของคุณจะถูกบันทึกอัตโนมัติ 3. กด 'หยุด' เพื่อสิ้นสุด เลือกการบันทึกเพื่อดูผู้เข้าร่วม",
     "noRecordings": "ยังไม่มีการบันทึก เริ่มบันทึกด้านบนเพื่อติดตามว่าใครเข้ามาในอินสแตนซ์ของคุณ",
-    "noAttendees": "ยังไม่มีผู้เข้าร่วมที่ถูกบันทึก"
+    "noAttendees": "ยังไม่มีผู้เข้าร่วมที่ถูกบันทึก",
+    "delete": "ลบการบันทึก",
+    "deleteDesc": "การกระทำนี้จะลบ \"{{name}}\" และระเบียนผู้เข้าร่วม {{count}} รายการอย่างถาวร ไม่สามารถย้อนกลับได้",
+    "deleteTitle": "ลบการบันทึกไหม",
+    "deleted": "ลบการบันทึกแล้ว"
   },
   "socialGraph": {
     "title": "การวิเคราะห์โซเชียล",
@@ -1823,7 +4337,22 @@
     "guide": "รวบรวมข้อมูลการเข้าเวิลด์และการพบเจอผู้เล่นจากประวัติล็อก VRChat ของคุณ ข้อมูลจะสะสมเมื่อ VRCSM วิเคราะห์ล็อก — เปิดแอปไว้ขณะเล่นเพื่อสร้างข้อมูลวิเคราะห์",
     "noWorlds": "ยังไม่มีข้อมูลการเข้าชม ประวัติเวิลด์จะถูกบันทึกเมื่อ VRCSM วิเคราะห์ล็อก VRChat ของคุณ",
     "selfFiltered": "ไม่รวม ID ผู้เล่นของคุณเองจากอันดับการพบเจอ",
-    "lazyWorlds": "โหลดป้ายโลกและภาพย่อเมื่อมองเห็นหรือเปิดเท่านั้น"
+    "lazyWorlds": "โหลดป้ายโลกและภาพย่อเมื่อมองเห็นหรือเปิดเท่านั้น",
+    "tabRankings": "อันดับ",
+    "tabGraph": "กราฟความสัมพันธ์",
+    "graphTitle": "เครือข่ายการอยู่ร่วมกัน",
+    "graphGuide": "ผู้เล่นที่เคยอยู่ในอินสแตนซ์เดียวกับคุณ เชื่อมโยงด้วยช่วงเวลาที่ทับซ้อนกัน เส้นทึบคือที่ยืนยันแล้ว (บันทึกจากอินสแตนซ์ของคุณเอง) เส้นประคือการอยู่ร่วมกันที่อนุมานระหว่างผู้อื่น — ไม่ใช่มิตรภาพที่ยืนยันแล้ว",
+    "graphLoading": "กำลังสร้างกราฟการอยู่ร่วมกัน…",
+    "graphEmpty": "ยังไม่มีข้อมูลการอยู่ร่วมกัน เส้นเชื่อมจะปรากฏเมื่อ VRCSM บันทึกผู้เล่นที่อยู่ในอินสแตนซ์เดียวกับคุณแล้ว",
+    "graphAria": "กราฟความสัมพันธ์การอยู่ร่วมกัน",
+    "legendConfirmed": "การอยู่ร่วมกันที่ยืนยันแล้ว (อินสแตนซ์ของคุณ)",
+    "legendInferred": "การอยู่ร่วมกันที่อนุมาน (ผู้อื่น ไม่ใช่เพื่อนที่ยืนยันแล้ว)",
+    "clear": "ล้าง",
+    "clearDesc": "การกระทำนี้จะลบการพบผู้เล่นที่บันทึกไว้ซึ่งใช้สำหรับการจัดอันดับเพื่อนและกราฟการอยู่ร่วมกันอย่างถาวร อันดับการเยี่ยมโลกจะถูกล้างแยกต่างหากในหน้าประวัติโลก ไม่สามารถย้อนกลับได้",
+    "clearFailed": "ล้างไม่สำเร็จ: {{error}}",
+    "clearSuccess": "ล้างการวิเคราะห์เชิงสังคมแล้ว",
+    "clearTitle": "ล้างการวิเคราะห์เชิงสังคมไหม",
+    "nodeFocused": "โฟกัสที่ {{name}}"
   },
   "benchmark": {
     "title": "เกณฑ์มาตรฐานประสิทธิภาพอวตาร",
@@ -1843,6 +4372,7 @@
     "private": "ส่วนตัว",
     "logOnly": "เฉพาะล็อก",
     "byAuthor": "โดย {{author}}",
+    "localEncounterIndexHint": "สร้างจากล็อก VRChat ภายในเครื่อง VRCSM จะใช้ภาพย่อที่บันทึกไว้และ ID อวตารจริงเป็นอันดับแรก แถวที่ไม่มี ID จะแก้ไขผ่านการค้นหาสาธารณะที่ตรงเป๊ะเมื่อเข้าสู่ระบบแล้ว และแถวคลุมเครือ/ส่วนตัวจะคงพื้นที่ว่างไว้",
     "thumbnailResolved": "ภาพย่อ",
     "referenceImage": "REF",
     "referenceImageVerified": "REF · ตรงกัน",
@@ -1850,7 +4380,15 @@
     "wearerCount": "ผู้สวมใส่ {{count}} คน",
     "seenTimes": "เห็น {{count}} ครั้ง",
     "showWearers": "ผู้สวมใส่",
-    "localEncounterIndexHint": "สร้างจากล็อก VRChat ภายในเครื่อง VRCSM จะใช้ภาพย่อที่บันทึกไว้และ ID อวตารจริงเป็นอันดับแรก แถวที่ไม่มี ID จะแก้ไขผ่านการค้นหาสาธารณะที่ตรงเป๊ะเมื่อเข้าสู่ระบบแล้ว และแถวคลุมเครือ/ส่วนตัวจะคงพื้นที่ว่างไว้"
+    "clear": "ล้าง",
+    "clearBenchmarkDesc": "การกระทำนี้จะลบสแนปช็อตเบนช์มาร์กที่บันทึกไว้ อวาตาร์ที่ยังอยู่ในการสแกนสดจะปรากฏอีกครั้งในการสแกนถัดไป ไม่สามารถย้อนกลับได้",
+    "clearBenchmarkTitle": "ล้างเบนช์มาร์กอวาตาร์ไหม",
+    "clearFailed": "ล้างไม่สำเร็จ: {{error}}",
+    "clearSeenDesc": "การกระทำนี้จะลบประวัติอวาตาร์ที่คุณเคยพบซึ่งบันทึกไว้อย่างถาวร ไม่สามารถย้อนกลับได้",
+    "clearSeenTitle": "ล้างประวัติอวาตาร์ที่เคยพบไหม",
+    "clearSuccess": "ล้างแล้ว",
+    "copyId": "คัดลอก ID อวาตาร์",
+    "wornBy": "ใส่โดย"
   },
   "fbt": {
     "title": "เครื่องมือติดตามการเทียบมาตรฐาน FBT",
@@ -1872,6 +4410,13 @@
     "save": "บันทึกกฎ",
     "empty": "ยังไม่มีกฎ สร้างกฎเพื่อทำให้การกระทำใน VRChat เป็นอัตโนมัติ",
     "namePlaceholder": "ชื่อกฎ...",
-    "history": "ประวัติการทำงาน"
+    "history": "ประวัติการทำงาน",
+    "yamlPlaceholder": "trigger: friend.online\ncondition: user.displayName contains 'Natsumi'\naction:\n  type: vrcsm.notification.show\n  title: Friend online!\n  message: '{{user.displayName}} is online'"
+  },
+  "models": {
+    "tab": {
+      "browse": "เรียกดู",
+      "owned": "อวาตาร์ของฉัน"
+    }
   }
 }

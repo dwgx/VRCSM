@@ -39,7 +39,10 @@
     "social": "ソーシャル分析",
     "benchmark": "アバターベンチマーク",
     "fbt": "FBTモニター",
-    "rules": "自動化ルール"
+    "rules": "自動化ルール",
+    "vrcPlus": "VRC+",
+    "models": "モデルデータベース",
+    "labSection": "ラボ"
   },
   "profile": {
     "title": "マイプロフィール",
@@ -90,6 +93,22 @@
       "ageVerified": "18歳以上確認済み",
       "ageUnverified": "未確認",
       "languages": "言語"
+    },
+    "statusPresets": "ステータスプリセット",
+    "saveStatusPreset": "現在のステータスをプリセットとして保存",
+    "applyStatusPreset": "このプリセットを適用",
+    "deleteStatusPreset": "プリセットを削除",
+    "noStatusPresets": "ステータスと説明の組み合わせを保存すると、後で再利用できます。",
+    "emailUnverified": "設定済み（未確認）",
+    "emailVerified": "確認済み",
+    "linkedAccounts": "連携アカウント",
+    "linkedAccountsDesc": "VRChatログインセッションから取得した、連携済みプラットフォームと本人確認情報をそのまま表示します。",
+    "manageOnVrchat": "vrchat.comで管理",
+    "notLinked": "未連携",
+    "security": {
+      "avatarCopying": "アバターのクローン",
+      "clientLogin": "ゲームクライアントログイン",
+      "twoFactor": "二段階認証"
     }
   },
   "screenshots": {
@@ -159,7 +178,78 @@
     "mute": "ミュート",
     "inviteMe": "招待してほしい",
     "joinInstance": "インスタンスに参加",
-    "notSignedIn": "フレンドの詳細を表示するにはVRChatにサインインしてください。"
+    "notSignedIn": "フレンドの詳細を表示するにはVRChatにサインインしてください。",
+    "nameHistory": "以前の名前",
+    "liveOccupants": "現在の滞在者",
+    "instanceFull": "満員",
+    "ageVerified": "年齢確認済み",
+    "friendsSince": "フレンド登録日: {{when}}",
+    "bestTime": "会いやすい時間帯",
+    "bestTimeWindow": "{{day}} {{start}}〜{{end}}",
+    "bestTimeDays": "この時間帯にオンラインを確認: {{count}}日",
+    "bestTimeHint": "観測したオンライン履歴からの推定です。",
+    "confidenceHint": "{{days}}日分の観測オンライン履歴に基づく",
+    "confidence": {
+      "high": "信頼度: 高",
+      "medium": "信頼度: 中",
+      "low": "信頼度: 低"
+    },
+    "unfriendConfirm1": "{{name}}のフレンドを解除しますか？",
+    "unfriendConfirm2Title": "本当に、本当によろしいですか？",
+    "unfriendConfirm2": "赤いボタンを押すと、{{name}}はここから完全にいなくなってしまうかもしれません。QvQ",
+    "unfriendFinal": "はい、赤いボタンを押す",
+    "unfriendNevermind": "やっぱりやめる！！",
+    "unfriendCancelled": "キャンセルしました。フレンド関係は無事に保たれています。",
+    "boop": "Boop / ピング",
+    "boopHint": "メッセージの種類を選び、添付する保存済みスニペットを選択してください。種類ごとに最大4スロットまでVRChatクライアントで設定できます（クイックメニュー → 通知 → メッセージ）。",
+    "boopSent": "Boopを送信しました。{{name}}に通知が届きます。",
+    "nativeBoop": "{{name}}をBoop",
+    "nativeBoopSent": "{{name}}をBoopしました！",
+    "myEmoji": "自分の絵文字",
+    "emojiBoopSent": "{{emoji}}で{{name}}をBoopしました！",
+    "emojiBoopTooltip": "{{emoji}}でBoop",
+    "boopSending": "送信中…",
+    "boopSlot": "スロット{{n}}",
+    "boopCooldown": "{{m}}分",
+    "boopEmptySlot": "（空 — 単発のピングを送信）",
+    "boopEmojiHint": "VRChatでよく使われるBoop絵文字 — クリックでコピーし、保存メッセージのスロットに貼り付けてください",
+    "boopCopyEmoji": "クリックでコピー",
+    "boopEmojiCopied": "コピーしました！VRChatクライアントの保存メッセージスロットに貼り付けてください。",
+    "boopInviteNeedsWorld": "招待メッセージには自分のワールド位置が必要です。VRChatのウェブサイトを開いて管理してください。",
+    "boopSendTooltip": "このメッセージを招待リクエスト通知として送信",
+    "boopCooldownTooltip": "クールダウン中 — 再送信まで待ってください",
+    "boopInviteTypeHint": "招待および招待返信メッセージは、自分のワールドに誰かを招待するときに使われます。これらのプレビューは参考用です — 招待アクションで使うにはVRChatクライアントで設定してください。",
+    "boopTypeRequestInvite": "ピング",
+    "boopTypeInvite": "招待",
+    "boopTypeInviteResponse": "返信",
+    "boopTypeReqInviteReply": "ピング返信",
+    "noSlotsTitle": "保存メッセージが未設定です",
+    "noSlotsHint": "VRChatでは種類ごとに最大4つの招待スニペットを保存できます。VRChatクライアントのクイックメニュー → 通知 → メッセージで設定すると、ここに表示され選択できるようになります。",
+    "editSlots": "VRChatでスロットを編集",
+    "editSlotsHint": "VRChatクライアントで保存スニペットを編集してください（クイックメニュー → 通知 → メッセージ）。",
+    "inviteToTheirWorld": "相手のワールドに自分を招待",
+    "inviteSent": "招待を送信しました",
+    "openVrchatProfile": "vrchat.comでプロフィールを開く",
+    "avatarHistory": "アバター履歴",
+    "avatarIdCopied": "アバターIDをコピーしました",
+    "blocked": "ユーザーをブロックしました",
+    "boopSend": "{{name}}をBoop",
+    "boopSendEmoji": "{{e}}でBoop",
+    "currentAvatar": "現在のアバター",
+    "currentWorld": "現在のワールド",
+    "description": "フレンドの詳細情報",
+    "launch": "起動",
+    "muteConfirm": "{{name}}をミュートしますか？",
+    "muted": "ユーザーをミュートしました",
+    "noActivity": "まだアクティビティの記録がありません。",
+    "note": "メモ",
+    "notePlaceholder": "このフレンドについてのプライベートなメモを記入...",
+    "noteSaved": "メモを保存しました",
+    "recentActivity": "最近のアクティビティ",
+    "saveNote": "保存",
+    "sharedWorlds": "共有ワールド",
+    "timesSeen": "{{n}}回遭遇",
+    "vrcProfile": "VRChatプロフィール"
   },
   "osc": {
     "title": "OSC ツール",
@@ -243,7 +333,7 @@
       "nextSendIn": "次の送信まで {{seconds}}秒",
       "stopAutoShort": "停止",
       "startAutoShort": "自動",
-      "noCardSelected": "Select a card first"
+      "noCardSelected": "先にカードを選択してください"
     },
     "sendFailed": "OSC送信に失敗しました",
     "page": {
@@ -463,7 +553,23 @@
       "social": "ソーシャル",
       "vrcPlus": "VRC+",
       "worlds": "ワールド"
-    }
+    },
+    "notOwnedAvatar": "このアバターはあなたのものではありません — VRChatはダウンロードを提供していません。",
+    "avatarHistoryDesc": "解析したVRChatログから抽出した、最近着用したアバターです。",
+    "noAvatarHistory": "まだアバター履歴の記録がありません。",
+    "avatarDownloads": "アバターパッケージをダウンロード",
+    "avatarDownloadsDesc": "アバターの.vrcaアセットバンドルをローカルフォルダにダウンロードします。サインインが必要です。",
+    "download": "ダウンロード",
+    "downloadComplete": "{{path}}にダウンロードしました",
+    "signInRequired": "アバターアセットバンドルをダウンロードするにはサインインしてください。",
+    "avatarDetailsFailed": "アバターの詳細を取得できませんでした。非公開か削除済みの可能性があります。",
+    "noAssetUrl": "このアバターにはダウンロード可能なアセットURLが見つかりませんでした。",
+    "joinFailed": "起動に失敗しました: {{error}}",
+    "launch": "起動",
+    "launchWorld": "VRChatで起動",
+    "noFavoriteWorlds": "まだお気に入りワールドがありません。VRChatのお気に入りを同期するとここに表示されます。",
+    "noRecentWorlds": "VRChatログに最近のワールドが見つかりませんでした。",
+    "recentWorlds": "最近のワールド"
   },
   "friends": {
     "title": "フレンド",
@@ -487,20 +593,21 @@
       "unknown": "不明"
     },
     "bucket": {
-      "joinMe": "Join Me",
+      "joinMe": "参加OK",
       "active": "アクティブ",
-      "askMe": "Ask Me",
+      "askMe": "要相談",
       "busy": "取り込み中",
       "offline": "オフライン"
     },
     "trust": {
-      "troll": "Nuisance",
-      "veteran": "Trusted User",
-      "trusted": "Known User",
-      "known": "User",
-      "user": "New User",
-      "new": "Visitor",
-      "visitor": "Visitor"
+      "troll": "迷惑ユーザー",
+      "veteran": "信頼ユーザー",
+      "trusted": "顔なじみ",
+      "known": "ユーザー",
+      "user": "新規ユーザー",
+      "new": "ビジター",
+      "visitor": "ビジター",
+      "label": "信頼ランク"
     },
     "badges": {
       "moderator": "VRChat モデレーター"
@@ -528,7 +635,20 @@
       "inviteToMyRoom": "自分のルームに招待",
       "inviteSent": "{{name}}をルームに招待しました",
       "sendMessage": "メッセージを送信",
-      "viewProfile": "プロフィールを表示"
+      "viewProfile": "プロフィールを表示",
+      "copied": "{{label}}をコピーしました",
+      "copyAvatarId": "現在のアバターIDをコピー",
+      "copyDisplayName": "表示名をコピー",
+      "copyLocation": "場所をコピー",
+      "copyUserId": "ユーザーIDをコピー",
+      "copyWorldId": "ワールドIDをコピー",
+      "expand": "展開",
+      "favorited": "{{name}}をお気に入りに追加しました",
+      "inviteSelf": "自分への招待をリクエスト",
+      "openProfile": "プロフィールを開く",
+      "openWorldPage": "ワールドページを開く",
+      "selfInviteSent": "{{name}}の現在のインスタンスへの招待をリクエストしました",
+      "unfavorited": "{{name}}をお気に入りから削除しました"
     },
     "views": {
       "all": "すべて",
@@ -537,6 +657,18 @@
       "joinable": "参加可",
       "online": "オンライン",
       "offline": "オフライン"
+    },
+    "joinRoom": "ルームに参加",
+    "copyLabels": {
+      "avatarId": "アバターID",
+      "displayName": "表示名",
+      "location": "場所",
+      "userId": "ユーザーID",
+      "worldId": "ワールドID"
+    },
+    "inspector": {
+      "empty": "フレンドを選択すると、場所・アバター・クイックアクションが表示されます。",
+      "title": "フレンドの概要"
     }
   },
   "layout": {
@@ -579,7 +711,12 @@
       "total": "あなたのグループ",
       "online": "オンラインメンバー",
       "representing": "代表設定中"
-    }
+    },
+    "nowRepresenting": "{{name}}を代表として表示中",
+    "represent": "代表に設定",
+    "representFailed": "代表表示の更新に失敗しました: {{error}}",
+    "stopRepresenting": "代表表示を解除",
+    "stoppedRepresenting": "{{name}}の代表表示を解除しました"
   },
   "menu": {
     "file": "ファイル",
@@ -628,7 +765,24 @@
     "helpCheckUpdates": "アップデートを確認",
     "helpCheckUpdatesFallback": "アップデートを確認…",
     "helpReportIssue": "問題を報告",
-    "helpKeyboard": "キーボードショートカット"
+    "helpKeyboard": "キーボードショートカット",
+    "goGroups": "グループ",
+    "goWorldHistory": "ワールド履歴",
+    "goCalendar": "カレンダーとジャム",
+    "goEvents": "イベントレコーダー",
+    "goSocial": "ソーシャル分析",
+    "toolsVrDiagnostics": "VR診断",
+    "toolsRules": "自動化ルール",
+    "toolsOsc": "OSCツール",
+    "toolsBenchmark": "アバターベンチマーク",
+    "toolsFbt": "FBTモニター",
+    "helpSteamVrRepair": "SteamVR / Quest 修復",
+    "helpVrDiagnostics": "VR診断",
+    "helpPluginsMarket": "プラグインマーケット",
+    "helpInstalledPlugins": "インストール済みプラグイン",
+    "helpVrchatStatus": "VRChatステータス",
+    "helpVrchatHome": "VRChatホーム",
+    "helpSteamLink": "Steam Link / Quest 公式ノート"
   },
   "update": {
     "title": "VRCSM アップデート",
@@ -709,14 +863,20 @@
       "sessionsDesc": "ローカルログから再構築 — 新しい順。",
       "tab": "過去の分析",
       "topPlayers": "最も遭遇したプレイヤー",
-      "topWorlds": "最も訪れたワールド"
+      "topWorlds": "最も訪れたワールド",
+      "loginRequired": "セッション履歴のためにローカルログをスキャンするにはログインが必要です。",
+      "unclosed": "未終了"
     },
     "vrcNotRunning": "VRChatは起動していません",
     "vrcNotRunningHint": "リアルタイムでルームやプレイヤーを監視するには、VRChatを起動してください",
     "liveRoster": "現在のインスタンスのメンバー",
     "recentPlayerEvents": "最近のプレイヤーイベント",
     "noPlayerEvents": "まだプレイヤーイベントが記録されていません。VRChatを起動してワールドに参加してください。",
-    "rosterTab": "インスタンスのメンバー"
+    "rosterTab": "インスタンスのメンバー",
+    "rosterSortAlphabetical": "アルファベット順に並び替え",
+    "wearNotAllowed": "このアバターはクローンが許可されていません。",
+    "wearNotFound": "このアバターが見つかりませんでした。非公開の可能性があります。",
+    "wearSuccess": "着用中: {{name}}"
   },
   "common": {
     "loading": "読み込み中…",
@@ -770,7 +930,18 @@
     "partial": "一部",
     "add": "追加",
     "delete": "削除",
-    "reset": "リセット"
+    "reset": "リセット",
+    "all": "すべて",
+    "allowed": "許可",
+    "blocked": "ブロック",
+    "collapse": "折りたたむ",
+    "deleting": "削除中…",
+    "detecting": "検出中…",
+    "expand": "展開",
+    "navigate": "移動",
+    "refreshing": "更新中",
+    "showAll": "すべて表示（{{count}}）",
+    "unavailable": "利用不可"
   },
   "about": {
     "title": "VRCSM について",
@@ -802,18 +973,31 @@
     "sections": {
       "navigate": "移動",
       "actions": "アクション",
-      "logs": "セッションログ"
+      "logs": "セッションログ",
+      "globalSearch": "全体検索",
+      "plugins": "プラグイン"
     }
   },
   "dock": {
     "console": "コンソール",
     "output": "出力",
     "problems": "問題",
-    "clear": "クリア"
+    "clear": "クリア",
+    "hideNoiseHint": "VRChatのEOS/Stompテレメトリの再試行スパムを折りたたみます（VRCSMのエラーではありません）。",
+    "noiseHidden": "ノイズを非表示（{{count}}）",
+    "showAll": "すべて表示"
   },
   "statusBar": {
     "version": "{{version}}",
-    "cacheTotal": "キャッシュ"
+    "cacheTotal": "キャッシュ",
+    "onlineCount": "{{count}}人のフレンドがオンライン",
+    "serverStatus": "VRChatサーバーステータス",
+    "serverLevel": {
+      "operational": "すべて正常に稼働中",
+      "minor": "軽微な障害",
+      "major": "大規模な障害",
+      "critical": "重大な障害"
+    }
   },
   "dashboard": {
     "title": "ダッシュボード",
@@ -953,7 +1137,17 @@
     "officialSyncing": "VRChat Favorites を同期中…",
     "officialSyncSuccess": "公式 Favorites を {{count}} 件同期しました (アバター {{avatars}}、ワールド {{worlds}})",
     "officialSyncFailed": "VRChat Favorites の同期に失敗しました: {{error}}",
-    "officialLastSync": "VRChat Favorites 同期 {{date}}"
+    "officialLastSync": "VRChat Favorites 同期 {{date}}",
+    "filterByType": "種類",
+    "sortLabel": "並び替え",
+    "sort": {
+      "added": "追加日順",
+      "name": "名前",
+      "type": "種類"
+    },
+    "officialSyncSuccessGrouped": "{{count}}件のお気に入りを{{lists}}グループに同期しました（アバター{{avatars}}件、ワールド{{worlds}}件）",
+    "favorite": "お気に入り",
+    "unfavorite": "お気に入り解除"
   },
   "avatars": {
     "title": "アバター",
@@ -1017,7 +1211,43 @@
     "nameNote": "アバター名は VRChat 出力ログから抽出されます。この端末で一度以上読み込まれたアバターのみ名前が表示されます。",
     "previewWorkbench": "インスペクターのプレビューは意図的にコンパクト化されており、右上の拡大ボタンで大きな中央ビューアーを開けます。現在の extractor はまだテクスチャを GLB に埋め込まないため、オリジナルモードでは書き出された生のマテリアル状態のみ表示します。ホイールでズーム、Shift+ドラッグで平行移動、右ドラッグでも平行移動できます。",
     "unityPackages": "{{count}}個のプラットフォーム",
-    "hiddenCount": "他{{count}}件。検索で絞り込み。"
+    "hiddenCount": "他{{count}}件。検索で絞り込み。",
+    "encounterLog": "遭遇",
+    "logOnly": "ログのみ",
+    "wornBy": "着用者",
+    "seenTimes": "{{count}}回遭遇",
+    "wearerCount": "着用者{{count}}人",
+    "encounterSummary": "{{wearer}}が着用 · ログイベント{{count}}件",
+    "encounterLogNote": "この行はローカルのVRChatログから索引付けされています。ログはアバター名と着用者を示しますが、avtr_*や公式サムネイルURLは含みません。VRCSMはまず検証済みの公開アバターとの一致を試み、失敗した場合は着用者の現在のアバター画像を参考として表示することがあります。これはその時点で見たアバターとは異なる場合があります。",
+    "filterSeen": "遭遇",
+    "filterLocal": "ローカル",
+    "thumbnailResolved": "サムネイル解決済み",
+    "thumbnailResolving": "サムネイルを解決中…",
+    "thumbnailMiss": "検証済みサムネイルの一致なし",
+    "referenceImageLoading": "着用者の現在のアバター画像を確認中…",
+    "referenceImageBadge": "参考",
+    "referenceImageBadgeShort": "参考",
+    "profileFallbackKnownUser": "着用者プロフィール",
+    "profileFallbackNameMatch": "名前一致",
+    "profileFallbackAmbiguous": "名前推測",
+    "profileFallbackNote": "信頼できるサムネイルが見つからなかったため、VRCSMは{{name}}の参考として着用者の現在のプロフィール画像を表示しています。",
+    "profileFallbackUnavailable": "着用者プロフィールを読み込めませんでした。ユーザーが特定できないか、利用不可か、VRChat APIが返さなかった可能性があります。",
+    "localNameWas": "キャッシュ名: {{name}}",
+    "renamedHint": "名前変更あり",
+    "noThumbnail": "サムネイルなし",
+    "seenThumbnailHow": "遭遇アバターのサムネイルは、ログに実際のavtr_* IDがある場合、公開検索で名前/作者が完全に一致した場合、または着用者の現在の公開アバター画像が利用可能な場合に表示されます。「参考」と表示されたものは着用者の現在の画像で、その時点で見たアバターとは異なる場合があります。",
+    "referenceImageHint": "着用者の現在のアバター/プロフィール画像 — 検証済みの過去の一致ではありません。",
+    "referenceImageVerifiedHint": "着用者の現在のアバターがログの名前と一致しています。",
+    "search": {
+      "go": "検索",
+      "noResults": "結果が見つかりません",
+      "placeholder": "アバター名で検索…",
+      "searching": "検索中…",
+      "title": "公開アバターを検索"
+    },
+    "unavailable": "アバターは利用できません。",
+    "wearerCurrentReference": "着用者の現在の参考画像",
+    "wearerReferenceNote": "不明"
   },
   "worlds": {
     "title": "ワールド",
@@ -1055,7 +1285,8 @@
     "removeFromLibrary": "ライブラリから削除",
     "saveToLibrary": "ライブラリに保存",
     "unknownTime": "不明な時刻",
-    "searchFailed": "検索に失敗しました"
+    "searchFailed": "検索に失敗しました",
+    "unavailable": "ワールドは利用できません。"
   },
   "logs": {
     "title": "ログ",
@@ -1163,7 +1394,9 @@
     "junctionStateDesc": "ソースパスはすでに NTFS ジャンクションです。ターゲットが存在しない、または壊れている場合は修復できます。",
     "pointsTo": "参照先",
     "repairSuccess": "ジャンクションを修復しました",
-    "repairFailed": "修復失敗: {{error}}"
+    "repairFailed": "修復失敗: {{error}}",
+    "alreadyMigrated": "{{target}}へ移行済み",
+    "junction": "ジャンクション"
   },
   "updates": {
     "availableTitle": "アップデートがあります",
@@ -1215,7 +1448,8 @@
       "loading": "メモを読み込み中…",
       "placeholder": "このプレイヤーへの個人メモを追加…",
       "saved": "メモを保存しました",
-      "saveFailed": "メモ保存失敗: {{error}}"
+      "saveFailed": "メモ保存失敗: {{error}}",
+      "loadFailed": "メモを読み込めませんでした。"
     },
     "relative": {
       "now": "たった今",
@@ -1229,7 +1463,9 @@
     "clearHistorySuccess": "履歴をクリアしました。フレンドのメモは保持されています。",
     "clearHistoryFailed": "履歴のクリアに失敗しました: {{error}}",
     "clearHistory": "履歴をクリア",
-    "clearHistoryConfirm": "保存されたセッション履歴とソーシャル変更履歴をクリアしますか？フレンドのメモは保持されます。"
+    "clearHistoryConfirm": "保存されたセッション履歴とソーシャル変更履歴をクリアしますか？フレンドのメモは保持されます。",
+    "loginRequired": "フレンドアクティビティ履歴を表示するには、設定ページからVRChatにログインしてください。",
+    "perPage": "1ページあたりの件数"
   },
   "settings": {
     "title": "設定",
@@ -1373,6 +1609,1799 @@
         "next": "次へ",
         "page": "ページ {{page}} / {{total}}",
         "range": "{{from}}–{{to}} / {{total}}"
+      },
+      "keys": {
+        "AUDIO_GAME_AVATARS_ENABLED": {
+          "description": "アバターオーディオのミュート切り替え"
+        },
+        "AUDIO_GAME_AVATARS_STEAMAUDIO": {
+          "description": "アバターオーディオの音量"
+        },
+        "AUDIO_GAME_PROPS_ENABLED": {
+          "description": "プロップオーディオのミュート切り替え"
+        },
+        "AUDIO_GAME_PROPS_STEAMAUDIO": {
+          "description": "プロップオーディオの音量"
+        },
+        "AUDIO_GAME_SFX_ENABLED": {
+          "description": "ワールドSFXのミュート切り替え"
+        },
+        "AUDIO_GAME_SFX_STEAMAUDIO": {
+          "description": "ワールドSFXの音量"
+        },
+        "AUDIO_GAME_VOICE_ENABLED": {
+          "description": "ボイスチャットのミュート切り替え"
+        },
+        "AUDIO_GAME_VOICE_STEAMAUDIO": {
+          "description": "ボイスチャットの音量"
+        },
+        "AUDIO_MASTER_ENABLED": {
+          "description": "マスターオーディオのミュート切り替え"
+        },
+        "AUDIO_MASTER_STEAMAUDIO": {
+          "description": "マスター出力音量"
+        },
+        "AUDIO_UI_ENABLED": {
+          "description": "UIサウンドのミュート切り替え"
+        },
+        "AUDIO_UI_STEAMAUDIO": {
+          "description": "UIサウンドの音量"
+        },
+        "VRC_ANDROID_MIC_MODE": {
+          "description": "Androidマイクモード"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_ENABLED": {
+          "description": "チャットバブルの音声を有効化"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_VOLUME": {
+          "description": "チャットバブルの音量"
+        },
+        "VRC_EARMUFF_MODE": {
+          "description": "イヤーマフモード"
+        },
+        "VRC_EARMUFF_MODE_AVATARS": {
+          "description": "イヤーマフモードの対象アバター"
+        },
+        "VRC_EARMUFF_MODE_CONE_VALUE": {
+          "description": "イヤーマフモードのコーン値"
+        },
+        "VRC_EARMUFF_MODE_FALLOFF": {
+          "description": "イヤーマフモードの減衰"
+        },
+        "VRC_EARMUFF_MODE_FOLLOW_HEAD": {
+          "description": "イヤーマフモードが頭に追従"
+        },
+        "VRC_EARMUFF_MODE_LOCK_ROTATION": {
+          "description": "イヤーマフモードの回転ロック"
+        },
+        "VRC_EARMUFF_MODE_OFFSET_VALUE": {
+          "description": "イヤーマフモードのオフセット"
+        },
+        "VRC_EARMUFF_MODE_RADIUS": {
+          "description": "イヤーマフモードの半径"
+        },
+        "VRC_EARMUFF_MODE_REDUCED_VOLUME": {
+          "description": "イヤーマフ時の低減音量"
+        },
+        "VRC_EARMUFF_MODE_SHOW_ICON_IN_NAMEPLATE": {
+          "description": "ネームプレートにイヤーマフアイコンを表示"
+        },
+        "VRC_EARMUFF_MODE_VISUAL_AIDE": {
+          "description": "イヤーマフの視覚補助"
+        },
+        "VRC_HUD_MIC_OPACITY": {
+          "description": "マイクHUDの不透明度"
+        },
+        "VRC_INPUT_DISABLE_MIC_BUTTON": {
+          "description": "ゲーム内マイクボタンを無効化"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_Desktop": {
+          "description": "デスクトップのマイクデバイス名"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_VR": {
+          "description": "VRのマイクデバイス名"
+        },
+        "VRC_INPUT_MIC_ENABLED": {
+          "description": "マイクのマスター切り替え"
+        },
+        "VRC_INPUT_MIC_LEVEL_DESK": {
+          "description": "デスクトップのマイク入力ゲイン"
+        },
+        "VRC_INPUT_MIC_LEVEL_VR": {
+          "description": "VRのマイク入力レベル"
+        },
+        "VRC_INPUT_MIC_MODE": {
+          "description": "マイク入力モード"
+        },
+        "VRC_INPUT_MIC_NOISE_GATE": {
+          "description": "マイクのノイズゲートしきい値"
+        },
+        "VRC_INPUT_MIC_NOISE_SUPPRESSION": {
+          "description": "マイクのノイズ抑制"
+        },
+        "VRC_INPUT_MIC_ON_JOIN": {
+          "description": "参加時にマイクを有効化"
+        },
+        "VRC_INPUT_TALK_DEFAULT_ON": {
+          "description": "セッション参加時の既定マイク状態"
+        },
+        "VRC_INPUT_TALK_TOGGLE": {
+          "description": "プッシュ・トゥ・トークまたはトグル・トゥ・トーク"
+        },
+        "VRC_MIC_ICON_VISIBILITY": {
+          "description": "マイクアイコンの表示"
+        },
+        "VRC_MIC_TOGGLE_VOLUME": {
+          "description": "マイク切り替え音の音量"
+        },
+        "VRC_USE_OUTLINE_MIC_ICON": {
+          "description": "マイクアイコンをアウトライン表示"
+        },
+        "COLOR_PALETTES_CURRENT_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "現在のユーザーカラーパレット"
+        },
+        "FIELD_OF_VIEW": {
+          "description": "デスクトップのFOV設定"
+        },
+        "FPSCapType": {
+          "description": "FPS上限モード"
+        },
+        "FPSType": {
+          "description": "FPS表示モード"
+        },
+        "FPS_LIMIT": {
+          "description": "カスタムFPS上限"
+        },
+        "FaceMirrorOwner": {
+          "description": "フェイスミラーの所有者"
+        },
+        "LOD_QUALITY": {
+          "description": "LOD品質プリセット"
+        },
+        "PARTICLE_PHYSICS_QUALITY": {
+          "description": "パーティクル物理の品質プリセット"
+        },
+        "PIXEL_LIGHT_COUNT": {
+          "description": "リアルタイムピクセルライトの最大数"
+        },
+        "PersonalMirror.FaceMirrorOpacity": {
+          "description": "VRフェイスミラーの不透明度"
+        },
+        "PersonalMirror.FaceMirrorOpacityDesktop": {
+          "description": "デスクトップフェイスミラーの不透明度"
+        },
+        "PersonalMirror.FaceMirrorPosX": {
+          "description": "VRフェイスミラーのXオフセット"
+        },
+        "PersonalMirror.FaceMirrorPosXDesktop": {
+          "description": "デスクトップフェイスミラーのXオフセット"
+        },
+        "PersonalMirror.FaceMirrorPosY": {
+          "description": "VRフェイスミラーのYオフセット"
+        },
+        "PersonalMirror.FaceMirrorPosYDesktop": {
+          "description": "デスクトップフェイスミラーのYオフセット"
+        },
+        "PersonalMirror.FaceMirrorScale": {
+          "description": "VRフェイスミラーのスケール"
+        },
+        "PersonalMirror.FaceMirrorScaleDesktop": {
+          "description": "デスクトップフェイスミラーのスケール"
+        },
+        "PersonalMirror.FaceMirrorSpoutEnabled": {
+          "description": "パーソナルフェイスミラーの配信を有効化"
+        },
+        "PersonalMirror.FaceMirrorZoom": {
+          "description": "VRフェイスミラーのズーム"
+        },
+        "PersonalMirror.FaceMirrorZoomDesktop": {
+          "description": "デスクトップフェイスミラーのズーム"
+        },
+        "PersonalMirror.Grabbable": {
+          "description": "ミラーをつかめるようにする"
+        },
+        "PersonalMirror.ImmersiveMove": {
+          "description": "ミラーの没入移動モード"
+        },
+        "PersonalMirror.MirrorOpacity": {
+          "description": "パーソナルミラーの不透明度"
+        },
+        "PersonalMirror.MirrorScaleX": {
+          "description": "パーソナルミラーのXスケール"
+        },
+        "PersonalMirror.MirrorScaleY": {
+          "description": "パーソナルミラーのYスケール"
+        },
+        "PersonalMirror.MirrorSnapping": {
+          "description": "ミラーのスナップ動作"
+        },
+        "PersonalMirror.MovementMode": {
+          "description": "パーソナルミラーの移動モード"
+        },
+        "PersonalMirror.ShowBorder": {
+          "description": "パーソナルミラーの枠を表示"
+        },
+        "PersonalMirror.ShowCalibrationMirror": {
+          "description": "キャリブレーションミラーを表示"
+        },
+        "PersonalMirror.ShowEnvironmentInMirror": {
+          "description": "ミラーに環境を表示"
+        },
+        "PersonalMirror.ShowFaceMirror": {
+          "description": "VRでパーソナルフェイスミラーを表示"
+        },
+        "PersonalMirror.ShowFaceMirrorDesktop": {
+          "description": "デスクトップでパーソナルフェイスミラーを表示"
+        },
+        "PersonalMirror.ShowRemotePlayerInMirror": {
+          "description": "ミラーにリモートプレイヤーを表示"
+        },
+        "PersonalMirror.ShowUIInMirror": {
+          "description": "ミラーにUIを表示"
+        },
+        "SHADOW_QUALITY": {
+          "description": "影の品質プリセット"
+        },
+        "USER_CAMERA_RESOLUTION": {
+          "description": "ユーザーカメラの解像度"
+        },
+        "USER_CAMERA_ROLL_WHILE_FLYING": {
+          "description": "飛行中のカメラロール"
+        },
+        "USER_CAMERA_SAVE_METADATA": {
+          "description": "カメラのメタデータを保存"
+        },
+        "USER_CAMERA_STREAM_RESOLUTION": {
+          "description": "カメラストリームの解像度"
+        },
+        "USER_CAMERA_TRIGGER_TAKES_PHOTOS": {
+          "description": "トリガーで写真を撮影"
+        },
+        "UnityGraphicsQuality": {
+          "description": "グラフィック品質プリセット"
+        },
+        "UnitySelectMonitor": {
+          "description": "Unityで選択中のモニター"
+        },
+        "VRC_ADVANCED_GRAPHICS_ANTIALIASING": {
+          "description": "アンチエイリアスのサンプル数"
+        },
+        "VRC_ADVANCED_GRAPHICS_QUALITY": {
+          "description": "詳細グラフィック品質プリセット"
+        },
+        "VRC_BLOOM_INTENSITY": {
+          "description": "ブルーム強度のオーバーライド"
+        },
+        "VRC_CAMERA_NEAR_CLIP_OVERRIDE_MODE": {
+          "description": "カメラのニアクリップ上書きモード"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW": {
+          "description": "カメラの三人称視点"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW_DISTANCE": {
+          "description": "三人称視点の距離"
+        },
+        "VRC_COLOR_BLINDNESS_SIMULATE": {
+          "description": "色覚特性プロファイルをシミュレート"
+        },
+        "VRC_DEFAULT_DRONE_SKIN_PALETTE": {
+          "description": "ドローンスキンの既定パレット"
+        },
+        "VRC_LANDSCAPE_FOV": {
+          "description": "モバイル横向きのFOV"
+        },
+        "VRC_MIRROR_RESOLUTION": {
+          "description": "ミラーの解像度"
+        },
+        "VRC_PORTRAIT_FOV": {
+          "description": "モバイル縦向きのFOV"
+        },
+        "VRC_RANDOMIZE_DRONE": {
+          "description": "ドローンをランダム化"
+        },
+        "VRC_RANDOMIZE_LOADING_SCREEN": {
+          "description": "ローディング画面をランダム化"
+        },
+        "VRC_RANDOMIZE_WARP_EFFECT": {
+          "description": "ワープエフェクトをランダム化"
+        },
+        "VRC_SCREEN_BRIGHTNESS": {
+          "description": "画面の明るさ調整"
+        },
+        "VRC_SCREEN_CONTRAST": {
+          "description": "画面のコントラスト調整"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING_AUTO_QUALITY": {
+          "description": "セルフィーフェイストラッキングの自動品質"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_QUALITY_LEVEL": {
+          "description": "セルフィーフェイストラッキングの品質"
+        },
+        "BestRegionCache": {
+          "description": "最適リージョン選択をキャッシュ"
+        },
+        "LocationContext": {
+          "description": "ロケーションコンテキスト"
+        },
+        "LocationContext_World": {
+          "description": "ロケーションコンテキスト（ワールド）"
+        },
+        "VRC_ASK_TO_PORTAL": {
+          "description": "ポータルに入る前に確認"
+        },
+        "VRC_COMFORT_MODE_PRE_HOLOPORT": {
+          "description": "ホロポート前のコンフォートモード"
+        },
+        "VRC_HOME_REGION": {
+          "description": "ホームワールドのリージョン"
+        },
+        "VRC_ONLY_SHOW_FRIEND_JOIN_LEAVE_PORTAL_NOTIFICATIONS": {
+          "description": "フレンドのみの入退室・ポータル通知"
+        },
+        "VRC_PORTAL_MODE_V2": {
+          "description": "ポータルモード v2"
+        },
+        "VRC_RANDOMIZE_PORTAL": {
+          "description": "ポータルをランダム化"
+        },
+        "VRC_SELECTED_NETWORK_REGION": {
+          "description": "優先するPhotonリージョン"
+        },
+        "VRC_SHOW_PORTAL_NOTIFICATIONS": {
+          "description": "ポータル通知を表示"
+        },
+        "AVATAR_WORN_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ユーザーの着用アバター履歴"
+        },
+        "SortSelection_UGCAvatars": {
+          "description": "リストの並び替えオプション"
+        },
+        "VRC_ALLOW_AVATAR_COPYING": {
+          "description": "アバターのコピーを許可"
+        },
+        "VRC_AVATAR_FALLBACK_HIDDEN": {
+          "description": "フォールバックアバターを非表示"
+        },
+        "VRC_AVATAR_HAPTICS_ENABLED": {
+          "description": "アバター表示・ダウンロード設定"
+        },
+        "VRC_AVATAR_MAXIMUM_DOWNLOAD_SIZE": {
+          "description": "アバターの最大圧縮ダウンロードサイズ"
+        },
+        "VRC_AVATAR_MAXIMUM_UNCOMPRESSED_SIZE": {
+          "description": "アバターの最大非圧縮サイズ"
+        },
+        "VRC_AVATAR_PERFORMANCE_RATING_MINIMUM_TO_DISPLAY": {
+          "description": "表示するアバターの最低パフォーマンスランク"
+        },
+        "VRC_AV_INTERACT_LEVEL": {
+          "description": "アバターのインタラクションレベル"
+        },
+        "VRC_AV_INTERACT_SELF": {
+          "description": "自分のアバターとのインタラクション"
+        },
+        "VRC_DISABLE_AVATAR_CLONING_ON_ENTER_WORLD": {
+          "description": "ワールド入室時にアバターのクローンを無効化"
+        },
+        "VRC_FINGERTRACKING_AVATARS_USE": {
+          "description": "フィンガートラッキングのアバター利用"
+        },
+        "VRC_GESTURE_BAR_ENABLED": {
+          "description": "ジェスチャーバーを有効化"
+        },
+        "VRC_IK_AVATAR_MEASUREMENT_TYPE": {
+          "description": "IKアバターの計測タイプ"
+        },
+        "VRC_IK_PER_AVATAR_CALIBRATION_ADJUSTMENT": {
+          "description": "アバターごとのキャリブレーション調整"
+        },
+        "VRC_IMPOSTOR_WHEN_AVAILABLE": {
+          "description": "利用可能な場合はインポスターを使用"
+        },
+        "VRC_INPUT_SELECTED_SAFETY_RANK": {
+          "description": "入力のセーフティランク"
+        },
+        "VRC_PLAYER_GESTURE_TOGGLE": {
+          "description": "プレイヤージェスチャーの切り替え"
+        },
+        "VRC_SAFETY_LEVEL": {
+          "description": "アバターセーフティのグローバルプリセット"
+        },
+        "VRC_SHOW_SOCIAL_RANK": {
+          "description": "ソーシャルランクを表示"
+        },
+        "Wing_Right_Avatars_Category": {
+          "description": "Wing UIの選択状態"
+        },
+        "Wing_Right_Avatars_SortBy": {
+          "description": "Wing UIの選択状態"
+        },
+        "avatarProxyAlwaysShowExplicit": {
+          "description": "アバター表示・ダウンロード設定"
+        },
+        "avatarProxyAlwaysShowFriends": {
+          "description": "アバター表示・ダウンロード設定"
+        },
+        "avatarProxyShowAtRange": {
+          "description": "アバター表示・ダウンロード設定"
+        },
+        "avatarProxyShowAtRangeToggle": {
+          "description": "アバター表示・ダウンロード設定"
+        },
+        "avatarProxyShowMaxNumber": {
+          "description": "アバター表示・ダウンロード設定"
+        },
+        "currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "表示アバターの最大数を有効化"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRange": {
+          "description": "ユーザープロキシアバターの表示距離"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRangeToggle": {
+          "description": "ユーザープロキシアバターの範囲切り替え"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowMaxNumber": {
+          "description": "ユーザープロキシアバターの最大数"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "ユーザーのアバター数上限の切り替え"
+        },
+        "VRC_ACTION_MENU_FLICK_SELECT": {
+          "description": "アクションメニューのフリック選択"
+        },
+        "VRC_ACTION_MENU_ONE_HAND_MOVE": {
+          "description": "アクションメニューの片手移動"
+        },
+        "VRC_DOUBLE_TAP_MAIN_MENU_STEAMVR2": {
+          "description": "メインメニューのダブルタップ（SteamVR2）"
+        },
+        "VRC_FINGER_GRAB_SETTING": {
+          "description": "フィンガーグラブ設定"
+        },
+        "VRC_FINGER_HAPTIC_SENSITIVITY": {
+          "description": "フィンガー触覚の感度"
+        },
+        "VRC_FINGER_HAPTIC_STRENGTH": {
+          "description": "フィンガー触覚の強さ"
+        },
+        "VRC_FINGER_JUMP_ENABLED": {
+          "description": "フィンガージャンプを有効化"
+        },
+        "VRC_FINGER_WALK_SETTING": {
+          "description": "フィンガーウォーク設定"
+        },
+        "VRC_HANDS_MENU_OPEN_MODE": {
+          "description": "ハンドメニューの開き方"
+        },
+        "VRC_INPUT_DAYDREAM": {
+          "description": "Daydream入力"
+        },
+        "VRC_INPUT_EMBODIED": {
+          "description": "Embodied入力"
+        },
+        "VRC_INPUT_GAZE": {
+          "description": "視線入力"
+        },
+        "VRC_INPUT_GENERIC": {
+          "description": "汎用入力"
+        },
+        "VRC_INPUT_HPMOTION": {
+          "description": "HPMotion入力"
+        },
+        "VRC_INPUT_MOBILE_INTERACTION_MODE": {
+          "description": "モバイルのインタラクションモード"
+        },
+        "VRC_INPUT_OPENXR": {
+          "description": "OpenXR入力"
+        },
+        "VRC_INPUT_PERSONAL_SPACE": {
+          "description": "入力のパーソナルスペース"
+        },
+        "VRC_INPUT_QUEST_HANDS": {
+          "description": "Questハンド入力"
+        },
+        "VRC_INPUT_SHOW_TOOLTIPS": {
+          "description": "入力のツールチップを表示"
+        },
+        "VRC_INPUT_STEAMVR2": {
+          "description": "SteamVR2入力"
+        },
+        "VRC_INPUT_THIRD_PERSON_ROTATION": {
+          "description": "入力の三人称回転"
+        },
+        "VRC_INPUT_TOUCH": {
+          "description": "タッチ入力"
+        },
+        "VRC_INPUT_VALVE_INDEX": {
+          "description": "Valve Index入力"
+        },
+        "VRC_INPUT_VIVE": {
+          "description": "Vive入力"
+        },
+        "VRC_INPUT_VIVE_ADVANCED": {
+          "description": "Vive詳細入力"
+        },
+        "VRC_INPUT_WAVE": {
+          "description": "Wave入力"
+        },
+        "VRC_INTERACT_HAPTICS_ENABLED": {
+          "description": "インタラクションの触覚フィードバックを有効化"
+        },
+        "VRC_INVERTED_MOUSE": {
+          "description": "マウスの上下反転"
+        },
+        "VRC_INVERT_CONTROLLER_VERTICAL_LOOK": {
+          "description": "コントローラーの上下視点を反転"
+        },
+        "VRC_IS_BOOPING_ENABLED": {
+          "description": "Boopを有効化"
+        },
+        "VRC_MOBILE_QUICK_SELECT_ENABLED": {
+          "description": "モバイルのクイック選択を有効化"
+        },
+        "VRC_MOUSE_SENSITIVITY": {
+          "description": "マウス感度"
+        },
+        "VRC_SHOW_FRIEND_REQUESTS": {
+          "description": "フレンドリクエストの通知を表示"
+        },
+        "VRC_TOUCH_AUTO_ROTATE_SPEED": {
+          "description": "タッチの自動旋回速度"
+        },
+        "VRC_TOUCH_SENSITIVITY": {
+          "description": "タッチ感度"
+        },
+        "VRC_UI_HAPTICS_ENABLED": {
+          "description": "UIの触覚フィードバックを有効化"
+        },
+        "VRC_USE_GENERIC_INSTANCE_NAMES": {
+          "description": "汎用的なインスタンス名を使用"
+        },
+        "VRC_WEBCAM_DEVICE_NAME": {
+          "description": "ウェブカメラのデバイス名"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneControllerSettings": {
+          "description": "ユーザーのドローンコントローラー設定"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneFlightPresetValues": {
+          "description": "ユーザーのドローン飛行プリセット"
+        },
+        "UI.Settings.Osc": {
+          "description": "OSC設定の状態"
+        },
+        "VRC_INPUT_OSC": {
+          "description": "OSCの入出力を有効化"
+        },
+        "PREF_HAND_TRACKING_TUTORIAL_COMPLETED": {
+          "description": "ハンドトラッキングのチュートリアル完了"
+        },
+        "PlayerHeight": {
+          "description": "プレイヤーの身長"
+        },
+        "SeatedPlayEnabled": {
+          "description": "着席プレイを有効化"
+        },
+        "VRC_COMFORT_MODE": {
+          "description": "コンフォートモード"
+        },
+        "VRC_FINGERTRACKING_SHOW_PINCHUI": {
+          "description": "フィンガートラッキングのピンチUI表示"
+        },
+        "VRC_FINGERTRACKING_USE_EXCLUSIVE": {
+          "description": "フィンガートラッキングの排他モード"
+        },
+        "VRC_FINGERTRACKING_USE_GHOSTHAND": {
+          "description": "フィンガートラッキングのゴーストハンド"
+        },
+        "VRC_IK_CALIBRATION_RANGE": {
+          "description": "IKキャリブレーションの範囲"
+        },
+        "VRC_IK_CALIBRATION_VIS": {
+          "description": "IKキャリブレーションの可視化"
+        },
+        "VRC_IK_DEBUG_LOGGING": {
+          "description": "IKデバッグログ"
+        },
+        "VRC_IK_DISABLE_SHOULDER_TRACKING": {
+          "description": "肩トラッキングの反映を無効化"
+        },
+        "VRC_IK_FBT_CONFIRM_CALIBRATE": {
+          "description": "FBTキャリブレーションの確認"
+        },
+        "VRC_IK_FBT_LOCOMOTION": {
+          "description": "フルボディトラッキングの移動切り替え"
+        },
+        "VRC_IK_FBT_SPINE_MODE": {
+          "description": "FBTのスパインモード"
+        },
+        "VRC_IK_FREEZE_TRACKING_ON_DISCONNECT": {
+          "description": "トラッカー切断時にFBTポーズを固定"
+        },
+        "VRC_IK_HEIGHT_RATIO": {
+          "description": "IKの身長比"
+        },
+        "VRC_IK_KNEE_ANGLE": {
+          "description": "IKの膝の角度"
+        },
+        "VRC_IK_LEGACY": {
+          "description": "レガシーIK"
+        },
+        "VRC_IK_LEGACY_CALIBRATION": {
+          "description": "レガシーのフルボディキャリブレーション手順"
+        },
+        "VRC_IK_ONE_HANDED_CALIBRATION": {
+          "description": "片手キャリブレーション手順の切り替え"
+        },
+        "VRC_IK_SHOULDER_WIDTH_COMPENSATION": {
+          "description": "肩幅補正の切り替え"
+        },
+        "VRC_IK_TRACKER_MODEL": {
+          "description": "IKトラッカーモデル"
+        },
+        "VRC_IK_USE_METRIC_HEIGHT": {
+          "description": "キャリブレーション身長にメートル法を使用"
+        },
+        "VRC_IK_WRIST_ANGLE": {
+          "description": "IKの手首の角度"
+        },
+        "VRC_INPUT_COMFORT_TURNING": {
+          "description": "コンフォートターン"
+        },
+        "VRC_INPUT_LOCOMOTION_METHOD": {
+          "description": "移動モード"
+        },
+        "VRC_MAIN_MENU_MOVEMENT_LOCKED": {
+          "description": "メインメニュー表示中は移動をロック"
+        },
+        "VRC_MOBILE_AUTO_HOLD_ENABLED": {
+          "description": "モバイルの自動グラブを有効化"
+        },
+        "VRC_MOBILE_AUTO_WALK_ENABLED": {
+          "description": "モバイルの自動歩行を有効化"
+        },
+        "VRC_TRACKING_CAN_SHOW_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "セルフィーフェイストラッキングのポップアップ表示可否"
+        },
+        "VRC_TRACKING_CAN_SHOW_TRY_WEBCAM_FACE_TRACKING_BUTTON": {
+          "description": "カメラフェイストラッキングボタンの表示可否"
+        },
+        "VRC_TRACKING_DISABLE_EYELIDTRACKING": {
+          "description": "まぶたトラッキングを無効化"
+        },
+        "VRC_TRACKING_DISABLE_EYELOOKTRACKING": {
+          "description": "視線トラッキングを無効化"
+        },
+        "VRC_TRACKING_DISABLE_EYETRACKING_ON_MUTE": {
+          "description": "ミュート時にアイトラッキングを無効化"
+        },
+        "VRC_TRACKING_DISPLAY_EYETRACKING_DEBUG": {
+          "description": "アイトラッキングのデバッグを表示"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING": {
+          "description": "セルフィーフェイストラッキングを有効化"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_HAND_TRACKING": {
+          "description": "セルフィーハンドトラッキングを有効化"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST": {
+          "description": "アイトラッキングレイを強制"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST_DESKTOP2": {
+          "description": "デスクトップでアイトラッキングレイを強制"
+        },
+        "VRC_TRACKING_GRACEFUL_QUIT": {
+          "description": "トラッキングのスムージング終了"
+        },
+        "VRC_TRACKING_NUM_TIMES_DISABLED_SELFIE_FACE_TRACKING": {
+          "description": "セルフィーフェイストラッキングのオフ回数"
+        },
+        "VRC_TRACKING_NUM_TIMES_ENABLED_SELFIE_FACE_TRACKING": {
+          "description": "セルフィーフェイストラッキングのオン回数"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "セルフィーフェイストラッキングのポップアップ却下回数"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS": {
+          "description": "VRC+セルフィーフェイストラッキングのポップアップ却下回数"
+        },
+        "VRC_TRACKING_NUM_TIMES_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS_CLICKED": {
+          "description": "VRC+セルフィーフェイストラッキングのクリック回数"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_RECENTER_SPEED": {
+          "description": "セルフィーフェイストラッキングのセンタリング速度"
+        },
+        "VRC_TRACKING_SEND_VR_SYSTEM_HEAD_AND_WRIST_OSC_DATA": {
+          "description": "ヘッドセット・手首のトラッキングをOSCで送信"
+        },
+        "VRC_TRACKING_SHOULD_SHOW_OSC_TRACKING_DATA_REMINDER": {
+          "description": "OSCトラッキングのリマインダーを表示"
+        },
+        "VRC_TRACKING_TRACKER_PREDICTION": {
+          "description": "トラッカー予測"
+        },
+        "BACKGROUND_MATERIAL_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ユーザーの背景マテリアル"
+        },
+        "CosmeticsSectionRedirect_Settings": {
+          "description": "コスメティックセクションのリダイレクト設定"
+        },
+        "FOLDOUT_STATES": {
+          "description": "折りたたみ状態"
+        },
+        "FRIEND_LAST_VISIT_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ユーザーのフレンド最終訪問履歴"
+        },
+        "HasSeenCameraDollyUserCameraCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "カメラドリーの案内を表示済み"
+        },
+        "HasSeenHolidayEvent2025QMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "2025年ホリデーイベントの案内を表示済み"
+        },
+        "HasSeenShopRabbidsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Rabbidsショップの案内を表示済み"
+        },
+        "HasSeenVRCPlusExclusiveItemsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "VRC+限定アイテムの案内を表示済み"
+        },
+        "InQueueWidgetInfoShowcaseID": {
+          "description": "キューウィジェットのショーケースID"
+        },
+        "RECENTLY_VISITED_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ユーザーの最近の訪問履歴"
+        },
+        "SavedWorldSearchesusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "保存したワールド検索"
+        },
+        "SortSelection_AllFriends": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_Authored": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_Favorites0": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_FriendLocations": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_GroupActivity": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_InRoom": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_Recent": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_Sdk": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_UGCPlaylist1": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_UGCWorlds": {
+          "description": "リストの並び替えオプション"
+        },
+        "SortSelection_WorldInstances": {
+          "description": "リストの並び替えオプション"
+        },
+        "UI.Emojis.CustomGroup0": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "UI.Emojis.CustomGroup1": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "UI.Emojis.CustomGroup2": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "UI.MenuPlacementZDepthVR": {
+          "description": "UI状態の設定"
+        },
+        "UI.MotionSmoothingEnabled": {
+          "description": "UI状態の設定"
+        },
+        "UI.Props.CustomGroup0": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "UI.Stickers.CustomGroup0": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "UI.Stickers.CustomGroup1": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "UI.Stickers.CustomGroup2": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "UI.usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726.WingState": {
+          "description": "UI状態の設定"
+        },
+        "VRC.UI.QuickMenu.ShowQMDebugInfo": {
+          "description": "クイックメニューにデバッグ情報を表示"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_X": {
+          "description": "左アクションメニューHUDのX角度"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_Y": {
+          "description": "左アクションメニューHUDのY角度"
+        },
+        "VRC_ACTION_MENU_L_MENU_OPACITY": {
+          "description": "左アクションメニューの不透明度"
+        },
+        "VRC_ACTION_MENU_L_MENU_SIZE_PERCENTAGE": {
+          "description": "左アクションメニューのサイズ（％）"
+        },
+        "VRC_ACTION_MENU_L_SHOW_ON_HUD": {
+          "description": "左アクションメニューをHUDに表示"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_X": {
+          "description": "右アクションメニューHUDのX角度"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_Y": {
+          "description": "右アクションメニューHUDのY角度"
+        },
+        "VRC_ACTION_MENU_R_MENU_OPACITY": {
+          "description": "右アクションメニューの不透明度"
+        },
+        "VRC_ACTION_MENU_R_MENU_SIZE_PERCENTAGE": {
+          "description": "右アクションメニューのサイズ（％）"
+        },
+        "VRC_ACTION_MENU_R_SHOW_ON_HUD": {
+          "description": "右アクションメニューをHUDに表示"
+        },
+        "VRC_BOOP_EMOJI_EFFECT_ENABLED": {
+          "description": "Boopの絵文字エフェクトを有効化"
+        },
+        "VRC_CHAT_BUBBLE_ABOVE_HEAD_V2": {
+          "description": "頭上チャットバブル v2"
+        },
+        "VRC_CHAT_BUBBLE_AUTO_SEND": {
+          "description": "チャットバブルの自動送信"
+        },
+        "VRC_CHAT_BUBBLE_OPACITY": {
+          "description": "チャットバブルの不透明度"
+        },
+        "VRC_CHAT_BUBBLE_POS_HEIGHT": {
+          "description": "チャットバブルの高さ"
+        },
+        "VRC_CHAT_BUBBLE_PROFANITY_FILTER": {
+          "description": "チャットバブルの不適切表現フィルター"
+        },
+        "VRC_CHAT_BUBBLE_SCALE": {
+          "description": "チャットバブルのスケール"
+        },
+        "VRC_CHAT_BUBBLE_SHOW_OWN": {
+          "description": "自分のチャットバブルを表示"
+        },
+        "VRC_CHAT_BUBBLE_TIMEOUT": {
+          "description": "チャットバブルの表示時間"
+        },
+        "VRC_CHAT_BUBBLE_VISIBILITY": {
+          "description": "チャットバブルの表示"
+        },
+        "VRC_CLOCK_VARIANT": {
+          "description": "時計の表示スタイル"
+        },
+        "VRC_COLOR_FILTER_INTENSITY": {
+          "description": "カラーフィルターの強度"
+        },
+        "VRC_COLOR_FILTER_SELECTION": {
+          "description": "カラーフィルターのプリセット"
+        },
+        "VRC_COLOR_FILTER_TO_WORLD": {
+          "description": "ワールド描画にフィルターを適用"
+        },
+        "VRC_CURRENT_LANGUAGE": {
+          "description": "言語コード"
+        },
+        "VRC_DESKTOP_RETICLE": {
+          "description": "デスクトップのレティクル"
+        },
+        "VRC_ENABLE_GROUP_INTEREST_AUTO_NOTIFICATIONS": {
+          "description": "グループ関心事の自動通知を有効化"
+        },
+        "VRC_GROUP_ON_NAMEPLATE": {
+          "description": "ネームプレートにグループを表示"
+        },
+        "VRC_GROUP_ORDER_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "ユーザーのグループ順"
+        },
+        "VRC_HIDE_NOTIFICATION_PHOTOS": {
+          "description": "通知の写真プレビューを非表示"
+        },
+        "VRC_HUD_ANCHOR": {
+          "description": "HUDのアンカー位置"
+        },
+        "VRC_HUD_MODE": {
+          "description": "HUDのレイアウトモード"
+        },
+        "VRC_HUD_OPACITY": {
+          "description": "HUDの不透明度"
+        },
+        "VRC_HUD_SMOOTHING_Desktop": {
+          "description": "HUDの位置表示設定"
+        },
+        "VRC_HUD_SMOOTHING_VR": {
+          "description": "HUDの位置表示設定"
+        },
+        "VRC_MM_FREE_PLACEMENT_ENABLED": {
+          "description": "メインメニューの自由配置を有効化"
+        },
+        "VRC_MOBILE_DPI_SCALING": {
+          "description": "モバイルのDPIスケーリング"
+        },
+        "VRC_MOBILE_NOTIFICATIONS_SERVICE_ENABLED": {
+          "description": "モバイル通知サービスを有効化"
+        },
+        "VRC_MOBILE_PERFORMANCE_SECONDARY_UI_ENABLED": {
+          "description": "モバイルのセカンダリパフォーマンスUIを有効化"
+        },
+        "VRC_NAMEPLATE_FALLBACK_ICON_VISIBLE": {
+          "description": "ネームプレートの表示設定"
+        },
+        "VRC_NAMEPLATE_MODE": {
+          "description": "ネームプレートの主表示モード"
+        },
+        "VRC_NAMEPLATE_OPACITY": {
+          "description": "ネームプレートの不透明度"
+        },
+        "VRC_NAMEPLATE_QUICK_MENU_INFO": {
+          "description": "ネームプレートの表示設定"
+        },
+        "VRC_NAMEPLATE_SCALE_V2": {
+          "description": "ネームプレートのスケール"
+        },
+        "VRC_NAMEPLATE_STATUS_MODE": {
+          "description": "ネームプレートの追加ステータス内容"
+        },
+        "VRC_PLAY_NOTIFICATION_AUDIO": {
+          "description": "通知音を再生"
+        },
+        "VRC_REDUCE_ANIMATIONS": {
+          "description": "必須でないアニメーションを減らす"
+        },
+        "VRC_SHOW_COMMUNITY_LABS": {
+          "description": "Community Labsを表示"
+        },
+        "VRC_SHOW_COMMUNITY_LAB_WORLDS_IN_SEARCH": {
+          "description": "検索にCommunity Labsのワールドを表示"
+        },
+        "VRC_SHOW_GO_BUTTON_IN_LOAD": {
+          "description": "読み込み中にGoボタンを表示"
+        },
+        "VRC_SHOW_GROUP_BADGES": {
+          "description": "グループバッジを表示"
+        },
+        "VRC_SHOW_INVITES_NOTIFICATION": {
+          "description": "招待通知を表示"
+        },
+        "VRC_SHOW_JOIN_NOTIFICATIONS": {
+          "description": "フレンドの参加通知を表示"
+        },
+        "VRC_SHOW_LEAVE_NOTIFICATIONS": {
+          "description": "フレンドの退出通知を表示"
+        },
+        "VRC_SLIDER_SNAPPING": {
+          "description": "スライダーのスナップ"
+        },
+        "VRC_STORE_LAST_SEEN_SHELF_UPDATE": {
+          "description": "最後に見たシェルフ更新を記録"
+        },
+        "VRC_TIME_FORMAT_MODE": {
+          "description": "時刻表示形式"
+        },
+        "VRC_UI_HEADER_CLICK_SCROLL_RESET_ENABLED": {
+          "description": "ヘッダークリックでのスクロールリセットを有効化"
+        },
+        "VRC_USE_COLOR_FILTER": {
+          "description": "カラーフィルター（アクセシビリティ）を有効化"
+        },
+        "VRC_USE_PIXEL_SHIFTING_HUD": {
+          "description": "ピクセルシフトHUDを使用"
+        },
+        "VRC_WING_PERSISTENCE_ENABLED": {
+          "description": "Wingの状態保持を有効化"
+        },
+        "VRC_WORLD_TOOLTIP_MODE": {
+          "description": "ワールドツールチップのモード"
+        },
+        "has_opened_live_now_page": {
+          "description": "ライブナウページを開いた"
+        },
+        "has_seen_avm-explore-to-cm-migration": {
+          "description": "AVM移行の案内を表示済み"
+        },
+        "has_seen_event_discovery_in_beta": {
+          "description": "ベータのイベント発見機能を表示済み"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenMenuHelpShownCount": {
+          "description": "ユーザーのメニュー起動ヘルプ表示回数"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenedQuickMenu": {
+          "description": "ユーザーがクイックメニューを開いた"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Emojis.CustomGroup0": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Props.CustomGroup0": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedEmojis": {
+          "description": "ユーザーが最近使った絵文字"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedStickers": {
+          "description": "ユーザーが最近使ったステッカー"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Stickers.CustomGroup0": {
+          "description": "カスタム絵文字・ステッカーグループ"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_has_opened_live_now_page": {
+          "description": "ユーザーがライブナウページを開いた"
+        },
+        "BACKGROUND_DEBUG_LOG_COLLECTION": {
+          "description": "バックグラウンドデバッグログ収集の切り替え"
+        },
+        "VRC_ALLOW_DIRECT_SHARES": {
+          "description": "ダイレクト共有を許可"
+        },
+        "VRC_ALLOW_DISCORD_FRIENDS": {
+          "description": "Discordフレンド連携を許可"
+        },
+        "VRC_ALLOW_FOCUS_VIEW": {
+          "description": "フォーカスビューを許可"
+        },
+        "VRC_ALLOW_PEDESTAL_SHARES": {
+          "description": "ペデスタル共有を許可"
+        },
+        "VRC_ALLOW_PRINTS": {
+          "description": "プリント共有を許可"
+        },
+        "VRC_ALLOW_SHARED_CONNECTIONS": {
+          "description": "共有接続を許可"
+        },
+        "VRC_ALLOW_UNTRUSTED_URL": {
+          "description": "信頼されていないURLの表示を許可"
+        },
+        "VRC_DIRECT_SHARING_VISIBILITY": {
+          "description": "ダイレクト共有の公開範囲"
+        },
+        "VRC_HOME_ACCESS_TYPE": {
+          "description": "ホームワールドのプライバシープリセット"
+        },
+        "VRC_PEDESTAL_SHARING_VISIBILITY": {
+          "description": "ペデスタル共有の公開範囲"
+        },
+        "VRC_PRINT_VISIBILITY": {
+          "description": "プリント共有の公開範囲"
+        },
+        "VRC_SHOW_GROUP_BADGE_TO_OTHERS": {
+          "description": "他ユーザーにグループバッジを表示"
+        },
+        "VRC_STREAMER_MODE_ENABLED": {
+          "description": "配信者モードを有効化"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanSpeak": {
+          "description": "上級1の発話を許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "上級1のアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAvatarAudio": {
+          "description": "上級1のアバターオーディオを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAnimations": {
+          "description": "上級1のカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAvatar": {
+          "description": "上級1のカスタムアバターを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomShaders": {
+          "description": "上級1のカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseDrone": {
+          "description": "上級1のドローンを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "上級1の絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseParticleSystems": {
+          "description": "上級1のパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseTriggers": {
+          "description": "上級1のトリガーを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseUserIcons": {
+          "description": "上級1のユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanSpeak": {
+          "description": "上級2の発話を許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "上級2のアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAvatarAudio": {
+          "description": "上級2のアバターオーディオを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAnimations": {
+          "description": "上級2のカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAvatar": {
+          "description": "上級2のカスタムアバターを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomShaders": {
+          "description": "上級2のカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseDrone": {
+          "description": "上級2のドローンを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "上級2の絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseParticleSystems": {
+          "description": "上級2のパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseTriggers": {
+          "description": "上級2のトリガーを許可"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseUserIcons": {
+          "description": "上級2のユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanSpeak": {
+          "description": "基本の発話を許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "基本のアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAvatarAudio": {
+          "description": "基本のアバターオーディオを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAnimations": {
+          "description": "基本のカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAvatar": {
+          "description": "基本のカスタムアバターを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomShaders": {
+          "description": "基本のカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseDrone": {
+          "description": "基本のドローンを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "基本の絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseParticleSystems": {
+          "description": "基本のパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseTriggers": {
+          "description": "基本のトリガーを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseUserIcons": {
+          "description": "基本のユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanSpeak": {
+          "description": "基本の発話を許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAnimatedEmoji": {
+          "description": "基本のアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAvatarAudio": {
+          "description": "基本のアバターオーディオを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAnimations": {
+          "description": "基本のカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAvatar": {
+          "description": "基本のカスタムアバターを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomShaders": {
+          "description": "基本のカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseDrone": {
+          "description": "基本のドローンを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "基本の絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseParticleSystems": {
+          "description": "基本のパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseTriggers": {
+          "description": "基本のトリガーを許可"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseUserIcons": {
+          "description": "基本のユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanSpeak": {
+          "description": "開発者の発話を許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAnimatedEmoji": {
+          "description": "開発者のアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAvatarAudio": {
+          "description": "開発者のアバターオーディオを許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAnimations": {
+          "description": "開発者のカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAvatar": {
+          "description": "開発者のカスタムアバターを許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomShaders": {
+          "description": "開発者のカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseDrone": {
+          "description": "開発者のドローンを許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "開発者の絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseParticleSystems": {
+          "description": "開発者のパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseTriggers": {
+          "description": "開発者のトリガーを許可"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseUserIcons": {
+          "description": "開発者のユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_Friend_CanSpeak": {
+          "description": "フレンドの発話を許可"
+        },
+        "CustomTrustLevel_Friend_CanUseAnimatedEmoji": {
+          "description": "フレンドのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_Friend_CanUseAvatarAudio": {
+          "description": "フレンドのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAnimations": {
+          "description": "フレンドのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAvatar": {
+          "description": "フレンドのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomShaders": {
+          "description": "フレンドのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_Friend_CanUseDrone": {
+          "description": "フレンドのドローンを許可"
+        },
+        "CustomTrustLevel_Friend_CanUseEmojiStickersSharing": {
+          "description": "フレンドの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_Friend_CanUseParticleSystems": {
+          "description": "フレンドのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_Friend_CanUseTriggers": {
+          "description": "フレンドのトリガーを許可"
+        },
+        "CustomTrustLevel_Friend_CanUseUserIcons": {
+          "description": "フレンドのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanSpeak": {
+          "description": "中級1の発話を許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "中級1のアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAvatarAudio": {
+          "description": "中級1のアバターオーディオを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAnimations": {
+          "description": "中級1のカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAvatar": {
+          "description": "中級1のカスタムアバターを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomShaders": {
+          "description": "中級1のカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseDrone": {
+          "description": "中級1のドローンを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "中級1の絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseParticleSystems": {
+          "description": "中級1のパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseTriggers": {
+          "description": "中級1のトリガーを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseUserIcons": {
+          "description": "中級1のユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanSpeak": {
+          "description": "中級2の発話を許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "中級2のアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAvatarAudio": {
+          "description": "中級2のアバターオーディオを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAnimations": {
+          "description": "中級2のカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAvatar": {
+          "description": "中級2のカスタムアバターを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomShaders": {
+          "description": "中級2のカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseDrone": {
+          "description": "中級2のドローンを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "中級2の絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseParticleSystems": {
+          "description": "中級2のパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseTriggers": {
+          "description": "中級2のトリガーを許可"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseUserIcons": {
+          "description": "中級2のユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanSpeak": {
+          "description": "顔なじみの発話を許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAnimatedEmoji": {
+          "description": "顔なじみのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAvatarAudio": {
+          "description": "顔なじみのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAnimations": {
+          "description": "顔なじみのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAvatar": {
+          "description": "顔なじみのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomShaders": {
+          "description": "顔なじみのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseDrone": {
+          "description": "顔なじみのドローンを許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "顔なじみの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseParticleSystems": {
+          "description": "顔なじみのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseTriggers": {
+          "description": "顔なじみのトリガーを許可"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseUserIcons": {
+          "description": "顔なじみのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanSpeak": {
+          "description": "レジェンドの発話を許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAnimatedEmoji": {
+          "description": "レジェンドのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAvatarAudio": {
+          "description": "レジェンドのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAnimations": {
+          "description": "レジェンドのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAvatar": {
+          "description": "レジェンドのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomShaders": {
+          "description": "レジェンドのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseDrone": {
+          "description": "レジェンドのドローンを許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "レジェンドの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseParticleSystems": {
+          "description": "レジェンドのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseTriggers": {
+          "description": "レジェンドのトリガーを許可"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseUserIcons": {
+          "description": "レジェンドのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanSpeak": {
+          "description": "ローカルプレイヤーの発話を許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAnimatedEmoji": {
+          "description": "ローカルプレイヤーのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAvatarAudio": {
+          "description": "ローカルプレイヤーのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAnimations": {
+          "description": "ローカルプレイヤーのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAvatar": {
+          "description": "ローカルプレイヤーのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomShaders": {
+          "description": "ローカルプレイヤーのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseDrone": {
+          "description": "ローカルプレイヤーのドローンを許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseEmojiStickersSharing": {
+          "description": "ローカルプレイヤーの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseParticleSystems": {
+          "description": "ローカルプレイヤーのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseTriggers": {
+          "description": "ローカルプレイヤーのトリガーを許可"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseUserIcons": {
+          "description": "ローカルプレイヤーのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanSpeak": {
+          "description": "ネガティブの発話を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "ネガティブのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAvatarAudio": {
+          "description": "ネガティブのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAnimations": {
+          "description": "ネガティブのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAvatar": {
+          "description": "ネガティブのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomShaders": {
+          "description": "ネガティブのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseDrone": {
+          "description": "ネガティブのドローンを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "ネガティブの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseParticleSystems": {
+          "description": "ネガティブのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseTriggers": {
+          "description": "ネガティブのトリガーを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseUserIcons": {
+          "description": "ネガティブのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanSpeak": {
+          "description": "ネガティブの発話を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "ネガティブのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAvatarAudio": {
+          "description": "ネガティブのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAnimations": {
+          "description": "ネガティブのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAvatar": {
+          "description": "ネガティブのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomShaders": {
+          "description": "ネガティブのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseDrone": {
+          "description": "ネガティブのドローンを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "ネガティブの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseParticleSystems": {
+          "description": "ネガティブのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseTriggers": {
+          "description": "ネガティブのトリガーを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseUserIcons": {
+          "description": "ネガティブのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanSpeak": {
+          "description": "ネガティブの発話を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "ネガティブのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "ネガティブのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "ネガティブのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "ネガティブのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomShaders": {
+          "description": "ネガティブのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseDrone": {
+          "description": "ネガティブのドローンを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "ネガティブの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseParticleSystems": {
+          "description": "ネガティブのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseTriggers": {
+          "description": "ネガティブのトリガーを許可"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseUserIcons": {
+          "description": "ネガティブのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanSpeak": {
+          "description": "信頼済みの発話を許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAnimatedEmoji": {
+          "description": "信頼済みのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAvatarAudio": {
+          "description": "信頼済みのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAnimations": {
+          "description": "信頼済みのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAvatar": {
+          "description": "信頼済みのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomShaders": {
+          "description": "信頼済みのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseDrone": {
+          "description": "信頼済みのドローンを許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "信頼済みの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseParticleSystems": {
+          "description": "信頼済みのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseTriggers": {
+          "description": "信頼済みのトリガーを許可"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseUserIcons": {
+          "description": "信頼済みのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_Untrusted_CanSpeak": {
+          "description": "未信頼の発話を許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAnimatedEmoji": {
+          "description": "未信頼のアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAvatarAudio": {
+          "description": "未信頼のアバターオーディオを許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAnimations": {
+          "description": "未信頼のカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAvatar": {
+          "description": "未信頼のカスタムアバターを許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomShaders": {
+          "description": "未信頼のカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseDrone": {
+          "description": "未信頼のドローンを許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseEmojiStickersSharing": {
+          "description": "未信頼の絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseParticleSystems": {
+          "description": "未信頼のパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseTriggers": {
+          "description": "未信頼のトリガーを許可"
+        },
+        "CustomTrustLevel_Untrusted_CanUseUserIcons": {
+          "description": "未信頼のユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanSpeak": {
+          "description": "ネガティブの発話を許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "ネガティブのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "ネガティブのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "ネガティブのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "ネガティブのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomShaders": {
+          "description": "ネガティブのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseDrone": {
+          "description": "ネガティブのドローンを許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "ネガティブの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseParticleSystems": {
+          "description": "ネガティブのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseTriggers": {
+          "description": "ネガティブのトリガーを許可"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseUserIcons": {
+          "description": "ネガティブのユーザーアイコンを許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanSpeak": {
+          "description": "ベテランの発話を許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAnimatedEmoji": {
+          "description": "ベテランのアニメーション絵文字を許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAvatarAudio": {
+          "description": "ベテランのアバターオーディオを許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAnimations": {
+          "description": "ベテランのカスタムアニメーションを許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAvatar": {
+          "description": "ベテランのカスタムアバターを許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomShaders": {
+          "description": "ベテランのカスタムシェーダーを許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseDrone": {
+          "description": "ベテランのドローンを許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "ベテランの絵文字・ステッカー共有を許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseParticleSystems": {
+          "description": "ベテランのパーティクルシステムを許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseTriggers": {
+          "description": "ベテランのトリガーを許可"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseUserIcons": {
+          "description": "ベテランのユーザーアイコンを許可"
+        },
+        "VRC_LIMIT_PARTICLE_SYSTEMS": {
+          "description": "パーティクルシステムを制限"
+        },
+        "14C4B06B824EC593239362517F538B29": {
+          "description": "認証またはインストールトークン"
+        },
+        "5F4DCC3B5AA765D61D8327DEB882CF99": {
+          "description": "認証またはインストールトークン"
+        },
+        "785C2BDD2C43070A10BC35E5E687A467": {
+          "description": "認証またはインストールトークン"
+        },
+        "93D3AE97F80BEDA8E396065DC4770A93": {
+          "description": "認証またはインストールトークン"
+        },
+        "BCD9D91ED8D8F1926B20D3D620647C8E": {
+          "description": "認証またはインストールトークン"
+        },
+        "BD2E932A03A19217AB5A1DFB5AA93340": {
+          "description": "認証またはインストールトークン"
+        },
+        "E1F946CE2FD302B954E26AD92C0B30BF": {
+          "description": "認証またはインストールトークン"
+        },
+        "ForceSettings_AutoWalk": {
+          "description": "設定移行マーカー"
+        },
+        "ForceSettings_ClearFoldoutPrefKeys": {
+          "description": "設定移行マーカー"
+        },
+        "ForceSettings_MicToggle": {
+          "description": "設定移行マーカー"
+        },
+        "ForceSettings_MigrateMicSettings": {
+          "description": "設定移行マーカー"
+        },
+        "ForceSettings_Mixer": {
+          "description": "設定移行マーカー"
+        },
+        "ForceSettings_PedestalSharing": {
+          "description": "設定移行マーカー"
+        },
+        "ForceSettings_SteamAudioSliderRemap": {
+          "description": "設定移行マーカー"
+        },
+        "ForceSettings_WorldTooltipMode": {
+          "description": "設定移行マーカー"
+        },
+        "LOGGING_ENABLED": {
+          "description": "ロギングを有効化"
+        },
+        "Screenmanager Fullscreen mode": {
+          "description": "フルスクリーンモード"
+        },
+        "Screenmanager Fullscreen mode Default": {
+          "description": "既定のフルスクリーンモード"
+        },
+        "Screenmanager Resolution Height": {
+          "description": "解像度（高さ）"
+        },
+        "Screenmanager Resolution Height Default": {
+          "description": "既定の解像度（高さ）"
+        },
+        "Screenmanager Resolution Use Native": {
+          "description": "ネイティブ解像度を使用"
+        },
+        "Screenmanager Resolution Use Native Default": {
+          "description": "既定のネイティブ解像度"
+        },
+        "Screenmanager Resolution Width": {
+          "description": "解像度（幅）"
+        },
+        "Screenmanager Resolution Width Default": {
+          "description": "既定の解像度（幅）"
+        },
+        "Screenmanager Resolution Window Height": {
+          "description": "ウィンドウの高さ"
+        },
+        "Screenmanager Resolution Window Width": {
+          "description": "ウィンドウの幅"
+        },
+        "Screenmanager Stereo 3D": {
+          "description": "ステレオ3D"
+        },
+        "Screenmanager Window Position X": {
+          "description": "ウィンドウのX位置"
+        },
+        "Screenmanager Window Position Y": {
+          "description": "ウィンドウのY位置"
+        },
+        "UserId": {
+          "description": "ユーザーID"
+        },
+        "VRC_CLEAR_CACHE_ON_START": {
+          "description": "起動時にコンテンツキャッシュをクリア"
+        },
+        "VRC_SHOW_COMPATIBILITY_WARNINGS": {
+          "description": "互換性の警告を表示"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideAvatar": {
+          "description": "アバター非表示の移行マーカー"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideDrone": {
+          "description": "ドローン非表示の移行マーカー"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowAvatar": {
+          "description": "アバター表示の移行マーカー"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowDrone": {
+          "description": "ドローン表示の移行マーカー"
+        },
+        "unity.cloud_userid": {
+          "description": "UnityクラウドのユーザーID"
+        },
+        "unity.player_session_count": {
+          "description": "Unityセッションのテレメトリ"
+        },
+        "unity.player_sessionid": {
+          "description": "Unityセッションのテレメトリ"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_LastExpiredSubscription": {
+          "description": "ユーザーの最後に失効したサブスクリプション"
+        },
+        "VRC_AFK_ENABLED": {
+          "description": "AFKを有効化"
+        },
+        "VRC_PREFERRED_TIMEZONE_2": {
+          "description": "優先タイムゾーン 2"
+        }
       }
     },
     "general": {
@@ -1394,7 +3423,15 @@
       "profileContext": "プロフィールのライブコンテキスト",
       "profileContextHint": "マイプロフィールで、右側に現在のアバターとワールドのコンテキストを表示します。",
       "worldInspector": "ワールドインスペクター",
-      "worldInspectorHint": "マップリストの横にサイズ変更可能なワールドインスペクターを開いたままにします。"
+      "worldInspectorHint": "マップリストの横にサイズ変更可能なワールドインスペクターを開いたままにします。",
+      "showInstanceId": "インスタンスIDを表示",
+      "showInstanceIdHint": "オフにすると、フレンドの場所からインスタンス番号が隠されます。ワールド、種類、リージョンは引き続き表示されます。",
+      "hideUnfriends": "フレンド解除イベントを非表示",
+      "hideUnfriendsHint": "フレンドアクティビティログから「あなたを削除しました」/フレンド解除の行を非表示にします。その他のイベントは引き続き表示されます。",
+      "statusShapes": "色覚対応のステータス形状",
+      "statusShapesHint": "各ステータスインジケーター（参加OK、アクティブ、要相談、取り込み中、オフライン）に固有の形状を追加し、色に頼らず区別できるようにします。",
+      "userColor": "ユーザーごとの名前カラー",
+      "userColorHint": "各ユーザーの名前を、そのIDから導かれる安定した固有の色で色付けし、フィードやロスター全体で一目で見分けやすくします。"
     },
     "steamvr": {
       "saveDirty": "設定を保存 *",
@@ -1450,7 +3487,239 @@
         "hint": "Steam Linkのビットレート制限。良いルーターなら最大150〜200。",
         "label": "ターゲット帯域幅 (Mbps)"
       },
-      "title": "VRストリーミング設定 (SteamVR / Steam Link)"
+      "title": "VRストリーミング設定 (SteamVR / Steam Link)",
+      "linkRepair": {
+        "title": "Steam Link / Quest 接続修復",
+        "body": "VRLinkのセッションID不一致、WirelessHmdNotConnected、古いQuestペアリングキャッシュ、SteamVR Betaマーカー、未完了のSteamVR更新を診断します。修復はまずバックアップを取り、既定でドライラン（プレビュー）を行います。",
+        "diagnose": "診断",
+        "dryRun": "修復をプレビュー",
+        "dryRunShort": "プレビュー",
+        "apply": "バックアップして修復",
+        "applyShort": "適用",
+        "confirm": "Steam/SteamVRを終了し、SteamVR設定・appmanifest・localconfig.vdfをバックアップし、Steam Linkのペアリングキャッシュをクリアし、SteamVR Betaマーカーを削除し、Steamの整合性チェックを開きます。続行しますか？",
+        "confirmPlan": "「{{name}}」を適用しますか？VRCSMはまずバックアップを取り、書き込み失敗があれば報告します。",
+        "invalidSessionToast": "無効なVRLinkセッションパケットが見つかりました: {{count}}",
+        "diagnoseDone": "Steam Linkの診断が完了しました。",
+        "diagnoseFailed": "Steam Linkの診断に失敗しました: {{msg}}",
+        "dryRunDone": "プレビューが完了しました。計画された修復手順を確認してください。",
+        "repairDone": "修復を適用し、Steamの整合性チェックを開きました。",
+        "backupDone": "Quest Link/SteamVR設定のバックアップを作成しました。",
+        "repairFailed": "Steam Linkの修復に失敗しました: {{msg}}",
+        "previewFailed": "プレビューの生成に失敗しました: {{msg}}",
+        "restoreDone": "{{count}}件のバックアップ項目を復元しました。",
+        "restoreFailed": "バックアップの復元に失敗しました: {{msg}}",
+        "confirmDialogTitle": "「{{name}}」の確認",
+        "confirmDialogDesc": "まず下に表示された具体的なファイルとアクションを確認してください。「適用」をクリックするまで何も変更されません。",
+        "restoreDialogTitle": "Steam Linkバックアップを復元",
+        "restoreDialogDesc": "VRCSMはSteam/SteamVRを終了し、まず現在のファイルをバックアップしてから、選択したバックアップを復元します。",
+        "previewing": "プレビューを生成中…",
+        "executing": "適用中…",
+        "noPlannedActions": "プレビューにアクションがありません。",
+        "confirmDialogCancel": "キャンセルしてそのままにする",
+        "confirmDialogApply": "バックアップと修復を確定",
+        "restoreConfirm": "このバックアップを復元",
+        "steamPath": "Steamのパス",
+        "build": "ビルド",
+        "beta": "Beta",
+        "stable": "Stable",
+        "invalidSessions": "無効なセッションパケット",
+        "questPairs": "Questペアリングキャッシュ",
+        "pendingDownload": "保留中の更新",
+        "lostMaster": "マスタープロセスの喪失",
+        "issues": "検出された問題",
+        "evidence": "ログの証跡",
+        "noEvidence": "スキャンしたログの末尾に一致する行はありません。",
+        "recommended": "推奨",
+        "best": "推奨",
+        "settingProfiles": "安定した設定プロファイル",
+        "actions": "計画されたアクション",
+        "result": "結果",
+        "applied": "適用済み",
+        "partial": "一部",
+        "resultBetaKey": "BetaKey行を削除",
+        "resultQuestBlocks": "Questデバイスブロックを削除",
+        "resultBetaBlocks": "250820-betaブロックを削除",
+        "resultStopped": "停止したプロセス",
+        "resultBackups": "作成したバックアップ",
+        "resultSettingsApplied": "書き込んだ設定",
+        "resultRestored": "復元した項目",
+        "currentBackupDir": "復元前の現在ファイルのバックアップ",
+        "backupsTitle": "バックアップと復元",
+        "backupsHint": "VRCSMが作成した復元可能なバックアップがここに一覧表示されます。復元時はまず現在のファイルをバックアップします。",
+        "refreshBackups": "更新",
+        "restorable": "復元可能",
+        "metadataMissing": "マニフェストが見つかりません",
+        "restore": "復元",
+        "severity": {
+          "critical": "重大",
+          "warning": "警告",
+          "info": "情報",
+          "ok": "正常"
+        },
+        "risk": {
+          "low": "低リスク",
+          "medium": "中リスク",
+          "high": "高リスク"
+        },
+        "summary": {
+          "vrlinkSessionMismatch": "VRLinkセッションの不一致: QuestのパケットはPCに届きましたが、SteamVRがワイヤレスヘッドセットのセッションを拒否しました。",
+          "betaMarkers": "SteamVR BetaまたはユーザーレベルのBetaマーカーを検出しました。これにより、SteamVRが問題のあるVRLinkビルドに固定されている可能性があります。",
+          "readyNoInvalid": "最近のログにSteamVR Readyが表示され、スキャン範囲内に無効セッションのバーストはありません。",
+          "lostMaster": "マスタープロセスが失われたためSteamVRが終了しました。VRLinkのペアリングとランタイムプロセスの安定性を確認してください。",
+          "pairingRecords": "Steam Link / Questのペアリング記録を検出しました。古い記録はバックアップ後に安全にリセットできます。",
+          "noSignature": "スキャンしたSteamVRログに明確なVRLink失敗の兆候はありません。"
+        },
+        "recommendations": {
+          "resetPairing": "Steam Link / Questのペアリングキャッシュをリセットし、ヘッドセットから再ペアリングしてください。",
+          "removeManifestBeta": "SteamVRのBetaKeyを削除し、AppID 250820の整合性チェックを行って安定版ブランチに戻してください。",
+          "removeUserBeta": "Steamのlocalconfig.vdfからユーザーレベルの250820-beta / BetaKeyマーカーを削除してください。",
+          "removeQuestDevices": "まずlocalconfig.vdfをバックアップし、古いOculus Quest / Steam Linkのストリーミングデバイス記録を削除してください。",
+          "finishUpdate": "SteamVRの更新/整合性チェックをSteamに完了させてから、Steam Linkを再試行してください。",
+          "retryThenDryRun": "まずヘッドセットから再試行し、失敗する場合は修復プレビューを実行して新しいログの末尾を比較してください。"
+        },
+        "issuesMap": {
+          "steamvr_missing": {
+            "title": "SteamVRまたはランタイムディレクトリが見つかりません",
+            "detail": "Steam Link VRにはAppID 250820が必要です。まずSteamVRをインストールし、整合性チェックを実行してください。"
+          },
+          "steamvr_pending_update": {
+            "title": "SteamVRに保留中の更新または未完了のダウンロードがあります",
+            "detail": "SteamVRがマニフェスト切り替え/ダウンロードの途中の場合、Steam Linkの接続に失敗することがあります。Steamに更新を完了させてから再ペアリングしてください。"
+          },
+          "vrlink_session_mismatch": {
+            "title": "VRLinkセッションIDの不一致",
+            "detail": "SteamVRがワイヤレスヘッドセット未接続と報告する一方で、無効なセッションパケットが{{count}}件見つかりました。"
+          },
+          "vrlink_invalid_session": {
+            "title": "無効なVRLinkセッションパケットが見つかりました",
+            "detail": "スキャンしたSteamVRログの末尾に、無効セッションパケットが{{count}}件含まれています。"
+          },
+          "steamvr_unknown_shutdown": {
+            "title": "SteamVRが不明なマスタープロセスの理由で終了しました",
+            "detail": "これは通常VRLinkのハンドシェイク失敗に関連します。まずペアリングをリセットし、ヘッドセットから再試行してください。"
+          },
+          "quest_pairing_cache": {
+            "title": "Quest / Steam Linkのペアリングキャッシュを検出",
+            "detail": "Steamのlocalconfig.vdfにQuestのペアリングマーカーが{{count}}件見つかりました。"
+          },
+          "steamvr_beta_marker": {
+            "title": "SteamVR Betaマーカーを検出",
+            "detail": "BetaKey、250820-beta、またはエンコードされたBetaマーカーは、SteamVRをペアリング状態が壊れたVRLinkビルドに固定することがあります。"
+          },
+          "no_physical_ipv4_adapter": {
+            "title": "有効な物理IPv4ネットワークアダプターが検出されません",
+            "detail": "Steam Linkは、PCを有線イーサネットに、ヘッドセットを同じルーターに接続すると最も安定します。"
+          },
+          "virtual_network_adapter": {
+            "title": "仮想ネットワークアダプターが有効です",
+            "detail": "有効な仮想ネットワークアダプターを{{count}}件検出しました。VRCSMは自動的に変更しません。ペアリングが失敗し続ける場合は、一時的にVPN / Hyper-Vを無効にしてください。"
+          },
+          "high_bandwidth": {
+            "title": "Steam Linkの帯域幅が高く設定されています",
+            "detail": "{{bandwidth}} Mbpsは共有Wi-Fiには高すぎる可能性があります。トラブルシューティング時はまず80〜120 Mbpsから始めてください。"
+          },
+          "overscaled_low_vram": {
+            "title": "低VRAM GPUでスーパーサンプリングが高い",
+            "detail": "リンクの検証中はスーパーサンプリングを0.8〜1.0に下げ、接続が安定したら上げてください。"
+          },
+          "no_blocker_found": {
+            "title": "Steam Linkを妨げる明確な兆候はありません",
+            "detail": "スキャンした末尾にBeta、保留中の更新、無効セッションのバーストはありません。ヘッドセットから再試行し、失敗したらすぐに診断を再実行してください。"
+          }
+        },
+        "plans": {
+          "quest-link-backup": {
+            "title": "現在のQuest Link設定をバックアップ",
+            "description": "SteamVR、VRLink、Questペアリング、SteamVRマニフェストのみの復元可能なスナップショットを作成します。設定は変更しません。"
+          },
+          "pairing-reset": {
+            "title": "ペアリングをリセット",
+            "description": "アカウントレベルのQuest / Steam Linkペアリング記録とSteamVRのウェブキャッシュをクリアし、ヘッドセットをクリーンに再ペアリングさせます。"
+          },
+          "full-vrlink-reset": {
+            "title": "VRLinkの完全リセット",
+            "description": "以前にQuest 3のセッションを修正した完全な手順: ペアリングキャッシュ、SteamVRのローカルランタイム状態、VRLink設定フォルダ、古いログ、Betaマーカー、Steamの整合性チェック。"
+          },
+          "stable-validate": {
+            "title": "安定版ブランチの整合性チェック",
+            "description": "SteamVR Betaマーカーのみを削除し、AppID 250820のSteam整合性チェックを開きます。"
+          },
+          "safe-streaming": {
+            "title": "安全なストリーミング設定",
+            "description": "ペアリングデータをクリアせずに、Questに安全な控えめのSteam Link設定を書き込みます。"
+          }
+        },
+        "planActions": {
+          "stopSteamVrSteam": "SteamVR/Steamを停止",
+          "backupLocalconfig": "localconfig.vdfをバックアップ",
+          "removeQuestBlocks": "Questストリーミングデバイスブロックを削除",
+          "clearHtmlcache": "SteamVRのhtmlcacheをクリア",
+          "stopSteamSteamVr": "Steam/SteamVRを停止",
+          "backupAll": "appmanifest/localconfig/SteamVR設定をバックアップ",
+          "moveRuntimeState": "steamvr.vrsettingsとvrstatsを退避",
+          "moveVrlinkConfig": "config/vrlinkとremoteclients.vdfを退避",
+          "archiveLogs": "古いVRLinkログをアーカイブ",
+          "openValidate": "steam://validate/250820を開く",
+          "backupVrlinkConfig": "config/vrlinkとremoteclients.vdfをバックアップ",
+          "backupHtmlcache": "SteamVRのhtmlcacheをバックアップ",
+          "backupManifestLocalconfig": "appmanifest/localconfigをバックアップ",
+          "removeBetaMarkers": "BetaKey / 250820-betaマーカーを削除",
+          "backupVrsettings": "steamvr.vrsettingsをバックアップ",
+          "set80Auto": "80 Mbps自動帯域幅に設定",
+          "set1x": "スーパーサンプリングを1.0xに設定",
+          "set72hz": "72 Hzに設定",
+          "disableMotionSmoothing": "モーションスムージングを無効化"
+        },
+        "profiles": {
+          "low-stability": {
+            "title": "低パフォーマンス安定重視",
+            "note": "接続はできるが、カクつき・ぼやけ・暗転が起きる場合に使用してください。"
+          },
+          "balanced-stable": {
+            "title": "バランス安定重視",
+            "note": "一般的なWi-Fi 5/6ルーターでのQuest 2/3向けの既定推奨設定です。"
+          },
+          "quest3-clarity": {
+            "title": "Quest 3の高精細",
+            "note": "ペアリング/セッションが安定してから画質を上げてください。"
+          }
+        },
+        "repairActions": {
+          "stopProcess": "プロセス{{name}}（{{pid}}）を停止",
+          "moveIntoBackup": "バックアップへ移動: {{path}}",
+          "archiveLog": "古いSteamVRログをアーカイブ: {{path}}",
+          "backupPath": "バックアップ: {{path}}",
+          "restorePath": "バックアップから復元: {{path}} ← {{backup}}",
+          "backupRemove": "バックアップして削除: {{path}}",
+          "removeManifestBeta": "ファイルからBetaKey行を削除: {{path}}",
+          "removeUserBeta": "ファイルから250820-beta / BetaKeyマーカーを削除: {{path}}",
+          "removeQuestBlocks": "ファイルからQuest / Steam Linkストリーミングデバイスブロックを削除: {{path}}",
+          "applySafeStreaming": "安全なQuestストリーミング設定を適用: 80 Mbps自動帯域幅、1.0xスーパーサンプリング、72 Hz、モーションスムージングオフ",
+          "openValidateAfter": "修復後、steam://validate/250820を開いて整合性チェックを実行"
+        },
+        "backupPartial": "Quest Linkのバックアップは警告付きで完了しました: {{msg}}",
+        "dryRunWarning": "ドライランは警告付きで完了しました: {{msg}}",
+        "dryRunWarningShort": "ドライランの警告",
+        "repairPartial": "修復は警告付きで完了しました: {{msg}}",
+        "restorePartial": "復元は警告付きで完了しました: {{msg}}",
+        "restoredShort": "復元済み",
+        "resultRestoreCount": "復元件数",
+        "reviewFailures": "下の結果の詳細を確認してください。"
+      },
+      "configNotFoundBadge": "設定が見つかりません",
+      "configNotFoundBody": "VRCSMはSteamVRの設定ファイルを読み取れませんでした。診断とバックアップ優先の修復は引き続き利用できます。SteamVRがファイルを作成するまでパラメーターエディターは無効です。",
+      "configNotFoundTitle": "steamvr.vrsettingsが見つかりません",
+      "editorUnavailable": "SteamVR設定エディターは利用できません: steamvr.vrsettingsがインストールされていないか、まだ作成されていません。",
+      "effectiveResolution": {
+        "hint": "Steam Linkが表示するエンコーダー解像度はこの値です。いずれかの項目を変更すると、スーパーサンプリングスケール（0.5〜2.0、刻み0.1）が逆算されます。",
+        "label": "実効レンダリング解像度（片目あたり）",
+        "unknown": "不明なHMD"
+      },
+      "knownDevices": "検出されたVRデバイス:",
+      "profileApplied": "{{name}}を適用しました — 設定を保存して反映してください。",
+      "unknownGpu": "不明なGPU",
+      "vrIdle": "VRランタイム待機中",
+      "vrRunning": "VRランタイム稼働中"
     },
     "configJson": {
       "cacheDirectory": {
@@ -1513,6 +3782,11 @@
           "name": "アバターの画像検索",
           "description": "ローカルAIモデルを使用して、画像に似ているアバターを視覚的に検索します。アバターカードの右クリックメニューに「似ているものを探す」アクションを追加します。",
           "warning": "初回使用時に約150MBのCLIPモデルをダウンロードします。すべての処理はローカルで実行され、何もアップロードされません。大規模なキャッシュのインデックス作成には数分かかることがあり、WebGPUがない場合はCPU負荷が高くなります。"
+        },
+        "amplitudeHarvest": {
+          "name": "AmplitudeアバターID収集",
+          "description": "VRChat独自のローカルAmplitude分析キャッシュからアバターID（avtr_...）を読み取り、遭遇したアバターでモデルデータベースを充実させます。読み取り専用: 何も書き込み・削除・アップロードしません。モデルデータベースページに「ローカルキャッシュをスキャン」アクションを追加します。",
+          "warning": "VRChatの分析キャッシュを読み取ることは、VRChatの利用規約/データ使用ガイドラインに反すると見なされる可能性があります。ご利用は自己責任でお願いします。処理は厳密にローカルかつ読み取り専用で、avtr_ IDのみを抽出し、その他の分析データはどこにも表示・送信されません。"
         }
       },
       "visualSearch": {
@@ -1552,7 +3826,8 @@
       "experimental": "実験的機能",
       "steamvr": "SteamVR",
       "vrDiag": "VR診断",
-      "data": "データ管理"
+      "data": "データ管理",
+      "hardware": "ハードウェア"
     },
     "vrDiag": {
       "heading": "VR診断",
@@ -1587,7 +3862,15 @@
       "found": "検出済み",
       "missing": "未検出",
       "steamStreamingMicrophone": "Steam Streaming マイク",
-      "vrlinkIssues": "vrlink の問題"
+      "vrlinkIssues": "vrlink の問題",
+      "openSteamLinkRepair": "Steam Link修復を開く",
+      "linkRepairReady": "Steam Link修復パネルの準備ができました。無効セッション: {{invalid}}、Questペアリング記録: {{questPairs}}。",
+      "virtualAdapterWarning": "仮想アダプター「{{name}}」（{{description}}）がIP {{ip}}で有効になっており、VRストリーミングに干渉する可能性があります。",
+      "avgBitrate": "平均ビットレート",
+      "droppedFrames": "ドロップフレーム",
+      "linkQuality": "リンク品質",
+      "maxLatency": "最大レイテンシ",
+      "supersampleFiltering": "スーパーサンプルフィルタリング"
     },
     "autoStart": {
       "label": "Windowsと同時に起動",
@@ -1650,6 +3933,64 @@
           "favorites": "ローカルのお気に入り、メモ、タグ"
         }
       }
+    },
+    "notify": {
+      "title": "デスクトップ通知",
+      "desc": "VRCSMの実行中に、ライブのVRChatイベントをWindowsのネイティブ通知で表示します。各種類は既定でオフです。",
+      "friendOnline": {
+        "label": "フレンドがオンラインになったとき",
+        "desc": "フレンドがVRChatにログインするとトーストを表示します。"
+      },
+      "invite": {
+        "label": "招待",
+        "desc": "インスタンス招待を受け取るとトーストを表示します。"
+      },
+      "friendRequest": {
+        "label": "フレンドリクエスト",
+        "desc": "誰かがフレンドリクエストを送るとトーストを表示します。"
+      },
+      "vrOverlay": {
+        "label": "VRヘッドセットに表示",
+        "desc": "上で有効にした通知を、XSOverlayを通じてヘッドセットにもミラー表示します。XSOverlayの実行が必要です。"
+      },
+      "tts": {
+        "label": "通知を読み上げる",
+        "desc": "VR中に、システムの音声でライブイベントを読み上げます。",
+        "unsupported": "この環境では音声合成を利用できません。"
+      },
+      "ttsScope": {
+        "label": "読み上げる対象",
+        "desc": "「フレンドのみ」はフレンドのオンラインのみを読み上げ、「すべて」は招待とフレンドリクエストも読み上げます。",
+        "all": "すべてのイベント",
+        "friends": "フレンドのみ"
+      }
+    },
+    "hardware": {
+      "applied": "設定を適用しました！SteamVRを再起動してください。",
+      "apply": "推奨設定を適用",
+      "applying": "適用中…",
+      "bandwidth": "帯域幅",
+      "community": "コミュニティ",
+      "cpu": "CPU",
+      "cpuScore": "CPU",
+      "detecting": "ハードウェアを検出中…",
+      "ffr": "FFRレベル",
+      "gpu": "GPU",
+      "gpuScore": "GPU",
+      "hmd": "HMD",
+      "motionSmoothing": "モーションスムージング",
+      "ram": "RAM",
+      "ramBonus": "RAM",
+      "recommendedTier": "{{tier}}ティア推奨",
+      "refresh": "再検出",
+      "refreshRate": "リフレッシュレート",
+      "score": "HWスコア",
+      "scoreBreakdown": "スコア内訳",
+      "subtitle": "GPUとCPUを検出し、Steam Link / Quest向けのVRChat推奨設定を算出します。",
+      "supersampling": "スーパーサンプリング",
+      "title": "ハードウェアとGPU",
+      "totalScore": "合計",
+      "vramBonus": "VRAM"
     }
   },
   "imageZoom": {
@@ -1679,7 +4020,8 @@
       "install": "インストール",
       "installing": "インストール中…",
       "installed": "インストール済み",
-      "empty": "利用可能なプラグインがありません。"
+      "empty": "利用可能なプラグインがありません。",
+      "fetchErrorHint": "リモートストアのフィード dwgx.github.io/VRCSM/plugins.json に一時的に接続できません。VRCSMに同梱されているHello PluginとVRChat Auto-Uploaderはすでにインストール済みで、サイドバーから開けます。影響を受けるのは新しいサードパーティプラグインのインストールのみです。"
     },
     "detail": {
       "notFound": "フィードにプラグインが見つかりません。",
@@ -1693,7 +4035,8 @@
       "hostMin": "最低ホストバージョン",
       "sha256": "SHA-256",
       "downloadUrl": "ダウンロード URL",
-      "open": "開く"
+      "open": "開く",
+      "permissions": "マニフェストの権限"
     },
     "installed": {
       "title": "インストール済みプラグイン",
@@ -1720,6 +4063,12 @@
       "notInstalled": "プラグイン {{id}} はインストールされていません。",
       "disabled": "プラグイン {{id}} は無効化されています。",
       "noPanel": "プラグイン {{id}} にはパネル UI がありません。"
+    },
+    "install": {
+      "title": "プラグインをインストール",
+      "confirm": "「{{name}}」をインストールしようとしています。続行する前に権限を確認してください。",
+      "permissions": "マニフェストの権限",
+      "confirmBtn": "インストール"
     }
   },
   "avatar": {
@@ -1761,12 +4110,14 @@
     "closesAt": "{{when}} 終了",
     "tabDiscover": "発見",
     "tabFeatured": "注目",
-    "tabJams": "Jam",
+    "tabJams": "ジャム",
     "tabGroups": "マイグループ",
     "groupsSignIn": "VRChat にサインインすると、参加グループのイベントが表示されます。",
     "noGroups": "まだ VRChat グループに参加していません。",
     "noGroupEvents": "参加中の {{count}} グループには現在公開イベントがありません。",
-    "openGroupPage": "グループページを開く"
+    "openGroupPage": "グループページを開く",
+    "resolvingPreview": "プレビューを探しています...",
+    "noPreview": "プレビュー画像なし"
   },
   "worldHistory": {
     "title": "ワールド履歴",
@@ -1777,7 +4128,32 @@
     "unknownWorld": "(不明なワールド)",
     "stillInWorld": "ワールドに滞在中",
     "instanceLabel": "インスタンス",
-    "openAction": "開く"
+    "openAction": "開く",
+    "rejoinAction": "再参加",
+    "rejoinHint": "このインスタンスにVRChatを起動して参加",
+    "heatmap": {
+      "title": "アクティビティヒートマップ",
+      "subtitle": "曜日・時間帯別のワールド参加状況（過去{{days}}日間）",
+      "empty": "アクティビティパターンを図示するには訪問履歴がまだ足りません。",
+      "busiest": "最も活発: {{day}}の{{hour}}頃",
+      "legendLess": "少ない",
+      "legendMore": "多い",
+      "cellTooltip": "{{day}} {{hour}}: {{count}}回訪問",
+      "totalVisits": "{{count}}回の訪問を図示"
+    },
+    "clear": "クリア",
+    "clearDesc": "記録されたすべてのワールド訪問を完全に削除します。この操作は元に戻せません。",
+    "clearFailed": "クリアに失敗しました: {{error}}",
+    "clearSuccess": "ワールド履歴をクリアしました。",
+    "clearTitle": "ワールド履歴をクリアしますか？",
+    "customLimit": "ワールド履歴のカスタム行数上限",
+    "lastPlayerSeen": "最後のプレイヤーイベント {{time}}",
+    "limitLabel": "行数",
+    "loggedPlayers": "{{count}}人のプレイヤーを記録",
+    "noLoggedPlayers": "プレイヤーログなし",
+    "noPlayerCountHint": "この訪問期間中に、ローカルのプレイヤー入退室イベントは記録されませんでした。",
+    "playerCountHint": "この訪問期間中のローカルプレイヤーログイベントは{{count}}件です。",
+    "recentLimit": "最近の{{count}}回の訪問"
   },
   "strangerAlert": {
     "title": "知らないユーザーがあなたの{{access}}インスタンスに参加しました",
@@ -1793,7 +4169,11 @@
     "guide1": "VRChatインスタンスで出会った人をリアルタイムで記録します。",
     "guide2": "1. 名前を入力して「録画開始」をクリックします。2. 録画中、インスタンスに参加するプレイヤーは自動的に記録されます。3. 「停止」をクリックしてセッションを終了します。録画を選択すると参加者を確認できます。",
     "noRecordings": "録画はまだありません。上のボタンから開始して、インスタンスに参加した人を追跡しましょう。",
-    "noAttendees": "まだ参加者の記録がありません。"
+    "noAttendees": "まだ参加者の記録がありません。",
+    "delete": "記録を削除",
+    "deleteDesc": "「{{name}}」とその参加者記録{{count}}件を完全に削除します。この操作は元に戻せません。",
+    "deleteTitle": "記録を削除しますか？",
+    "deleted": "記録を削除しました"
   },
   "socialGraph": {
     "title": "ソーシャル分析",
@@ -1804,7 +4184,22 @@
     "guide": "VRChatのログ履歴からワールド訪問とプレイヤーの遭遇を集計します。VRCSMがログを解析するとデータが蓄積されるため、プレイ中はアプリを起動したままにして分析データを充実させましょう。",
     "noWorlds": "まだ訪問データがありません。VRCSMがVRChatのログを解析すると、ワールド履歴が記録されます。",
     "selfFiltered": "遭遇ランキングから自分のプレイヤー ID を除外しています。",
-    "lazyWorlds": "ワールドバッジとサムネイルは表示された時、または開いた時にだけ読み込まれます。"
+    "lazyWorlds": "ワールドバッジとサムネイルは表示された時、または開いた時にだけ読み込まれます。",
+    "tabRankings": "ランキング",
+    "tabGraph": "関係グラフ",
+    "graphTitle": "同席ネットワーク",
+    "graphGuide": "あなたのインスタンスを共有したプレイヤーを、時間の重なりで結んでいます。実線は確認済み（自分のインスタンスから記録）、破線は他者同士の推定同席で、フレンド関係が確認されたものではありません。",
+    "graphLoading": "同席グラフを構築中…",
+    "graphEmpty": "まだ同席データがありません。VRCSMがあなたのインスタンスを共有したプレイヤーを記録すると、エッジが表示されます。",
+    "graphAria": "同席関係グラフ",
+    "legendConfirmed": "確認済みの同席（あなたのインスタンス）",
+    "legendInferred": "推定同席（他者、確認済みフレンドではない）",
+    "clear": "クリア",
+    "clearDesc": "フレンドランキングと同席グラフに使われる、記録済みのプレイヤー遭遇を完全に削除します。ワールド訪問ランキングはワールド履歴ページで別途クリアします。この操作は元に戻せません。",
+    "clearFailed": "クリアに失敗しました: {{error}}",
+    "clearSuccess": "ソーシャル分析をクリアしました。",
+    "clearTitle": "ソーシャル分析をクリアしますか？",
+    "nodeFocused": "{{name}}にフォーカスしました"
   },
   "benchmark": {
     "title": "アバターパフォーマンスベンチマーク",
@@ -1831,7 +4226,16 @@
     "wearerCount": "{{count}} 名の装着者",
     "seenTimes": "{{count}} 回閲覧",
     "showWearers": "装着者",
-    "localEncounterIndexHint": "ローカル VRChat ログから生成。VRCSM は保存済みのサムネイルと実際のアバター ID を優先し、ID 不明の項目はサインイン中に正確な公開検索で解決します。重複名・非公開アバターはプレースホルダのままです。"
+    "localEncounterIndexHint": "ローカル VRChat ログから生成。VRCSM は保存済みのサムネイルと実際のアバター ID を優先し、ID 不明の項目はサインイン中に正確な公開検索で解決します。重複名・非公開アバターはプレースホルダのままです。",
+    "clear": "クリア",
+    "clearBenchmarkDesc": "保存されたベンチマークのスナップショットを削除します。ライブスキャンに残っているアバターは次回のスキャンで再表示されます。この操作は元に戻せません。",
+    "clearBenchmarkTitle": "アバターベンチマークをクリアしますか？",
+    "clearFailed": "クリアに失敗しました: {{error}}",
+    "clearSeenDesc": "遭遇したアバターの記録済み履歴を完全に削除します。この操作は元に戻せません。",
+    "clearSeenTitle": "遭遇アバター履歴をクリアしますか？",
+    "clearSuccess": "クリアしました。",
+    "copyId": "アバターIDをコピー",
+    "wornBy": "着用者"
   },
   "fbt": {
     "title": "FBTキャリブレーションモニター",
@@ -1853,6 +4257,166 @@
     "save": "ルールを保存",
     "empty": "まだルールはありません。ルールを作成してVRChatの操作を自動化しましょう。",
     "namePlaceholder": "ルール名...",
-    "history": "実行履歴"
+    "history": "実行履歴",
+    "yamlPlaceholder": "trigger: friend.online\ncondition: user.displayName contains 'Natsumi'\naction:\n  type: vrcsm.notification.show\n  title: フレンドがオンライン！\n  message: '{{user.displayName}}がオンラインです'"
+  },
+  "vrcPlus": {
+    "title": "VRC+ メディア",
+    "subtitle": "プリント、ギャラリー、プロフィールアイコン、インベントリを管理します。アップロードと削除はVRChatに直接反映されます。",
+    "tab": {
+      "prints": "プリント",
+      "gallery": "ギャラリー",
+      "icons": "アイコン",
+      "inventory": "インベントリ",
+      "emoji": "絵文字",
+      "stickers": "ステッカー"
+    },
+    "uploadPrint": "プリントをアップロード",
+    "uploadImage": "画像をアップロード",
+    "uploadIcon": "アイコンをアップロード",
+    "printUploaded": "プリントをアップロードしました",
+    "printDeleted": "プリントを削除しました",
+    "imageUploaded": "画像をアップロードしました",
+    "imageDeleted": "画像を削除しました",
+    "supporterRequired": "これには有効なVRC+サブスクリプションが必要です。",
+    "limitReached": "このスロットのVRC+上限（{{limit}}）に達しました。",
+    "deletePrint": "プリントを削除",
+    "deleteImage": "削除",
+    "deletePrintTitle": "このプリントを削除しますか？",
+    "deletePrintBody": "VRChatアカウントからプリントを完全に削除します。この操作は元に戻せません。",
+    "deleteImageTitle": "この画像を削除しますか？",
+    "deleteImageBody": "VRChatアカウントから画像を完全に削除します。この操作は元に戻せません。",
+    "noPrints": "まだプリントがありません。",
+    "noFiles": "まだ何もありません。",
+    "noInventory": "インベントリは空です。",
+    "uploadEmoji": "絵文字をアップロード",
+    "uploadSticker": "ステッカーをアップロード",
+    "emoji": {
+      "static": "静止",
+      "animated": "アニメーション",
+      "explainer": "アニメーション絵文字は縦方向のスプライトシートです。各フレームを1枚の正方形PNGに上から下へ並べ、フレーム数と再生速度を設定してください。",
+      "pickSheet": "スプライトシートを選択",
+      "frames": "フレーム数",
+      "fps": "FPS",
+      "style": "スタイル",
+      "upload": "アニメーション絵文字をアップロード",
+      "uploaded": "アニメーション絵文字をアップロードしました",
+      "badFrames": "フレーム数とFPSはどちらも1以上にしてください。",
+      "empty": "まだアニメーション絵文字がありません。"
+    }
+  },
+  "modelDb": {
+    "title": "モデルデータベース",
+    "subtitle": "アカウントが所有するアバターを管理します: 名前変更、公開設定の編集、画像の差し替え、削除。",
+    "searchPlaceholder": "アバターを絞り込み",
+    "empty": "所有アバターが見つかりません。",
+    "loadFailed": "アバターの読み込みに失敗しました。",
+    "manage": "管理",
+    "manageTitle": "アバターを管理",
+    "noChanges": "保存する変更はありません。",
+    "saved": "アバターを更新しました。",
+    "deleted": "アバターを削除しました。",
+    "imageReplaced": "アバター画像を差し替えました。",
+    "replaceImage": "画像を差し替え",
+    "replaceImageConfirmTitle": "このアバターの画像を差し替えますか？",
+    "replaceImageConfirmBody": "「{{name}}」に新しい画像をアップロードし、ライブのVRChatアカウントで再設定します。アバターの公開サムネイルは即座に変更されます。",
+    "delete": "アバターを削除",
+    "deleteConfirmTitle": "このアバターを削除しますか？",
+    "deleteConfirmBody": "「{{name}}」を完全に削除しますか？VRChatはアバターを非表示にし、アセットファイルを削除し、そのIDを永久に予約します。この操作は元に戻せません。",
+    "filter": {
+      "all": "すべて",
+      "public": "公開",
+      "private": "非公開",
+      "hidden": "非表示"
+    },
+    "field": {
+      "name": "名前",
+      "description": "説明",
+      "visibility": "公開設定",
+      "image": "アバター画像"
+    },
+    "hidden": {
+      "explainer": "VRChatは非表示（削除済み）のアバターを一覧できません。代わりにIDで検索してください — ローカルログで見つかったIDをスキャンするか、特定のavtr_ IDを貼り付けます。所有しているアバターのみ解決できます。",
+      "lookup": "IDを検索",
+      "scanHistory": "ログ履歴をスキャン",
+      "scanning": "{{done}} / {{total}} 件のIDを確認中…",
+      "scanDone": "{{checked}}件のIDを確認 · 非表示アバター{{found}}件が見つかりました。",
+      "badId": "有効なavtr_ IDを入力してください。",
+      "foundOne": "非表示アバターを解決しました。",
+      "notHidden": "そのアバターは存在しますが、非表示ではありません。",
+      "notOwned": "そのIDを解決できませんでした — VRChatは所有アバターのみ返します。",
+      "noHistory": "ローカル履歴にまだアバターIDがありません。VRChatをプレイして蓄積するか、上にIDを貼り付けてください。"
+    },
+    "harvest": {
+      "empty": "ローカル分析キャッシュにアバターIDが見つかりません（またはVRChatがまだ書き込んでいません）。",
+      "found": "ローカルで{{total}}件のアバターIDを検出 · うち{{fresh}}件は所有リストにありません。",
+      "scan": "ローカルキャッシュをスキャン",
+      "tooltip": "VRChatのローカル分析キャッシュからアバターIDを読み取る読み取り専用スキャン（実験的）。"
+    }
+  },
+  "feed": {
+    "tab": "フィード",
+    "title": "アクティビティフィード",
+    "subtitle": "フレンドの在席、セッション、アバター変更を統合した永続的なタイムライン。",
+    "searchPlaceholder": "名前、ワールド、詳細で検索…",
+    "muteHint": "右クリックで「すべて」ビューから非表示",
+    "loginRequired": "アクティビティフィードを表示するには、設定ページからVRChatにログインしてください。",
+    "loadFailed": "フィードを読み込めませんでした。",
+    "empty": "まだアクティビティがありません。フレンドがオンラインになったりインスタンス間を移動すると、ここにイベントが表示されます。",
+    "unknownUser": "不明",
+    "category": {
+      "all": "すべて",
+      "online": "オンライン",
+      "offline": "オフライン",
+      "location": "場所",
+      "status": "ステータス",
+      "avatar": "アバター",
+      "joined": "参加",
+      "left": "退出",
+      "friend-added": "フレンド追加",
+      "friend-removed": "フレンド削除",
+      "video": "動画",
+      "portal": "ポータル",
+      "moderation": "モデレーション",
+      "sticker": "ステッカー",
+      "notification": "通知",
+      "session": "セッション",
+      "diagnostic": "診断",
+      "other": "その他"
+    }
+  },
+  "gameLog": {
+    "tab": "ゲームログ",
+    "title": "ゲームログ",
+    "subtitle": "VRChatの生の出力ログをリアルタイムで表示します。",
+    "searchPlaceholder": "行を絞り込み…",
+    "lineCount": "{{n}}行",
+    "pause": "一時停止",
+    "resume": "再開",
+    "clear": "クリア",
+    "jumpToBottom": "最新へ移動",
+    "paused": "ストリームを一時停止しました。再開すると新しい行を取得します。",
+    "waiting": "VRChatのログ出力を待機中… VRChatを起動するとリアルタイムの行が表示されます。",
+    "level": {
+      "all": "すべて",
+      "info": "情報",
+      "warn": "警告",
+      "error": "エラー"
+    },
+    "hideNoiseHint": "VRChatのEOS/Stompテレメトリの再試行スパムを折りたたみます（VRCSMのエラーではありません）。",
+    "noiseHidden": "ノイズを非表示",
+    "showAll": "すべて表示"
+  },
+  "tts": {
+    "friendOnline": "{{name}}がオンラインになりました",
+    "invite": "{{who}}からの招待",
+    "friendRequest": "{{who}}からのフレンドリクエスト",
+    "someone": "誰か"
+  },
+  "models": {
+    "tab": {
+      "browse": "閲覧",
+      "owned": "自分のアバター"
+    }
   }
 }

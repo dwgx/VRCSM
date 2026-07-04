@@ -39,7 +39,10 @@
     "social": "सामाजिक विश्लेषण",
     "benchmark": "अवतार बेंचमार्क",
     "fbt": "FBT मॉनिटर",
-    "rules": "स्वचालन नियम"
+    "rules": "स्वचालन नियम",
+    "vrcPlus": "VRC+",
+    "models": "मॉडल डेटाबेस",
+    "labSection": "लैब"
   },
   "profile": {
     "title": "मेरा प्रोफ़ाइल",
@@ -90,6 +93,22 @@
       "ageVerified": "18+ सत्यापित",
       "ageUnverified": "असत्यापित",
       "languages": "भाषाएँ"
+    },
+    "statusPresets": "स्टेटस प्रीसेट",
+    "saveStatusPreset": "मौजूदा स्टेटस को प्रीसेट के रूप में सेव करें",
+    "applyStatusPreset": "यह प्रीसेट लागू करें",
+    "deleteStatusPreset": "प्रीसेट डिलीट करें",
+    "noStatusPresets": "बाद में दोबारा उपयोग के लिए स्टेटस + विवरण का कॉम्बो सेव करें।",
+    "emailUnverified": "सेट है पर असत्यापित",
+    "emailVerified": "सत्यापित",
+    "linkedAccounts": "लिंक किए गए अकाउंट",
+    "linkedAccountsDesc": "VRChat लॉगिन सेशन से जुड़े प्लेटफ़ॉर्म और पहचान फ़ील्ड, नेटिव रूप में दिखाए गए।",
+    "manageOnVrchat": "vrchat.com पर मैनेज करें",
+    "notLinked": "लिंक नहीं है",
+    "security": {
+      "avatarCopying": "अवतार क्लोनिंग",
+      "clientLogin": "गेम क्लाइंट लॉगिन",
+      "twoFactor": "टू-फ़ैक्टर ऑथ"
     }
   },
   "screenshots": {
@@ -159,7 +178,78 @@
     "mute": "म्यूट करें",
     "inviteMe": "मुझे आमंत्रित करें",
     "joinInstance": "इंस्टेंस में शामिल हों",
-    "notSignedIn": "मित्र विवरण देखने के लिए VRChat में साइन इन करें।"
+    "notSignedIn": "मित्र विवरण देखने के लिए VRChat में साइन इन करें।",
+    "nameHistory": "पुराने नाम",
+    "liveOccupants": "मौजूद लोग (लाइव)",
+    "instanceFull": "भरा हुआ",
+    "ageVerified": "आयु सत्यापित",
+    "friendsSince": "{{when}} से मित्र",
+    "bestTime": "इनसे मिलने का सबसे अच्छा समय",
+    "bestTimeWindow": "{{day}} {{start}}–{{end}}",
+    "bestTimeDays": "यहाँ {{count}} दिन ऑनलाइन देखे गए",
+    "bestTimeHint": "देखे गए ऑनलाइन इतिहास से अनुमानित।",
+    "confidenceHint": "{{days}} दिनों के देखे गए ऑनलाइन इतिहास पर आधारित",
+    "confidence": {
+      "high": "उच्च विश्वास",
+      "medium": "मध्यम विश्वास",
+      "low": "कम विश्वास"
+    },
+    "unfriendConfirm1": "{{name}} को मित्र सूची से हटाएं?",
+    "unfriendConfirm2Title": "क्या आप सचमुच, पूरी तरह से पक्के हैं?",
+    "unfriendConfirm2": "अगर आपने लाल बटन दबाया, तो {{name}} शायद यहाँ से हमेशा के लिए चला जाए। QvQ",
+    "unfriendFinal": "हाँ, लाल बटन",
+    "unfriendNevermind": "रहने दो!!",
+    "unfriendCancelled": "रद्द कर दिया। दोस्ती सुरक्षित बनी रहेगी।",
+    "boop": "बूप / पिंग",
+    "boopHint": "पहले संदेश का प्रकार चुनें, फिर तय करें कि कौन-सा सेव किया स्निपेट जोड़ना है। VRChat क्लाइंट में हर प्रकार के लिए 4 तक स्लॉट सेट करें (Quick Menu → Notifications → Messages)।",
+    "boopSent": "बूप भेज दिया — {{name}} को नोटिफ़िकेशन दिखेगा।",
+    "nativeBoop": "{{name}} को बूप करें",
+    "nativeBoopSent": "{{name}} को बूप कर दिया!",
+    "myEmoji": "मेरे इमोजी",
+    "emojiBoopSent": "{{name}} को {{emoji}} के साथ बूप कर दिया!",
+    "emojiBoopTooltip": "{{emoji}} के साथ बूप करें",
+    "boopSending": "भेजा जा रहा है…",
+    "boopSlot": "स्लॉट {{n}}",
+    "boopCooldown": "{{m}}मि",
+    "boopEmptySlot": "(खाली — सिर्फ़ पिंग भेजेगा)",
+    "boopEmojiHint": "आम VRChat बूप इमोजी — कॉपी करने के लिए क्लिक करें, फिर अपने सेव-मैसेज स्लॉट में पेस्ट करें",
+    "boopCopyEmoji": "कॉपी करने के लिए क्लिक करें",
+    "boopEmojiCopied": "कॉपी हो गया! इसे VRChat क्लाइंट के किसी सेव-मैसेज स्लॉट में पेस्ट करें।",
+    "boopInviteNeedsWorld": "इनवाइट संदेशों के लिए आपकी अपनी वर्ल्ड लोकेशन चाहिए। इन्हें मैनेज करने के लिए VRChat वेबसाइट खोलें।",
+    "boopSendTooltip": "इस संदेश को request-invite नोटिफ़िकेशन के रूप में भेजें",
+    "boopCooldownTooltip": "कूलडाउन में — दोबारा भेजने से पहले रुकें",
+    "boopInviteTypeHint": "इनवाइट और invite-response संदेश किसी को अपनी वर्ल्ड में बुलाते समय उपयोग होते हैं। ये प्रीव्यू सिर्फ़ संदर्भ के लिए हैं — इन्हें इनवाइट एक्शन के साथ उपयोग करने हेतु VRChat क्लाइंट में सेट करें।",
+    "boopTypeRequestInvite": "पिंग",
+    "boopTypeInvite": "इनवाइट",
+    "boopTypeInviteResponse": "जवाब",
+    "boopTypeReqInviteReply": "पिंग का जवाब",
+    "noSlotsTitle": "कोई सेव किया संदेश सेट नहीं है",
+    "noSlotsHint": "VRChat हर प्रकार के लिए 4 तक इनवाइट स्निपेट सेव करने देता है। इन्हें VRChat क्लाइंट में Quick Menu → Notifications → Messages के नीचे सेट करें, फिर वे यहाँ चुनने के लिए दिखेंगे।",
+    "editSlots": "VRChat में स्लॉट संपादित करें",
+    "editSlotsHint": "अपने सेव किए स्निपेट VRChat क्लाइंट में संपादित करें (Quick Menu → Notifications → Messages)।",
+    "inviteToTheirWorld": "खुद को इनकी वर्ल्ड में इनवाइट करें",
+    "inviteSent": "इनवाइट भेज दिया",
+    "openVrchatProfile": "vrchat.com पर प्रोफ़ाइल खोलें",
+    "avatarHistory": "अवतार इतिहास",
+    "avatarIdCopied": "अवतार ID कॉपी हो गई",
+    "blocked": "यूज़र ब्लॉक कर दिया",
+    "boopSend": "{{name}} को बूप करें",
+    "boopSendEmoji": "{{e}} के साथ बूप करें",
+    "currentAvatar": "मौजूदा अवतार",
+    "currentWorld": "मौजूदा वर्ल्ड",
+    "description": "मित्र की विस्तृत जानकारी",
+    "launch": "लॉन्च करें",
+    "muteConfirm": "{{name}} को म्यूट करें?",
+    "muted": "यूज़र म्यूट कर दिया",
+    "noActivity": "अभी कोई गतिविधि दर्ज नहीं हुई।",
+    "note": "नोट",
+    "notePlaceholder": "इस मित्र के बारे में एक निजी नोट लिखें...",
+    "noteSaved": "नोट सेव हो गया",
+    "recentActivity": "हाल की गतिविधि",
+    "saveNote": "सेव",
+    "sharedWorlds": "साझा वर्ल्ड",
+    "timesSeen": "{{n}} बार देखा",
+    "vrcProfile": "VRChat प्रोफ़ाइल"
   },
   "osc": {
     "title": "OSC टूल्स",
@@ -190,12 +280,12 @@
     "studio": {
       "title": "OSC Studio",
       "subtitle": "ड्रैग किए जा सकने वाले हार्डवेयर कार्ड, 4 टेम्प्लेट, लाइव प्रीव्यू और नियंत्रित ऑटो-सेंड से OSC बनाएं.",
-      "refreshHardware": "Hardware",
-      "cards": "Cards",
+      "refreshHardware": "हार्डवेयर",
+      "cards": "कार्ड",
       "addScene": "Scene जोड़ें",
-      "exported": "Profile copied",
-      "exportReady": "Profile ready",
-      "imported": "Profile imported",
+      "exported": "प्रोफ़ाइल कॉपी हो गई",
+      "exportReady": "प्रोफ़ाइल तैयार",
+      "imported": "प्रोफ़ाइल इम्पोर्ट हो गई",
       "avatarMissing": "Avatar ID चुनें या दर्ज करें",
       "avatarLoaded": "{{count}} parameters loaded",
       "preview": "Preview और Send",
@@ -203,14 +293,14 @@
       "noPreview": "Output preview करने के लिए कोई card चुनें।",
       "sendSelected": "Selected भेजें",
       "stopAuto": "Auto रोकें",
-      "startAuto": "Auto send",
-      "hardware": "Hardware variables",
-      "profile": "Profile import/export",
-      "variables": "Template variables",
-      "avatarParams": "Avatar parameter scan",
+      "startAuto": "ऑटो भेजें",
+      "hardware": "हार्डवेयर वेरिएबल",
+      "profile": "प्रोफ़ाइल इम्पोर्ट/एक्सपोर्ट",
+      "variables": "टेम्पलेट वेरिएबल",
+      "avatarParams": "अवतार पैरामीटर स्कैन",
       "noAvatarParams": "इस local avatar file में कोई parameter नहीं मिला।",
       "interval": "हर",
-      "type": "Type",
+      "type": "प्रकार",
       "insertVariable": "Variable डालें",
       "autoStarted": "Auto send शुरू हुआ",
       "templatePresets": "टेम्प्लेट",
@@ -243,15 +333,15 @@
       "nextSendIn": "{{seconds}}s में अगला",
       "stopAutoShort": "रोकें",
       "startAutoShort": "ऑटो",
-      "noCardSelected": "Select a card first"
+      "noCardSelected": "पहले एक कार्ड चुनें"
     },
     "sendFailed": "OSC भेजना विफल रहा",
     "page": {
       "subtitle": "VRChat OSC messages बनाएं, भेजे जाने वाले content का सटीक preview देखें, और send/receive loop एक ही जगह देखें।"
     },
     "profile": {
-      "label": "Profile",
-      "cardCount": "{{count}} cards",
+      "label": "प्रोफ़ाइल",
+      "cardCount": "{{count}} कार्ड",
       "new": "नया profile",
       "rename": "Profile का नाम बदलें",
       "delete": "Profile हटाएं",
@@ -260,25 +350,25 @@
       "deleteBody": "\"{{name}}\" और इसके cards हट जाएंगे। यह वापस नहीं होगा।"
     },
     "conn": {
-      "label": "Target",
-      "host": "OSC host",
-      "sendPort": "Send port",
-      "hardware": "Hardware",
+      "label": "लक्ष्य",
+      "host": "OSC होस्ट",
+      "sendPort": "सेंड पोर्ट",
+      "hardware": "हार्डवेयर",
       "hardwareNone": "कोई hardware data नहीं"
     },
     "io": {
-      "button": "Import / Export",
+      "button": "इम्पोर्ट / एक्सपोर्ट",
       "title": "Profile Import / Export",
       "desc": "Export active profile के cards को JSON के रूप में कॉपी करता है। JSON पेस्ट करके import करें ताकि इस profile के cards बदल जाएं।",
-      "export": "Export",
-      "import": "Import",
+      "export": "एक्सपोर्ट",
+      "import": "इम्पोर्ट",
       "loadFile": "फ़ाइल लोड करें",
       "copied": "Profile clipboard पर कॉपी हुआ",
       "exportReady": "Profile कॉपी के लिए तैयार",
       "imported": "Profile import हुआ"
     },
     "list": {
-      "title": "Messages",
+      "title": "संदेश",
       "reset": "डिफ़ॉल्ट पर रीसेट करें",
       "resetTitle": "Messages रीसेट करें?",
       "resetBody": "यह मौजूदा profile के messages को बिल्ट-इन डिफ़ॉल्ट से बदल देगा।",
@@ -288,7 +378,7 @@
       "emptyPreview": "(कोई output नहीं)",
       "send": "भेजें",
       "autoTitle": "तय अंतराल पर अपने-आप भेजें",
-      "autoStart": "Auto",
+      "autoStart": "ऑटो",
       "autoStop": "रोकें",
       "enable": "चालू करें",
       "disable": "बंद करें",
@@ -303,7 +393,7 @@
       "group": "समूह",
       "template": "Chatbox टेक्स्ट",
       "templatePlaceholder": "टेक्स्ट लिखें और {variables} डालें। उदाहरण: CPU {cpu.loadPct} {cpu.tempC}",
-      "address": "OSC address",
+      "address": "OSC पता",
       "type": "प्रकार",
       "value": "मान",
       "previewLabel": "यह भेजा जाएगा",
@@ -321,17 +411,17 @@
       "button": "संदेश जोड़ें",
       "chatbox": "खाली chatbox संदेश",
       "raw": "खाली OSC value संदेश",
-      "presets": "Presets"
+      "presets": "प्रीसेट"
     },
     "loop": {
       "title": "भेजें और पाएं",
       "listening": "सुन रहा है",
       "quickSend": "तुरंत भेजें",
-      "address": "Address",
+      "address": "पता",
       "type": "वैल्यू टाइप",
-      "value": "Value",
+      "value": "मान",
       "send": "भेजें",
-      "listenPort": "Listen port",
+      "listenPort": "लिसन पोर्ट",
       "start": "सुनें",
       "stop": "रोकें",
       "clear": "साफ़ करें",
@@ -341,7 +431,7 @@
       "out": "बाहर"
     },
     "avatar": {
-      "title": "Avatar parameters",
+      "title": "अवतार पैरामीटर",
       "hint": "लोकल Avatar का OSC config पढ़कर उसके parameters को value messages के रूप में जोड़ता है।",
       "missing": "Avatar id डालें या चुनें",
       "loaded": "{{count}} parameters लोड हुए",
@@ -463,7 +553,23 @@
       "social": "सोशल",
       "vrcPlus": "VRC+",
       "worlds": "दुनिया"
-    }
+    },
+    "notOwnedAvatar": "यह अवतार आपका नहीं है — VRChat इसके लिए डाउनलोड नहीं देता।",
+    "avatarHistoryDesc": "पार्स किए गए VRChat लॉग से निकाले गए हाल में पहने अवतार।",
+    "noAvatarHistory": "अभी कोई अवतार इतिहास दर्ज नहीं हुआ।",
+    "avatarDownloads": "अवतार पैकेज डाउनलोड करें",
+    "avatarDownloadsDesc": "अवतार का .vrca एसेट बंडल किसी लोकल फ़ोल्डर में डाउनलोड करें। साइन-इन ज़रूरी है।",
+    "download": "डाउनलोड",
+    "downloadComplete": "{{path}} पर डाउनलोड हो गया",
+    "signInRequired": "अवतार एसेट बंडल डाउनलोड करने के लिए साइन इन करें।",
+    "avatarDetailsFailed": "अवतार का विवरण नहीं मिल सका। यह निजी या डिलीट हो सकता है।",
+    "noAssetUrl": "इस अवतार के लिए कोई डाउनलोड-योग्य एसेट URL नहीं मिला।",
+    "joinFailed": "लॉन्च विफल: {{error}}",
+    "launch": "लॉन्च करें",
+    "launchWorld": "VRChat में लॉन्च करें",
+    "noFavoriteWorlds": "अभी कोई पसंदीदा वर्ल्ड नहीं। इन्हें यहाँ देखने के लिए अपने VRChat फेवरेट्स सिंक करें।",
+    "noRecentWorlds": "VRChat लॉग में कोई हाल की वर्ल्ड नहीं मिली।",
+    "recentWorlds": "हाल की वर्ल्ड"
   },
   "friends": {
     "title": "मित्र",
@@ -487,23 +593,24 @@
       "unknown": "अज्ञात"
     },
     "bucket": {
-      "joinMe": "Join Me",
+      "joinMe": "मुझसे जुड़ें",
       "active": "सक्रिय",
-      "askMe": "Ask Me",
+      "askMe": "मुझसे पूछें",
       "busy": "व्यस्त",
       "offline": "ऑफ़लाइन"
     },
     "trust": {
-      "troll": "Nuisance",
-      "veteran": "Trusted User",
-      "trusted": "Known User",
-      "known": "User",
-      "user": "New User",
-      "new": "Visitor",
-      "visitor": "Visitor"
+      "troll": "उपद्रवी",
+      "veteran": "ट्रस्टेड यूज़र",
+      "trusted": "नोन यूज़र",
+      "known": "यूज़र",
+      "user": "न्यू यूज़र",
+      "new": "विज़िटर",
+      "visitor": "विज़िटर",
+      "label": "ट्रस्ट रैंक"
     },
     "badges": {
-      "moderator": "VRChat Moderator"
+      "moderator": "VRChat मॉडरेटर"
     },
     "fields": {
       "userId": "यूज़र ID",
@@ -528,15 +635,40 @@
       "inviteToMyRoom": "मेरे कमरे में आमंत्रित करें",
       "inviteSent": "{{name}} को आपके कमरे में आमंत्रित किया गया",
       "sendMessage": "संदेश भेजें",
-      "viewProfile": "प्रोफ़ाइल देखें"
+      "viewProfile": "प्रोफ़ाइल देखें",
+      "copied": "{{label}} कॉपी हो गया",
+      "copyAvatarId": "मौजूदा अवतार ID कॉपी करें",
+      "copyDisplayName": "डिस्प्ले नाम कॉपी करें",
+      "copyLocation": "लोकेशन कॉपी करें",
+      "copyUserId": "यूज़र ID कॉपी करें",
+      "copyWorldId": "वर्ल्ड ID कॉपी करें",
+      "expand": "विस्तृत करें",
+      "favorited": "{{name}} को फेवरेट किया",
+      "inviteSelf": "मुझसे इनवाइट का अनुरोध करें",
+      "openProfile": "प्रोफ़ाइल खोलें",
+      "openWorldPage": "वर्ल्ड पेज खोलें",
+      "selfInviteSent": "{{name}} के मौजूदा इंस्टेंस में इनवाइट का अनुरोध भेजा",
+      "unfavorited": "{{name}} को फेवरेट से हटाया"
     },
     "views": {
       "all": "सभी",
-      "favorites": "Favorites",
-      "sameInstance": "Same instance",
-      "joinable": "Joinable",
-      "online": "Online",
-      "offline": "Offline"
+      "favorites": "फेवरेट्स",
+      "sameInstance": "समान इंस्टेंस",
+      "joinable": "जॉइन-योग्य",
+      "online": "ऑनलाइन",
+      "offline": "ऑफ़लाइन"
+    },
+    "joinRoom": "रूम में शामिल हों",
+    "copyLabels": {
+      "avatarId": "अवतार ID",
+      "displayName": "डिस्प्ले नाम",
+      "location": "लोकेशन",
+      "userId": "यूज़र ID",
+      "worldId": "वर्ल्ड ID"
+    },
+    "inspector": {
+      "empty": "किसी मित्र की लोकेशन, अवतार और त्वरित कार्य देखने के लिए उसे चुनें।",
+      "title": "एक नज़र में मित्र"
     }
   },
   "layout": {
@@ -579,7 +711,12 @@
       "total": "आपके ग्रुप्स",
       "online": "ऑनलाइन सदस्य",
       "representing": "प्रतिनिधित्व"
-    }
+    },
+    "nowRepresenting": "{{name}} का प्रतिनिधित्व कर रहे हैं",
+    "represent": "प्रतिनिधित्व करें",
+    "representFailed": "प्रतिनिधित्व अपडेट विफल: {{error}}",
+    "stopRepresenting": "प्रतिनिधित्व बंद करें",
+    "stoppedRepresenting": "{{name}} का प्रतिनिधित्व बंद कर दिया"
   },
   "menu": {
     "file": "फ़ाइल",
@@ -615,7 +752,7 @@
     "goFriends": "दोस्त",
     "goScreenshots": "स्क्रीनशॉट्स",
     "goProfile": "प्रोफ़ाइल",
-    "goVrchat": "VRChat Workspace",
+    "goVrchat": "VRChat वर्कस्पेस",
     "toolsMigrate": "कैश माइग्रेशन",
     "toolsSettings": "सेटिंग्स",
     "toolsSteamVR": "SteamVR सेटिंग्स",
@@ -628,7 +765,24 @@
     "helpCheckUpdates": "अपडेट जांचें",
     "helpCheckUpdatesFallback": "अपडेट जांचें…",
     "helpReportIssue": "समस्या रिपोर्ट करें",
-    "helpKeyboard": "कीबोर्ड शॉर्टकट"
+    "helpKeyboard": "कीबोर्ड शॉर्टकट",
+    "goGroups": "ग्रुप्स",
+    "goWorldHistory": "वर्ल्ड इतिहास",
+    "goCalendar": "कैलेंडर और जैम",
+    "goEvents": "इवेंट रिकॉर्डर",
+    "goSocial": "सोशल एनालिटिक्स",
+    "toolsVrDiagnostics": "VR डायग्नोस्टिक्स",
+    "toolsRules": "ऑटोमेशन नियम",
+    "toolsOsc": "OSC टूल्स",
+    "toolsBenchmark": "अवतार बेंचमार्क",
+    "toolsFbt": "FBT मॉनिटर",
+    "helpSteamVrRepair": "SteamVR / Quest रिपेयर",
+    "helpVrDiagnostics": "VR डायग्नोस्टिक्स",
+    "helpPluginsMarket": "प्लगइन मार्केट",
+    "helpInstalledPlugins": "इंस्टॉल किए गए प्लगइन",
+    "helpVrchatStatus": "VRChat स्थिति",
+    "helpVrchatHome": "VRChat होम",
+    "helpSteamLink": "Steam Link / Quest आधिकारिक नोट्स"
   },
   "update": {
     "title": "VRCSM अपडेट",
@@ -709,14 +863,20 @@
       "sessionsDesc": "स्थानीय लॉग्स से पुनर्निर्मित — सबसे नया पहले।",
       "tab": "ऐतिहासिक विश्लेषण",
       "topPlayers": "सबसे ज्यादा मिले खिलाड़ी",
-      "topWorlds": "सबसे अधिक विज़िट की गई दुनिया"
+      "topWorlds": "सबसे अधिक विज़िट की गई दुनिया",
+      "loginRequired": "सेशन इतिहास के लिए लोकल लॉग स्कैन करने हेतु लॉगिन ज़रूरी है।",
+      "unclosed": "बंद नहीं हुआ"
     },
     "vrcNotRunning": "VRChat नहीं चल रहा है",
     "vrcNotRunningHint": "वास्तविक समय में कमरों और खिलाड़ियों की निगरानी के लिए VRChat शुरू करें",
     "liveRoster": "लाइव इंस्टेंस रोस्टर",
     "recentPlayerEvents": "हाल के खिलाड़ी ईवेंट",
     "noPlayerEvents": "अभी तक कोई खिलाड़ी ईवेंट रिकॉर्ड नहीं किया गया है। VRChat लॉन्च करें और एक वर्ल्ड में शामिल हों।",
-    "rosterTab": "इंस्टेंस रोस्टर"
+    "rosterTab": "इंस्टेंस रोस्टर",
+    "rosterSortAlphabetical": "वर्णमाला क्रम में लगाएं",
+    "wearNotAllowed": "यह अवतार क्लोनिंग की अनुमति नहीं देता।",
+    "wearNotFound": "यह अवतार नहीं मिला। यह निजी हो सकता है।",
+    "wearSuccess": "अब पहना है: {{name}}"
   },
   "common": {
     "enabled": "सक्षम",
@@ -770,7 +930,18 @@
     "partial": "आंशिक",
     "add": "जोड़ें",
     "delete": "हटाएं",
-    "reset": "रीसेट"
+    "reset": "रीसेट",
+    "all": "सभी",
+    "allowed": "अनुमत",
+    "blocked": "ब्लॉक किया गया",
+    "collapse": "समेटें",
+    "deleting": "डिलीट हो रहा है…",
+    "detecting": "पहचाना जा रहा है…",
+    "expand": "विस्तृत करें",
+    "navigate": "नेविगेट करें",
+    "refreshing": "रीफ्रेश हो रहा है",
+    "showAll": "सभी दिखाएं ({{count}})",
+    "unavailable": "अनुपलब्ध"
   },
   "about": {
     "title": "VRCSM के बारे में",
@@ -802,18 +973,31 @@
     "sections": {
       "navigate": "जाएँ",
       "actions": "क्रियाएँ",
-      "logs": "सेशन लॉग्स"
+      "logs": "सेशन लॉग्स",
+      "globalSearch": "ग्लोबल खोज",
+      "plugins": "प्लगइन"
     }
   },
   "dock": {
     "console": "कंसोल",
     "output": "आउटपुट",
     "problems": "समस्याएँ",
-    "clear": "साफ़ करें"
+    "clear": "साफ़ करें",
+    "hideNoiseHint": "VRChat के EOS/Stomp टेलीमेट्री रीट्राई स्पैम को समेटें (यह VRCSM की त्रुटि नहीं है)।",
+    "noiseHidden": "शोर छिपाया ({{count}})",
+    "showAll": "सभी दिखाएं"
   },
   "statusBar": {
     "version": "{{version}}",
-    "cacheTotal": "कैश"
+    "cacheTotal": "कैश",
+    "onlineCount": "{{count}} मित्र ऑनलाइन",
+    "serverStatus": "VRChat सर्वर स्थिति",
+    "serverLevel": {
+      "operational": "सभी सिस्टम सामान्य हैं",
+      "minor": "छोटी बाधा",
+      "major": "बड़ी बाधा",
+      "critical": "गंभीर बाधा"
+    }
   },
   "dashboard": {
     "title": "डैशबोर्ड",
@@ -935,7 +1119,7 @@
     "noteEmpty": "अभी कोई लोकल नोट नहीं है।",
     "noteUpdatedAt": "नोट {{date}}",
     "tagsLabel": "टैग",
-    "tagsPlaceholder": "scenic, sleep, meme, cool",
+    "tagsPlaceholder": "सुंदर, नींद, मीम, कूल",
     "tagsHint": "टैग अलग करने के लिए कॉमा या नई लाइन का उपयोग करें।",
     "emptyTitle": "लाइब्रेरी खाली है",
     "emptyBody": "पहले अवतार और वर्ल्ड को उनकी बेस लिस्ट से सेव करें। यह पेज बाद की सुविधाओं के लिए साझा लोकल शेल्फ बनता है।",
@@ -953,7 +1137,17 @@
     "officialSyncing": "VRChat फेवरेट्स सिंक हो रहे हैं…",
     "officialSyncSuccess": "आधिकारिक फेवरेट्स सिंक हुए: {{count}} (अवतार {{avatars}}, वर्ल्ड {{worlds}})",
     "officialSyncFailed": "VRChat फेवरेट सिंक विफल: {{error}}",
-    "officialLastSync": "VRChat फेवरेट्स सिंक {{date}}"
+    "officialLastSync": "VRChat फेवरेट्स सिंक {{date}}",
+    "filterByType": "प्रकार",
+    "sortLabel": "क्रम",
+    "sort": {
+      "added": "हाल में जोड़े गए",
+      "name": "नाम",
+      "type": "प्रकार"
+    },
+    "officialSyncSuccessGrouped": "{{count}} फेवरेट्स को {{lists}} ग्रुप्स में सिंक किया ({{avatars}} अवतार, {{worlds}} वर्ल्ड)",
+    "favorite": "फेवरेट करें",
+    "unfavorite": "फेवरेट से हटाएं"
   },
   "avatars": {
     "title": "अवतार",
@@ -987,10 +1181,10 @@
       "fit": "फिट",
       "expand": "बड़ा करें",
       "modeTextured": "मूल",
-      "modeClay": "Clay",
-      "modeWireframe": "Wireframe",
+      "modeClay": "क्ले",
+      "modeWireframe": "वायरफ़्रेम",
       "controlsTitle": "Blender-जैसे नियंत्रण",
-      "controlsBody": "LMB rotate · Shift+LMB pan · wheel zoom · RMB pan",
+      "controlsBody": "LMB घुमाएं · Shift+LMB पैन · व्हील ज़ूम · RMB पैन",
       "panning": "Pan मोड",
       "textureNote": "वर्तमान extractor केवल mesh और UV डेटा रखता है; embedded textures अभी GLB में export नहीं होते।",
       "expandedTitle": "विस्तारित अवतार पूर्वावलोकन",
@@ -1017,7 +1211,43 @@
     "nameNote": "अवतार नाम VRChat output log से निकाले जाते हैं। नाम केवल उन्हीं अवतारों पर दिखता है जो इस मशीन पर कम से कम एक बार लोड हुए हों।",
     "previewWorkbench": "इंस्पेक्टर preview जानबूझकर compact रखा गया है, और ऊपर दाईं तरफ expand बटन बड़ा centered viewer खोलता है। वर्तमान extractor अभी textures को GLB में embed नहीं करता, इसलिए Original mode में केवल raw exported material state ही दिख सकती है। wheel से zoom करें, Shift+drag से pan करें, और right drag भी pan करता है।",
     "unityPackages": "{{count}} प्लैटफ़ॉर्म वर्ज़न",
-    "hiddenCount": "+{{count}} और। फ़िल्टर करने के लिए खोजें।"
+    "hiddenCount": "+{{count}} और। फ़िल्टर करने के लिए खोजें।",
+    "encounterLog": "देखा गया",
+    "logOnly": "केवल लॉग",
+    "wornBy": "पहनने वाला",
+    "seenTimes": "{{count}} बार देखा गया",
+    "wearerCount": "{{count}} पहनने वाले",
+    "encounterSummary": "{{wearer}} पर देखा गया · {{count}} लॉग इवेंट",
+    "encounterLogNote": "यह पंक्ति लोकल VRChat लॉग से अनुक्रमित है। लॉग में अवतार का नाम और पहनने वाला दिखता है, पर avtr_* या आधिकारिक थंबनेल URL नहीं। VRCSM पहले सत्यापित पब्लिक अवतार मैच आज़माता है; विफल होने पर यह पहनने वाले की मौजूदा अवतार इमेज संदर्भ के रूप में दिखा सकता है, जो उस समय देखे गए अवतार से भिन्न हो सकती है।",
+    "filterSeen": "देखा गया",
+    "filterLocal": "लोकल",
+    "thumbnailResolved": "थंबनेल मिल गया",
+    "thumbnailResolving": "थंबनेल खोजा जा रहा है…",
+    "thumbnailMiss": "कोई सत्यापित थंबनेल मैच नहीं",
+    "referenceImageLoading": "पहनने वाले की मौजूदा अवतार इमेज जाँची जा रही है…",
+    "referenceImageBadge": "संदर्भ",
+    "referenceImageBadgeShort": "संदर्भ",
+    "profileFallbackKnownUser": "पहनने वाले का प्रोफ़ाइल",
+    "profileFallbackNameMatch": "नाम मैच",
+    "profileFallbackAmbiguous": "नाम अनुमान",
+    "profileFallbackNote": "कोई विश्वसनीय थंबनेल नहीं मिला, इसलिए VRCSM {{name}} के संदर्भ के रूप में पहनने वाले की मौजूदा प्रोफ़ाइल इमेज दिखा रहा है।",
+    "profileFallbackUnavailable": "पहनने वाले का प्रोफ़ाइल लोड नहीं हो सका। यूज़र अस्पष्ट या अनुपलब्ध हो सकता है, या VRChat API ने उसे नहीं लौटाया।",
+    "localNameWas": "कैश में: {{name}}",
+    "renamedHint": "नाम बदला गया",
+    "noThumbnail": "कोई थंबनेल नहीं",
+    "seenThumbnailHow": "देखे-गए अवतार के थंबनेल तब दिखते हैं जब लॉग में असली avtr_* id हो, पब्लिक खोज में सटीक नाम/लेखक मैच मिले, या पहनने वाले की मौजूदा पब्लिक अवतार इमेज उपलब्ध हो। संदर्भ चिह्नित आइटम मौजूदा पहनने वाले की इमेज हैं और वह ठीक उसी समय देखा अवतार नहीं भी हो सकता।",
+    "referenceImageHint": "पहनने वाले की मौजूदा अवतार/प्रोफ़ाइल तस्वीर — यह सत्यापित ऐतिहासिक मैच नहीं है।",
+    "referenceImageVerifiedHint": "पहनने वाले का मौजूदा अवतार लॉग किए नाम से मेल खाता है।",
+    "search": {
+      "go": "खोजें",
+      "noResults": "कोई परिणाम नहीं मिला",
+      "placeholder": "अवतार के नाम से खोजें…",
+      "searching": "खोजा जा रहा है…",
+      "title": "पब्लिक अवतार खोजें"
+    },
+    "unavailable": "अवतार अनुपलब्ध।",
+    "wearerCurrentReference": "पहनने वाले का मौजूदा संदर्भ",
+    "wearerReferenceNote": "अज्ञात"
   },
   "worlds": {
     "title": "वर्ल्ड",
@@ -1044,9 +1274,9 @@
     "launchFailed": "लॉन्च विफल: {{error}}",
     "joinHistory": "जॉइन इतिहास",
     "accessPublic": "पब्लिक",
-    "accessFriends": "Friends",
+    "accessFriends": "मित्र",
     "accessHidden": "Friends+",
-    "accessPrivate": "Invite Only",
+    "accessPrivate": "केवल इनवाइट",
     "accessGroup": "ग्रुप",
     "ownerLabel": "मालिक:",
     "playersSeen": "कमरे में खिलाड़ी",
@@ -1055,7 +1285,8 @@
     "removeFromLibrary": "लाइब्रेरी से हटाएँ",
     "saveToLibrary": "लाइब्रेरी में सहेजें",
     "unknownTime": "समय अज्ञात",
-    "searchFailed": "खोज विफल रही"
+    "searchFailed": "खोज विफल रही",
+    "unavailable": "वर्ल्ड अनुपलब्ध।"
   },
   "logs": {
     "title": "लॉग",
@@ -1141,11 +1372,11 @@
     "free": "खाली",
     "resetPreflight": "रीसेट",
     "phase": {
-      "preflight": "Preflight",
+      "preflight": "प्रीफ़्लाइट",
       "copy": "कॉपी हो रहा है",
       "verify": "सत्यापन",
       "remove": "हटाना",
-      "junction": "Junction",
+      "junction": "जंक्शन",
       "done": "पूर्ण",
       "error": "त्रुटि"
     },
@@ -1163,7 +1394,9 @@
     "junctionStateDesc": "स्रोत पाथ पहले से NTFS junction है। यदि लक्ष्य गायब है या टूटा है, तो आप इसे रिपेयर कर सकते हैं।",
     "pointsTo": "इशारा करता है",
     "repairSuccess": "Junction सफलतापूर्वक रिपेयर हो गई",
-    "repairFailed": "रिपेयर विफल: {{error}}"
+    "repairFailed": "रिपेयर विफल: {{error}}",
+    "alreadyMigrated": "पहले ही {{target}} पर माइग्रेट हो चुका",
+    "junction": "जंक्शन"
   },
   "updates": {
     "availableTitle": "अपडेट उपलब्ध है",
@@ -1215,7 +1448,8 @@
       "loading": "नोट लोड हो रहा है…",
       "placeholder": "इस खिलाड़ी के लिए निजी नोट जोड़ें…",
       "saved": "नोट सेव हो गया",
-      "saveFailed": "नोट सेव विफल: {{error}}"
+      "saveFailed": "नोट सेव विफल: {{error}}",
+      "loadFailed": "नोट लोड नहीं हो सका।"
     },
     "relative": {
       "now": "अभी अभी",
@@ -1229,7 +1463,9 @@
     "clearHistorySuccess": "हिस्ट्री मिटा दी गई। दोस्तों के नोट्स सुरक्षित रखे गए।",
     "clearHistoryFailed": "हिस्ट्री मिटाने में विफल: {{error}}",
     "clearHistory": "हिस्ट्री मिटाएं",
-    "clearHistoryConfirm": "संग्रहीत सेशन हिस्ट्री और सामाजिक बदलाव की हिस्ट्री मिटाएं? दोस्तों के नोट्स सुरक्षित रहेंगे।"
+    "clearHistoryConfirm": "संग्रहीत सेशन हिस्ट्री और सामाजिक बदलाव की हिस्ट्री मिटाएं? दोस्तों के नोट्स सुरक्षित रहेंगे।",
+    "loginRequired": "मित्र गतिविधि इतिहास देखने के लिए Settings पेज से VRChat में लॉग इन करें।",
+    "perPage": "प्रति पेज आइटम"
   },
   "settings": {
     "title": "सेटिंग्स",
@@ -1310,7 +1546,7 @@
     "social": {
       "sectionTitle": "सामाजिक और ट्रैकिंग",
       "sectionDesc": "मित्र सूची के लिए live tracker और background polling कॉन्फ़िगर करें।",
-      "liveRefreshLabel": "Live Friends Tracker",
+      "liveRefreshLabel": "लाइव मित्र ट्रैकर",
       "liveRefreshHint": "पृष्ठभूमि में VRChat servers से अपने-आप पूछताछ करें ताकि पता चले कि मित्र कब ऑनलाइन आए या instance बदला।",
       "refreshIntervalLabel": "Polling Interval (सेकंड)",
       "refreshIntervalHint": "background tracker कितनी बार डेटा refresh करता है। कम मान तेज़ अपडेट देते हैं लेकिन VRChat API rate limits (429) को ट्रिगर कर सकते हैं।"
@@ -1360,11 +1596,11 @@
         "bool": "bool",
         "raw": "raw"
       },
-      "inspectorTitle": "Registry inspector",
+      "inspectorTitle": "रजिस्ट्री इंस्पेक्टर",
       "inspectorHint": "किसी कुंजी को चुनकर उसका registry encoding देखें।",
-      "encodedKey": "Encoded value name",
-      "rawType": "Registry type",
-      "rawBytes": "Raw bytes",
+      "encodedKey": "एन्कोडेड वैल्यू नाम",
+      "rawType": "रजिस्ट्री प्रकार",
+      "rawBytes": "रॉ बाइट्स",
       "tabs": {
         "all": "सभी"
       },
@@ -1373,6 +1609,1799 @@
         "next": "अगला",
         "page": "पेज {{page}} / {{total}}",
         "range": "{{from}}–{{to}} / {{total}}"
+      },
+      "keys": {
+        "AUDIO_GAME_AVATARS_ENABLED": {
+          "description": "अवतार ऑडियो म्यूट टॉगल"
+        },
+        "AUDIO_GAME_AVATARS_STEAMAUDIO": {
+          "description": "अवतार ऑडियो वॉल्यूम"
+        },
+        "AUDIO_GAME_PROPS_ENABLED": {
+          "description": "प्रॉप ऑडियो म्यूट टॉगल"
+        },
+        "AUDIO_GAME_PROPS_STEAMAUDIO": {
+          "description": "प्रॉप ऑडियो वॉल्यूम"
+        },
+        "AUDIO_GAME_SFX_ENABLED": {
+          "description": "वर्ल्ड SFX म्यूट टॉगल"
+        },
+        "AUDIO_GAME_SFX_STEAMAUDIO": {
+          "description": "वर्ल्ड SFX वॉल्यूम"
+        },
+        "AUDIO_GAME_VOICE_ENABLED": {
+          "description": "वॉइस चैट म्यूट टॉगल"
+        },
+        "AUDIO_GAME_VOICE_STEAMAUDIO": {
+          "description": "वॉइस चैट वॉल्यूम"
+        },
+        "AUDIO_MASTER_ENABLED": {
+          "description": "मास्टर ऑडियो म्यूट टॉगल"
+        },
+        "AUDIO_MASTER_STEAMAUDIO": {
+          "description": "मास्टर आउटपुट वॉल्यूम"
+        },
+        "AUDIO_UI_ENABLED": {
+          "description": "UI ध्वनि म्यूट टॉगल"
+        },
+        "AUDIO_UI_STEAMAUDIO": {
+          "description": "UI ध्वनि वॉल्यूम"
+        },
+        "VRC_ANDROID_MIC_MODE": {
+          "description": "Android माइक्रोफ़ोन मोड"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_ENABLED": {
+          "description": "चैट बबल ऑडियो सक्षम करें"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_VOLUME": {
+          "description": "चैट बबल ऑडियो वॉल्यूम"
+        },
+        "VRC_EARMUFF_MODE": {
+          "description": "ईयरमफ़ मोड"
+        },
+        "VRC_EARMUFF_MODE_AVATARS": {
+          "description": "ईयरमफ़ मोड अवतार"
+        },
+        "VRC_EARMUFF_MODE_CONE_VALUE": {
+          "description": "ईयरमफ़ मोड कोन मान"
+        },
+        "VRC_EARMUFF_MODE_FALLOFF": {
+          "description": "ईयरमफ़ मोड फ़ॉलऑफ़"
+        },
+        "VRC_EARMUFF_MODE_FOLLOW_HEAD": {
+          "description": "ईयरमफ़ मोड सिर का अनुसरण"
+        },
+        "VRC_EARMUFF_MODE_LOCK_ROTATION": {
+          "description": "ईयरमफ़ मोड घुमाव लॉक"
+        },
+        "VRC_EARMUFF_MODE_OFFSET_VALUE": {
+          "description": "ईयरमफ़ मोड ऑफ़सेट"
+        },
+        "VRC_EARMUFF_MODE_RADIUS": {
+          "description": "ईयरमफ़ मोड त्रिज्या"
+        },
+        "VRC_EARMUFF_MODE_REDUCED_VOLUME": {
+          "description": "ईयरमफ़ घटा हुआ वॉल्यूम"
+        },
+        "VRC_EARMUFF_MODE_SHOW_ICON_IN_NAMEPLATE": {
+          "description": "नेमप्लेट पर ईयरमफ़ आइकन दिखाएं"
+        },
+        "VRC_EARMUFF_MODE_VISUAL_AIDE": {
+          "description": "ईयरमफ़ विज़ुअल सहायक"
+        },
+        "VRC_HUD_MIC_OPACITY": {
+          "description": "माइक्रोफ़ोन HUD अपारदर्शिता"
+        },
+        "VRC_INPUT_DISABLE_MIC_BUTTON": {
+          "description": "इन-गेम माइक्रोफ़ोन बटन अक्षम करें"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_Desktop": {
+          "description": "डेस्कटॉप माइक्रोफ़ोन डिवाइस नाम"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_VR": {
+          "description": "VR माइक्रोफ़ोन डिवाइस नाम"
+        },
+        "VRC_INPUT_MIC_ENABLED": {
+          "description": "माइक्रोफ़ोन मास्टर टॉगल"
+        },
+        "VRC_INPUT_MIC_LEVEL_DESK": {
+          "description": "डेस्कटॉप माइक्रोफ़ोन इनपुट गेन"
+        },
+        "VRC_INPUT_MIC_LEVEL_VR": {
+          "description": "VR माइक्रोफ़ोन इनपुट स्तर"
+        },
+        "VRC_INPUT_MIC_MODE": {
+          "description": "माइक्रोफ़ोन इनपुट मोड"
+        },
+        "VRC_INPUT_MIC_NOISE_GATE": {
+          "description": "माइक्रोफ़ोन नॉइज़ गेट थ्रेशोल्ड"
+        },
+        "VRC_INPUT_MIC_NOISE_SUPPRESSION": {
+          "description": "माइक्रोफ़ोन नॉइज़ सप्रेशन"
+        },
+        "VRC_INPUT_MIC_ON_JOIN": {
+          "description": "जॉइन पर माइक्रोफ़ोन सक्षम करें"
+        },
+        "VRC_INPUT_TALK_DEFAULT_ON": {
+          "description": "सेशन में प्रवेश करते समय डिफ़ॉल्ट माइक्रोफ़ोन"
+        },
+        "VRC_INPUT_TALK_TOGGLE": {
+          "description": "पुश-टू-टॉक या टॉगल-टू-टॉक"
+        },
+        "VRC_MIC_ICON_VISIBILITY": {
+          "description": "माइक्रोफ़ोन आइकन दृश्यता"
+        },
+        "VRC_MIC_TOGGLE_VOLUME": {
+          "description": "माइक्रोफ़ोन टॉगल वॉल्यूम"
+        },
+        "VRC_USE_OUTLINE_MIC_ICON": {
+          "description": "आउटलाइन माइक्रोफ़ोन आइकन"
+        },
+        "COLOR_PALETTES_CURRENT_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "मौजूदा यूज़र रंग पैलेट"
+        },
+        "FIELD_OF_VIEW": {
+          "description": "डेस्कटॉप FOV सेटिंग"
+        },
+        "FPSCapType": {
+          "description": "FPS कैप मोड"
+        },
+        "FPSType": {
+          "description": "FPS डिस्प्ले मोड"
+        },
+        "FPS_LIMIT": {
+          "description": "कस्टम FPS सीमा"
+        },
+        "FaceMirrorOwner": {
+          "description": "फ़ेस मिरर स्वामी"
+        },
+        "LOD_QUALITY": {
+          "description": "लेवल-ऑफ़-डिटेल गुणवत्ता प्रीसेट"
+        },
+        "PARTICLE_PHYSICS_QUALITY": {
+          "description": "पार्टिकल फ़िज़िक्स गुणवत्ता प्रीसेट"
+        },
+        "PIXEL_LIGHT_COUNT": {
+          "description": "अधिकतम रीयलटाइम पिक्सल लाइट संख्या"
+        },
+        "PersonalMirror.FaceMirrorOpacity": {
+          "description": "VR फ़ेस मिरर अपारदर्शिता"
+        },
+        "PersonalMirror.FaceMirrorOpacityDesktop": {
+          "description": "डेस्कटॉप फ़ेस मिरर अपारदर्शिता"
+        },
+        "PersonalMirror.FaceMirrorPosX": {
+          "description": "VR फ़ेस मिरर X ऑफ़सेट"
+        },
+        "PersonalMirror.FaceMirrorPosXDesktop": {
+          "description": "डेस्कटॉप फ़ेस मिरर X ऑफ़सेट"
+        },
+        "PersonalMirror.FaceMirrorPosY": {
+          "description": "VR फ़ेस मिरर Y ऑफ़सेट"
+        },
+        "PersonalMirror.FaceMirrorPosYDesktop": {
+          "description": "डेस्कटॉप फ़ेस मिरर Y ऑफ़सेट"
+        },
+        "PersonalMirror.FaceMirrorScale": {
+          "description": "VR फ़ेस मिरर स्केल"
+        },
+        "PersonalMirror.FaceMirrorScaleDesktop": {
+          "description": "डेस्कटॉप फ़ेस मिरर स्केल"
+        },
+        "PersonalMirror.FaceMirrorSpoutEnabled": {
+          "description": "पर्सनल फ़ेस मिरर स्ट्रीम सक्षम करें"
+        },
+        "PersonalMirror.FaceMirrorZoom": {
+          "description": "VR फ़ेस मिरर ज़ूम"
+        },
+        "PersonalMirror.FaceMirrorZoomDesktop": {
+          "description": "डेस्कटॉप फ़ेस मिरर ज़ूम"
+        },
+        "PersonalMirror.Grabbable": {
+          "description": "मिरर पकड़ने योग्य"
+        },
+        "PersonalMirror.ImmersiveMove": {
+          "description": "मिरर इमर्सिव मूव मोड"
+        },
+        "PersonalMirror.MirrorOpacity": {
+          "description": "पर्सनल मिरर अपारदर्शिता"
+        },
+        "PersonalMirror.MirrorScaleX": {
+          "description": "पर्सनल मिरर X स्केल"
+        },
+        "PersonalMirror.MirrorScaleY": {
+          "description": "पर्सनल मिरर Y स्केल"
+        },
+        "PersonalMirror.MirrorSnapping": {
+          "description": "मिरर स्नैपिंग व्यवहार"
+        },
+        "PersonalMirror.MovementMode": {
+          "description": "पर्सनल मिरर मूवमेंट मोड"
+        },
+        "PersonalMirror.ShowBorder": {
+          "description": "पर्सनल मिरर बॉर्डर दिखाएं"
+        },
+        "PersonalMirror.ShowCalibrationMirror": {
+          "description": "कैलिब्रेशन मिरर दिखाएं"
+        },
+        "PersonalMirror.ShowEnvironmentInMirror": {
+          "description": "मिरर में वातावरण दिखाएं"
+        },
+        "PersonalMirror.ShowFaceMirror": {
+          "description": "VR में पर्सनल फ़ेस मिरर दिखाएं"
+        },
+        "PersonalMirror.ShowFaceMirrorDesktop": {
+          "description": "डेस्कटॉप पर पर्सनल फ़ेस मिरर दिखाएं"
+        },
+        "PersonalMirror.ShowRemotePlayerInMirror": {
+          "description": "मिरर में रिमोट खिलाड़ी दिखाएं"
+        },
+        "PersonalMirror.ShowUIInMirror": {
+          "description": "मिरर में UI दिखाएं"
+        },
+        "SHADOW_QUALITY": {
+          "description": "छाया गुणवत्ता प्रीसेट"
+        },
+        "USER_CAMERA_RESOLUTION": {
+          "description": "यूज़र कैमरा रिज़ॉल्यूशन"
+        },
+        "USER_CAMERA_ROLL_WHILE_FLYING": {
+          "description": "उड़ते समय कैमरा रोल"
+        },
+        "USER_CAMERA_SAVE_METADATA": {
+          "description": "कैमरा मेटाडेटा सेव करें"
+        },
+        "USER_CAMERA_STREAM_RESOLUTION": {
+          "description": "कैमरा स्ट्रीम रिज़ॉल्यूशन"
+        },
+        "USER_CAMERA_TRIGGER_TAKES_PHOTOS": {
+          "description": "ट्रिगर फ़ोटो लेता है"
+        },
+        "UnityGraphicsQuality": {
+          "description": "प्रीसेट ग्राफ़िक्स गुणवत्ता"
+        },
+        "UnitySelectMonitor": {
+          "description": "Unity चयनित मॉनिटर"
+        },
+        "VRC_ADVANCED_GRAPHICS_ANTIALIASING": {
+          "description": "एंटी-एलियासिंग सैंपल संख्या"
+        },
+        "VRC_ADVANCED_GRAPHICS_QUALITY": {
+          "description": "उन्नत ग्राफ़िक्स गुणवत्ता प्रीसेट"
+        },
+        "VRC_BLOOM_INTENSITY": {
+          "description": "ब्लूम तीव्रता ओवरराइड"
+        },
+        "VRC_CAMERA_NEAR_CLIP_OVERRIDE_MODE": {
+          "description": "कैमरा नियर क्लिप ओवरराइड मोड"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW": {
+          "description": "कैमरा थर्ड-पर्सन व्यू"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW_DISTANCE": {
+          "description": "थर्ड-पर्सन व्यू दूरी"
+        },
+        "VRC_COLOR_BLINDNESS_SIMULATE": {
+          "description": "वर्णांधता प्रोफ़ाइल का सिमुलेशन"
+        },
+        "VRC_DEFAULT_DRONE_SKIN_PALETTE": {
+          "description": "डिफ़ॉल्ट ड्रोन स्किन पैलेट"
+        },
+        "VRC_LANDSCAPE_FOV": {
+          "description": "मोबाइल लैंडस्केप FOV"
+        },
+        "VRC_MIRROR_RESOLUTION": {
+          "description": "मिरर रिज़ॉल्यूशन"
+        },
+        "VRC_PORTRAIT_FOV": {
+          "description": "मोबाइल पोर्ट्रेट FOV"
+        },
+        "VRC_RANDOMIZE_DRONE": {
+          "description": "ड्रोन रैंडमाइज़ करें"
+        },
+        "VRC_RANDOMIZE_LOADING_SCREEN": {
+          "description": "लोडिंग स्क्रीन रैंडमाइज़ करें"
+        },
+        "VRC_RANDOMIZE_WARP_EFFECT": {
+          "description": "वार्प इफेक्ट रैंडमाइज़ करें"
+        },
+        "VRC_SCREEN_BRIGHTNESS": {
+          "description": "स्क्रीन चमक समायोजन"
+        },
+        "VRC_SCREEN_CONTRAST": {
+          "description": "स्क्रीन कंट्रास्ट समायोजन"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING_AUTO_QUALITY": {
+          "description": "सेल्फ़ी फ़ेस-ट्रैकिंग ऑटो गुणवत्ता"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_QUALITY_LEVEL": {
+          "description": "सेल्फ़ी फ़ेस-ट्रैकिंग गुणवत्ता"
+        },
+        "BestRegionCache": {
+          "description": "सबसे अच्छा क्षेत्र चयन कैश करें"
+        },
+        "LocationContext": {
+          "description": "लोकेशन कॉन्टेक्स्ट"
+        },
+        "LocationContext_World": {
+          "description": "लोकेशन कॉन्टेक्स्ट वर्ल्ड"
+        },
+        "VRC_ASK_TO_PORTAL": {
+          "description": "पोर्टल में प्रवेश से पहले पूछें"
+        },
+        "VRC_COMFORT_MODE_PRE_HOLOPORT": {
+          "description": "होलोपोर्ट से पहले कम्फ़र्ट मोड"
+        },
+        "VRC_HOME_REGION": {
+          "description": "होम वर्ल्ड क्षेत्र"
+        },
+        "VRC_ONLY_SHOW_FRIEND_JOIN_LEAVE_PORTAL_NOTIFICATIONS": {
+          "description": "केवल मित्रों के जॉइन/लीव पोर्टल नोटिफ़िकेशन"
+        },
+        "VRC_PORTAL_MODE_V2": {
+          "description": "पोर्टल मोड v2"
+        },
+        "VRC_RANDOMIZE_PORTAL": {
+          "description": "पोर्टल रैंडमाइज़ करें"
+        },
+        "VRC_SELECTED_NETWORK_REGION": {
+          "description": "पसंदीदा Photon क्षेत्र"
+        },
+        "VRC_SHOW_PORTAL_NOTIFICATIONS": {
+          "description": "पोर्टल नोटिफ़िकेशन दिखाएं"
+        },
+        "AVATAR_WORN_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "यूज़र द्वारा पहने अवतार का इतिहास"
+        },
+        "SortSelection_UGCAvatars": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "VRC_ALLOW_AVATAR_COPYING": {
+          "description": "अवतार कॉपी करने की अनुमति दें"
+        },
+        "VRC_AVATAR_FALLBACK_HIDDEN": {
+          "description": "फ़ॉलबैक अवतार छिपाएं"
+        },
+        "VRC_AVATAR_HAPTICS_ENABLED": {
+          "description": "अवतार डिस्प्ले डाउनलोड सेटिंग"
+        },
+        "VRC_AVATAR_MAXIMUM_DOWNLOAD_SIZE": {
+          "description": "अवतार अधिकतम कंप्रेस्ड डाउनलोड आकार"
+        },
+        "VRC_AVATAR_MAXIMUM_UNCOMPRESSED_SIZE": {
+          "description": "अवतार अधिकतम अनकंप्रेस्ड आकार"
+        },
+        "VRC_AVATAR_PERFORMANCE_RATING_MINIMUM_TO_DISPLAY": {
+          "description": "दिखाने के लिए न्यूनतम अवतार परफ़ॉर्मेंस रेटिंग"
+        },
+        "VRC_AV_INTERACT_LEVEL": {
+          "description": "अवतार इंटरैक्शन स्तर"
+        },
+        "VRC_AV_INTERACT_SELF": {
+          "description": "अपने अवतार का इंटरैक्शन"
+        },
+        "VRC_DISABLE_AVATAR_CLONING_ON_ENTER_WORLD": {
+          "description": "वर्ल्ड में प्रवेश पर अवतार क्लोनिंग अक्षम करें"
+        },
+        "VRC_FINGERTRACKING_AVATARS_USE": {
+          "description": "फ़िंगर ट्रैकिंग अवतार उपयोग"
+        },
+        "VRC_GESTURE_BAR_ENABLED": {
+          "description": "जेस्चर बार सक्षम करें"
+        },
+        "VRC_IK_AVATAR_MEASUREMENT_TYPE": {
+          "description": "IK अवतार मापन प्रकार"
+        },
+        "VRC_IK_PER_AVATAR_CALIBRATION_ADJUSTMENT": {
+          "description": "प्रति-अवतार कैलिब्रेशन समायोजन"
+        },
+        "VRC_IMPOSTOR_WHEN_AVAILABLE": {
+          "description": "उपलब्ध होने पर इम्पोस्टर उपयोग करें"
+        },
+        "VRC_INPUT_SELECTED_SAFETY_RANK": {
+          "description": "इनपुट सेफ़्टी रैंक"
+        },
+        "VRC_PLAYER_GESTURE_TOGGLE": {
+          "description": "प्लेयर जेस्चर टॉगल"
+        },
+        "VRC_SAFETY_LEVEL": {
+          "description": "ग्लोबल अवतार सेफ़्टी प्रीसेट"
+        },
+        "VRC_SHOW_SOCIAL_RANK": {
+          "description": "सोशल रैंक दिखाएं"
+        },
+        "Wing_Right_Avatars_Category": {
+          "description": "Wing UI चयन स्थिति"
+        },
+        "Wing_Right_Avatars_SortBy": {
+          "description": "Wing UI चयन स्थिति"
+        },
+        "avatarProxyAlwaysShowExplicit": {
+          "description": "अवतार डिस्प्ले डाउनलोड सेटिंग"
+        },
+        "avatarProxyAlwaysShowFriends": {
+          "description": "अवतार डिस्प्ले डाउनलोड सेटिंग"
+        },
+        "avatarProxyShowAtRange": {
+          "description": "अवतार डिस्प्ले डाउनलोड सेटिंग"
+        },
+        "avatarProxyShowAtRangeToggle": {
+          "description": "अवतार डिस्प्ले डाउनलोड सेटिंग"
+        },
+        "avatarProxyShowMaxNumber": {
+          "description": "अवतार डिस्प्ले डाउनलोड सेटिंग"
+        },
+        "currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "दिखाए जाने वाले अवतारों की अधिकतम संख्या सक्षम करें"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRange": {
+          "description": "यूज़र प्रॉक्सी अवतार शो-एट-रेंज"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRangeToggle": {
+          "description": "यूज़र प्रॉक्सी अवतार रेंज टॉगल"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowMaxNumber": {
+          "description": "यूज़र प्रॉक्सी अवतार अधिकतम संख्या"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "यूज़र अवतार संख्या सीमा टॉगल"
+        },
+        "VRC_ACTION_MENU_FLICK_SELECT": {
+          "description": "एक्शन मेनू फ़्लिक सेलेक्ट"
+        },
+        "VRC_ACTION_MENU_ONE_HAND_MOVE": {
+          "description": "एक्शन मेनू एक-हाथ मूव"
+        },
+        "VRC_DOUBLE_TAP_MAIN_MENU_STEAMVR2": {
+          "description": "डबल-टैप मुख्य मेनू SteamVR2"
+        },
+        "VRC_FINGER_GRAB_SETTING": {
+          "description": "फ़िंगर ग्रैब सेटिंग"
+        },
+        "VRC_FINGER_HAPTIC_SENSITIVITY": {
+          "description": "फ़िंगर हैप्टिक संवेदनशीलता"
+        },
+        "VRC_FINGER_HAPTIC_STRENGTH": {
+          "description": "फ़िंगर हैप्टिक तीव्रता"
+        },
+        "VRC_FINGER_JUMP_ENABLED": {
+          "description": "फ़िंगर जंप सक्षम करें"
+        },
+        "VRC_FINGER_WALK_SETTING": {
+          "description": "फ़िंगर वॉक सेटिंग"
+        },
+        "VRC_HANDS_MENU_OPEN_MODE": {
+          "description": "हैंड्स मेनू ओपन मोड"
+        },
+        "VRC_INPUT_DAYDREAM": {
+          "description": "Daydream इनपुट"
+        },
+        "VRC_INPUT_EMBODIED": {
+          "description": "Embodied इनपुट"
+        },
+        "VRC_INPUT_GAZE": {
+          "description": "गेज़ इनपुट"
+        },
+        "VRC_INPUT_GENERIC": {
+          "description": "जेनेरिक इनपुट"
+        },
+        "VRC_INPUT_HPMOTION": {
+          "description": "HPMotion इनपुट"
+        },
+        "VRC_INPUT_MOBILE_INTERACTION_MODE": {
+          "description": "मोबाइल इंटरैक्शन मोड"
+        },
+        "VRC_INPUT_OPENXR": {
+          "description": "OpenXR इनपुट"
+        },
+        "VRC_INPUT_PERSONAL_SPACE": {
+          "description": "इनपुट पर्सनल स्पेस"
+        },
+        "VRC_INPUT_QUEST_HANDS": {
+          "description": "Quest हैंड इनपुट"
+        },
+        "VRC_INPUT_SHOW_TOOLTIPS": {
+          "description": "इनपुट टूलटिप दिखाएं"
+        },
+        "VRC_INPUT_STEAMVR2": {
+          "description": "SteamVR2 इनपुट"
+        },
+        "VRC_INPUT_THIRD_PERSON_ROTATION": {
+          "description": "इनपुट थर्ड-पर्सन घुमाव"
+        },
+        "VRC_INPUT_TOUCH": {
+          "description": "टच इनपुट"
+        },
+        "VRC_INPUT_VALVE_INDEX": {
+          "description": "Valve Index इनपुट"
+        },
+        "VRC_INPUT_VIVE": {
+          "description": "Vive इनपुट"
+        },
+        "VRC_INPUT_VIVE_ADVANCED": {
+          "description": "Vive उन्नत इनपुट"
+        },
+        "VRC_INPUT_WAVE": {
+          "description": "Wave इनपुट"
+        },
+        "VRC_INTERACT_HAPTICS_ENABLED": {
+          "description": "इंटरैक्शन हैप्टिक्स सक्षम करें"
+        },
+        "VRC_INVERTED_MOUSE": {
+          "description": "उल्टा माउस"
+        },
+        "VRC_INVERT_CONTROLLER_VERTICAL_LOOK": {
+          "description": "कंट्रोलर वर्टिकल लुक उल्टा करें"
+        },
+        "VRC_IS_BOOPING_ENABLED": {
+          "description": "बूप सक्षम करें"
+        },
+        "VRC_MOBILE_QUICK_SELECT_ENABLED": {
+          "description": "मोबाइल क्विक सेलेक्ट सक्षम करें"
+        },
+        "VRC_MOUSE_SENSITIVITY": {
+          "description": "माउस संवेदनशीलता"
+        },
+        "VRC_SHOW_FRIEND_REQUESTS": {
+          "description": "मित्र अनुरोध नोटिफ़िकेशन दिखाएं"
+        },
+        "VRC_TOUCH_AUTO_ROTATE_SPEED": {
+          "description": "टच ऑटो-टर्न गति"
+        },
+        "VRC_TOUCH_SENSITIVITY": {
+          "description": "टच संवेदनशीलता"
+        },
+        "VRC_UI_HAPTICS_ENABLED": {
+          "description": "UI हैप्टिक्स सक्षम करें"
+        },
+        "VRC_USE_GENERIC_INSTANCE_NAMES": {
+          "description": "जेनेरिक इंस्टेंस नाम उपयोग करें"
+        },
+        "VRC_WEBCAM_DEVICE_NAME": {
+          "description": "वेबकैम डिवाइस नाम"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneControllerSettings": {
+          "description": "यूज़र ड्रोन कंट्रोलर सेटिंग्स"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneFlightPresetValues": {
+          "description": "यूज़र ड्रोन फ़्लाइट प्रीसेट"
+        },
+        "UI.Settings.Osc": {
+          "description": "OSC सेटिंग्स स्थिति"
+        },
+        "VRC_INPUT_OSC": {
+          "description": "OSC इनपुट/आउटपुट सक्षम करें"
+        },
+        "PREF_HAND_TRACKING_TUTORIAL_COMPLETED": {
+          "description": "हैंड ट्रैकिंग ट्यूटोरियल पूरा हुआ"
+        },
+        "PlayerHeight": {
+          "description": "प्लेयर की ऊँचाई"
+        },
+        "SeatedPlayEnabled": {
+          "description": "बैठकर खेलना सक्षम करें"
+        },
+        "VRC_COMFORT_MODE": {
+          "description": "कम्फ़र्ट मोड"
+        },
+        "VRC_FINGERTRACKING_SHOW_PINCHUI": {
+          "description": "फ़िंगर ट्रैकिंग पिंच UI दिखाएं"
+        },
+        "VRC_FINGERTRACKING_USE_EXCLUSIVE": {
+          "description": "फ़िंगर ट्रैकिंग एक्सक्लूसिव मोड"
+        },
+        "VRC_FINGERTRACKING_USE_GHOSTHAND": {
+          "description": "फ़िंगर ट्रैकिंग घोस्ट हैंड"
+        },
+        "VRC_IK_CALIBRATION_RANGE": {
+          "description": "IK कैलिब्रेशन रेंज"
+        },
+        "VRC_IK_CALIBRATION_VIS": {
+          "description": "IK कैलिब्रेशन विज़ुअलाइज़ेशन"
+        },
+        "VRC_IK_DEBUG_LOGGING": {
+          "description": "IK डीबग लॉगिंग"
+        },
+        "VRC_IK_DISABLE_SHOULDER_TRACKING": {
+          "description": "शोल्डर ट्रैकिंग योगदान अक्षम करें"
+        },
+        "VRC_IK_FBT_CONFIRM_CALIBRATE": {
+          "description": "FBT कैलिब्रेशन की पुष्टि करें"
+        },
+        "VRC_IK_FBT_LOCOMOTION": {
+          "description": "फ़ुल-बॉडी ट्रैकिंग मूवमेंट टॉगल"
+        },
+        "VRC_IK_FBT_SPINE_MODE": {
+          "description": "FBT स्पाइन मोड"
+        },
+        "VRC_IK_FREEZE_TRACKING_ON_DISCONNECT": {
+          "description": "ट्रैकर डिस्कनेक्ट होने पर FBT पोज़ फ़्रीज़ करें"
+        },
+        "VRC_IK_HEIGHT_RATIO": {
+          "description": "IK ऊँचाई अनुपात"
+        },
+        "VRC_IK_KNEE_ANGLE": {
+          "description": "IK घुटना कोण"
+        },
+        "VRC_IK_LEGACY": {
+          "description": "लीगेसी IK"
+        },
+        "VRC_IK_LEGACY_CALIBRATION": {
+          "description": "लीगेसी फ़ुल-बॉडी कैलिब्रेशन फ़्लो"
+        },
+        "VRC_IK_ONE_HANDED_CALIBRATION": {
+          "description": "एक-हाथ कैलिब्रेशन फ़्लो टॉगल"
+        },
+        "VRC_IK_SHOULDER_WIDTH_COMPENSATION": {
+          "description": "शोल्डर चौड़ाई क्षतिपूर्ति टॉगल"
+        },
+        "VRC_IK_TRACKER_MODEL": {
+          "description": "IK ट्रैकर मॉडल"
+        },
+        "VRC_IK_USE_METRIC_HEIGHT": {
+          "description": "कैलिब्रेशन ऊँचाई के लिए मीट्रिक इकाइयाँ उपयोग करें"
+        },
+        "VRC_IK_WRIST_ANGLE": {
+          "description": "IK कलाई कोण"
+        },
+        "VRC_INPUT_COMFORT_TURNING": {
+          "description": "कम्फ़र्ट टर्निंग"
+        },
+        "VRC_INPUT_LOCOMOTION_METHOD": {
+          "description": "मूवमेंट मोड"
+        },
+        "VRC_MAIN_MENU_MOVEMENT_LOCKED": {
+          "description": "मुख्य मेनू खुला रहने पर मूवमेंट लॉक करें"
+        },
+        "VRC_MOBILE_AUTO_HOLD_ENABLED": {
+          "description": "मोबाइल ऑटो-ग्रैब सक्षम करें"
+        },
+        "VRC_MOBILE_AUTO_WALK_ENABLED": {
+          "description": "मोबाइल ऑटो-वॉक सक्षम करें"
+        },
+        "VRC_TRACKING_CAN_SHOW_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "सेल्फ़ी फ़ेस-ट्रैकिंग पॉपअप दिखा सकते हैं"
+        },
+        "VRC_TRACKING_CAN_SHOW_TRY_WEBCAM_FACE_TRACKING_BUTTON": {
+          "description": "कैमरा फ़ेस-ट्रैकिंग बटन दिखा सकते हैं"
+        },
+        "VRC_TRACKING_DISABLE_EYELIDTRACKING": {
+          "description": "पलक ट्रैकिंग अक्षम करें"
+        },
+        "VRC_TRACKING_DISABLE_EYELOOKTRACKING": {
+          "description": "आँख गेज़ ट्रैकिंग अक्षम करें"
+        },
+        "VRC_TRACKING_DISABLE_EYETRACKING_ON_MUTE": {
+          "description": "म्यूट होने पर आई ट्रैकिंग अक्षम करें"
+        },
+        "VRC_TRACKING_DISPLAY_EYETRACKING_DEBUG": {
+          "description": "आई-ट्रैकिंग डीबग दिखाएं"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING": {
+          "description": "सेल्फ़ी फ़ेस ट्रैकिंग सक्षम करें"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_HAND_TRACKING": {
+          "description": "सेल्फ़ी हैंड ट्रैकिंग सक्षम करें"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST": {
+          "description": "आई-ट्रैकिंग रे बाध्य करें"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST_DESKTOP2": {
+          "description": "डेस्कटॉप आई-ट्रैकिंग रे बाध्य करें"
+        },
+        "VRC_TRACKING_GRACEFUL_QUIT": {
+          "description": "ट्रैकिंग स्मूथिंग एग्ज़िट"
+        },
+        "VRC_TRACKING_NUM_TIMES_DISABLED_SELFIE_FACE_TRACKING": {
+          "description": "सेल्फ़ी फ़ेस-ट्रैकिंग बंद गणना"
+        },
+        "VRC_TRACKING_NUM_TIMES_ENABLED_SELFIE_FACE_TRACKING": {
+          "description": "सेल्फ़ी फ़ेस-ट्रैकिंग चालू गणना"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "सेल्फ़ी फ़ेस-ट्रैकिंग पॉपअप खारिज गणना"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS": {
+          "description": "VRC+ सेल्फ़ी फ़ेस-ट्रैकिंग पॉपअप खारिज गणना"
+        },
+        "VRC_TRACKING_NUM_TIMES_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS_CLICKED": {
+          "description": "VRC+ सेल्फ़ी फ़ेस-ट्रैकिंग क्लिक गणना"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_RECENTER_SPEED": {
+          "description": "सेल्फ़ी फ़ेस-ट्रैकिंग सेंटरिंग गति"
+        },
+        "VRC_TRACKING_SEND_VR_SYSTEM_HEAD_AND_WRIST_OSC_DATA": {
+          "description": "हेडसेट कलाई ट्रैकिंग OSC पर भेजें"
+        },
+        "VRC_TRACKING_SHOULD_SHOW_OSC_TRACKING_DATA_REMINDER": {
+          "description": "OSC ट्रैकिंग रिमाइंडर दिखाएं"
+        },
+        "VRC_TRACKING_TRACKER_PREDICTION": {
+          "description": "ट्रैकर प्रेडिक्शन"
+        },
+        "BACKGROUND_MATERIAL_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "यूज़र बैकग्राउंड मटीरियल"
+        },
+        "CosmeticsSectionRedirect_Settings": {
+          "description": "कॉस्मेटिक्स सेक्शन रीडायरेक्ट सेटिंग"
+        },
+        "FOLDOUT_STATES": {
+          "description": "फ़ोल्डआउट स्थितियाँ"
+        },
+        "FRIEND_LAST_VISIT_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "यूज़र मित्र अंतिम-मुलाकात इतिहास"
+        },
+        "HasSeenCameraDollyUserCameraCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "कैमरा डॉली कॉलआउट देखा"
+        },
+        "HasSeenHolidayEvent2025QMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "2025 हॉलिडे इवेंट कॉलआउट देखा"
+        },
+        "HasSeenShopRabbidsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Rabbids शॉप कॉलआउट देखा"
+        },
+        "HasSeenVRCPlusExclusiveItemsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "VRC+ एक्सक्लूसिव आइटम कॉलआउट देखा"
+        },
+        "InQueueWidgetInfoShowcaseID": {
+          "description": "क्यू विजेट शोकेस ID"
+        },
+        "RECENTLY_VISITED_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "यूज़र हाल में देखा गया इतिहास"
+        },
+        "SavedWorldSearchesusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "सेव की गई वर्ल्ड खोज"
+        },
+        "SortSelection_AllFriends": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_Authored": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_Favorites0": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_FriendLocations": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_GroupActivity": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_InRoom": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_Recent": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_Sdk": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_UGCPlaylist1": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_UGCWorlds": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "SortSelection_WorldInstances": {
+          "description": "सूची क्रम विकल्प"
+        },
+        "UI.Emojis.CustomGroup0": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "UI.Emojis.CustomGroup1": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "UI.Emojis.CustomGroup2": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "UI.MenuPlacementZDepthVR": {
+          "description": "UI स्थिति वरीयता"
+        },
+        "UI.MotionSmoothingEnabled": {
+          "description": "UI स्थिति वरीयता"
+        },
+        "UI.Props.CustomGroup0": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "UI.Stickers.CustomGroup0": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "UI.Stickers.CustomGroup1": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "UI.Stickers.CustomGroup2": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "UI.usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726.WingState": {
+          "description": "UI स्थिति वरीयता"
+        },
+        "VRC.UI.QuickMenu.ShowQMDebugInfo": {
+          "description": "क्विक मेनू में डीबग जानकारी दिखाएं"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_X": {
+          "description": "बायाँ एक्शन मेनू HUD X कोण"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_Y": {
+          "description": "बायाँ एक्शन मेनू HUD Y कोण"
+        },
+        "VRC_ACTION_MENU_L_MENU_OPACITY": {
+          "description": "बायाँ एक्शन मेनू अपारदर्शिता"
+        },
+        "VRC_ACTION_MENU_L_MENU_SIZE_PERCENTAGE": {
+          "description": "बायाँ एक्शन मेनू आकार प्रतिशत"
+        },
+        "VRC_ACTION_MENU_L_SHOW_ON_HUD": {
+          "description": "बायाँ एक्शन मेनू HUD पर दिखाएं"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_X": {
+          "description": "दायाँ एक्शन मेनू HUD X कोण"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_Y": {
+          "description": "दायाँ एक्शन मेनू HUD Y कोण"
+        },
+        "VRC_ACTION_MENU_R_MENU_OPACITY": {
+          "description": "दायाँ एक्शन मेनू अपारदर्शिता"
+        },
+        "VRC_ACTION_MENU_R_MENU_SIZE_PERCENTAGE": {
+          "description": "दायाँ एक्शन मेनू आकार प्रतिशत"
+        },
+        "VRC_ACTION_MENU_R_SHOW_ON_HUD": {
+          "description": "दायाँ एक्शन मेनू HUD पर दिखाएं"
+        },
+        "VRC_BOOP_EMOJI_EFFECT_ENABLED": {
+          "description": "बूप इमोजी इफेक्ट सक्षम करें"
+        },
+        "VRC_CHAT_BUBBLE_ABOVE_HEAD_V2": {
+          "description": "सिर के ऊपर चैट बबल v2"
+        },
+        "VRC_CHAT_BUBBLE_AUTO_SEND": {
+          "description": "चैट बबल ऑटो-सेंड"
+        },
+        "VRC_CHAT_BUBBLE_OPACITY": {
+          "description": "चैट बबल अपारदर्शिता"
+        },
+        "VRC_CHAT_BUBBLE_POS_HEIGHT": {
+          "description": "चैट बबल ऊँचाई"
+        },
+        "VRC_CHAT_BUBBLE_PROFANITY_FILTER": {
+          "description": "चैट बबल अपशब्द फ़िल्टर"
+        },
+        "VRC_CHAT_BUBBLE_SCALE": {
+          "description": "चैट बबल स्केल"
+        },
+        "VRC_CHAT_BUBBLE_SHOW_OWN": {
+          "description": "अपना चैट बबल दिखाएं"
+        },
+        "VRC_CHAT_BUBBLE_TIMEOUT": {
+          "description": "चैट बबल टाइमआउट"
+        },
+        "VRC_CHAT_BUBBLE_VISIBILITY": {
+          "description": "चैट बबल दृश्यता"
+        },
+        "VRC_CLOCK_VARIANT": {
+          "description": "क्लॉक वेरिएंट"
+        },
+        "VRC_COLOR_FILTER_INTENSITY": {
+          "description": "कलर फ़िल्टर तीव्रता"
+        },
+        "VRC_COLOR_FILTER_SELECTION": {
+          "description": "कलर फ़िल्टर प्रीसेट"
+        },
+        "VRC_COLOR_FILTER_TO_WORLD": {
+          "description": "वर्ल्ड रेंडरिंग पर फ़िल्टर लागू करें"
+        },
+        "VRC_CURRENT_LANGUAGE": {
+          "description": "भाषा कोड"
+        },
+        "VRC_DESKTOP_RETICLE": {
+          "description": "डेस्कटॉप रेटिकल"
+        },
+        "VRC_ENABLE_GROUP_INTEREST_AUTO_NOTIFICATIONS": {
+          "description": "ग्रुप इंटरेस्ट ऑटो-नोटिफ़िकेशन सक्षम करें"
+        },
+        "VRC_GROUP_ON_NAMEPLATE": {
+          "description": "नेमप्लेट पर ग्रुप दिखाएं"
+        },
+        "VRC_GROUP_ORDER_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "यूज़र ग्रुप क्रम"
+        },
+        "VRC_HIDE_NOTIFICATION_PHOTOS": {
+          "description": "नोटिफ़िकेशन फ़ोटो प्रीव्यू छिपाएं"
+        },
+        "VRC_HUD_ANCHOR": {
+          "description": "HUD एंकर स्थिति"
+        },
+        "VRC_HUD_MODE": {
+          "description": "HUD लेआउट मोड"
+        },
+        "VRC_HUD_OPACITY": {
+          "description": "HUD अपारदर्शिता"
+        },
+        "VRC_HUD_SMOOTHING_Desktop": {
+          "description": "HUD स्थिति डिस्प्ले सेटिंग"
+        },
+        "VRC_HUD_SMOOTHING_VR": {
+          "description": "HUD स्थिति डिस्प्ले सेटिंग"
+        },
+        "VRC_MM_FREE_PLACEMENT_ENABLED": {
+          "description": "मुख्य मेनू फ़्री प्लेसमेंट सक्षम करें"
+        },
+        "VRC_MOBILE_DPI_SCALING": {
+          "description": "मोबाइल DPI स्केलिंग"
+        },
+        "VRC_MOBILE_NOTIFICATIONS_SERVICE_ENABLED": {
+          "description": "मोबाइल नोटिफ़िकेशन सेवा सक्षम करें"
+        },
+        "VRC_MOBILE_PERFORMANCE_SECONDARY_UI_ENABLED": {
+          "description": "मोबाइल सेकेंडरी परफ़ॉर्मेंस UI सक्षम करें"
+        },
+        "VRC_NAMEPLATE_FALLBACK_ICON_VISIBLE": {
+          "description": "नेमप्लेट डिस्प्ले सेटिंग"
+        },
+        "VRC_NAMEPLATE_MODE": {
+          "description": "प्राथमिक नेमप्लेट डिस्प्ले मोड"
+        },
+        "VRC_NAMEPLATE_OPACITY": {
+          "description": "नेमप्लेट अपारदर्शिता"
+        },
+        "VRC_NAMEPLATE_QUICK_MENU_INFO": {
+          "description": "नेमप्लेट डिस्प्ले सेटिंग"
+        },
+        "VRC_NAMEPLATE_SCALE_V2": {
+          "description": "नेमप्लेट स्केल"
+        },
+        "VRC_NAMEPLATE_STATUS_MODE": {
+          "description": "नेमप्लेट अतिरिक्त स्टेटस सामग्री"
+        },
+        "VRC_PLAY_NOTIFICATION_AUDIO": {
+          "description": "नोटिफ़िकेशन ध्वनियाँ बजाएं"
+        },
+        "VRC_REDUCE_ANIMATIONS": {
+          "description": "गैर-आवश्यक एनिमेशन कम करें"
+        },
+        "VRC_SHOW_COMMUNITY_LABS": {
+          "description": "कम्युनिटी लैब्स दिखाएं"
+        },
+        "VRC_SHOW_COMMUNITY_LAB_WORLDS_IN_SEARCH": {
+          "description": "खोज में कम्युनिटी लैब्स वर्ल्ड दिखाएं"
+        },
+        "VRC_SHOW_GO_BUTTON_IN_LOAD": {
+          "description": "लोडिंग के दौरान गो बटन दिखाएं"
+        },
+        "VRC_SHOW_GROUP_BADGES": {
+          "description": "ग्रुप बैज दिखाएं"
+        },
+        "VRC_SHOW_INVITES_NOTIFICATION": {
+          "description": "इनवाइट नोटिफ़िकेशन दिखाएं"
+        },
+        "VRC_SHOW_JOIN_NOTIFICATIONS": {
+          "description": "मित्र जॉइन नोटिफ़िकेशन दिखाएं"
+        },
+        "VRC_SHOW_LEAVE_NOTIFICATIONS": {
+          "description": "मित्र लीव नोटिफ़िकेशन दिखाएं"
+        },
+        "VRC_SLIDER_SNAPPING": {
+          "description": "स्लाइडर स्नैपिंग"
+        },
+        "VRC_STORE_LAST_SEEN_SHELF_UPDATE": {
+          "description": "अंतिम देखा शेल्फ़ अपडेट स्टोर करें"
+        },
+        "VRC_TIME_FORMAT_MODE": {
+          "description": "समय प्रारूप मोड"
+        },
+        "VRC_UI_HEADER_CLICK_SCROLL_RESET_ENABLED": {
+          "description": "हेडर क्लिक स्क्रॉल रीसेट सक्षम करें"
+        },
+        "VRC_USE_COLOR_FILTER": {
+          "description": "कलर फ़िल्टर एक्सेसिबिलिटी सक्षम करें"
+        },
+        "VRC_USE_PIXEL_SHIFTING_HUD": {
+          "description": "पिक्सल-शिफ़्टिंग HUD उपयोग करें"
+        },
+        "VRC_WING_PERSISTENCE_ENABLED": {
+          "description": "Wing परसिस्टेंस सक्षम करें"
+        },
+        "VRC_WORLD_TOOLTIP_MODE": {
+          "description": "वर्ल्ड टूलटिप मोड"
+        },
+        "has_opened_live_now_page": {
+          "description": "लाइव-नाउ पेज खोला"
+        },
+        "has_seen_avm-explore-to-cm-migration": {
+          "description": "AVM माइग्रेशन कॉलआउट देखा"
+        },
+        "has_seen_event_discovery_in_beta": {
+          "description": "बीटा में इवेंट डिस्कवरी देखी"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenMenuHelpShownCount": {
+          "description": "यूज़र ओपन-मेनू सहायता दिखाई गई गणना"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenedQuickMenu": {
+          "description": "यूज़र ने क्विक मेनू खोला है"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Emojis.CustomGroup0": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Props.CustomGroup0": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedEmojis": {
+          "description": "यूज़र द्वारा हाल में उपयोग किए इमोजी"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedStickers": {
+          "description": "यूज़र द्वारा हाल में उपयोग किए स्टिकर"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Stickers.CustomGroup0": {
+          "description": "कस्टम इमोजी/स्टिकर ग्रुप"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_has_opened_live_now_page": {
+          "description": "यूज़र ने लाइव-नाउ पेज खोला है"
+        },
+        "BACKGROUND_DEBUG_LOG_COLLECTION": {
+          "description": "बैकग्राउंड डीबग लॉग संग्रह टॉगल"
+        },
+        "VRC_ALLOW_DIRECT_SHARES": {
+          "description": "डायरेक्ट शेयर की अनुमति दें"
+        },
+        "VRC_ALLOW_DISCORD_FRIENDS": {
+          "description": "Discord मित्र इंटीग्रेशन की अनुमति दें"
+        },
+        "VRC_ALLOW_FOCUS_VIEW": {
+          "description": "फ़ोकस व्यू की अनुमति दें"
+        },
+        "VRC_ALLOW_PEDESTAL_SHARES": {
+          "description": "पेडेस्टल शेयर की अनुमति दें"
+        },
+        "VRC_ALLOW_PRINTS": {
+          "description": "प्रिंट शेयर की अनुमति दें"
+        },
+        "VRC_ALLOW_SHARED_CONNECTIONS": {
+          "description": "साझा कनेक्शन की अनुमति दें"
+        },
+        "VRC_ALLOW_UNTRUSTED_URL": {
+          "description": "अविश्वसनीय URL खोलने की अनुमति दें"
+        },
+        "VRC_DIRECT_SHARING_VISIBILITY": {
+          "description": "डायरेक्ट शेयरिंग दृश्यता"
+        },
+        "VRC_HOME_ACCESS_TYPE": {
+          "description": "होम वर्ल्ड प्राइवेसी प्रीसेट"
+        },
+        "VRC_PEDESTAL_SHARING_VISIBILITY": {
+          "description": "पेडेस्टल शेयरिंग दृश्यता"
+        },
+        "VRC_PRINT_VISIBILITY": {
+          "description": "प्रिंट शेयरिंग दृश्यता"
+        },
+        "VRC_SHOW_GROUP_BADGE_TO_OTHERS": {
+          "description": "दूसरों को ग्रुप बैज दिखाएं"
+        },
+        "VRC_STREAMER_MODE_ENABLED": {
+          "description": "स्ट्रीमर मोड सक्षम करें"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanSpeak": {
+          "description": "एडवांस्ड 1 बोल सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "एडवांस्ड 1 एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAvatarAudio": {
+          "description": "एडवांस्ड 1 अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAnimations": {
+          "description": "एडवांस्ड 1 कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAvatar": {
+          "description": "एडवांस्ड 1 कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomShaders": {
+          "description": "एडवांस्ड 1 कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseDrone": {
+          "description": "एडवांस्ड 1 ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "एडवांस्ड 1 इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseParticleSystems": {
+          "description": "एडवांस्ड 1 पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseTriggers": {
+          "description": "एडवांस्ड 1 ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseUserIcons": {
+          "description": "एडवांस्ड 1 यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanSpeak": {
+          "description": "एडवांस्ड 2 बोल सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "एडवांस्ड 2 एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAvatarAudio": {
+          "description": "एडवांस्ड 2 अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAnimations": {
+          "description": "एडवांस्ड 2 कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAvatar": {
+          "description": "एडवांस्ड 2 कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomShaders": {
+          "description": "एडवांस्ड 2 कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseDrone": {
+          "description": "एडवांस्ड 2 ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "एडवांस्ड 2 इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseParticleSystems": {
+          "description": "एडवांस्ड 2 पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseTriggers": {
+          "description": "एडवांस्ड 2 ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseUserIcons": {
+          "description": "एडवांस्ड 2 यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanSpeak": {
+          "description": "बेसिक बोल सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "बेसिक एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAvatarAudio": {
+          "description": "बेसिक अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAnimations": {
+          "description": "बेसिक कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAvatar": {
+          "description": "बेसिक कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomShaders": {
+          "description": "बेसिक कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseDrone": {
+          "description": "बेसिक ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "बेसिक इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseParticleSystems": {
+          "description": "बेसिक पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseTriggers": {
+          "description": "बेसिक ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseUserIcons": {
+          "description": "बेसिक यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanSpeak": {
+          "description": "बेसिक बोल सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAnimatedEmoji": {
+          "description": "बेसिक एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAvatarAudio": {
+          "description": "बेसिक अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAnimations": {
+          "description": "बेसिक कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAvatar": {
+          "description": "बेसिक कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomShaders": {
+          "description": "बेसिक कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseDrone": {
+          "description": "बेसिक ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "बेसिक इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseParticleSystems": {
+          "description": "बेसिक पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseTriggers": {
+          "description": "बेसिक ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseUserIcons": {
+          "description": "बेसिक यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanSpeak": {
+          "description": "डेवलपर बोल सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAnimatedEmoji": {
+          "description": "डेवलपर एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAvatarAudio": {
+          "description": "डेवलपर अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAnimations": {
+          "description": "डेवलपर कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAvatar": {
+          "description": "डेवलपर कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomShaders": {
+          "description": "डेवलपर कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseDrone": {
+          "description": "डेवलपर ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "डेवलपर इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseParticleSystems": {
+          "description": "डेवलपर पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseTriggers": {
+          "description": "डेवलपर ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseUserIcons": {
+          "description": "डेवलपर यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanSpeak": {
+          "description": "मित्र बोल सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseAnimatedEmoji": {
+          "description": "मित्र एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseAvatarAudio": {
+          "description": "मित्र अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAnimations": {
+          "description": "मित्र कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAvatar": {
+          "description": "मित्र कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomShaders": {
+          "description": "मित्र कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseDrone": {
+          "description": "मित्र ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseEmojiStickersSharing": {
+          "description": "मित्र इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseParticleSystems": {
+          "description": "मित्र पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseTriggers": {
+          "description": "मित्र ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Friend_CanUseUserIcons": {
+          "description": "मित्र यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanSpeak": {
+          "description": "इंटरमीडिएट 1 बोल सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "इंटरमीडिएट 1 एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAvatarAudio": {
+          "description": "इंटरमीडिएट 1 अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAnimations": {
+          "description": "इंटरमीडिएट 1 कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAvatar": {
+          "description": "इंटरमीडिएट 1 कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomShaders": {
+          "description": "इंटरमीडिएट 1 कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseDrone": {
+          "description": "इंटरमीडिएट 1 ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "इंटरमीडिएट 1 इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseParticleSystems": {
+          "description": "इंटरमीडिएट 1 पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseTriggers": {
+          "description": "इंटरमीडिएट 1 ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseUserIcons": {
+          "description": "इंटरमीडिएट 1 यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanSpeak": {
+          "description": "इंटरमीडिएट 2 बोल सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "इंटरमीडिएट 2 एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAvatarAudio": {
+          "description": "इंटरमीडिएट 2 अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAnimations": {
+          "description": "इंटरमीडिएट 2 कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAvatar": {
+          "description": "इंटरमीडिएट 2 कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomShaders": {
+          "description": "इंटरमीडिएट 2 कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseDrone": {
+          "description": "इंटरमीडिएट 2 ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "इंटरमीडिएट 2 इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseParticleSystems": {
+          "description": "इंटरमीडिएट 2 पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseTriggers": {
+          "description": "इंटरमीडिएट 2 ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseUserIcons": {
+          "description": "इंटरमीडिएट 2 यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanSpeak": {
+          "description": "नोन बोल सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAnimatedEmoji": {
+          "description": "नोन एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAvatarAudio": {
+          "description": "नोन अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAnimations": {
+          "description": "नोन कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAvatar": {
+          "description": "नोन कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomShaders": {
+          "description": "नोन कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseDrone": {
+          "description": "नोन ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "नोन इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseParticleSystems": {
+          "description": "नोन पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseTriggers": {
+          "description": "नोन ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseUserIcons": {
+          "description": "नोन यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanSpeak": {
+          "description": "लेजेंड बोल सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAnimatedEmoji": {
+          "description": "लेजेंड एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAvatarAudio": {
+          "description": "लेजेंड अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAnimations": {
+          "description": "लेजेंड कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAvatar": {
+          "description": "लेजेंड कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomShaders": {
+          "description": "लेजेंड कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseDrone": {
+          "description": "लेजेंड ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "लेजेंड इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseParticleSystems": {
+          "description": "लेजेंड पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseTriggers": {
+          "description": "लेजेंड ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseUserIcons": {
+          "description": "लेजेंड यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanSpeak": {
+          "description": "लोकल प्लेयर बोल सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAnimatedEmoji": {
+          "description": "लोकल प्लेयर एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAvatarAudio": {
+          "description": "लोकल प्लेयर अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAnimations": {
+          "description": "लोकल प्लेयर कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAvatar": {
+          "description": "लोकल प्लेयर कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomShaders": {
+          "description": "लोकल प्लेयर कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseDrone": {
+          "description": "लोकल प्लेयर ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseEmojiStickersSharing": {
+          "description": "लोकल प्लेयर इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseParticleSystems": {
+          "description": "लोकल प्लेयर पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseTriggers": {
+          "description": "लोकल प्लेयर ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseUserIcons": {
+          "description": "लोकल प्लेयर यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanSpeak": {
+          "description": "नेगेटिव बोल सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "नेगेटिव एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAvatarAudio": {
+          "description": "नेगेटिव अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAnimations": {
+          "description": "नेगेटिव कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAvatar": {
+          "description": "नेगेटिव कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomShaders": {
+          "description": "नेगेटिव कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseDrone": {
+          "description": "नेगेटिव ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "नेगेटिव इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseParticleSystems": {
+          "description": "नेगेटिव पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseTriggers": {
+          "description": "नेगेटिव ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseUserIcons": {
+          "description": "नेगेटिव यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanSpeak": {
+          "description": "नेगेटिव बोल सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "नेगेटिव एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAvatarAudio": {
+          "description": "नेगेटिव अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAnimations": {
+          "description": "नेगेटिव कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAvatar": {
+          "description": "नेगेटिव कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomShaders": {
+          "description": "नेगेटिव कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseDrone": {
+          "description": "नेगेटिव ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "नेगेटिव इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseParticleSystems": {
+          "description": "नेगेटिव पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseTriggers": {
+          "description": "नेगेटिव ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseUserIcons": {
+          "description": "नेगेटिव यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanSpeak": {
+          "description": "नेगेटिव बोल सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "नेगेटिव एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "नेगेटिव अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "नेगेटिव कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "नेगेटिव कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomShaders": {
+          "description": "नेगेटिव कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseDrone": {
+          "description": "नेगेटिव ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "नेगेटिव इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseParticleSystems": {
+          "description": "नेगेटिव पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseTriggers": {
+          "description": "नेगेटिव ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseUserIcons": {
+          "description": "नेगेटिव यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanSpeak": {
+          "description": "ट्रस्टेड बोल सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAnimatedEmoji": {
+          "description": "ट्रस्टेड एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAvatarAudio": {
+          "description": "ट्रस्टेड अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAnimations": {
+          "description": "ट्रस्टेड कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAvatar": {
+          "description": "ट्रस्टेड कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomShaders": {
+          "description": "ट्रस्टेड कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseDrone": {
+          "description": "ट्रस्टेड ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "ट्रस्टेड इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseParticleSystems": {
+          "description": "ट्रस्टेड पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseTriggers": {
+          "description": "ट्रस्टेड ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseUserIcons": {
+          "description": "ट्रस्टेड यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanSpeak": {
+          "description": "अनट्रस्टेड बोल सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAnimatedEmoji": {
+          "description": "अनट्रस्टेड एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAvatarAudio": {
+          "description": "अनट्रस्टेड अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAnimations": {
+          "description": "अनट्रस्टेड कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAvatar": {
+          "description": "अनट्रस्टेड कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomShaders": {
+          "description": "अनट्रस्टेड कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseDrone": {
+          "description": "अनट्रस्टेड ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseEmojiStickersSharing": {
+          "description": "अनट्रस्टेड इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseParticleSystems": {
+          "description": "अनट्रस्टेड पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseTriggers": {
+          "description": "अनट्रस्टेड ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_Untrusted_CanUseUserIcons": {
+          "description": "अनट्रस्टेड यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanSpeak": {
+          "description": "नेगेटिव बोल सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "नेगेटिव एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "नेगेटिव अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "नेगेटिव कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "नेगेटिव कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomShaders": {
+          "description": "नेगेटिव कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseDrone": {
+          "description": "नेगेटिव ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "नेगेटिव इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseParticleSystems": {
+          "description": "नेगेटिव पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseTriggers": {
+          "description": "नेगेटिव ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseUserIcons": {
+          "description": "नेगेटिव यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanSpeak": {
+          "description": "वेटरन बोल सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAnimatedEmoji": {
+          "description": "वेटरन एनिमेटेड इमोजी उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAvatarAudio": {
+          "description": "वेटरन अवतार ऑडियो उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAnimations": {
+          "description": "वेटरन कस्टम एनिमेशन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAvatar": {
+          "description": "वेटरन कस्टम अवतार उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomShaders": {
+          "description": "वेटरन कस्टम शेडर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseDrone": {
+          "description": "वेटरन ड्रोन उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "वेटरन इमोजी/स्टिकर शेयरिंग उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseParticleSystems": {
+          "description": "वेटरन पार्टिकल सिस्टम उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseTriggers": {
+          "description": "वेटरन ट्रिगर उपयोग कर सकते हैं"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseUserIcons": {
+          "description": "वेटरन यूज़र आइकन उपयोग कर सकते हैं"
+        },
+        "VRC_LIMIT_PARTICLE_SYSTEMS": {
+          "description": "पार्टिकल सिस्टम सीमित करें"
+        },
+        "14C4B06B824EC593239362517F538B29": {
+          "description": "प्रमाणीकरण या इंस्टॉल टोकन"
+        },
+        "5F4DCC3B5AA765D61D8327DEB882CF99": {
+          "description": "प्रमाणीकरण या इंस्टॉल टोकन"
+        },
+        "785C2BDD2C43070A10BC35E5E687A467": {
+          "description": "प्रमाणीकरण या इंस्टॉल टोकन"
+        },
+        "93D3AE97F80BEDA8E396065DC4770A93": {
+          "description": "प्रमाणीकरण या इंस्टॉल टोकन"
+        },
+        "BCD9D91ED8D8F1926B20D3D620647C8E": {
+          "description": "प्रमाणीकरण या इंस्टॉल टोकन"
+        },
+        "BD2E932A03A19217AB5A1DFB5AA93340": {
+          "description": "प्रमाणीकरण या इंस्टॉल टोकन"
+        },
+        "E1F946CE2FD302B954E26AD92C0B30BF": {
+          "description": "प्रमाणीकरण या इंस्टॉल टोकन"
+        },
+        "ForceSettings_AutoWalk": {
+          "description": "सेटिंग्स माइग्रेशन मार्कर"
+        },
+        "ForceSettings_ClearFoldoutPrefKeys": {
+          "description": "सेटिंग्स माइग्रेशन मार्कर"
+        },
+        "ForceSettings_MicToggle": {
+          "description": "सेटिंग्स माइग्रेशन मार्कर"
+        },
+        "ForceSettings_MigrateMicSettings": {
+          "description": "सेटिंग्स माइग्रेशन मार्कर"
+        },
+        "ForceSettings_Mixer": {
+          "description": "सेटिंग्स माइग्रेशन मार्कर"
+        },
+        "ForceSettings_PedestalSharing": {
+          "description": "सेटिंग्स माइग्रेशन मार्कर"
+        },
+        "ForceSettings_SteamAudioSliderRemap": {
+          "description": "सेटिंग्स माइग्रेशन मार्कर"
+        },
+        "ForceSettings_WorldTooltipMode": {
+          "description": "सेटिंग्स माइग्रेशन मार्कर"
+        },
+        "LOGGING_ENABLED": {
+          "description": "लॉगिंग सक्षम करें"
+        },
+        "Screenmanager Fullscreen mode": {
+          "description": "फ़ुलस्क्रीन मोड"
+        },
+        "Screenmanager Fullscreen mode Default": {
+          "description": "डिफ़ॉल्ट फ़ुलस्क्रीन मोड"
+        },
+        "Screenmanager Resolution Height": {
+          "description": "रिज़ॉल्यूशन ऊँचाई"
+        },
+        "Screenmanager Resolution Height Default": {
+          "description": "डिफ़ॉल्ट रिज़ॉल्यूशन ऊँचाई"
+        },
+        "Screenmanager Resolution Use Native": {
+          "description": "नेटिव रिज़ॉल्यूशन उपयोग करें"
+        },
+        "Screenmanager Resolution Use Native Default": {
+          "description": "डिफ़ॉल्ट नेटिव रिज़ॉल्यूशन"
+        },
+        "Screenmanager Resolution Width": {
+          "description": "रिज़ॉल्यूशन चौड़ाई"
+        },
+        "Screenmanager Resolution Width Default": {
+          "description": "डिफ़ॉल्ट रिज़ॉल्यूशन चौड़ाई"
+        },
+        "Screenmanager Resolution Window Height": {
+          "description": "विंडो ऊँचाई"
+        },
+        "Screenmanager Resolution Window Width": {
+          "description": "विंडो चौड़ाई"
+        },
+        "Screenmanager Stereo 3D": {
+          "description": "स्टीरियो 3D"
+        },
+        "Screenmanager Window Position X": {
+          "description": "विंडो X स्थिति"
+        },
+        "Screenmanager Window Position Y": {
+          "description": "विंडो Y स्थिति"
+        },
+        "UserId": {
+          "description": "यूज़र ID"
+        },
+        "VRC_CLEAR_CACHE_ON_START": {
+          "description": "स्टार्ट पर कंटेंट कैश साफ़ करें"
+        },
+        "VRC_SHOW_COMPATIBILITY_WARNINGS": {
+          "description": "संगतता चेतावनियाँ दिखाएं"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideAvatar": {
+          "description": "हाइड अवतार माइग्रेशन मार्कर"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideDrone": {
+          "description": "हाइड ड्रोन माइग्रेशन मार्कर"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowAvatar": {
+          "description": "शो अवतार माइग्रेशन मार्कर"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowDrone": {
+          "description": "शो ड्रोन माइग्रेशन मार्कर"
+        },
+        "unity.cloud_userid": {
+          "description": "Unity क्लाउड यूज़र ID"
+        },
+        "unity.player_session_count": {
+          "description": "Unity सेशन टेलीमेट्री"
+        },
+        "unity.player_sessionid": {
+          "description": "Unity सेशन टेलीमेट्री"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_LastExpiredSubscription": {
+          "description": "यूज़र की अंतिम समाप्त सब्सक्रिप्शन"
+        },
+        "VRC_AFK_ENABLED": {
+          "description": "AFK सक्षम करें"
+        },
+        "VRC_PREFERRED_TIMEZONE_2": {
+          "description": "पसंदीदा टाइमज़ोन 2"
+        }
       }
     },
     "general": {
@@ -1394,7 +3423,15 @@
       "profileContext": "प्रोफ़ाइल लाइव संदर्भ",
       "profileContextHint": "मेरी प्रोफ़ाइल पर दाईं ओर लाइव अवतार और दुनिया का संदर्भ दिखाएं।",
       "worldInspector": "दुनिया इंस्पेक्टर",
-      "worldInspectorHint": "मैप सूची के बगल में आकार बदलने योग्य दुनिया इंस्पेक्टर को खुला रखें।"
+      "worldInspectorHint": "मैप सूची के बगल में आकार बदलने योग्य दुनिया इंस्पेक्टर को खुला रखें।",
+      "showInstanceId": "इंस्टेंस ID दिखाएं",
+      "showInstanceIdHint": "बंद होने पर, इंस्टेंस नंबर मित्रों की लोकेशन से छिपा रहता है। वर्ल्ड, प्रकार और क्षेत्र फिर भी दिखते हैं।",
+      "hideUnfriends": "अनफ़्रेंड इवेंट छिपाएं",
+      "hideUnfriendsHint": "मित्र गतिविधि लॉग से \"removed you\" / अनफ़्रेंड पंक्तियाँ छिपाएं। अन्य इवेंट फिर भी दिखते हैं।",
+      "statusShapes": "वर्णांध स्टेटस आकार",
+      "statusShapesHint": "हर स्टेटस संकेतक (join me, active, ask me, busy, offline) में एक अलग आकार जोड़ें ताकि वे रंग पर निर्भर हुए बिना पहचाने जा सकें।",
+      "userColor": "प्रति-यूज़र नाम रंग",
+      "userColorHint": "हर यूज़र के नाम को उसकी ID से निकाले एक स्थिर, अनोखे रंग में रंगें, जिससे फ़ीड और रोस्टर में लोगों को एक नज़र में पहचानना आसान हो।"
     },
     "steamvr": {
       "saveDirty": "सेटिंग्स सेव करें *",
@@ -1450,7 +3487,239 @@
         "hint": "Steam Link के लिए बिटरेट सीमा। अच्छे राउटर के लिए 150-200 तक।",
         "label": "लक्षित बैंडविड्थ (Mbps)"
       },
-      "title": "VR स्ट्रीमिंग सेटिंग्स (SteamVR / Steam Link)"
+      "title": "VR स्ट्रीमिंग सेटिंग्स (SteamVR / Steam Link)",
+      "linkRepair": {
+        "title": "Steam Link / Quest कनेक्शन रिपेयर",
+        "body": "VRLink सेशन ID बेमेल, WirelessHmdNotConnected, पुराने Quest पेयरिंग कैश, SteamVR Beta मार्कर और अधूरे SteamVR अपडेट का निदान करें। रिपेयर पहले बैकअप लेते हैं और डिफ़ॉल्ट रूप से ड्राई-रन प्रीव्यू दिखाते हैं।",
+        "diagnose": "निदान करें",
+        "dryRun": "रिपेयर प्रीव्यू करें",
+        "dryRunShort": "प्रीव्यू",
+        "apply": "बैकअप लें और रिपेयर करें",
+        "applyShort": "लागू करें",
+        "confirm": "इससे Steam/SteamVR बंद होगा, SteamVR सेटिंग्स, appmanifest और localconfig.vdf का बैकअप लिया जाएगा, Steam Link पेयरिंग कैश साफ़ होगा, SteamVR Beta मार्कर हटाए जाएंगे, और Steam वैलिडेशन खुलेगा। जारी रखें?",
+        "confirmPlan": "\"{{name}}\" लागू करें? VRCSM पहले बैकअप लेता है और किसी भी राइट विफलता की सूचना देता है।",
+        "invalidSessionToast": "अमान्य VRLink सेशन पैकेट मिले: {{count}}",
+        "diagnoseDone": "Steam Link निदान पूरा हुआ।",
+        "diagnoseFailed": "Steam Link निदान विफल: {{msg}}",
+        "dryRunDone": "प्रीव्यू पूरा हुआ। नियोजित रिपेयर चरणों की समीक्षा करें।",
+        "repairDone": "रिपेयर लागू हुआ और Steam वैलिडेशन खुल गया।",
+        "backupDone": "Quest Link/SteamVR सेटिंग्स बैकअप बन गया।",
+        "repairFailed": "Steam Link रिपेयर विफल: {{msg}}",
+        "previewFailed": "प्रीव्यू बनाने में विफल: {{msg}}",
+        "restoreDone": "{{count}} बैकअप आइटम रिस्टोर किए गए।",
+        "restoreFailed": "बैकअप रिस्टोर करने में विफल: {{msg}}",
+        "confirmDialogTitle": "\"{{name}}\" की पुष्टि करें",
+        "confirmDialogDesc": "पहले नीचे सूचीबद्ध विशिष्ट फ़ाइलों और कार्यों की समीक्षा करें। जब तक आप \"Apply\" क्लिक नहीं करते, कुछ भी नहीं बदलता।",
+        "restoreDialogTitle": "Steam Link बैकअप रिस्टोर करें",
+        "restoreDialogDesc": "VRCSM Steam/SteamVR बंद करता है, पहले मौजूदा फ़ाइलों का बैकअप लेता है, फिर आपके चुने बैकअप को रिस्टोर करता है।",
+        "previewing": "प्रीव्यू बनाया जा रहा है…",
+        "executing": "लागू किया जा रहा है…",
+        "noPlannedActions": "प्रीव्यू में कोई कार्य नहीं।",
+        "confirmDialogCancel": "रद्द करें, रहने दें",
+        "confirmDialogApply": "बैकअप और रिपेयर की पुष्टि करें",
+        "restoreConfirm": "यह बैकअप रिस्टोर करें",
+        "steamPath": "Steam पाथ",
+        "build": "बिल्ड",
+        "beta": "Beta",
+        "stable": "स्टेबल",
+        "invalidSessions": "अमान्य सेशन पैकेट",
+        "questPairs": "Quest पेयरिंग कैश",
+        "pendingDownload": "लंबित अपडेट",
+        "lostMaster": "मास्टर प्रोसेस खो गई",
+        "issues": "पता चली समस्याएँ",
+        "evidence": "लॉग साक्ष्य",
+        "noEvidence": "स्कैन किए लॉग टेल में कोई मेल खाती पंक्ति नहीं।",
+        "recommended": "अनुशंसित",
+        "best": "अनुशंसित",
+        "settingProfiles": "स्टेबल सेटिंग प्रोफ़ाइल",
+        "actions": "नियोजित कार्य",
+        "result": "परिणाम",
+        "applied": "लागू किया गया",
+        "partial": "आंशिक",
+        "resultBetaKey": "BetaKey लाइन हटाएं",
+        "resultQuestBlocks": "Quest डिवाइस ब्लॉक हटाएं",
+        "resultBetaBlocks": "250820-beta ब्लॉक हटाएं",
+        "resultStopped": "प्रोसेस रोकी गईं",
+        "resultBackups": "बैकअप बनाए गए",
+        "resultSettingsApplied": "सेटिंग्स लिखी गईं",
+        "resultRestored": "आइटम रिस्टोर किए गए",
+        "currentBackupDir": "रिस्टोर से पहले मौजूदा फ़ाइलों का बैकअप",
+        "backupsTitle": "बैकअप और रिस्टोर",
+        "backupsHint": "VRCSM द्वारा बनाए रिस्टोर-योग्य बैकअप यहाँ सूचीबद्ध हैं। रिस्टोर करने से पहले मौजूदा फ़ाइलों का बैकअप लिया जाता है।",
+        "refreshBackups": "रीफ्रेश करें",
+        "restorable": "रिस्टोर-योग्य",
+        "metadataMissing": "मैनिफ़ेस्ट गायब",
+        "restore": "रिस्टोर करें",
+        "severity": {
+          "critical": "गंभीर",
+          "warning": "चेतावनी",
+          "info": "जानकारी",
+          "ok": "सामान्य"
+        },
+        "risk": {
+          "low": "कम जोखिम",
+          "medium": "मध्यम जोखिम",
+          "high": "उच्च जोखिम"
+        },
+        "summary": {
+          "vrlinkSessionMismatch": "VRLink सेशन बेमेल: Quest पैकेट PC तक पहुँचे, पर SteamVR ने वायरलेस हेडसेट सेशन को अस्वीकार कर दिया।",
+          "betaMarkers": "SteamVR Beta या यूज़र-स्तर के Beta मार्कर मिले; इससे SteamVR किसी समस्याग्रस्त VRLink बिल्ड पर अटक सकता है।",
+          "readyNoInvalid": "हाल के लॉग में SteamVR Ready दिखता है और स्कैन की गई रेंज में कोई invalid-session बर्स्ट नहीं है।",
+          "lostMaster": "मास्टर प्रोसेस खोने के कारण SteamVR बंद हुआ; VRLink पेयरिंग और रनटाइम प्रोसेस स्थिरता जाँचें।",
+          "pairingRecords": "Steam Link / Quest पेयरिंग रिकॉर्ड मिले; बैकअप के बाद पुराने रिकॉर्ड सुरक्षित रूप से रीसेट किए जा सकते हैं।",
+          "noSignature": "स्कैन किए SteamVR लॉग में कोई स्पष्ट VRLink विफलता हस्ताक्षर नहीं।"
+        },
+        "recommendations": {
+          "resetPairing": "Steam Link / Quest पेयरिंग कैश रीसेट करें, फिर हेडसेट से दोबारा पेयर करें।",
+          "removeManifestBeta": "स्टेबल ब्रांच पर लौटने के लिए SteamVR BetaKey हटाएं और AppID 250820 को वैलिडेट करें।",
+          "removeUserBeta": "Steam localconfig.vdf से यूज़र-स्तर के 250820-beta / BetaKey मार्कर हटाएं।",
+          "removeQuestDevices": "पहले localconfig.vdf का बैकअप लें, फिर पुराने Oculus Quest / Steam Link स्ट्रीमिंग डिवाइस रिकॉर्ड हटाएं।",
+          "finishUpdate": "Steam को SteamVR अपडेट/वैलिडेशन पूरा करने दें, फिर Steam Link दोबारा आज़माएं।",
+          "retryThenDryRun": "पहले हेडसेट से दोबारा आज़माएं; विफल होने पर प्रीव्यू रिपेयर चलाएं और नए लॉग टेल की तुलना करें।"
+        },
+        "issuesMap": {
+          "steamvr_missing": {
+            "title": "SteamVR या रनटाइम डायरेक्टरी नहीं मिली",
+            "detail": "Steam Link VR को AppID 250820 चाहिए। पहले SteamVR इंस्टॉल करें, फिर वैलिडेशन चलाएं।"
+          },
+          "steamvr_pending_update": {
+            "title": "SteamVR में एक लंबित अपडेट या अधूरा डाउनलोड है",
+            "detail": "जब SteamVR मैनिफ़ेस्ट स्विच/डाउनलोड के बीच में हो, Steam Link कनेक्ट होने में विफल हो सकता है। Steam को अपडेट पूरा करने दें, फिर दोबारा पेयर करें।"
+          },
+          "vrlink_session_mismatch": {
+            "title": "VRLink सेशन ID बेमेल",
+            "detail": "{{count}} अमान्य सेशन पैकेट मिले जबकि SteamVR बताता है कि वायरलेस हेडसेट कनेक्ट नहीं है।"
+          },
+          "vrlink_invalid_session": {
+            "title": "अमान्य VRLink सेशन पैकेट मिले",
+            "detail": "स्कैन किए SteamVR लॉग टेल में {{count}} invalid-session पैकेट हैं।"
+          },
+          "steamvr_unknown_shutdown": {
+            "title": "SteamVR किसी अज्ञात मास्टर-प्रोसेस कारण से बंद हुआ",
+            "detail": "यह आमतौर पर VRLink हैंडशेक विफलता से जुड़ा होता है। पहले पेयरिंग रीसेट करें, फिर हेडसेट से दोबारा आज़माएं।"
+          },
+          "quest_pairing_cache": {
+            "title": "Quest / Steam Link पेयरिंग कैश मिला",
+            "detail": "Steam localconfig.vdf में {{count}} Quest पेयरिंग मार्कर मिले।"
+          },
+          "steamvr_beta_marker": {
+            "title": "SteamVR Beta मार्कर मिले",
+            "detail": "BetaKey, 250820-beta या एन्कोडेड Beta मार्कर SteamVR को टूटी पेयरिंग स्थिति वाले VRLink बिल्ड पर अटका सकते हैं।"
+          },
+          "no_physical_ipv4_adapter": {
+            "title": "कोई सक्रिय भौतिक IPv4 नेटवर्क एडाप्टर नहीं मिला",
+            "detail": "Steam Link तब सबसे अच्छा काम करता है जब PC वायर्ड ईथरनेट पर हो और हेडसेट उसी राउटर पर हो।"
+          },
+          "virtual_network_adapter": {
+            "title": "वर्चुअल नेटवर्क एडाप्टर सक्षम है",
+            "detail": "{{count}} सक्रिय वर्चुअल नेटवर्क एडाप्टर मिले। VRCSM इन्हें अपने आप नहीं बदलेगा; अगर पेयरिंग बार-बार विफल हो, तो अस्थायी रूप से VPN / Hyper-V अक्षम करें।"
+          },
+          "high_bandwidth": {
+            "title": "Steam Link बैंडविड्थ उच्च सेट है",
+            "detail": "साझा Wi-Fi के लिए {{bandwidth}} Mbps बहुत अधिक हो सकता है। समस्या निवारण करते समय 80-120 Mbps से शुरू करें।"
+          },
+          "overscaled_low_vram": {
+            "title": "कम-VRAM वाले GPU पर सुपरसैंपलिंग उच्च है",
+            "detail": "लिंक वैलिडेट करते समय सुपरसैंपलिंग 0.8-1.0 तक कम करें; कनेक्शन स्थिर होने पर इसे बढ़ाएं।"
+          },
+          "no_blocker_found": {
+            "title": "Steam Link को रोकने वाला कोई स्पष्ट हस्ताक्षर नहीं",
+            "detail": "स्कैन किए टेल में कोई Beta, लंबित अपडेट या invalid-session बर्स्ट नहीं। हेडसेट से दोबारा आज़माएं, और विफल होने पर तुरंत निदान फिर से चलाएं।"
+          }
+        },
+        "plans": {
+          "quest-link-backup": {
+            "title": "मौजूदा Quest Link सेटिंग्स का बैकअप लें",
+            "description": "बिना कोई सेटिंग बदले केवल SteamVR, VRLink, Quest पेयरिंग और SteamVR मैनिफ़ेस्ट के रिस्टोर-योग्य स्नैपशॉट बनाएं।"
+          },
+          "pairing-reset": {
+            "title": "पेयरिंग रीसेट करें",
+            "description": "अकाउंट-स्तर के Quest / Steam Link पेयरिंग रिकॉर्ड और SteamVR वेब कैश साफ़ करें, फिर हेडसेट को साफ़-सुथरे तरीके से दोबारा पेयर होने दें।"
+          },
+          "full-vrlink-reset": {
+            "title": "पूर्ण VRLink रीसेट",
+            "description": "पूरा तरीका जिसने पहले Quest 3 सेशन ठीक किए हैं: पेयरिंग कैश, SteamVR लोकल रनटाइम स्थिति, VRLink कॉन्फ़िग फ़ोल्डर, पुराने लॉग, Beta मार्कर, और Steam वैलिडेशन।"
+          },
+          "stable-validate": {
+            "title": "स्टेबल ब्रांच वैलिडेशन",
+            "description": "केवल SteamVR Beta मार्कर हटाएं और AppID 250820 के लिए Steam वैलिडेशन खोलें।"
+          },
+          "safe-streaming": {
+            "title": "सुरक्षित स्ट्रीमिंग सेटिंग्स",
+            "description": "पेयरिंग डेटा साफ़ किए बिना संतुलित Quest-सुरक्षित Steam Link सेटिंग्स लिखें।"
+          }
+        },
+        "planActions": {
+          "stopSteamVrSteam": "SteamVR/Steam रोकें",
+          "backupLocalconfig": "localconfig.vdf का बैकअप लें",
+          "removeQuestBlocks": "Quest स्ट्रीमिंग डिवाइस ब्लॉक हटाएं",
+          "clearHtmlcache": "SteamVR htmlcache साफ़ करें",
+          "stopSteamSteamVr": "Steam/SteamVR रोकें",
+          "backupAll": "appmanifest/localconfig/SteamVR सेटिंग्स का बैकअप लें",
+          "moveRuntimeState": "steamvr.vrsettings और vrstats को हटाकर रखें",
+          "moveVrlinkConfig": "config/vrlink और remoteclients.vdf को हटाकर रखें",
+          "archiveLogs": "पुराने VRLink लॉग आर्काइव करें",
+          "openValidate": "steam://validate/250820 खोलें",
+          "backupVrlinkConfig": "config/vrlink और remoteclients.vdf का बैकअप लें",
+          "backupHtmlcache": "SteamVR htmlcache का बैकअप लें",
+          "backupManifestLocalconfig": "appmanifest/localconfig का बैकअप लें",
+          "removeBetaMarkers": "BetaKey / 250820-beta मार्कर हटाएं",
+          "backupVrsettings": "steamvr.vrsettings का बैकअप लें",
+          "set80Auto": "80 Mbps ऑटो बैंडविड्थ सेट करें",
+          "set1x": "1.0x सुपरसैंपलिंग सेट करें",
+          "set72hz": "72 Hz सेट करें",
+          "disableMotionSmoothing": "मोशन स्मूथिंग अक्षम करें"
+        },
+        "profiles": {
+          "low-stability": {
+            "title": "कम-प्रदर्शन स्थिरता",
+            "note": "तब उपयोग करें जब कनेक्शन बन जाए पर अटके, धुंधला हो या काला पड़ जाए।"
+          },
+          "balanced-stable": {
+            "title": "संतुलित स्थिरता",
+            "note": "सामान्य Wi-Fi 5/6 राउटर पर Quest 2/3 के लिए डिफ़ॉल्ट अनुशंसा।"
+          },
+          "quest3-clarity": {
+            "title": "Quest 3 स्पष्टता",
+            "note": "पेयरिंग/सेशन स्थिर होने के बाद ही विज़ुअल गुणवत्ता बढ़ाएं।"
+          }
+        },
+        "repairActions": {
+          "stopProcess": "प्रोसेस {{name}} ({{pid}}) रोकें",
+          "moveIntoBackup": "बैकअप में ले जाएं: {{path}}",
+          "archiveLog": "पुराना SteamVR लॉग आर्काइव करें: {{path}}",
+          "backupPath": "बैकअप लें: {{path}}",
+          "restorePath": "बैकअप से रिस्टोर करें: {{path}} ← {{backup}}",
+          "backupRemove": "बैकअप लें और हटाएं: {{path}}",
+          "removeManifestBeta": "फ़ाइल से BetaKey लाइन हटाएं: {{path}}",
+          "removeUserBeta": "फ़ाइल से 250820-beta / BetaKey मार्कर हटाएं: {{path}}",
+          "removeQuestBlocks": "फ़ाइल से Quest / Steam Link स्ट्रीमिंग डिवाइस ब्लॉक हटाएं: {{path}}",
+          "applySafeStreaming": "सुरक्षित Quest स्ट्रीमिंग सेटिंग्स लागू करें: 80 Mbps ऑटो बैंडविड्थ, 1.0x सुपरसैंपलिंग, 72 Hz, मोशन स्मूथिंग बंद",
+          "openValidateAfter": "रिपेयर के बाद, वैलिडेट करने के लिए steam://validate/250820 खोलें"
+        },
+        "backupPartial": "Quest Link बैकअप चेतावनियों के साथ पूरा हुआ: {{msg}}",
+        "dryRunWarning": "ड्राई-रन चेतावनियों के साथ पूरा हुआ: {{msg}}",
+        "dryRunWarningShort": "ड्राई-रन चेतावनी",
+        "repairPartial": "रिपेयर चेतावनियों के साथ पूरा हुआ: {{msg}}",
+        "restorePartial": "रिस्टोर चेतावनियों के साथ पूरा हुआ: {{msg}}",
+        "restoredShort": "रिस्टोर किया गया",
+        "resultRestoreCount": "रिस्टोर गणना",
+        "reviewFailures": "नीचे परिणाम विवरण की समीक्षा करें।"
+      },
+      "configNotFoundBadge": "सेटिंग्स नहीं मिलीं",
+      "configNotFoundBody": "VRCSM SteamVR की सेटिंग्स फ़ाइल नहीं पढ़ सका। डायग्नोस्टिक्स और बैकअप-पहले रिपेयर उपलब्ध रहते हैं; जब तक SteamVR यह फ़ाइल नहीं बनाता, पैरामीटर एडिटर अक्षम रहेगा।",
+      "configNotFoundTitle": "steamvr.vrsettings नहीं मिली",
+      "editorUnavailable": "SteamVR कॉन्फ़िगरेशन एडिटर अनुपलब्ध: steamvr.vrsettings इंस्टॉल नहीं है या अभी तक बनी नहीं है।",
+      "effectiveResolution": {
+        "hint": "Steam Link द्वारा दिखाया गया Encoder Resolution यही मान है। कोई भी फ़ील्ड बदलने पर Supersampling Scale (0.5–2.0, स्टेप 0.1) पीछे से गणना हो जाती है।",
+        "label": "प्रभावी रेंडर रिज़ॉल्यूशन (प्रति आँख)",
+        "unknown": "अज्ञात HMD"
+      },
+      "knownDevices": "पता चले VR डिवाइस:",
+      "profileApplied": "{{name}} लागू किया — स्थायी करने के लिए Save Settings क्लिक करें।",
+      "unknownGpu": "अज्ञात GPU",
+      "vrIdle": "VR रनटाइम निष्क्रिय",
+      "vrRunning": "VR रनटाइम सक्रिय"
     },
     "configJson": {
       "cacheDirectory": {
@@ -1513,6 +3782,11 @@
           "name": "विज़ुअल अवतार खोज",
           "description": "एक स्थानीय AI मॉडल का उपयोग करके किसी छवि के समान दिखने वाले अवतार खोजें। अवतार कार्ड पर 'समान खोजें' राइट-क्लिक क्रिया जोड़ता है।",
           "warning": "पहली बार उपयोग करने पर ~150 MB का CLIP मॉडल डाउनलोड होता है। सभी प्रोसेसिंग स्थानीय रूप से चलती है; कुछ भी अपलोड नहीं किया जाता है। एक बड़े कैश को इंडेक्स करने में कई मिनट लग सकते हैं और WebGPU के बिना यह CPU-गहन है।"
+        },
+        "amplitudeHarvest": {
+          "name": "Amplitude अवतार-ID हार्वेस्ट",
+          "description": "आपके सामने आए अवतारों से मॉडल डेटाबेस को समृद्ध करने के लिए VRChat के अपने लोकल Amplitude एनालिटिक्स कैश से अवतार id (avtr_...) पढ़ता है। रीड-ओनली: कुछ भी नहीं लिखा, डिलीट या अपलोड किया जाता। मॉडल डेटाबेस पेज पर 'Scan local cache' कार्य जोड़ता है।",
+          "warning": "VRChat के एनालिटिक्स कैश को पढ़ना VRChat की सेवा शर्तों / डेटा-उपयोग दिशानिर्देशों के विरुद्ध माना जा सकता है। अपने जोखिम पर उपयोग करें। यह पूरी तरह लोकल और रीड-ओनली रहता है — केवल avtr_ id निकाले जाते हैं, कोई अन्य एनालिटिक्स डेटा न दिखाया न कहीं भेजा जाता है।"
         }
       },
       "visualSearch": {
@@ -1552,7 +3826,8 @@
       "steamvr": "SteamVR",
       "experimental": "प्रायोगिक",
       "vrDiag": "VR डायग्नोस्टिक्स",
-      "data": "डेटा प्रबंधन"
+      "data": "डेटा प्रबंधन",
+      "hardware": "हार्डवेयर"
     },
     "vrDiag": {
       "heading": "VR डायग्नोस्टिक्स",
@@ -1587,7 +3862,15 @@
       "found": "मिला",
       "missing": "नहीं मिला",
       "steamStreamingMicrophone": "Steam Streaming Microphone",
-      "vrlinkIssues": "vrlink समस्याएँ"
+      "vrlinkIssues": "vrlink समस्याएँ",
+      "openSteamLinkRepair": "Steam Link रिपेयर खोलें",
+      "linkRepairReady": "Steam Link रिपेयर पैनल तैयार। अमान्य सेशन: {{invalid}}, Quest पेयरिंग रिकॉर्ड: {{questPairs}}।",
+      "virtualAdapterWarning": "वर्चुअल एडाप्टर \"{{name}}\" ({{description}}) IP {{ip}} के साथ सक्षम है और VR स्ट्रीमिंग में बाधा डाल सकता है।",
+      "avgBitrate": "औसत बिटरेट",
+      "droppedFrames": "गिराए गए फ़्रेम",
+      "linkQuality": "लिंक गुणवत्ता",
+      "maxLatency": "अधिकतम लेटेंसी",
+      "supersampleFiltering": "सुपरसैंपल फ़िल्टरिंग"
     },
     "autoStart": {
       "label": "विंडोज के साथ लॉन्च करें",
@@ -1620,20 +3903,20 @@
         "historyDesc": "स्थानीय रूप से दर्ज गतिविधि। साफ़ करना स्थायी है और पूर्ववत नहीं हो सकता।",
         "experimental": "Experimental feature डेटा",
         "experimentalDesc": "Experimental features से बना डेटा।",
-        "danger": "Danger zone",
+        "danger": "खतरे का क्षेत्र",
         "dangerDesc": "आपके अपने assets। साफ़ करने पर favorites, notes और tags हमेशा के लिए मिट जाएँगे।"
       },
       "item": {
         "cache": {
-          "thumbnails": "Thumbnail cache",
-          "previews": "Avatar preview cache",
-          "screenshotThumbs": "Screenshot thumbnails",
+          "thumbnails": "थंबनेल कैश",
+          "previews": "अवतार प्रीव्यू कैश",
+          "screenshotThumbs": "स्क्रीनशॉट थंबनेल",
           "updates": "डाउनलोड किए updates",
-          "pluginFeed": "Plugin feed cache",
-          "index": "Cache index",
-          "assetCache": "Asset metadata cache",
-          "benchmark": "Avatar benchmark cache",
-          "onlineMirror": "Online mirror (avatars, prints, inventory)"
+          "pluginFeed": "प्लगइन फ़ीड कैश",
+          "index": "कैश इंडेक्स",
+          "assetCache": "एसेट मेटाडेटा कैश",
+          "benchmark": "अवतार बेंचमार्क कैश",
+          "onlineMirror": "ऑनलाइन मिरर (अवतार, प्रिंट, इन्वेंटरी)"
         },
         "history": {
           "worldVisits": "World visit इतिहास",
@@ -1641,15 +3924,73 @@
           "avatarHistory": "Avatar इतिहास",
           "friendLog": "Friend log और presence",
           "sessions": "Session इतिहास",
-          "logEvents": "Log events"
+          "logEvents": "लॉग इवेंट"
         },
         "experimental": {
-          "embeddings": "Visual search embeddings"
+          "embeddings": "विज़ुअल खोज एम्बेडिंग"
         },
         "assets": {
           "favorites": "स्थानीय favorites, notes और tags"
         }
       }
+    },
+    "notify": {
+      "title": "डेस्कटॉप नोटिफ़िकेशन",
+      "desc": "VRCSM चलते समय लाइव VRChat इवेंट के लिए नेटिव Windows नोटिफ़िकेशन दिखाएं। हर प्रकार डिफ़ॉल्ट रूप से बंद है।",
+      "friendOnline": {
+        "label": "मित्र ऑनलाइन आता है",
+        "desc": "जब कोई मित्र VRChat में लॉग इन करे तब टोस्ट दिखाएं।"
+      },
+      "invite": {
+        "label": "इनवाइट",
+        "desc": "जब आपको किसी इंस्टेंस का इनवाइट मिले तब टोस्ट दिखाएं।"
+      },
+      "friendRequest": {
+        "label": "मित्र अनुरोध",
+        "desc": "जब कोई आपको मित्र अनुरोध भेजे तब टोस्ट दिखाएं।"
+      },
+      "vrOverlay": {
+        "label": "VR हेडसेट में दिखाएं",
+        "desc": "ऊपर सक्षम नोटिफ़िकेशन को XSOverlay के ज़रिए आपके हेडसेट में भी दिखाएं। इसके लिए XSOverlay का चलना ज़रूरी है।"
+      },
+      "tts": {
+        "label": "नोटिफ़िकेशन बोलें",
+        "desc": "VR में रहते हुए लाइव इवेंट को आपकी सिस्टम आवाज़ से ज़ोर से पढ़ें।",
+        "unsupported": "इस रनटाइम में स्पीच सिंथेसिस उपलब्ध नहीं है।"
+      },
+      "ttsScope": {
+        "label": "क्या बोलना है",
+        "desc": "\"केवल मित्र\" सिर्फ़ मित्रों के ऑनलाइन आने की घोषणा करता है; \"सभी\" इनवाइट और मित्र अनुरोध भी बोलता है।",
+        "all": "सभी इवेंट",
+        "friends": "केवल मित्र"
+      }
+    },
+    "hardware": {
+      "applied": "सेटिंग्स लागू हुईं! SteamVR रीस्टार्ट करें।",
+      "apply": "अनुशंसित सेटिंग्स लागू करें",
+      "applying": "लागू किया जा रहा है…",
+      "bandwidth": "बैंडविड्थ",
+      "community": "कम्युनिटी",
+      "cpu": "CPU",
+      "cpuScore": "CPU",
+      "detecting": "हार्डवेयर पहचाना जा रहा है…",
+      "ffr": "FFR स्तर",
+      "gpu": "GPU",
+      "gpuScore": "GPU",
+      "hmd": "HMD",
+      "motionSmoothing": "मोशन स्मूथिंग",
+      "ram": "RAM",
+      "ramBonus": "RAM",
+      "recommendedTier": "{{tier}} टियर अनुशंसित",
+      "refresh": "फिर से पहचानें",
+      "refreshRate": "रीफ्रेश रेट",
+      "score": "HW स्कोर",
+      "scoreBreakdown": "स्कोर विवरण",
+      "subtitle": "Steam Link / Quest के लिए अनुशंसित VRChat सेटिंग्स गणना करने हेतु GPU और CPU पहचानें।",
+      "supersampling": "सुपरसैंपलिंग",
+      "title": "हार्डवेयर और GPU",
+      "totalScore": "कुल",
+      "vramBonus": "VRAM"
     }
   },
   "imageZoom": {
@@ -1679,7 +4020,8 @@
       "install": "इंस्टॉल",
       "installing": "इंस्टॉल हो रहा है…",
       "installed": "इंस्टॉल किया गया",
-      "empty": "कोई प्लगइन उपलब्ध नहीं।"
+      "empty": "कोई प्लगइन उपलब्ध नहीं।",
+      "fetchErrorHint": "रिमोट स्टोर फ़ीड dwgx.github.io/VRCSM/plugins.json अस्थायी रूप से अनुपलब्ध है। VRCSM के साथ बंडल किए Hello Plugin और VRChat Auto-Uploader पहले से इंस्टॉल हैं और साइडबार से खोले जा सकते हैं; केवल नए थर्ड-पार्टी प्लगइन इंस्टॉल करना प्रभावित है।"
     },
     "detail": {
       "notFound": "फ़ीड में प्लगइन नहीं मिला।",
@@ -1693,7 +4035,8 @@
       "hostMin": "न्यूनतम होस्ट वर्शन",
       "sha256": "SHA-256",
       "downloadUrl": "डाउनलोड URL",
-      "open": "खोलें"
+      "open": "खोलें",
+      "permissions": "मैनिफ़ेस्ट अनुमतियाँ"
     },
     "installed": {
       "title": "इंस्टॉल किए गए प्लगइन",
@@ -1720,6 +4063,12 @@
       "notInstalled": "प्लगइन {{id}} इंस्टॉल नहीं है।",
       "disabled": "प्लगइन {{id}} अक्षम है।",
       "noPanel": "प्लगइन {{id}} पैनल UI प्रदान नहीं करता।"
+    },
+    "install": {
+      "title": "प्लगइन इंस्टॉल करें",
+      "confirm": "आप \"{{name}}\" इंस्टॉल करने वाले हैं। आगे बढ़ने से पहले कृपया अनुमतियों की समीक्षा करें।",
+      "permissions": "मैनिफ़ेस्ट अनुमतियाँ",
+      "confirmBtn": "इंस्टॉल करें"
     }
   },
   "avatar": {
@@ -1766,7 +4115,9 @@
     "groupsSignIn": "अपने जुड़े समूहों के ईवेंट देखने के लिए VRChat में साइन इन करें।",
     "noGroups": "आपने अभी तक किसी VRChat समूह में शामिल नहीं हुए हैं।",
     "noGroupEvents": "आपके {{count}} समूह(समूहों) में अभी कोई सार्वजनिक ईवेंट नहीं है।",
-    "openGroupPage": "समूह पेज खोलें"
+    "openGroupPage": "समूह पेज खोलें",
+    "resolvingPreview": "प्रीव्यू खोजा जा रहा है...",
+    "noPreview": "कोई प्रीव्यू इमेज नहीं"
   },
   "worldHistory": {
     "title": "विश्व इतिहास",
@@ -1777,7 +4128,32 @@
     "unknownWorld": "(अज्ञात दुनिया)",
     "stillInWorld": "अभी भी दुनिया में है",
     "instanceLabel": "इंस्टेंस",
-    "openAction": "खोलें"
+    "openAction": "खोलें",
+    "rejoinAction": "फिर से जॉइन करें",
+    "rejoinHint": "VRChat को ठीक इसी इंस्टेंस में लॉन्च करें",
+    "heatmap": {
+      "title": "गतिविधि हीटमैप",
+      "subtitle": "आप कब वर्ल्ड जॉइन करते हैं, सप्ताह के दिन और घंटे के अनुसार (पिछले {{days}} दिन)",
+      "empty": "गतिविधि पैटर्न चार्ट करने के लिए अभी पर्याप्त विज़िट इतिहास नहीं है।",
+      "busiest": "सबसे व्यस्त: {{day}} लगभग {{hour}}",
+      "legendLess": "कम",
+      "legendMore": "ज़्यादा",
+      "cellTooltip": "{{day}} {{hour}}: {{count}} विज़िट",
+      "totalVisits": "{{count}} विज़िट चार्ट किए गए"
+    },
+    "clear": "साफ़ करें",
+    "clearDesc": "इससे सभी लॉग की गई वर्ल्ड विज़िट हमेशा के लिए डिलीट हो जाती हैं। इसे वापस नहीं लाया जा सकता।",
+    "clearFailed": "साफ़ करने में विफल: {{error}}",
+    "clearSuccess": "वर्ल्ड इतिहास साफ़ कर दिया गया।",
+    "clearTitle": "वर्ल्ड इतिहास साफ़ करें?",
+    "customLimit": "कस्टम वर्ल्ड इतिहास पंक्ति सीमा",
+    "lastPlayerSeen": "अंतिम प्लेयर इवेंट {{time}}",
+    "limitLabel": "पंक्तियाँ",
+    "loggedPlayers": "{{count}} लॉग किए खिलाड़ी",
+    "noLoggedPlayers": "कोई प्लेयर लॉग नहीं",
+    "noPlayerCountHint": "इस विज़िट विंडो में कोई लोकल प्लेयर जॉइन/लीव इवेंट दर्ज नहीं हुआ।",
+    "playerCountHint": "इस विज़िट विंडो में {{count}} लोकल प्लेयर लॉग इवेंट।",
+    "recentLimit": "हाल की {{count}} विज़िट"
   },
   "strangerAlert": {
     "title": "अजनबी आपके {{access}} इंस्टेंस में शामिल हुआ",
@@ -1793,7 +4169,11 @@
     "guide1": "VRChat इंस्टेंस में आप जिन लोगों से मिलते हैं, उन्हें रियल-टाइम में रिकॉर्ड करता है।",
     "guide2": "1. एक नाम दर्ज करें और 'रिकॉर्डिंग शुरू करें' पर क्लिक करें। 2. रिकॉर्डिंग के दौरान, आपके इंस्टेंस में आने वाले खिलाड़ी अपने-आप दर्ज हो जाते हैं। 3. सत्र समाप्त करने के लिए 'रोकें' पर क्लिक करें। उपस्थित लोगों को देखने के लिए कोई रिकॉर्डिंग चुनें।",
     "noRecordings": "अभी तक कोई रिकॉर्डिंग नहीं। ऊपर से शुरू करें और ट्रैक करें कि आपके इंस्टेंस में कौन आता है।",
-    "noAttendees": "अभी तक कोई उपस्थित व्यक्ति रिकॉर्ड नहीं हुआ।"
+    "noAttendees": "अभी तक कोई उपस्थित व्यक्ति रिकॉर्ड नहीं हुआ।",
+    "delete": "रिकॉर्डिंग डिलीट करें",
+    "deleteDesc": "इससे \"{{name}}\" और उसके {{count}} उपस्थित रिकॉर्ड हमेशा के लिए हट जाते हैं। इसे वापस नहीं लाया जा सकता।",
+    "deleteTitle": "रिकॉर्डिंग डिलीट करें?",
+    "deleted": "रिकॉर्डिंग डिलीट हो गई"
   },
   "socialGraph": {
     "title": "सामाजिक विश्लेषण",
@@ -1804,7 +4184,22 @@
     "guide": "आपकी VRChat लॉग हिस्ट्री से वर्ल्ड विज़िट और खिलाड़ियों से मुलाकात का डेटा एकत्र करता है। VRCSM लॉग पार्स करते समय डेटा जमा होता रहता है — एनालिटिक्स बनाने के लिए खेलते समय ऐप चालू रखें।",
     "noWorlds": "अभी तक कोई विज़िट डेटा नहीं है। जब VRCSM आपके VRChat लॉग पार्स करता है तब वर्ल्ड हिस्ट्री रिकॉर्ड होती है।",
     "selfFiltered": "Encounter rankings से आपका अपना player ID हटाया गया है।",
-    "lazyWorlds": "विश्व बैज और थंबनेल सिर्फ दिखने या खुलने पर लोड होते हैं।"
+    "lazyWorlds": "विश्व बैज और थंबनेल सिर्फ दिखने या खुलने पर लोड होते हैं।",
+    "tabRankings": "रैंकिंग",
+    "tabGraph": "रिश्ता ग्राफ़",
+    "graphTitle": "सह-उपस्थिति नेटवर्क",
+    "graphGuide": "वे खिलाड़ी जो आपके इंस्टेंस में साथ रहे, समय के ओवरलैप से जुड़े हुए। ठोस रेखाएँ पुष्ट हैं (आपके अपने इंस्टेंस से लॉग की गई); बिंदीदार रेखाएँ दूसरों के बीच अनुमानित सह-उपस्थिति हैं — पुष्ट दोस्ती नहीं।",
+    "graphLoading": "सह-उपस्थिति ग्राफ़ बनाया जा रहा है…",
+    "graphEmpty": "अभी कोई सह-उपस्थिति डेटा नहीं। जब VRCSM आपके इंस्टेंस साझा करने वाले खिलाड़ियों को लॉग कर लेगा तब किनारे दिखेंगे।",
+    "graphAria": "सह-उपस्थिति रिश्ता ग्राफ़",
+    "legendConfirmed": "पुष्ट सह-उपस्थिति (आपका इंस्टेंस)",
+    "legendInferred": "अनुमानित सह-उपस्थिति (अन्य, पुष्ट मित्र नहीं)",
+    "clear": "साफ़ करें",
+    "clearDesc": "इससे मित्र रैंकिंग और सह-उपस्थिति ग्राफ़ में उपयोग किए लॉग किए प्लेयर मुठभेड़ हमेशा के लिए डिलीट हो जाते हैं। वर्ल्ड-विज़िट रैंकिंग वर्ल्ड इतिहास पेज पर अलग से साफ़ की जाती हैं। इसे वापस नहीं लाया जा सकता।",
+    "clearFailed": "साफ़ करने में विफल: {{error}}",
+    "clearSuccess": "सोशल एनालिटिक्स साफ़ कर दिया गया।",
+    "clearTitle": "सोशल एनालिटिक्स साफ़ करें?",
+    "nodeFocused": "{{name}} पर फ़ोकस किया"
   },
   "benchmark": {
     "title": "अवतार प्रदर्शन बेंचमार्क",
@@ -1831,7 +4226,16 @@
     "wearerCount": "{{count}} पहनने वाला(वाले)",
     "seenTimes": "{{count}} बार देखा गया",
     "showWearers": "पहनने वाले",
-    "localEncounterIndexHint": "स्थानीय VRChat लॉग से बनाया गया। VRCSM सहेजे गए थंबनेल और वास्तविक अवतार ID को प्राथमिकता देता है; ID न होने वाली पंक्तियाँ साइन-इन होने पर सटीक सार्वजनिक खोज से हल होती हैं, और अस्पष्ट/निजी पंक्तियों में प्लेसहोल्डर बना रहता है।"
+    "localEncounterIndexHint": "स्थानीय VRChat लॉग से बनाया गया। VRCSM सहेजे गए थंबनेल और वास्तविक अवतार ID को प्राथमिकता देता है; ID न होने वाली पंक्तियाँ साइन-इन होने पर सटीक सार्वजनिक खोज से हल होती हैं, और अस्पष्ट/निजी पंक्तियों में प्लेसहोल्डर बना रहता है।",
+    "clear": "साफ़ करें",
+    "clearBenchmarkDesc": "इससे संग्रहीत बेंचमार्क स्नैपशॉट डिलीट हो जाते हैं। लाइव स्कैन में मौजूद अवतार अगले स्कैन पर फिर दिखेंगे। इसे वापस नहीं लाया जा सकता।",
+    "clearBenchmarkTitle": "अवतार बेंचमार्क साफ़ करें?",
+    "clearFailed": "साफ़ करने में विफल: {{error}}",
+    "clearSeenDesc": "इससे आपके देखे अवतारों का लॉग किया इतिहास हमेशा के लिए डिलीट हो जाता है। इसे वापस नहीं लाया जा सकता।",
+    "clearSeenTitle": "देखे-अवतार का इतिहास साफ़ करें?",
+    "clearSuccess": "साफ़ कर दिया गया।",
+    "copyId": "अवतार ID कॉपी करें",
+    "wornBy": "पहनने वाला"
   },
   "fbt": {
     "title": "FBT कैलिब्रेशन मॉनिटर",
@@ -1853,6 +4257,166 @@
     "save": "नियम सहेजें",
     "empty": "अभी तक कोई नियम नहीं है। VRChat क्रियाओं को स्वचालित करने के लिए एक बनाएं।",
     "namePlaceholder": "नियम का नाम...",
-    "history": "फायरिंग इतिहास"
+    "history": "फायरिंग इतिहास",
+    "yamlPlaceholder": "trigger: friend.online\ncondition: user.displayName contains 'Natsumi'\naction:\n  type: vrcsm.notification.show\n  title: मित्र ऑनलाइन!\n  message: '{{user.displayName}} ऑनलाइन है'"
+  },
+  "vrcPlus": {
+    "title": "VRC+ मीडिया",
+    "subtitle": "अपने प्रिंट, गैलरी, प्रोफ़ाइल आइकन और इन्वेंटरी मैनेज करें। अपलोड और डिलीट सीधे VRChat पर लागू होते हैं।",
+    "tab": {
+      "prints": "प्रिंट",
+      "gallery": "गैलरी",
+      "icons": "आइकन",
+      "inventory": "इन्वेंटरी",
+      "emoji": "इमोजी",
+      "stickers": "स्टिकर"
+    },
+    "uploadPrint": "प्रिंट अपलोड करें",
+    "uploadImage": "इमेज अपलोड करें",
+    "uploadIcon": "आइकन अपलोड करें",
+    "printUploaded": "प्रिंट अपलोड हो गया",
+    "printDeleted": "प्रिंट डिलीट हो गया",
+    "imageUploaded": "इमेज अपलोड हो गई",
+    "imageDeleted": "इमेज डिलीट हो गई",
+    "supporterRequired": "इसके लिए सक्रिय VRC+ सब्सक्रिप्शन ज़रूरी है।",
+    "limitReached": "आप इस स्लॉट के लिए {{limit}} की VRC+ सीमा तक पहुँच गए हैं।",
+    "deletePrint": "प्रिंट डिलीट करें",
+    "deleteImage": "डिलीट करें",
+    "deletePrintTitle": "यह प्रिंट डिलीट करें?",
+    "deletePrintBody": "इससे प्रिंट आपके VRChat अकाउंट से हमेशा के लिए हट जाएगा। इसे वापस नहीं लाया जा सकता।",
+    "deleteImageTitle": "यह इमेज डिलीट करें?",
+    "deleteImageBody": "इससे इमेज आपके VRChat अकाउंट से हमेशा के लिए हट जाएगी। इसे वापस नहीं लाया जा सकता।",
+    "noPrints": "अभी कोई प्रिंट नहीं।",
+    "noFiles": "यहाँ अभी कुछ नहीं है।",
+    "noInventory": "इन्वेंटरी खाली है।",
+    "uploadEmoji": "इमोजी अपलोड करें",
+    "uploadSticker": "स्टिकर अपलोड करें",
+    "emoji": {
+      "static": "स्टैटिक",
+      "animated": "एनिमेटेड",
+      "explainer": "एनिमेटेड इमोजी एक वर्टिकल स्प्राइट शीट होते हैं — हर फ़्रेम को एक चौकोर PNG में ऊपर से नीचे क्रम में रखें, फिर फ़्रेम संख्या और प्लेबैक स्पीड सेट करें।",
+      "pickSheet": "स्प्राइट शीट चुनें",
+      "frames": "फ़्रेम",
+      "fps": "FPS",
+      "style": "स्टाइल",
+      "upload": "एनिमेटेड इमोजी अपलोड करें",
+      "uploaded": "एनिमेटेड इमोजी अपलोड हो गई",
+      "badFrames": "फ़्रेम और fps दोनों कम से कम 1 होने चाहिए।",
+      "empty": "अभी कोई एनिमेटेड इमोजी नहीं।"
+    }
+  },
+  "modelDb": {
+    "title": "मॉडल डेटाबेस",
+    "subtitle": "अपने अकाउंट के अवतार मैनेज करें: नाम बदलें, दृश्यता संपादित करें, इमेज बदलें या डिलीट करें।",
+    "searchPlaceholder": "अपने अवतार फ़िल्टर करें",
+    "empty": "आपके स्वामित्व वाला कोई अवतार नहीं मिला।",
+    "loadFailed": "आपके अवतार लोड करने में विफल।",
+    "manage": "मैनेज करें",
+    "manageTitle": "अवतार मैनेज करें",
+    "noChanges": "सेव करने के लिए कोई बदलाव नहीं।",
+    "saved": "अवतार अपडेट हो गया।",
+    "deleted": "अवतार डिलीट हो गया।",
+    "imageReplaced": "अवतार इमेज बदल दी गई।",
+    "replaceImage": "इमेज बदलें",
+    "replaceImageConfirmTitle": "इस अवतार की इमेज बदलें?",
+    "replaceImageConfirmBody": "\"{{name}}\" के लिए नई इमेज अपलोड करें और इसे अपने लाइव VRChat अकाउंट पर सेट करें। अवतार का पब्लिक थंबनेल तुरंत बदल जाएगा।",
+    "delete": "अवतार डिलीट करें",
+    "deleteConfirmTitle": "यह अवतार डिलीट करें?",
+    "deleteConfirmBody": "\"{{name}}\" को हमेशा के लिए डिलीट करें? VRChat अवतार को छिपा देता है, उसकी एसेट फ़ाइलें हटा देता है, और id को हमेशा के लिए आरक्षित रखता है। इसे वापस नहीं लाया जा सकता।",
+    "filter": {
+      "all": "सभी",
+      "public": "पब्लिक",
+      "private": "निजी",
+      "hidden": "छिपा हुआ"
+    },
+    "field": {
+      "name": "नाम",
+      "description": "विवरण",
+      "visibility": "दृश्यता",
+      "image": "अवतार इमेज"
+    },
+    "hidden": {
+      "explainer": "VRChat छिपे (डिलीट किए) अवतारों को सूचीबद्ध नहीं कर सकता। इसके बजाय उन्हें id से खोजें — अपने लोकल लॉग में दिखी id स्कैन करें, या कोई खास avtr_ id पेस्ट करें। केवल आपके स्वामित्व वाले अवतार ही मिलेंगे।",
+      "lookup": "id से खोजें",
+      "scanHistory": "लॉग इतिहास स्कैन करें",
+      "scanning": "{{done}} / {{total}} id जाँचे जा रहे हैं…",
+      "scanDone": "{{checked}} id जाँचे · {{found}} छिपे अवतार मिले।",
+      "badId": "एक मान्य avtr_ id दर्ज करें।",
+      "foundOne": "छिपा अवतार मिल गया।",
+      "notHidden": "वह अवतार मौजूद है पर छिपा नहीं है।",
+      "notOwned": "वह id हल नहीं हो सकी — VRChat केवल आपके स्वामित्व वाले अवतार लौटाता है।",
+      "noHistory": "लोकल इतिहास में अभी कोई अवतार id नहीं है। इसे भरने के लिए VRChat खेलें, या ऊपर कोई id पेस्ट करें।"
+    },
+    "harvest": {
+      "empty": "लोकल एनालिटिक्स कैश में कोई अवतार id नहीं मिली (या VRChat ने अभी तक कोई नहीं लिखी)।",
+      "found": "लोकल रूप से {{total}} अवतार id मिले · {{fresh}} आपकी स्वामित्व सूची में नहीं हैं।",
+      "scan": "लोकल कैश स्कैन करें",
+      "tooltip": "अवतार id के लिए VRChat के लोकल एनालिटिक्स कैश का रीड-ओनली स्कैन (प्रायोगिक)।"
+    }
+  },
+  "feed": {
+    "tab": "फ़ीड",
+    "title": "गतिविधि फ़ीड",
+    "subtitle": "मित्रों की मौजूदगी, सेशन और अवतार बदलावों की एकीकृत, स्थायी टाइमलाइन।",
+    "searchPlaceholder": "नाम, वर्ल्ड, विवरण खोजें…",
+    "muteHint": "All व्यू से छिपाने के लिए राइट-क्लिक करें",
+    "loginRequired": "अपनी गतिविधि फ़ीड देखने के लिए Settings पेज से VRChat में लॉग इन करें।",
+    "loadFailed": "फ़ीड लोड नहीं हो सका।",
+    "empty": "अभी कोई गतिविधि नहीं। जैसे-जैसे आपके मित्र ऑनलाइन आते हैं और इंस्टेंस बदलते हैं, इवेंट यहाँ दिखेंगे।",
+    "unknownUser": "अज्ञात",
+    "category": {
+      "all": "सभी",
+      "online": "ऑनलाइन",
+      "offline": "ऑफ़लाइन",
+      "location": "लोकेशन",
+      "status": "स्टेटस",
+      "avatar": "अवतार",
+      "joined": "शामिल हुए",
+      "left": "निकले",
+      "friend-added": "मित्र जोड़ा गया",
+      "friend-removed": "मित्र हटाया गया",
+      "video": "वीडियो",
+      "portal": "पोर्टल",
+      "moderation": "मॉडरेशन",
+      "sticker": "स्टिकर",
+      "notification": "नोटिफ़िकेशन",
+      "session": "सेशन",
+      "diagnostic": "डायग्नोस्टिक",
+      "other": "अन्य"
+    }
+  },
+  "gameLog": {
+    "tab": "गेम लॉग",
+    "title": "गेम लॉग",
+    "subtitle": "लाइव रॉ VRChat आउटपुट लॉग टेल।",
+    "searchPlaceholder": "पंक्तियाँ फ़िल्टर करें…",
+    "lineCount": "{{n}} पंक्तियाँ",
+    "pause": "रोकें",
+    "resume": "जारी रखें",
+    "clear": "साफ़ करें",
+    "jumpToBottom": "नवीनतम पर जाएं",
+    "paused": "स्ट्रीम रुकी। नई पंक्तियाँ कैप्चर करने के लिए जारी रखें।",
+    "waiting": "VRChat लॉग आउटपुट का इंतज़ार… लाइव पंक्तियाँ देखने के लिए VRChat लॉन्च करें।",
+    "level": {
+      "all": "सभी",
+      "info": "जानकारी",
+      "warn": "चेतावनी",
+      "error": "त्रुटि"
+    },
+    "hideNoiseHint": "VRChat के EOS/Stomp टेलीमेट्री रीट्राई स्पैम को समेटें (यह VRCSM की त्रुटि नहीं है)।",
+    "noiseHidden": "शोर छिपाया जा रहा है",
+    "showAll": "सभी दिखाएं"
+  },
+  "tts": {
+    "friendOnline": "{{name}} अब ऑनलाइन है",
+    "invite": "{{who}} की ओर से इनवाइट",
+    "friendRequest": "{{who}} की ओर से मित्र अनुरोध",
+    "someone": "कोई"
+  },
+  "models": {
+    "tab": {
+      "browse": "ब्राउज़ करें",
+      "owned": "मेरे अवतार"
+    }
   }
 }

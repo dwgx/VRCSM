@@ -39,7 +39,10 @@
     "social": "Социальная аналитика",
     "benchmark": "Тестирование аватаров",
     "fbt": "FBT Монитор",
-    "rules": "Правила автоматизации"
+    "rules": "Правила автоматизации",
+    "vrcPlus": "VRC+",
+    "models": "База моделей",
+    "labSection": "Лаборатория"
   },
   "profile": {
     "title": "Мой профиль",
@@ -90,6 +93,22 @@
       "ageVerified": "18+ подтверждено",
       "ageUnverified": "Не подтверждено",
       "languages": "Языки"
+    },
+    "statusPresets": "Пресеты статуса",
+    "saveStatusPreset": "Сохранить текущий статус как пресет",
+    "applyStatusPreset": "Применить этот пресет",
+    "deleteStatusPreset": "Удалить пресет",
+    "noStatusPresets": "Сохраните пару статус + описание, чтобы использовать её позже.",
+    "emailUnverified": "Задан, но не подтверждён",
+    "emailVerified": "Подтверждён",
+    "linkedAccounts": "Связанные аккаунты",
+    "linkedAccountsDesc": "Привязанные платформы и поля учётной записи из сессии входа VRChat, показаны нативно.",
+    "manageOnVrchat": "Управлять на vrchat.com",
+    "notLinked": "Не связано",
+    "security": {
+      "avatarCopying": "Клонирование аватаров",
+      "clientLogin": "Вход в игровой клиент",
+      "twoFactor": "Двухфакторная аутентификация"
     }
   },
   "screenshots": {
@@ -159,7 +178,78 @@
     "mute": "Заглушить",
     "inviteMe": "Пригласить меня",
     "joinInstance": "Присоединиться к инстансу",
-    "notSignedIn": "Войдите в VRChat, чтобы просмотреть подробности друга."
+    "notSignedIn": "Войдите в VRChat, чтобы просмотреть подробности друга.",
+    "nameHistory": "Прежние имена",
+    "liveOccupants": "Сейчас в мире",
+    "instanceFull": "заполнен",
+    "ageVerified": "Возраст подтверждён",
+    "friendsSince": "В друзьях с {{when}}",
+    "bestTime": "Когда его легче застать",
+    "bestTimeWindow": "{{day}} {{start}}–{{end}}",
+    "bestTimeDays": "Замечен онлайн в течение {{count}} дн.",
+    "bestTimeHint": "Оценка по наблюдаемой истории онлайна.",
+    "confidenceHint": "На основе {{days}} дн. наблюдаемой истории онлайна",
+    "confidence": {
+      "high": "Высокая точность",
+      "medium": "Средняя точность",
+      "low": "Низкая точность"
+    },
+    "unfriendConfirm1": "Удалить {{name}} из друзей?",
+    "unfriendConfirm2Title": "Вы точно-точно уверены?",
+    "unfriendConfirm2": "Если вы нажмёте красную кнопку, {{name}} может исчезнуть отсюда навсегда. QvQ",
+    "unfriendFinal": "Да, красная кнопка",
+    "unfriendNevermind": "Передумал!!",
+    "unfriendCancelled": "Отменено. Дружба остаётся в целости и сохранности.",
+    "boop": "Буп / Пинг",
+    "boopHint": "Выберите тип сообщения, затем выберите, какой сохранённый шаблон прикрепить. Настройте до 4 слотов на каждый тип в клиенте VRChat (Quick Menu → Notifications → Messages).",
+    "boopSent": "Буп отправлен — {{name}} увидит уведомление.",
+    "nativeBoop": "Бупнуть {{name}}",
+    "nativeBoopSent": "{{name}} бупнут!",
+    "myEmoji": "Мои эмодзи",
+    "emojiBoopSent": "{{name}} бупнут с {{emoji}}!",
+    "emojiBoopTooltip": "Бупнуть с {{emoji}}",
+    "boopSending": "Отправка…",
+    "boopSlot": "Слот {{n}}",
+    "boopCooldown": "{{m}}м",
+    "boopEmptySlot": "(пусто — отправит просто пинг)",
+    "boopEmojiHint": "Популярные буп-эмодзи VRChat — нажмите, чтобы скопировать, затем вставьте в слоты сохранённых сообщений",
+    "boopCopyEmoji": "Нажмите, чтобы скопировать",
+    "boopEmojiCopied": "Скопировано! Вставьте в слот сохранённых сообщений в клиенте VRChat.",
+    "boopInviteNeedsWorld": "Для сообщений-приглашений нужна ваша собственная локация в мире. Откройте сайт VRChat, чтобы управлять ими.",
+    "boopSendTooltip": "Отправить это сообщение как запрос приглашения",
+    "boopCooldownTooltip": "Перезарядка — подождите перед повторной отправкой",
+    "boopInviteTypeHint": "Сообщения приглашения и ответа на приглашение используются, когда вы приглашаете кого-то в свой мир. Эти превью показаны для справки — настройте их в клиенте VRChat, чтобы использовать с действием приглашения.",
+    "boopTypeRequestInvite": "Пинг",
+    "boopTypeInvite": "Приглашение",
+    "boopTypeInviteResponse": "Ответ",
+    "boopTypeReqInviteReply": "Ответ на пинг",
+    "noSlotsTitle": "Сохранённые сообщения не настроены",
+    "noSlotsHint": "VRChat позволяет сохранить до 4 шаблонов приглашений на каждый тип. Настройте их в клиенте VRChat в Quick Menu → Notifications → Messages, после чего они появятся здесь для выбора.",
+    "editSlots": "Изменить слоты в VRChat",
+    "editSlotsHint": "Измените сохранённые шаблоны в клиенте VRChat (Quick Menu → Notifications → Messages).",
+    "inviteToTheirWorld": "Пригласить себя в его мир",
+    "inviteSent": "Приглашение отправлено",
+    "openVrchatProfile": "Открыть профиль на vrchat.com",
+    "avatarHistory": "История аватаров",
+    "avatarIdCopied": "ID аватара скопирован",
+    "blocked": "Пользователь заблокирован",
+    "boopSend": "Бупнуть {{name}}",
+    "boopSendEmoji": "Бупнуть с {{e}}",
+    "currentAvatar": "Текущий аватар",
+    "currentWorld": "Текущий мир",
+    "description": "Подробная информация о друге",
+    "launch": "Запустить",
+    "muteConfirm": "Заглушить {{name}}?",
+    "muted": "Пользователь заглушён",
+    "noActivity": "Активность пока не зафиксирована.",
+    "note": "Заметка",
+    "notePlaceholder": "Напишите личную заметку об этом друге...",
+    "noteSaved": "Заметка сохранена",
+    "recentActivity": "Недавняя активность",
+    "saveNote": "Сохранить",
+    "sharedWorlds": "Общие миры",
+    "timesSeen": "замечен {{n}} раз",
+    "vrcProfile": "Профиль VRChat"
   },
   "osc": {
     "title": "Инструменты OSC",
@@ -243,7 +333,7 @@
       "nextSendIn": "Через {{seconds}} с",
       "stopAutoShort": "Стоп",
       "startAutoShort": "Авто",
-      "noCardSelected": "Select a card first"
+      "noCardSelected": "Сначала выберите карточку"
     },
     "sendFailed": "OSC не отправлен",
     "page": {
@@ -463,7 +553,23 @@
       "social": "Общение",
       "vrcPlus": "VRC+",
       "worlds": "Миры"
-    }
+    },
+    "notOwnedAvatar": "Этот аватар не ваш — VRChat не предоставляет его для скачивания.",
+    "avatarHistoryDesc": "Недавно использованные аватары, извлечённые из разобранных логов VRChat.",
+    "noAvatarHistory": "История аватаров пока не записана.",
+    "avatarDownloads": "Скачать пакет аватара",
+    "avatarDownloadsDesc": "Скачать asset-бандл аватара (.vrca) в локальную папку. Требуется вход.",
+    "download": "Скачать",
+    "downloadComplete": "Скачано в {{path}}",
+    "signInRequired": "Войдите, чтобы скачивать asset-бандлы аватаров.",
+    "avatarDetailsFailed": "Не удалось получить данные аватара. Возможно, он приватный или удалён.",
+    "noAssetUrl": "Для этого аватара не найден URL для скачивания asset-бандла.",
+    "joinFailed": "Не удалось запустить: {{error}}",
+    "launch": "Запустить",
+    "launchWorld": "Запустить в VRChat",
+    "noFavoriteWorlds": "Пока нет избранных миров. Синхронизируйте избранное VRChat, чтобы увидеть их здесь.",
+    "noRecentWorlds": "В логах VRChat не найдено недавних миров.",
+    "recentWorlds": "Недавние миры"
   },
   "friends": {
     "title": "Друзья",
@@ -487,20 +593,21 @@
       "unknown": "неизвестно"
     },
     "bucket": {
-      "joinMe": "Join Me",
+      "joinMe": "Заходите",
       "active": "Активен",
-      "askMe": "Ask Me",
+      "askMe": "Спросите",
       "busy": "Занят",
       "offline": "Офлайн"
     },
     "trust": {
-      "troll": "Nuisance",
-      "veteran": "Trusted User",
-      "trusted": "Known User",
-      "known": "User",
-      "user": "New User",
-      "new": "Visitor",
-      "visitor": "Visitor"
+      "troll": "Нарушитель",
+      "veteran": "Доверенный",
+      "trusted": "Известный",
+      "known": "Пользователь",
+      "user": "Новый пользователь",
+      "new": "Посетитель",
+      "visitor": "Посетитель",
+      "label": "Ранг доверия"
     },
     "badges": {
       "moderator": "Модератор VRChat"
@@ -528,7 +635,20 @@
       "inviteToMyRoom": "Пригласить в мою комнату",
       "inviteSent": "Приглашен {{name}} в вашу комнату",
       "sendMessage": "Отправить сообщение",
-      "viewProfile": "Просмотреть профиль"
+      "viewProfile": "Просмотреть профиль",
+      "copied": "Скопировано: {{label}}",
+      "copyAvatarId": "Скопировать ID текущего аватара",
+      "copyDisplayName": "Скопировать отображаемое имя",
+      "copyLocation": "Скопировать локацию",
+      "copyUserId": "Скопировать ID пользователя",
+      "copyWorldId": "Скопировать ID мира",
+      "expand": "Развернуть",
+      "favorited": "{{name}} добавлен в избранное",
+      "inviteSelf": "Запросить приглашение к себе",
+      "openProfile": "Открыть профиль",
+      "openWorldPage": "Открыть страницу мира",
+      "selfInviteSent": "Запрошено приглашение в текущий инстанс {{name}}",
+      "unfavorited": "{{name}} удалён из избранного"
     },
     "views": {
       "all": "Все",
@@ -537,6 +657,18 @@
       "joinable": "Доступные",
       "online": "Онлайн",
       "offline": "Офлайн"
+    },
+    "joinRoom": "Войти в комнату",
+    "copyLabels": {
+      "avatarId": "ID аватара",
+      "displayName": "отображаемое имя",
+      "location": "локация",
+      "userId": "ID пользователя",
+      "worldId": "ID мира"
+    },
+    "inspector": {
+      "empty": "Выберите друга, чтобы увидеть его локацию, аватар и быстрые действия.",
+      "title": "Друг с первого взгляда"
     }
   },
   "layout": {
@@ -579,7 +711,12 @@
       "total": "Ваши группы",
       "online": "Онлайн-участники",
       "representing": "Представляете"
-    }
+    },
+    "nowRepresenting": "Представляет {{name}}",
+    "represent": "Представлять",
+    "representFailed": "Не удалось обновить представление: {{error}}",
+    "stopRepresenting": "Прекратить представлять",
+    "stoppedRepresenting": "Представление {{name}} прекращено"
   },
   "menu": {
     "file": "Файл",
@@ -628,7 +765,24 @@
     "helpCheckUpdates": "Проверить обновления",
     "helpCheckUpdatesFallback": "Проверить обновления…",
     "helpReportIssue": "Сообщить о проблеме",
-    "helpKeyboard": "Сочетания клавиш"
+    "helpKeyboard": "Сочетания клавиш",
+    "goGroups": "Группы",
+    "goWorldHistory": "История миров",
+    "goCalendar": "Календарь и джемы",
+    "goEvents": "Рекордер событий",
+    "goSocial": "Социальная аналитика",
+    "toolsVrDiagnostics": "Диагностика VR",
+    "toolsRules": "Правила автоматизации",
+    "toolsOsc": "Инструменты OSC",
+    "toolsBenchmark": "Тест аватаров",
+    "toolsFbt": "Монитор FBT",
+    "helpSteamVrRepair": "Восстановление SteamVR / Quest",
+    "helpVrDiagnostics": "Диагностика VR",
+    "helpPluginsMarket": "Магазин плагинов",
+    "helpInstalledPlugins": "Установленные плагины",
+    "helpVrchatStatus": "Статус VRChat",
+    "helpVrchatHome": "Домашняя VRChat",
+    "helpSteamLink": "Steam Link / Quest — официальные заметки"
   },
   "update": {
     "title": "Обновление VRCSM",
@@ -709,14 +863,20 @@
       "sessionsDesc": "Восстановлено из локальных логов (сначала новые).",
       "tab": "История анализа",
       "topPlayers": "Часто встречаемые игроки",
-      "topWorlds": "Часто посещаемые миры"
+      "topWorlds": "Часто посещаемые миры",
+      "loginRequired": "Для сканирования локальных логов на историю сессий требуется вход.",
+      "unclosed": "Не закрыто"
     },
     "vrcNotRunning": "VRChat не запущен",
     "vrcNotRunningHint": "Запустите VRChat для мониторинга комнат и игроков в реальном времени",
     "liveRoster": "Текущий состав инстанса",
     "recentPlayerEvents": "Недавние события игроков",
     "noPlayerEvents": "События игроков еще не записаны. Запустите VRChat и войдите в мир.",
-    "rosterTab": "Состав инстанса"
+    "rosterTab": "Состав инстанса",
+    "rosterSortAlphabetical": "Сортировать по алфавиту",
+    "wearNotAllowed": "Этот аватар не разрешает клонирование.",
+    "wearNotFound": "Не удалось найти этот аватар. Возможно, он приватный.",
+    "wearSuccess": "Сейчас надето: {{name}}"
   },
   "common": {
     "enabled": "Включено",
@@ -770,7 +930,18 @@
     "partial": "Частично",
     "add": "Добавить",
     "delete": "Удалить",
-    "reset": "Сбросить"
+    "reset": "Сбросить",
+    "all": "Все",
+    "allowed": "Разрешено",
+    "blocked": "Заблокировано",
+    "collapse": "Свернуть",
+    "deleting": "Удаление…",
+    "detecting": "Определение…",
+    "expand": "Развернуть",
+    "navigate": "Навигация",
+    "refreshing": "обновление",
+    "showAll": "Показать все ({{count}})",
+    "unavailable": "Недоступно"
   },
   "about": {
     "title": "О VRCSM",
@@ -802,18 +973,31 @@
     "sections": {
       "navigate": "Переход",
       "actions": "Действия",
-      "logs": "Журнал сессий"
+      "logs": "Журнал сессий",
+      "globalSearch": "Глобальный поиск",
+      "plugins": "Плагины"
     }
   },
   "dock": {
     "console": "Консоль",
     "output": "Вывод",
     "problems": "Проблемы",
-    "clear": "Очистить"
+    "clear": "Очистить",
+    "hideNoiseHint": "Скрыть спам повторов телеметрии EOS/Stomp от VRChat (это не ошибка VRCSM).",
+    "noiseHidden": "Шум скрыт ({{count}})",
+    "showAll": "Показать все"
   },
   "statusBar": {
     "version": "{{version}}",
-    "cacheTotal": "Кэш"
+    "cacheTotal": "Кэш",
+    "onlineCount": "{{count}} друзей онлайн",
+    "serverStatus": "Статус серверов VRChat",
+    "serverLevel": {
+      "operational": "Все системы работают",
+      "minor": "Незначительный сбой",
+      "major": "Серьёзный сбой",
+      "critical": "Критический сбой"
+    }
   },
   "dashboard": {
     "title": "Панель",
@@ -935,7 +1119,7 @@
     "noteEmpty": "Локальной заметки пока нет.",
     "noteUpdatedAt": "заметка {{date}}",
     "tagsLabel": "Теги",
-    "tagsPlaceholder": "scenic, sleep, meme, cool",
+    "tagsPlaceholder": "пейзаж, сон, мемы, крутое",
     "tagsHint": "Разделяйте теги запятыми или переносами строк.",
     "emptyTitle": "Библиотека пуста",
     "emptyBody": "Сначала сохраните аватары и миры из их основных списков. Эта страница станет общей локальной полкой для других функций.",
@@ -953,7 +1137,17 @@
     "officialSyncing": "Синхронизация избранного VRChat…",
     "officialSyncSuccess": "Синхронизировано официальных избранных: {{count}} (аватары {{avatars}}, миры {{worlds}})",
     "officialSyncFailed": "Ошибка синхронизации избранного VRChat: {{error}}",
-    "officialLastSync": "Избранное VRChat синхронизировано {{date}}"
+    "officialLastSync": "Избранное VRChat синхронизировано {{date}}",
+    "filterByType": "Тип",
+    "sortLabel": "Сортировка",
+    "sort": {
+      "added": "Недавно добавленные",
+      "name": "Имя",
+      "type": "Тип"
+    },
+    "officialSyncSuccessGrouped": "Синхронизировано {{count}} избранных в {{lists}} групп ({{avatars}} аватаров, {{worlds}} миров)",
+    "favorite": "В избранное",
+    "unfavorite": "Из избранного"
   },
   "avatars": {
     "title": "Аватары",
@@ -1017,7 +1211,43 @@
     "nameNote": "Имена аватаров извлекаются из output_log VRChat. Имя появляется только для аватаров, которые хотя бы раз загружались на этом компьютере.",
     "previewWorkbench": "Инспектор теперь намеренно компактный, а кнопка увеличения в правом верхнем углу открывает большой центральный viewer. Текущий extractor еще не встраивает текстуры в GLB, поэтому режим Original показывает только экспортированное состояние материалов. Колесо — масштаб, Shift+drag — панорамирование, ПКМ тоже панорамирует.",
     "unityPackages": "Платформ: {{count}}",
-    "hiddenCount": "Скрыто: {{count}}. Используйте поиск."
+    "hiddenCount": "Скрыто: {{count}}. Используйте поиск.",
+    "encounterLog": "Замечен",
+    "logOnly": "Только лог",
+    "wornBy": "используется",
+    "seenTimes": "замечен {{count}} раз",
+    "wearerCount": "{{count}} носитель",
+    "encounterSummary": "Замечен на {{wearer}} · {{count}} событий в логе",
+    "encounterLogNote": "Эта строка проиндексирована из локальных логов VRChat. Лог содержит имя аватара и носителя, но не avtr_* и не официальный URL миниатюры. VRCSM сначала ищет подтверждённые публичные совпадения; если не удаётся, может показать текущий аватар носителя как справочный, который может не совпадать с аватаром, виденным в тот момент.",
+    "filterSeen": "Замечен",
+    "filterLocal": "Локальный",
+    "thumbnailResolved": "миниатюра найдена",
+    "thumbnailResolving": "Поиск миниатюры…",
+    "thumbnailMiss": "Нет подтверждённого совпадения миниатюры",
+    "referenceImageLoading": "Проверка текущего изображения аватара носителя…",
+    "referenceImageBadge": "Справочно",
+    "referenceImageBadgeShort": "Справочно",
+    "profileFallbackKnownUser": "Профиль носителя",
+    "profileFallbackNameMatch": "Совпадение имени",
+    "profileFallbackAmbiguous": "Предположение по имени",
+    "profileFallbackNote": "Надёжная миниатюра не найдена, поэтому VRCSM показывает текущее изображение профиля носителя как справочное для {{name}}.",
+    "profileFallbackUnavailable": "Не удалось загрузить профиль носителя. Пользователь может быть неоднозначным, недоступным, или API VRChat его не вернул.",
+    "localNameWas": "В кэше как: {{name}}",
+    "renamedHint": "Переименован",
+    "noThumbnail": "Нет миниатюры",
+    "seenThumbnailHow": "Миниатюры замеченных аватаров появляются, когда в логе есть настоящий avtr_* id, публичный поиск находит точное совпадение по имени/автору, или доступно текущее публичное изображение аватара носителя. Элементы с пометкой «Справочно» — это текущие изображения носителя и могут не совпадать с аватаром, виденным тогда.",
+    "referenceImageHint": "Текущий аватар/изображение профиля носителя — не подтверждённое историческое совпадение.",
+    "referenceImageVerifiedHint": "Текущий аватар носителя совпадает с записанным именем.",
+    "search": {
+      "go": "Поиск",
+      "noResults": "Ничего не найдено",
+      "placeholder": "Поиск по имени аватара…",
+      "searching": "Поиск…",
+      "title": "Поиск публичных аватаров"
+    },
+    "unavailable": "Аватар недоступен.",
+    "wearerCurrentReference": "Текущий справочный носителя",
+    "wearerReferenceNote": "Неизвестно"
   },
   "worlds": {
     "title": "Миры",
@@ -1055,7 +1285,8 @@
     "removeFromLibrary": "Удалить из библиотеки",
     "saveToLibrary": "Сохранить в библиотеку",
     "unknownTime": "Неизвестное время",
-    "searchFailed": "Не удалось выполнить поиск"
+    "searchFailed": "Не удалось выполнить поиск",
+    "unavailable": "Мир недоступен."
   },
   "logs": {
     "title": "Логи",
@@ -1163,7 +1394,9 @@
     "junctionStateDesc": "Исходный путь уже является NTFS junction. Ее можно починить, если цель отсутствует или повреждена.",
     "pointsTo": "указывает на",
     "repairSuccess": "Junction успешно восстановлена",
-    "repairFailed": "Ошибка восстановления: {{error}}"
+    "repairFailed": "Ошибка восстановления: {{error}}",
+    "alreadyMigrated": "Уже перенесено в {{target}}",
+    "junction": "соединение"
   },
   "updates": {
     "availableTitle": "Доступно обновление",
@@ -1215,7 +1448,8 @@
       "loading": "Загрузка заметки…",
       "placeholder": "Добавьте личную заметку об этом игроке…",
       "saved": "Заметка сохранена",
-      "saveFailed": "Не удалось сохранить заметку: {{error}}"
+      "saveFailed": "Не удалось сохранить заметку: {{error}}",
+      "loadFailed": "Не удалось загрузить заметку."
     },
     "relative": {
       "now": "только что",
@@ -1229,7 +1463,9 @@
     "clearHistorySuccess": "История очищена. Заметки о друзьях сохранены.",
     "clearHistoryFailed": "Ошибка очистки: {{error}}",
     "clearHistory": "Очистить историю",
-    "clearHistoryConfirm": "Удалить историю сеансов и социальных событий? Заметки о друзьях останутся."
+    "clearHistoryConfirm": "Удалить историю сеансов и социальных событий? Заметки о друзьях останутся.",
+    "loginRequired": "Войдите в VRChat на странице настроек, чтобы просмотреть историю активности друзей.",
+    "perPage": "Элементов на странице"
   },
   "settings": {
     "title": "Настройки",
@@ -1310,7 +1546,7 @@
     "social": {
       "sectionTitle": "Социальное и отслеживание",
       "sectionDesc": "Настройка live-трекера и фонового опроса списка друзей.",
-      "liveRefreshLabel": "Live Friends Tracker",
+      "liveRefreshLabel": "Живой трекер друзей",
       "liveRefreshHint": "Автоматически опрашивать серверы VRChat в фоне, чтобы замечать, когда друзья выходят онлайн или меняют инстанс.",
       "refreshIntervalLabel": "Интервал опроса (секунды)",
       "refreshIntervalHint": "Как часто фоновый трекер обновляет данные. Меньшие значения дают более быстрые обновления, но могут привести к лимитам API VRChat (429)."
@@ -1373,6 +1609,1799 @@
         "next": "Далее",
         "page": "Страница {{page}} / {{total}}",
         "range": "{{from}}–{{to}} из {{total}}"
+      },
+      "keys": {
+        "AUDIO_GAME_AVATARS_ENABLED": {
+          "description": "Отключение звука аватаров"
+        },
+        "AUDIO_GAME_AVATARS_STEAMAUDIO": {
+          "description": "Громкость звука аватаров"
+        },
+        "AUDIO_GAME_PROPS_ENABLED": {
+          "description": "Отключение звука пропсов"
+        },
+        "AUDIO_GAME_PROPS_STEAMAUDIO": {
+          "description": "Громкость звука пропсов"
+        },
+        "AUDIO_GAME_SFX_ENABLED": {
+          "description": "Отключение звуковых эффектов мира"
+        },
+        "AUDIO_GAME_SFX_STEAMAUDIO": {
+          "description": "Громкость звуковых эффектов мира"
+        },
+        "AUDIO_GAME_VOICE_ENABLED": {
+          "description": "Отключение голосового чата"
+        },
+        "AUDIO_GAME_VOICE_STEAMAUDIO": {
+          "description": "Громкость голосового чата"
+        },
+        "AUDIO_MASTER_ENABLED": {
+          "description": "Отключение общего звука"
+        },
+        "AUDIO_MASTER_STEAMAUDIO": {
+          "description": "Общая громкость вывода"
+        },
+        "AUDIO_UI_ENABLED": {
+          "description": "Отключение звуков интерфейса"
+        },
+        "AUDIO_UI_STEAMAUDIO": {
+          "description": "Громкость звуков интерфейса"
+        },
+        "VRC_ANDROID_MIC_MODE": {
+          "description": "Режим микрофона Android"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_ENABLED": {
+          "description": "Включить звук облачка чата"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_VOLUME": {
+          "description": "Громкость звука облачка чата"
+        },
+        "VRC_EARMUFF_MODE": {
+          "description": "Режим наушников"
+        },
+        "VRC_EARMUFF_MODE_AVATARS": {
+          "description": "Режим наушников для аватаров"
+        },
+        "VRC_EARMUFF_MODE_CONE_VALUE": {
+          "description": "Угол конуса режима наушников"
+        },
+        "VRC_EARMUFF_MODE_FALLOFF": {
+          "description": "Затухание режима наушников"
+        },
+        "VRC_EARMUFF_MODE_FOLLOW_HEAD": {
+          "description": "Режим наушников следует за головой"
+        },
+        "VRC_EARMUFF_MODE_LOCK_ROTATION": {
+          "description": "Режим наушников фиксирует поворот"
+        },
+        "VRC_EARMUFF_MODE_OFFSET_VALUE": {
+          "description": "Смещение режима наушников"
+        },
+        "VRC_EARMUFF_MODE_RADIUS": {
+          "description": "Радиус режима наушников"
+        },
+        "VRC_EARMUFF_MODE_REDUCED_VOLUME": {
+          "description": "Пониженная громкость режима наушников"
+        },
+        "VRC_EARMUFF_MODE_SHOW_ICON_IN_NAMEPLATE": {
+          "description": "Показывать иконку наушников на табличке"
+        },
+        "VRC_EARMUFF_MODE_VISUAL_AIDE": {
+          "description": "Визуальная подсказка режима наушников"
+        },
+        "VRC_HUD_MIC_OPACITY": {
+          "description": "Прозрачность иконки микрофона на HUD"
+        },
+        "VRC_INPUT_DISABLE_MIC_BUTTON": {
+          "description": "Отключить внутриигровую кнопку микрофона"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_Desktop": {
+          "description": "Имя устройства микрофона (десктоп)"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_VR": {
+          "description": "Имя устройства микрофона (VR)"
+        },
+        "VRC_INPUT_MIC_ENABLED": {
+          "description": "Главный переключатель микрофона"
+        },
+        "VRC_INPUT_MIC_LEVEL_DESK": {
+          "description": "Усиление входа микрофона (десктоп)"
+        },
+        "VRC_INPUT_MIC_LEVEL_VR": {
+          "description": "Уровень входа микрофона (VR)"
+        },
+        "VRC_INPUT_MIC_MODE": {
+          "description": "Режим входа микрофона"
+        },
+        "VRC_INPUT_MIC_NOISE_GATE": {
+          "description": "Порог шумоподавителя микрофона"
+        },
+        "VRC_INPUT_MIC_NOISE_SUPPRESSION": {
+          "description": "Подавление шума микрофона"
+        },
+        "VRC_INPUT_MIC_ON_JOIN": {
+          "description": "Включать микрофон при входе"
+        },
+        "VRC_INPUT_TALK_DEFAULT_ON": {
+          "description": "Микрофон по умолчанию при входе в сессию"
+        },
+        "VRC_INPUT_TALK_TOGGLE": {
+          "description": "Рация или переключаемый режим речи"
+        },
+        "VRC_MIC_ICON_VISIBILITY": {
+          "description": "Видимость иконки микрофона"
+        },
+        "VRC_MIC_TOGGLE_VOLUME": {
+          "description": "Громкость переключения микрофона"
+        },
+        "VRC_USE_OUTLINE_MIC_ICON": {
+          "description": "Контурная иконка микрофона"
+        },
+        "COLOR_PALETTES_CURRENT_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Текущая цветовая палитра пользователя"
+        },
+        "FIELD_OF_VIEW": {
+          "description": "Настройка поля зрения (десктоп)"
+        },
+        "FPSCapType": {
+          "description": "Режим ограничения FPS"
+        },
+        "FPSType": {
+          "description": "Режим отображения FPS"
+        },
+        "FPS_LIMIT": {
+          "description": "Пользовательский лимит FPS"
+        },
+        "FaceMirrorOwner": {
+          "description": "Владелец лицевого зеркала"
+        },
+        "LOD_QUALITY": {
+          "description": "Пресет качества детализации (LOD)"
+        },
+        "PARTICLE_PHYSICS_QUALITY": {
+          "description": "Пресет качества физики частиц"
+        },
+        "PIXEL_LIGHT_COUNT": {
+          "description": "Макс. число пиксельных источников света в реальном времени"
+        },
+        "PersonalMirror.FaceMirrorOpacity": {
+          "description": "Прозрачность лицевого зеркала (VR)"
+        },
+        "PersonalMirror.FaceMirrorOpacityDesktop": {
+          "description": "Прозрачность лицевого зеркала (десктоп)"
+        },
+        "PersonalMirror.FaceMirrorPosX": {
+          "description": "Смещение лицевого зеркала по X (VR)"
+        },
+        "PersonalMirror.FaceMirrorPosXDesktop": {
+          "description": "Смещение лицевого зеркала по X (десктоп)"
+        },
+        "PersonalMirror.FaceMirrorPosY": {
+          "description": "Смещение лицевого зеркала по Y (VR)"
+        },
+        "PersonalMirror.FaceMirrorPosYDesktop": {
+          "description": "Смещение лицевого зеркала по Y (десктоп)"
+        },
+        "PersonalMirror.FaceMirrorScale": {
+          "description": "Масштаб лицевого зеркала (VR)"
+        },
+        "PersonalMirror.FaceMirrorScaleDesktop": {
+          "description": "Масштаб лицевого зеркала (десктоп)"
+        },
+        "PersonalMirror.FaceMirrorSpoutEnabled": {
+          "description": "Включить трансляцию личного лицевого зеркала"
+        },
+        "PersonalMirror.FaceMirrorZoom": {
+          "description": "Зум лицевого зеркала (VR)"
+        },
+        "PersonalMirror.FaceMirrorZoomDesktop": {
+          "description": "Зум лицевого зеркала (десктоп)"
+        },
+        "PersonalMirror.Grabbable": {
+          "description": "Зеркало можно захватывать"
+        },
+        "PersonalMirror.ImmersiveMove": {
+          "description": "Иммерсивный режим перемещения зеркала"
+        },
+        "PersonalMirror.MirrorOpacity": {
+          "description": "Прозрачность личного зеркала"
+        },
+        "PersonalMirror.MirrorScaleX": {
+          "description": "Масштаб личного зеркала по X"
+        },
+        "PersonalMirror.MirrorScaleY": {
+          "description": "Масштаб личного зеркала по Y"
+        },
+        "PersonalMirror.MirrorSnapping": {
+          "description": "Поведение примагничивания зеркала"
+        },
+        "PersonalMirror.MovementMode": {
+          "description": "Режим перемещения личного зеркала"
+        },
+        "PersonalMirror.ShowBorder": {
+          "description": "Показывать рамку личного зеркала"
+        },
+        "PersonalMirror.ShowCalibrationMirror": {
+          "description": "Показывать калибровочное зеркало"
+        },
+        "PersonalMirror.ShowEnvironmentInMirror": {
+          "description": "Показывать окружение в зеркале"
+        },
+        "PersonalMirror.ShowFaceMirror": {
+          "description": "Показывать личное лицевое зеркало в VR"
+        },
+        "PersonalMirror.ShowFaceMirrorDesktop": {
+          "description": "Показывать личное лицевое зеркало на десктопе"
+        },
+        "PersonalMirror.ShowRemotePlayerInMirror": {
+          "description": "Показывать других игроков в зеркале"
+        },
+        "PersonalMirror.ShowUIInMirror": {
+          "description": "Показывать интерфейс в зеркале"
+        },
+        "SHADOW_QUALITY": {
+          "description": "Пресет качества теней"
+        },
+        "USER_CAMERA_RESOLUTION": {
+          "description": "Разрешение камеры пользователя"
+        },
+        "USER_CAMERA_ROLL_WHILE_FLYING": {
+          "description": "Наклон камеры при полёте"
+        },
+        "USER_CAMERA_SAVE_METADATA": {
+          "description": "Сохранять метаданные камеры"
+        },
+        "USER_CAMERA_STREAM_RESOLUTION": {
+          "description": "Разрешение трансляции камеры"
+        },
+        "USER_CAMERA_TRIGGER_TAKES_PHOTOS": {
+          "description": "Спуск делает фото"
+        },
+        "UnityGraphicsQuality": {
+          "description": "Пресет качества графики"
+        },
+        "UnitySelectMonitor": {
+          "description": "Выбранный монитор Unity"
+        },
+        "VRC_ADVANCED_GRAPHICS_ANTIALIASING": {
+          "description": "Число сэмплов сглаживания"
+        },
+        "VRC_ADVANCED_GRAPHICS_QUALITY": {
+          "description": "Пресет расширенного качества графики"
+        },
+        "VRC_BLOOM_INTENSITY": {
+          "description": "Переопределение интенсивности свечения"
+        },
+        "VRC_CAMERA_NEAR_CLIP_OVERRIDE_MODE": {
+          "description": "Режим переопределения ближней плоскости камеры"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW": {
+          "description": "Вид камеры от третьего лица"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW_DISTANCE": {
+          "description": "Дистанция вида от третьего лица"
+        },
+        "VRC_COLOR_BLINDNESS_SIMULATE": {
+          "description": "Симуляция профиля дальтонизма"
+        },
+        "VRC_DEFAULT_DRONE_SKIN_PALETTE": {
+          "description": "Палитра скина дрона по умолчанию"
+        },
+        "VRC_LANDSCAPE_FOV": {
+          "description": "Поле зрения (мобильный, альбомная)"
+        },
+        "VRC_MIRROR_RESOLUTION": {
+          "description": "Разрешение зеркала"
+        },
+        "VRC_PORTRAIT_FOV": {
+          "description": "Поле зрения (мобильный, портретная)"
+        },
+        "VRC_RANDOMIZE_DRONE": {
+          "description": "Случайный дрон"
+        },
+        "VRC_RANDOMIZE_LOADING_SCREEN": {
+          "description": "Случайный экран загрузки"
+        },
+        "VRC_RANDOMIZE_WARP_EFFECT": {
+          "description": "Случайный эффект варпа"
+        },
+        "VRC_SCREEN_BRIGHTNESS": {
+          "description": "Регулировка яркости экрана"
+        },
+        "VRC_SCREEN_CONTRAST": {
+          "description": "Регулировка контраста экрана"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING_AUTO_QUALITY": {
+          "description": "Авто-качество лицевого трекинга для селфи"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_QUALITY_LEVEL": {
+          "description": "Качество лицевого трекинга для селфи"
+        },
+        "BestRegionCache": {
+          "description": "Кэшировать выбор лучшего региона"
+        },
+        "LocationContext": {
+          "description": "Контекст локации"
+        },
+        "LocationContext_World": {
+          "description": "Мир контекста локации"
+        },
+        "VRC_ASK_TO_PORTAL": {
+          "description": "Спрашивать перед входом в порталы"
+        },
+        "VRC_COMFORT_MODE_PRE_HOLOPORT": {
+          "description": "Режим комфорта перед голопортом"
+        },
+        "VRC_HOME_REGION": {
+          "description": "Регион домашнего мира"
+        },
+        "VRC_ONLY_SHOW_FRIEND_JOIN_LEAVE_PORTAL_NOTIFICATIONS": {
+          "description": "Уведомления о порталах входа/выхода только для друзей"
+        },
+        "VRC_PORTAL_MODE_V2": {
+          "description": "Режим порталов v2"
+        },
+        "VRC_RANDOMIZE_PORTAL": {
+          "description": "Случайный портал"
+        },
+        "VRC_SELECTED_NETWORK_REGION": {
+          "description": "Предпочитаемый регион Photon"
+        },
+        "VRC_SHOW_PORTAL_NOTIFICATIONS": {
+          "description": "Показывать уведомления о порталах"
+        },
+        "AVATAR_WORN_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "История надетых аватаров пользователя"
+        },
+        "SortSelection_UGCAvatars": {
+          "description": "Настройка сортировки списка"
+        },
+        "VRC_ALLOW_AVATAR_COPYING": {
+          "description": "Разрешить копирование аватаров"
+        },
+        "VRC_AVATAR_FALLBACK_HIDDEN": {
+          "description": "Скрывать резервный аватар"
+        },
+        "VRC_AVATAR_HAPTICS_ENABLED": {
+          "description": "Настройка загрузки отображения аватаров"
+        },
+        "VRC_AVATAR_MAXIMUM_DOWNLOAD_SIZE": {
+          "description": "Макс. сжатый размер загрузки аватара"
+        },
+        "VRC_AVATAR_MAXIMUM_UNCOMPRESSED_SIZE": {
+          "description": "Макс. несжатый размер аватара"
+        },
+        "VRC_AVATAR_PERFORMANCE_RATING_MINIMUM_TO_DISPLAY": {
+          "description": "Мин. рейтинг производительности аватара для показа"
+        },
+        "VRC_AV_INTERACT_LEVEL": {
+          "description": "Уровень взаимодействия с аватарами"
+        },
+        "VRC_AV_INTERACT_SELF": {
+          "description": "Взаимодействие с собственным аватаром"
+        },
+        "VRC_DISABLE_AVATAR_CLONING_ON_ENTER_WORLD": {
+          "description": "Отключать клонирование аватаров при входе в мир"
+        },
+        "VRC_FINGERTRACKING_AVATARS_USE": {
+          "description": "Использование трекинга пальцев на аватаре"
+        },
+        "VRC_GESTURE_BAR_ENABLED": {
+          "description": "Включить панель жестов"
+        },
+        "VRC_IK_AVATAR_MEASUREMENT_TYPE": {
+          "description": "Тип измерения IK для аватара"
+        },
+        "VRC_IK_PER_AVATAR_CALIBRATION_ADJUSTMENT": {
+          "description": "Индивидуальная калибровка для каждого аватара"
+        },
+        "VRC_IMPOSTOR_WHEN_AVAILABLE": {
+          "description": "Использовать импостор при наличии"
+        },
+        "VRC_INPUT_SELECTED_SAFETY_RANK": {
+          "description": "Ранг безопасности ввода"
+        },
+        "VRC_PLAYER_GESTURE_TOGGLE": {
+          "description": "Переключатель жестов игрока"
+        },
+        "VRC_SAFETY_LEVEL": {
+          "description": "Глобальный пресет безопасности аватаров"
+        },
+        "VRC_SHOW_SOCIAL_RANK": {
+          "description": "Показывать социальный ранг"
+        },
+        "Wing_Right_Avatars_Category": {
+          "description": "Состояние выбора интерфейса Wing"
+        },
+        "Wing_Right_Avatars_SortBy": {
+          "description": "Состояние выбора интерфейса Wing"
+        },
+        "avatarProxyAlwaysShowExplicit": {
+          "description": "Настройка загрузки отображения аватаров"
+        },
+        "avatarProxyAlwaysShowFriends": {
+          "description": "Настройка загрузки отображения аватаров"
+        },
+        "avatarProxyShowAtRange": {
+          "description": "Настройка загрузки отображения аватаров"
+        },
+        "avatarProxyShowAtRangeToggle": {
+          "description": "Настройка загрузки отображения аватаров"
+        },
+        "avatarProxyShowMaxNumber": {
+          "description": "Настройка загрузки отображения аватаров"
+        },
+        "currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "Включить макс. число показываемых аватаров"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRange": {
+          "description": "Показ прокси-аватаров пользователя на дистанции"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRangeToggle": {
+          "description": "Переключатель дистанции прокси-аватаров пользователя"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowMaxNumber": {
+          "description": "Макс. число прокси-аватаров пользователя"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "Переключатель лимита числа аватаров пользователя"
+        },
+        "VRC_ACTION_MENU_FLICK_SELECT": {
+          "description": "Быстрый выбор в меню действий"
+        },
+        "VRC_ACTION_MENU_ONE_HAND_MOVE": {
+          "description": "Одноручное перемещение в меню действий"
+        },
+        "VRC_DOUBLE_TAP_MAIN_MENU_STEAMVR2": {
+          "description": "Двойное нажатие главного меню (SteamVR2)"
+        },
+        "VRC_FINGER_GRAB_SETTING": {
+          "description": "Настройка захвата пальцами"
+        },
+        "VRC_FINGER_HAPTIC_SENSITIVITY": {
+          "description": "Чувствительность вибрации пальцев"
+        },
+        "VRC_FINGER_HAPTIC_STRENGTH": {
+          "description": "Сила вибрации пальцев"
+        },
+        "VRC_FINGER_JUMP_ENABLED": {
+          "description": "Включить прыжок пальцами"
+        },
+        "VRC_FINGER_WALK_SETTING": {
+          "description": "Настройка ходьбы пальцами"
+        },
+        "VRC_HANDS_MENU_OPEN_MODE": {
+          "description": "Режим открытия меню руками"
+        },
+        "VRC_INPUT_DAYDREAM": {
+          "description": "Ввод Daydream"
+        },
+        "VRC_INPUT_EMBODIED": {
+          "description": "Ввод Embodied"
+        },
+        "VRC_INPUT_GAZE": {
+          "description": "Ввод взглядом"
+        },
+        "VRC_INPUT_GENERIC": {
+          "description": "Универсальный ввод"
+        },
+        "VRC_INPUT_HPMOTION": {
+          "description": "Ввод HPMotion"
+        },
+        "VRC_INPUT_MOBILE_INTERACTION_MODE": {
+          "description": "Режим взаимодействия (мобильный)"
+        },
+        "VRC_INPUT_OPENXR": {
+          "description": "Ввод OpenXR"
+        },
+        "VRC_INPUT_PERSONAL_SPACE": {
+          "description": "Личное пространство ввода"
+        },
+        "VRC_INPUT_QUEST_HANDS": {
+          "description": "Ввод рук Quest"
+        },
+        "VRC_INPUT_SHOW_TOOLTIPS": {
+          "description": "Показывать подсказки ввода"
+        },
+        "VRC_INPUT_STEAMVR2": {
+          "description": "Ввод SteamVR2"
+        },
+        "VRC_INPUT_THIRD_PERSON_ROTATION": {
+          "description": "Поворот ввода от третьего лица"
+        },
+        "VRC_INPUT_TOUCH": {
+          "description": "Ввод Touch"
+        },
+        "VRC_INPUT_VALVE_INDEX": {
+          "description": "Ввод Valve Index"
+        },
+        "VRC_INPUT_VIVE": {
+          "description": "Ввод Vive"
+        },
+        "VRC_INPUT_VIVE_ADVANCED": {
+          "description": "Расширенный ввод Vive"
+        },
+        "VRC_INPUT_WAVE": {
+          "description": "Ввод Wave"
+        },
+        "VRC_INTERACT_HAPTICS_ENABLED": {
+          "description": "Включить вибрацию при взаимодействии"
+        },
+        "VRC_INVERTED_MOUSE": {
+          "description": "Инвертированная мышь"
+        },
+        "VRC_INVERT_CONTROLLER_VERTICAL_LOOK": {
+          "description": "Инвертировать вертикальный обзор контроллера"
+        },
+        "VRC_IS_BOOPING_ENABLED": {
+          "description": "Включить буп"
+        },
+        "VRC_MOBILE_QUICK_SELECT_ENABLED": {
+          "description": "Включить быстрый выбор (мобильный)"
+        },
+        "VRC_MOUSE_SENSITIVITY": {
+          "description": "Чувствительность мыши"
+        },
+        "VRC_SHOW_FRIEND_REQUESTS": {
+          "description": "Показывать уведомления о заявках в друзья"
+        },
+        "VRC_TOUCH_AUTO_ROTATE_SPEED": {
+          "description": "Скорость авто-поворота Touch"
+        },
+        "VRC_TOUCH_SENSITIVITY": {
+          "description": "Чувствительность Touch"
+        },
+        "VRC_UI_HAPTICS_ENABLED": {
+          "description": "Включить вибрацию интерфейса"
+        },
+        "VRC_USE_GENERIC_INSTANCE_NAMES": {
+          "description": "Использовать общие имена инстансов"
+        },
+        "VRC_WEBCAM_DEVICE_NAME": {
+          "description": "Имя устройства веб-камеры"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneControllerSettings": {
+          "description": "Настройки контроллера дрона пользователя"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneFlightPresetValues": {
+          "description": "Пресеты полёта дрона пользователя"
+        },
+        "UI.Settings.Osc": {
+          "description": "Состояние настроек OSC"
+        },
+        "VRC_INPUT_OSC": {
+          "description": "Включить ввод/вывод OSC"
+        },
+        "PREF_HAND_TRACKING_TUTORIAL_COMPLETED": {
+          "description": "Обучение трекингу рук пройдено"
+        },
+        "PlayerHeight": {
+          "description": "Рост игрока"
+        },
+        "SeatedPlayEnabled": {
+          "description": "Включить игру сидя"
+        },
+        "VRC_COMFORT_MODE": {
+          "description": "Режим комфорта"
+        },
+        "VRC_FINGERTRACKING_SHOW_PINCHUI": {
+          "description": "Показывать интерфейс щипка при трекинге пальцев"
+        },
+        "VRC_FINGERTRACKING_USE_EXCLUSIVE": {
+          "description": "Эксклюзивный режим трекинга пальцев"
+        },
+        "VRC_FINGERTRACKING_USE_GHOSTHAND": {
+          "description": "Призрачная рука при трекинге пальцев"
+        },
+        "VRC_IK_CALIBRATION_RANGE": {
+          "description": "Диапазон калибровки IK"
+        },
+        "VRC_IK_CALIBRATION_VIS": {
+          "description": "Визуализация калибровки IK"
+        },
+        "VRC_IK_DEBUG_LOGGING": {
+          "description": "Отладочное логирование IK"
+        },
+        "VRC_IK_DISABLE_SHOULDER_TRACKING": {
+          "description": "Отключить вклад трекинга плеч"
+        },
+        "VRC_IK_FBT_CONFIRM_CALIBRATE": {
+          "description": "Подтверждать калибровку FBT"
+        },
+        "VRC_IK_FBT_LOCOMOTION": {
+          "description": "Переключатель движения при FBT"
+        },
+        "VRC_IK_FBT_SPINE_MODE": {
+          "description": "Режим позвоночника FBT"
+        },
+        "VRC_IK_FREEZE_TRACKING_ON_DISCONNECT": {
+          "description": "Замораживать позу FBT при отключении трекера"
+        },
+        "VRC_IK_HEIGHT_RATIO": {
+          "description": "Коэффициент высоты IK"
+        },
+        "VRC_IK_KNEE_ANGLE": {
+          "description": "Угол колена IK"
+        },
+        "VRC_IK_LEGACY": {
+          "description": "Устаревший IK"
+        },
+        "VRC_IK_LEGACY_CALIBRATION": {
+          "description": "Устаревший процесс калибровки FBT"
+        },
+        "VRC_IK_ONE_HANDED_CALIBRATION": {
+          "description": "Переключатель одноручной калибровки"
+        },
+        "VRC_IK_SHOULDER_WIDTH_COMPENSATION": {
+          "description": "Переключатель компенсации ширины плеч"
+        },
+        "VRC_IK_TRACKER_MODEL": {
+          "description": "Модель трекера IK"
+        },
+        "VRC_IK_USE_METRIC_HEIGHT": {
+          "description": "Использовать метрические единицы для высоты калибровки"
+        },
+        "VRC_IK_WRIST_ANGLE": {
+          "description": "Угол запястья IK"
+        },
+        "VRC_INPUT_COMFORT_TURNING": {
+          "description": "Комфортный поворот"
+        },
+        "VRC_INPUT_LOCOMOTION_METHOD": {
+          "description": "Режим перемещения"
+        },
+        "VRC_MAIN_MENU_MOVEMENT_LOCKED": {
+          "description": "Блокировать движение при открытом главном меню"
+        },
+        "VRC_MOBILE_AUTO_HOLD_ENABLED": {
+          "description": "Включить авто-захват (мобильный)"
+        },
+        "VRC_MOBILE_AUTO_WALK_ENABLED": {
+          "description": "Включить авто-ходьбу (мобильный)"
+        },
+        "VRC_TRACKING_CAN_SHOW_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "Разрешить всплывающее окно лицевого трекинга для селфи"
+        },
+        "VRC_TRACKING_CAN_SHOW_TRY_WEBCAM_FACE_TRACKING_BUTTON": {
+          "description": "Разрешить кнопку лицевого трекинга через камеру"
+        },
+        "VRC_TRACKING_DISABLE_EYELIDTRACKING": {
+          "description": "Отключить трекинг век"
+        },
+        "VRC_TRACKING_DISABLE_EYELOOKTRACKING": {
+          "description": "Отключить трекинг взгляда"
+        },
+        "VRC_TRACKING_DISABLE_EYETRACKING_ON_MUTE": {
+          "description": "Отключать трекинг глаз в режиме без звука"
+        },
+        "VRC_TRACKING_DISPLAY_EYETRACKING_DEBUG": {
+          "description": "Показывать отладку трекинга глаз"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING": {
+          "description": "Включить лицевой трекинг для селфи"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_HAND_TRACKING": {
+          "description": "Включить трекинг рук для селфи"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST": {
+          "description": "Принудительный луч трекинга глаз"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST_DESKTOP2": {
+          "description": "Принудительный луч трекинга глаз (десктоп)"
+        },
+        "VRC_TRACKING_GRACEFUL_QUIT": {
+          "description": "Плавный выход из трекинга"
+        },
+        "VRC_TRACKING_NUM_TIMES_DISABLED_SELFIE_FACE_TRACKING": {
+          "description": "Счётчик отключений лицевого трекинга для селфи"
+        },
+        "VRC_TRACKING_NUM_TIMES_ENABLED_SELFIE_FACE_TRACKING": {
+          "description": "Счётчик включений лицевого трекинга для селфи"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "Счётчик закрытий окна лицевого трекинга для селфи"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS": {
+          "description": "Счётчик закрытий окна лицевого трекинга VRC+ для селфи"
+        },
+        "VRC_TRACKING_NUM_TIMES_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS_CLICKED": {
+          "description": "Счётчик нажатий лицевого трекинга VRC+ для селфи"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_RECENTER_SPEED": {
+          "description": "Скорость центрирования лицевого трекинга для селфи"
+        },
+        "VRC_TRACKING_SEND_VR_SYSTEM_HEAD_AND_WRIST_OSC_DATA": {
+          "description": "Отправлять трекинг шлема и запястий через OSC"
+        },
+        "VRC_TRACKING_SHOULD_SHOW_OSC_TRACKING_DATA_REMINDER": {
+          "description": "Показывать напоминание о трекинге OSC"
+        },
+        "VRC_TRACKING_TRACKER_PREDICTION": {
+          "description": "Предсказание трекера"
+        },
+        "BACKGROUND_MATERIAL_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Фоновый материал пользователя"
+        },
+        "CosmeticsSectionRedirect_Settings": {
+          "description": "Настройка перенаправления раздела косметики"
+        },
+        "FOLDOUT_STATES": {
+          "description": "Состояния раскрывающихся списков"
+        },
+        "FRIEND_LAST_VISIT_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "История последних визитов друзей пользователя"
+        },
+        "HasSeenCameraDollyUserCameraCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Просмотрена подсказка о тележке камеры"
+        },
+        "HasSeenHolidayEvent2025QMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Просмотрена подсказка о праздничном событии 2025"
+        },
+        "HasSeenShopRabbidsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Просмотрена подсказка магазина Rabbids"
+        },
+        "HasSeenVRCPlusExclusiveItemsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Просмотрена подсказка об эксклюзивных предметах VRC+"
+        },
+        "InQueueWidgetInfoShowcaseID": {
+          "description": "ID витрины виджета очереди"
+        },
+        "RECENTLY_VISITED_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "История недавних посещений пользователя"
+        },
+        "SavedWorldSearchesusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Сохранённые поиски миров"
+        },
+        "SortSelection_AllFriends": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_Authored": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_Favorites0": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_FriendLocations": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_GroupActivity": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_InRoom": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_Recent": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_Sdk": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_UGCPlaylist1": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_UGCWorlds": {
+          "description": "Настройка сортировки списка"
+        },
+        "SortSelection_WorldInstances": {
+          "description": "Настройка сортировки списка"
+        },
+        "UI.Emojis.CustomGroup0": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "UI.Emojis.CustomGroup1": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "UI.Emojis.CustomGroup2": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "UI.MenuPlacementZDepthVR": {
+          "description": "Настройка состояния интерфейса"
+        },
+        "UI.MotionSmoothingEnabled": {
+          "description": "Настройка состояния интерфейса"
+        },
+        "UI.Props.CustomGroup0": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "UI.Stickers.CustomGroup0": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "UI.Stickers.CustomGroup1": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "UI.Stickers.CustomGroup2": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "UI.usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726.WingState": {
+          "description": "Настройка состояния интерфейса"
+        },
+        "VRC.UI.QuickMenu.ShowQMDebugInfo": {
+          "description": "Показывать отладочную информацию в быстром меню"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_X": {
+          "description": "Угол X на HUD для левого меню действий"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_Y": {
+          "description": "Угол Y на HUD для левого меню действий"
+        },
+        "VRC_ACTION_MENU_L_MENU_OPACITY": {
+          "description": "Прозрачность левого меню действий"
+        },
+        "VRC_ACTION_MENU_L_MENU_SIZE_PERCENTAGE": {
+          "description": "Размер левого меню действий (в процентах)"
+        },
+        "VRC_ACTION_MENU_L_SHOW_ON_HUD": {
+          "description": "Показывать левое меню действий на HUD"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_X": {
+          "description": "Угол X на HUD для правого меню действий"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_Y": {
+          "description": "Угол Y на HUD для правого меню действий"
+        },
+        "VRC_ACTION_MENU_R_MENU_OPACITY": {
+          "description": "Прозрачность правого меню действий"
+        },
+        "VRC_ACTION_MENU_R_MENU_SIZE_PERCENTAGE": {
+          "description": "Размер правого меню действий (в процентах)"
+        },
+        "VRC_ACTION_MENU_R_SHOW_ON_HUD": {
+          "description": "Показывать правое меню действий на HUD"
+        },
+        "VRC_BOOP_EMOJI_EFFECT_ENABLED": {
+          "description": "Включить эффект эмодзи при бупе"
+        },
+        "VRC_CHAT_BUBBLE_ABOVE_HEAD_V2": {
+          "description": "Облачко чата над головой v2"
+        },
+        "VRC_CHAT_BUBBLE_AUTO_SEND": {
+          "description": "Авто-отправка облачка чата"
+        },
+        "VRC_CHAT_BUBBLE_OPACITY": {
+          "description": "Прозрачность облачка чата"
+        },
+        "VRC_CHAT_BUBBLE_POS_HEIGHT": {
+          "description": "Высота облачка чата"
+        },
+        "VRC_CHAT_BUBBLE_PROFANITY_FILTER": {
+          "description": "Фильтр нецензурной лексики в облачке чата"
+        },
+        "VRC_CHAT_BUBBLE_SCALE": {
+          "description": "Масштаб облачка чата"
+        },
+        "VRC_CHAT_BUBBLE_SHOW_OWN": {
+          "description": "Показывать собственное облачко чата"
+        },
+        "VRC_CHAT_BUBBLE_TIMEOUT": {
+          "description": "Тайм-аут облачка чата"
+        },
+        "VRC_CHAT_BUBBLE_VISIBILITY": {
+          "description": "Видимость облачка чата"
+        },
+        "VRC_CLOCK_VARIANT": {
+          "description": "Вариант часов"
+        },
+        "VRC_COLOR_FILTER_INTENSITY": {
+          "description": "Интенсивность цветового фильтра"
+        },
+        "VRC_COLOR_FILTER_SELECTION": {
+          "description": "Пресет цветового фильтра"
+        },
+        "VRC_COLOR_FILTER_TO_WORLD": {
+          "description": "Применять фильтр к рендерингу мира"
+        },
+        "VRC_CURRENT_LANGUAGE": {
+          "description": "Код языка"
+        },
+        "VRC_DESKTOP_RETICLE": {
+          "description": "Прицел (десктоп)"
+        },
+        "VRC_ENABLE_GROUP_INTEREST_AUTO_NOTIFICATIONS": {
+          "description": "Включить авто-уведомления об интересах групп"
+        },
+        "VRC_GROUP_ON_NAMEPLATE": {
+          "description": "Показывать группу на табличке"
+        },
+        "VRC_GROUP_ORDER_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Порядок групп пользователя"
+        },
+        "VRC_HIDE_NOTIFICATION_PHOTOS": {
+          "description": "Скрывать превью фото в уведомлениях"
+        },
+        "VRC_HUD_ANCHOR": {
+          "description": "Положение якоря HUD"
+        },
+        "VRC_HUD_MODE": {
+          "description": "Режим раскладки HUD"
+        },
+        "VRC_HUD_OPACITY": {
+          "description": "Прозрачность HUD"
+        },
+        "VRC_HUD_SMOOTHING_Desktop": {
+          "description": "Настройка отображения положения HUD"
+        },
+        "VRC_HUD_SMOOTHING_VR": {
+          "description": "Настройка отображения положения HUD"
+        },
+        "VRC_MM_FREE_PLACEMENT_ENABLED": {
+          "description": "Включить свободное размещение главного меню"
+        },
+        "VRC_MOBILE_DPI_SCALING": {
+          "description": "Масштабирование DPI (мобильный)"
+        },
+        "VRC_MOBILE_NOTIFICATIONS_SERVICE_ENABLED": {
+          "description": "Включить сервис уведомлений (мобильный)"
+        },
+        "VRC_MOBILE_PERFORMANCE_SECONDARY_UI_ENABLED": {
+          "description": "Включить дополнительный интерфейс производительности (мобильный)"
+        },
+        "VRC_NAMEPLATE_FALLBACK_ICON_VISIBLE": {
+          "description": "Настройка отображения таблички"
+        },
+        "VRC_NAMEPLATE_MODE": {
+          "description": "Основной режим отображения таблички"
+        },
+        "VRC_NAMEPLATE_OPACITY": {
+          "description": "Прозрачность таблички"
+        },
+        "VRC_NAMEPLATE_QUICK_MENU_INFO": {
+          "description": "Настройка отображения таблички"
+        },
+        "VRC_NAMEPLATE_SCALE_V2": {
+          "description": "Масштаб таблички"
+        },
+        "VRC_NAMEPLATE_STATUS_MODE": {
+          "description": "Дополнительное содержимое статуса на табличке"
+        },
+        "VRC_PLAY_NOTIFICATION_AUDIO": {
+          "description": "Воспроизводить звуки уведомлений"
+        },
+        "VRC_REDUCE_ANIMATIONS": {
+          "description": "Уменьшить необязательные анимации"
+        },
+        "VRC_SHOW_COMMUNITY_LABS": {
+          "description": "Показывать Community Labs"
+        },
+        "VRC_SHOW_COMMUNITY_LAB_WORLDS_IN_SEARCH": {
+          "description": "Показывать миры Community Labs в поиске"
+        },
+        "VRC_SHOW_GO_BUTTON_IN_LOAD": {
+          "description": "Показывать кнопку перехода при загрузке"
+        },
+        "VRC_SHOW_GROUP_BADGES": {
+          "description": "Показывать значок группы"
+        },
+        "VRC_SHOW_INVITES_NOTIFICATION": {
+          "description": "Показывать уведомления о приглашениях"
+        },
+        "VRC_SHOW_JOIN_NOTIFICATIONS": {
+          "description": "Показывать уведомления о заходе друзей"
+        },
+        "VRC_SHOW_LEAVE_NOTIFICATIONS": {
+          "description": "Показывать уведомления о выходе друзей"
+        },
+        "VRC_SLIDER_SNAPPING": {
+          "description": "Примагничивание ползунков"
+        },
+        "VRC_STORE_LAST_SEEN_SHELF_UPDATE": {
+          "description": "Сохранять последнее обновление полки"
+        },
+        "VRC_TIME_FORMAT_MODE": {
+          "description": "Режим формата времени"
+        },
+        "VRC_UI_HEADER_CLICK_SCROLL_RESET_ENABLED": {
+          "description": "Включить сброс прокрутки по клику на заголовок"
+        },
+        "VRC_USE_COLOR_FILTER": {
+          "description": "Включить цветовой фильтр для доступности"
+        },
+        "VRC_USE_PIXEL_SHIFTING_HUD": {
+          "description": "Использовать HUD со сдвигом пикселей"
+        },
+        "VRC_WING_PERSISTENCE_ENABLED": {
+          "description": "Включить сохранение состояния Wing"
+        },
+        "VRC_WORLD_TOOLTIP_MODE": {
+          "description": "Режим подсказок мира"
+        },
+        "has_opened_live_now_page": {
+          "description": "Открыта страница «Сейчас в эфире»"
+        },
+        "has_seen_avm-explore-to-cm-migration": {
+          "description": "Просмотрена подсказка о миграции AVM"
+        },
+        "has_seen_event_discovery_in_beta": {
+          "description": "Просмотрен раздел событий в бете"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenMenuHelpShownCount": {
+          "description": "Счётчик показов подсказки открытия меню пользователя"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenedQuickMenu": {
+          "description": "Пользователь открывал быстрое меню"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Emojis.CustomGroup0": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Props.CustomGroup0": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedEmojis": {
+          "description": "Недавно использованные эмодзи пользователя"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedStickers": {
+          "description": "Недавно использованные стикеры пользователя"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Stickers.CustomGroup0": {
+          "description": "Пользовательская группа эмодзи/стикеров"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_has_opened_live_now_page": {
+          "description": "Пользователь открывал страницу «Сейчас в эфире»"
+        },
+        "BACKGROUND_DEBUG_LOG_COLLECTION": {
+          "description": "Переключатель фонового сбора отладочных логов"
+        },
+        "VRC_ALLOW_DIRECT_SHARES": {
+          "description": "Разрешить прямые публикации"
+        },
+        "VRC_ALLOW_DISCORD_FRIENDS": {
+          "description": "Разрешить интеграцию с друзьями Discord"
+        },
+        "VRC_ALLOW_FOCUS_VIEW": {
+          "description": "Разрешить режим фокуса"
+        },
+        "VRC_ALLOW_PEDESTAL_SHARES": {
+          "description": "Разрешить публикации на пьедесталах"
+        },
+        "VRC_ALLOW_PRINTS": {
+          "description": "Разрешить публикацию принтов"
+        },
+        "VRC_ALLOW_SHARED_CONNECTIONS": {
+          "description": "Разрешить общие подключения"
+        },
+        "VRC_ALLOW_UNTRUSTED_URL": {
+          "description": "Разрешить открытие недоверенных URL"
+        },
+        "VRC_DIRECT_SHARING_VISIBILITY": {
+          "description": "Видимость прямых публикаций"
+        },
+        "VRC_HOME_ACCESS_TYPE": {
+          "description": "Пресет приватности домашнего мира"
+        },
+        "VRC_PEDESTAL_SHARING_VISIBILITY": {
+          "description": "Видимость публикаций на пьедесталах"
+        },
+        "VRC_PRINT_VISIBILITY": {
+          "description": "Видимость публикации принтов"
+        },
+        "VRC_SHOW_GROUP_BADGE_TO_OTHERS": {
+          "description": "Показывать значок группы другим"
+        },
+        "VRC_STREAMER_MODE_ENABLED": {
+          "description": "Включить режим стримера"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanSpeak": {
+          "description": "Продвинутый 1 может говорить"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "Продвинутый 1 может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAvatarAudio": {
+          "description": "Продвинутый 1 может использовать звук аватара"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAnimations": {
+          "description": "Продвинутый 1 может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAvatar": {
+          "description": "Продвинутый 1 может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomShaders": {
+          "description": "Продвинутый 1 может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseDrone": {
+          "description": "Продвинутый 1 может использовать дрон"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "Продвинутый 1 может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseParticleSystems": {
+          "description": "Продвинутый 1 может использовать системы частиц"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseTriggers": {
+          "description": "Продвинутый 1 может использовать триггеры"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseUserIcons": {
+          "description": "Продвинутый 1 может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanSpeak": {
+          "description": "Продвинутый 2 может говорить"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "Продвинутый 2 может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAvatarAudio": {
+          "description": "Продвинутый 2 может использовать звук аватара"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAnimations": {
+          "description": "Продвинутый 2 может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAvatar": {
+          "description": "Продвинутый 2 может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomShaders": {
+          "description": "Продвинутый 2 может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseDrone": {
+          "description": "Продвинутый 2 может использовать дрон"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "Продвинутый 2 может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseParticleSystems": {
+          "description": "Продвинутый 2 может использовать системы частиц"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseTriggers": {
+          "description": "Продвинутый 2 может использовать триггеры"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseUserIcons": {
+          "description": "Продвинутый 2 может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanSpeak": {
+          "description": "Базовый может говорить"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "Базовый может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAvatarAudio": {
+          "description": "Базовый может использовать звук аватара"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAnimations": {
+          "description": "Базовый может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAvatar": {
+          "description": "Базовый может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomShaders": {
+          "description": "Базовый может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseDrone": {
+          "description": "Базовый может использовать дрон"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "Базовый может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseParticleSystems": {
+          "description": "Базовый может использовать системы частиц"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseTriggers": {
+          "description": "Базовый может использовать триггеры"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseUserIcons": {
+          "description": "Базовый может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanSpeak": {
+          "description": "Базовый может говорить"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Базовый может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAvatarAudio": {
+          "description": "Базовый может использовать звук аватара"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAnimations": {
+          "description": "Базовый может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAvatar": {
+          "description": "Базовый может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomShaders": {
+          "description": "Базовый может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseDrone": {
+          "description": "Базовый может использовать дрон"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Базовый может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseParticleSystems": {
+          "description": "Базовый может использовать системы частиц"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseTriggers": {
+          "description": "Базовый может использовать триггеры"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseUserIcons": {
+          "description": "Базовый может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanSpeak": {
+          "description": "Разработчик может говорить"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Разработчик может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAvatarAudio": {
+          "description": "Разработчик может использовать звук аватара"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAnimations": {
+          "description": "Разработчик может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAvatar": {
+          "description": "Разработчик может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomShaders": {
+          "description": "Разработчик может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseDrone": {
+          "description": "Разработчик может использовать дрон"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Разработчик может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseParticleSystems": {
+          "description": "Разработчик может использовать системы частиц"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseTriggers": {
+          "description": "Разработчик может использовать триггеры"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseUserIcons": {
+          "description": "Разработчик может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_Friend_CanSpeak": {
+          "description": "Друг может говорить"
+        },
+        "CustomTrustLevel_Friend_CanUseAnimatedEmoji": {
+          "description": "Друг может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_Friend_CanUseAvatarAudio": {
+          "description": "Друг может использовать звук аватара"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAnimations": {
+          "description": "Друг может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAvatar": {
+          "description": "Друг может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomShaders": {
+          "description": "Друг может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_Friend_CanUseDrone": {
+          "description": "Друг может использовать дрон"
+        },
+        "CustomTrustLevel_Friend_CanUseEmojiStickersSharing": {
+          "description": "Друг может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_Friend_CanUseParticleSystems": {
+          "description": "Друг может использовать системы частиц"
+        },
+        "CustomTrustLevel_Friend_CanUseTriggers": {
+          "description": "Друг может использовать триггеры"
+        },
+        "CustomTrustLevel_Friend_CanUseUserIcons": {
+          "description": "Друг может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanSpeak": {
+          "description": "Средний 1 может говорить"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "Средний 1 может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAvatarAudio": {
+          "description": "Средний 1 может использовать звук аватара"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAnimations": {
+          "description": "Средний 1 может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAvatar": {
+          "description": "Средний 1 может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomShaders": {
+          "description": "Средний 1 может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseDrone": {
+          "description": "Средний 1 может использовать дрон"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "Средний 1 может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseParticleSystems": {
+          "description": "Средний 1 может использовать системы частиц"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseTriggers": {
+          "description": "Средний 1 может использовать триггеры"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseUserIcons": {
+          "description": "Средний 1 может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanSpeak": {
+          "description": "Средний 2 может говорить"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "Средний 2 может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAvatarAudio": {
+          "description": "Средний 2 может использовать звук аватара"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAnimations": {
+          "description": "Средний 2 может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAvatar": {
+          "description": "Средний 2 может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomShaders": {
+          "description": "Средний 2 может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseDrone": {
+          "description": "Средний 2 может использовать дрон"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "Средний 2 может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseParticleSystems": {
+          "description": "Средний 2 может использовать системы частиц"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseTriggers": {
+          "description": "Средний 2 может использовать триггеры"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseUserIcons": {
+          "description": "Средний 2 может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanSpeak": {
+          "description": "Известный может говорить"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Известный может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAvatarAudio": {
+          "description": "Известный может использовать звук аватара"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAnimations": {
+          "description": "Известный может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAvatar": {
+          "description": "Известный может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomShaders": {
+          "description": "Известный может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseDrone": {
+          "description": "Известный может использовать дрон"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Известный может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseParticleSystems": {
+          "description": "Известный может использовать системы частиц"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseTriggers": {
+          "description": "Известный может использовать триггеры"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseUserIcons": {
+          "description": "Известный может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanSpeak": {
+          "description": "Легенда может говорить"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Легенда может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAvatarAudio": {
+          "description": "Легенда может использовать звук аватара"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAnimations": {
+          "description": "Легенда может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAvatar": {
+          "description": "Легенда может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomShaders": {
+          "description": "Легенда может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseDrone": {
+          "description": "Легенда может использовать дрон"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Легенда может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseParticleSystems": {
+          "description": "Легенда может использовать системы частиц"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseTriggers": {
+          "description": "Легенда может использовать триггеры"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseUserIcons": {
+          "description": "Легенда может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_LocalPlayer_CanSpeak": {
+          "description": "Локальный игрок может говорить"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAnimatedEmoji": {
+          "description": "Локальный игрок может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAvatarAudio": {
+          "description": "Локальный игрок может использовать звук аватара"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAnimations": {
+          "description": "Локальный игрок может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAvatar": {
+          "description": "Локальный игрок может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomShaders": {
+          "description": "Локальный игрок может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseDrone": {
+          "description": "Локальный игрок может использовать дрон"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseEmojiStickersSharing": {
+          "description": "Локальный игрок может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseParticleSystems": {
+          "description": "Локальный игрок может использовать системы частиц"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseTriggers": {
+          "description": "Локальный игрок может использовать триггеры"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseUserIcons": {
+          "description": "Локальный игрок может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanSpeak": {
+          "description": "Негативный может говорить"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "Негативный может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAvatarAudio": {
+          "description": "Негативный может использовать звук аватара"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAnimations": {
+          "description": "Негативный может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAvatar": {
+          "description": "Негативный может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomShaders": {
+          "description": "Негативный может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseDrone": {
+          "description": "Негативный может использовать дрон"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "Негативный может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseParticleSystems": {
+          "description": "Негативный может использовать системы частиц"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseTriggers": {
+          "description": "Негативный может использовать триггеры"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseUserIcons": {
+          "description": "Негативный может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanSpeak": {
+          "description": "Негативный может говорить"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "Негативный может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAvatarAudio": {
+          "description": "Негативный может использовать звук аватара"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAnimations": {
+          "description": "Негативный может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAvatar": {
+          "description": "Негативный может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomShaders": {
+          "description": "Негативный может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseDrone": {
+          "description": "Негативный может использовать дрон"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "Негативный может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseParticleSystems": {
+          "description": "Негативный может использовать системы частиц"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseTriggers": {
+          "description": "Негативный может использовать триггеры"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseUserIcons": {
+          "description": "Негативный может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanSpeak": {
+          "description": "Негативный может говорить"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Негативный может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "Негативный может использовать звук аватара"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "Негативный может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "Негативный может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomShaders": {
+          "description": "Негативный может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseDrone": {
+          "description": "Негативный может использовать дрон"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Негативный может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseParticleSystems": {
+          "description": "Негативный может использовать системы частиц"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseTriggers": {
+          "description": "Негативный может использовать триггеры"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseUserIcons": {
+          "description": "Негативный может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanSpeak": {
+          "description": "Доверенный может говорить"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Доверенный может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAvatarAudio": {
+          "description": "Доверенный может использовать звук аватара"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAnimations": {
+          "description": "Доверенный может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAvatar": {
+          "description": "Доверенный может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomShaders": {
+          "description": "Доверенный может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseDrone": {
+          "description": "Доверенный может использовать дрон"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Доверенный может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseParticleSystems": {
+          "description": "Доверенный может использовать системы частиц"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseTriggers": {
+          "description": "Доверенный может использовать триггеры"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseUserIcons": {
+          "description": "Доверенный может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_Untrusted_CanSpeak": {
+          "description": "Недоверенный может говорить"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAnimatedEmoji": {
+          "description": "Недоверенный может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAvatarAudio": {
+          "description": "Недоверенный может использовать звук аватара"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAnimations": {
+          "description": "Недоверенный может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAvatar": {
+          "description": "Недоверенный может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomShaders": {
+          "description": "Недоверенный может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_Untrusted_CanUseDrone": {
+          "description": "Недоверенный может использовать дрон"
+        },
+        "CustomTrustLevel_Untrusted_CanUseEmojiStickersSharing": {
+          "description": "Недоверенный может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_Untrusted_CanUseParticleSystems": {
+          "description": "Недоверенный может использовать системы частиц"
+        },
+        "CustomTrustLevel_Untrusted_CanUseTriggers": {
+          "description": "Недоверенный может использовать триггеры"
+        },
+        "CustomTrustLevel_Untrusted_CanUseUserIcons": {
+          "description": "Недоверенный может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanSpeak": {
+          "description": "Негативный может говорить"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Негативный может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "Негативный может использовать звук аватара"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "Негативный может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "Негативный может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomShaders": {
+          "description": "Негативный может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseDrone": {
+          "description": "Негативный может использовать дрон"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Негативный может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseParticleSystems": {
+          "description": "Негативный может использовать системы частиц"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseTriggers": {
+          "description": "Негативный может использовать триггеры"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseUserIcons": {
+          "description": "Негативный может использовать иконки пользователя"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanSpeak": {
+          "description": "Ветеран может говорить"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Ветеран может использовать анимированные эмодзи"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAvatarAudio": {
+          "description": "Ветеран может использовать звук аватара"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAnimations": {
+          "description": "Ветеран может использовать пользовательские анимации"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAvatar": {
+          "description": "Ветеран может использовать пользовательский аватар"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomShaders": {
+          "description": "Ветеран может использовать пользовательские шейдеры"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseDrone": {
+          "description": "Ветеран может использовать дрон"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Ветеран может делиться эмодзи/стикерами"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseParticleSystems": {
+          "description": "Ветеран может использовать системы частиц"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseTriggers": {
+          "description": "Ветеран может использовать триггеры"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseUserIcons": {
+          "description": "Ветеран может использовать иконки пользователя"
+        },
+        "VRC_LIMIT_PARTICLE_SYSTEMS": {
+          "description": "Ограничить системы частиц"
+        },
+        "14C4B06B824EC593239362517F538B29": {
+          "description": "Токен аутентификации или установки"
+        },
+        "5F4DCC3B5AA765D61D8327DEB882CF99": {
+          "description": "Токен аутентификации или установки"
+        },
+        "785C2BDD2C43070A10BC35E5E687A467": {
+          "description": "Токен аутентификации или установки"
+        },
+        "93D3AE97F80BEDA8E396065DC4770A93": {
+          "description": "Токен аутентификации или установки"
+        },
+        "BCD9D91ED8D8F1926B20D3D620647C8E": {
+          "description": "Токен аутентификации или установки"
+        },
+        "BD2E932A03A19217AB5A1DFB5AA93340": {
+          "description": "Токен аутентификации или установки"
+        },
+        "E1F946CE2FD302B954E26AD92C0B30BF": {
+          "description": "Токен аутентификации или установки"
+        },
+        "ForceSettings_AutoWalk": {
+          "description": "Маркер миграции настроек"
+        },
+        "ForceSettings_ClearFoldoutPrefKeys": {
+          "description": "Маркер миграции настроек"
+        },
+        "ForceSettings_MicToggle": {
+          "description": "Маркер миграции настроек"
+        },
+        "ForceSettings_MigrateMicSettings": {
+          "description": "Маркер миграции настроек"
+        },
+        "ForceSettings_Mixer": {
+          "description": "Маркер миграции настроек"
+        },
+        "ForceSettings_PedestalSharing": {
+          "description": "Маркер миграции настроек"
+        },
+        "ForceSettings_SteamAudioSliderRemap": {
+          "description": "Маркер миграции настроек"
+        },
+        "ForceSettings_WorldTooltipMode": {
+          "description": "Маркер миграции настроек"
+        },
+        "LOGGING_ENABLED": {
+          "description": "Включить логирование"
+        },
+        "Screenmanager Fullscreen mode": {
+          "description": "Полноэкранный режим"
+        },
+        "Screenmanager Fullscreen mode Default": {
+          "description": "Полноэкранный режим по умолчанию"
+        },
+        "Screenmanager Resolution Height": {
+          "description": "Высота разрешения"
+        },
+        "Screenmanager Resolution Height Default": {
+          "description": "Высота разрешения по умолчанию"
+        },
+        "Screenmanager Resolution Use Native": {
+          "description": "Использовать нативное разрешение"
+        },
+        "Screenmanager Resolution Use Native Default": {
+          "description": "Нативное разрешение по умолчанию"
+        },
+        "Screenmanager Resolution Width": {
+          "description": "Ширина разрешения"
+        },
+        "Screenmanager Resolution Width Default": {
+          "description": "Ширина разрешения по умолчанию"
+        },
+        "Screenmanager Resolution Window Height": {
+          "description": "Высота окна"
+        },
+        "Screenmanager Resolution Window Width": {
+          "description": "Ширина окна"
+        },
+        "Screenmanager Stereo 3D": {
+          "description": "Стерео 3D"
+        },
+        "Screenmanager Window Position X": {
+          "description": "Положение окна по X"
+        },
+        "Screenmanager Window Position Y": {
+          "description": "Положение окна по Y"
+        },
+        "UserId": {
+          "description": "ID пользователя"
+        },
+        "VRC_CLEAR_CACHE_ON_START": {
+          "description": "Очищать кэш контента при запуске"
+        },
+        "VRC_SHOW_COMPATIBILITY_WARNINGS": {
+          "description": "Показывать предупреждения о совместимости"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideAvatar": {
+          "description": "Маркер миграции «скрыть аватар»"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideDrone": {
+          "description": "Маркер миграции «скрыть дрон»"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowAvatar": {
+          "description": "Маркер миграции «показать аватар»"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowDrone": {
+          "description": "Маркер миграции «показать дрон»"
+        },
+        "unity.cloud_userid": {
+          "description": "ID облачного пользователя Unity"
+        },
+        "unity.player_session_count": {
+          "description": "Телеметрия сессии Unity"
+        },
+        "unity.player_sessionid": {
+          "description": "Телеметрия сессии Unity"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_LastExpiredSubscription": {
+          "description": "Последняя истёкшая подписка пользователя"
+        },
+        "VRC_AFK_ENABLED": {
+          "description": "Включить режим AFK"
+        },
+        "VRC_PREFERRED_TIMEZONE_2": {
+          "description": "Предпочитаемый часовой пояс 2"
+        }
       }
     },
     "general": {
@@ -1394,7 +3423,15 @@
       "profileContext": "Живой контекст профиля",
       "profileContextHint": "Показывать справа текущий аватар и контекст мира в «Моем профиле».",
       "worldInspector": "Инспектор миров",
-      "worldInspectorHint": "Держать открытым инспектор миров рядом со списком карт."
+      "worldInspectorHint": "Держать открытым инспектор миров рядом со списком карт.",
+      "showInstanceId": "Показывать ID инстанса",
+      "showInstanceIdHint": "Когда выключено, номер инстанса скрыт в локациях друзей. Мир, тип и регион по-прежнему видны.",
+      "hideUnfriends": "Скрывать события удаления из друзей",
+      "hideUnfriendsHint": "Скрывать строки «удалил вас» / удаления из друзей в логе активности друзей. Остальные события по-прежнему видны.",
+      "statusShapes": "Формы статусов для дальтоников",
+      "statusShapesHint": "Добавить отдельную форму каждому индикатору статуса (join me, активен, ask me, занят, офлайн), чтобы их можно было различать без опоры на цвет.",
+      "userColor": "Индивидуальные цвета имён",
+      "userColorHint": "Окрашивать имя каждого пользователя стабильным уникальным цветом на основе его ID, чтобы людей было легче узнавать с первого взгляда в лентах и списках."
     },
     "steamvr": {
       "saveDirty": "Сохранить настройки *",
@@ -1450,7 +3487,239 @@
         "hint": "Лимит битрейта для Steam Link. До 150-200 для хороших роутеров.",
         "label": "Целевая пропускная способность (Mbps)"
       },
-      "title": "Настройки стриминга VR (SteamVR / Steam Link)"
+      "title": "Настройки стриминга VR (SteamVR / Steam Link)",
+      "linkRepair": {
+        "title": "Восстановление подключения Steam Link / Quest",
+        "body": "Диагностика несоответствий ID сессий VRLink, WirelessHmdNotConnected, устаревших кэшей сопряжения Quest, маркеров беты SteamVR и незавершённых обновлений SteamVR. Восстановление сначала делает резервную копию и по умолчанию работает в режиме предпросмотра.",
+        "diagnose": "Диагностика",
+        "dryRun": "Предпросмотр восстановления",
+        "dryRunShort": "Предпросмотр",
+        "apply": "Сделать резервную копию и восстановить",
+        "applyShort": "Применить",
+        "confirm": "Это закроет Steam/SteamVR, создаст резервную копию настроек SteamVR, appmanifest и localconfig.vdf, очистит кэш сопряжения Steam Link, удалит маркеры беты SteamVR и откроет проверку Steam. Продолжить?",
+        "confirmPlan": "Применить «{{name}}»? VRCSM сначала делает резервную копию и сообщит об ошибках записи.",
+        "invalidSessionToast": "Найдены некорректные пакеты сессии VRLink: {{count}}",
+        "diagnoseDone": "Диагностика Steam Link завершена.",
+        "diagnoseFailed": "Диагностика Steam Link не удалась: {{msg}}",
+        "dryRunDone": "Предпросмотр завершён. Просмотрите запланированные шаги восстановления.",
+        "repairDone": "Восстановление применено, открыта проверка Steam.",
+        "backupDone": "Создана резервная копия настроек Quest Link/SteamVR.",
+        "repairFailed": "Восстановление Steam Link не удалось: {{msg}}",
+        "previewFailed": "Не удалось сформировать предпросмотр: {{msg}}",
+        "restoreDone": "Восстановлено элементов из резервной копии: {{count}}.",
+        "restoreFailed": "Не удалось восстановить из резервной копии: {{msg}}",
+        "confirmDialogTitle": "Подтвердите «{{name}}»",
+        "confirmDialogDesc": "Сначала просмотрите конкретные файлы и действия ниже. Ничего не изменяется, пока вы не нажмёте «Применить».",
+        "restoreDialogTitle": "Восстановить резервную копию Steam Link",
+        "restoreDialogDesc": "VRCSM закрывает Steam/SteamVR, сначала делает резервную копию текущих файлов, затем восстанавливает выбранную вами копию.",
+        "previewing": "Формирование предпросмотра…",
+        "executing": "Применение…",
+        "noPlannedActions": "В предпросмотре нет действий.",
+        "confirmDialogCancel": "Отмена, оставить как есть",
+        "confirmDialogApply": "Подтвердить резервную копию и восстановление",
+        "restoreConfirm": "Восстановить эту резервную копию",
+        "steamPath": "Путь к Steam",
+        "build": "Сборка",
+        "beta": "Бета",
+        "stable": "Стабильная",
+        "invalidSessions": "Некорректные пакеты сессии",
+        "questPairs": "Кэш сопряжения Quest",
+        "pendingDownload": "Ожидающее обновление",
+        "lostMaster": "Главный процесс потерян",
+        "issues": "Обнаруженные проблемы",
+        "evidence": "Свидетельства из логов",
+        "noEvidence": "В просканированном хвосте лога нет совпадающих строк.",
+        "recommended": "Рекомендуется",
+        "best": "Рекомендуется",
+        "settingProfiles": "Стабильные профили настроек",
+        "actions": "Запланированные действия",
+        "result": "Результат",
+        "applied": "Применено",
+        "partial": "Частично",
+        "resultBetaKey": "Удалить строку BetaKey",
+        "resultQuestBlocks": "Удалить блоки устройств Quest",
+        "resultBetaBlocks": "Удалить блоки 250820-beta",
+        "resultStopped": "Процессы остановлены",
+        "resultBackups": "Резервные копии созданы",
+        "resultSettingsApplied": "Настройки записаны",
+        "resultRestored": "Элементы восстановлены",
+        "currentBackupDir": "Резервная копия текущих файлов перед восстановлением",
+        "backupsTitle": "Резервные копии и восстановление",
+        "backupsHint": "Здесь перечислены восстановимые резервные копии, созданные VRCSM. Восстановление сначала делает копию текущих файлов.",
+        "refreshBackups": "Обновить",
+        "restorable": "Восстановимо",
+        "metadataMissing": "Манифест отсутствует",
+        "restore": "Восстановить",
+        "severity": {
+          "critical": "Критично",
+          "warning": "Предупреждение",
+          "info": "Инфо",
+          "ok": "Норма"
+        },
+        "risk": {
+          "low": "Низкий риск",
+          "medium": "Средний риск",
+          "high": "Высокий риск"
+        },
+        "summary": {
+          "vrlinkSessionMismatch": "Несоответствие сессии VRLink: пакеты Quest дошли до ПК, но SteamVR отклонил сессию беспроводного шлема.",
+          "betaMarkers": "Обнаружены маркеры беты SteamVR или беты на уровне пользователя; это может закрепить SteamVR на проблемной сборке VRLink.",
+          "readyNoInvalid": "В недавних логах есть «SteamVR Ready», и в просканированном диапазоне нет всплеска некорректных сессий.",
+          "lostMaster": "SteamVR закрылся из-за потери главного процесса; проверьте сопряжение VRLink и стабильность процессов среды выполнения.",
+          "pairingRecords": "Обнаружены записи сопряжения Steam Link / Quest; старые записи можно безопасно сбросить после резервного копирования.",
+          "noSignature": "В просканированных логах SteamVR нет явной сигнатуры сбоя VRLink."
+        },
+        "recommendations": {
+          "resetPairing": "Сбросьте кэш сопряжения Steam Link / Quest, затем выполните повторное сопряжение со шлема.",
+          "removeManifestBeta": "Удалите BetaKey SteamVR и проверьте AppID 250820, чтобы вернуться на стабильную ветку.",
+          "removeUserBeta": "Удалите маркеры 250820-beta / BetaKey на уровне пользователя из localconfig.vdf Steam.",
+          "removeQuestDevices": "Сначала сделайте резервную копию localconfig.vdf, затем удалите старые записи потоковых устройств Oculus Quest / Steam Link.",
+          "finishUpdate": "Дайте Steam завершить обновление/проверку SteamVR, затем повторите попытку Steam Link.",
+          "retryThenDryRun": "Сначала повторите попытку со шлема; если не удаётся, запустите предпросмотр восстановления и сравните новый хвост лога."
+        },
+        "issuesMap": {
+          "steamvr_missing": {
+            "title": "Каталог SteamVR или среды выполнения не найден",
+            "detail": "Для Steam Link VR требуется AppID 250820. Сначала установите SteamVR, затем запустите проверку."
+          },
+          "steamvr_pending_update": {
+            "title": "У SteamVR есть ожидающее обновление или незавершённая загрузка",
+            "detail": "Пока SteamVR в процессе смены манифеста/загрузки, Steam Link может не подключиться. Дайте Steam завершить обновление, затем выполните повторное сопряжение."
+          },
+          "vrlink_session_mismatch": {
+            "title": "Несоответствие ID сессии VRLink",
+            "detail": "Найдено {{count}} некорректных пакетов сессии, при этом SteamVR сообщает, что беспроводной шлем не подключён."
+          },
+          "vrlink_invalid_session": {
+            "title": "Найдены некорректные пакеты сессии VRLink",
+            "detail": "Просканированный хвост лога SteamVR содержит {{count}} пакетов некорректных сессий."
+          },
+          "steamvr_unknown_shutdown": {
+            "title": "SteamVR закрылся по неизвестной причине, связанной с главным процессом",
+            "detail": "Обычно это связано со сбоем рукопожатия VRLink. Сначала сбросьте сопряжение, затем повторите попытку со шлема."
+          },
+          "quest_pairing_cache": {
+            "title": "Обнаружен кэш сопряжения Quest / Steam Link",
+            "detail": "Найдено {{count}} маркеров сопряжения Quest в localconfig.vdf Steam."
+          },
+          "steamvr_beta_marker": {
+            "title": "Обнаружены маркеры беты SteamVR",
+            "detail": "BetaKey, 250820-beta или закодированные маркеры беты могут закрепить SteamVR на сборке VRLink со сломанным состоянием сопряжения."
+          },
+          "no_physical_ipv4_adapter": {
+            "title": "Активный физический сетевой адаптер IPv4 не обнаружен",
+            "detail": "Steam Link работает лучше всего, когда ПК подключён по проводному Ethernet, а шлем — к тому же роутеру."
+          },
+          "virtual_network_adapter": {
+            "title": "Включён виртуальный сетевой адаптер",
+            "detail": "Обнаружено активных виртуальных сетевых адаптеров: {{count}}. VRCSM не меняет их автоматически; если сопряжение продолжает срываться, временно отключите VPN / Hyper-V."
+          },
+          "high_bandwidth": {
+            "title": "Пропускная способность Steam Link задана высокой",
+            "detail": "{{bandwidth}} Мбит/с может быть слишком много для общего Wi-Fi. При устранении неполадок начните с 80–120 Мбит/с."
+          },
+          "overscaled_low_vram": {
+            "title": "Высокий суперсэмплинг на GPU с малым объёмом видеопамяти",
+            "detail": "Снизьте суперсэмплинг до 0.8–1.0 на время проверки связи; повысьте его, когда подключение стабилизируется."
+          },
+          "no_blocker_found": {
+            "title": "Нет явной сигнатуры, блокирующей Steam Link",
+            "detail": "В просканированном хвосте нет беты, ожидающего обновления или всплеска некорректных сессий. Повторите попытку со шлема и сразу перезапустите диагностику, если не удастся."
+          }
+        },
+        "plans": {
+          "quest-link-backup": {
+            "title": "Сделать резервную копию текущих настроек Quest Link",
+            "description": "Создать восстановимые снимки только SteamVR, VRLink, сопряжения Quest и манифеста SteamVR, не меняя настроек."
+          },
+          "pairing-reset": {
+            "title": "Сбросить сопряжение",
+            "description": "Очистить записи сопряжения Quest / Steam Link на уровне аккаунта и веб-кэш SteamVR, затем дать шлему заново выполнить чистое сопряжение."
+          },
+          "full-vrlink-reset": {
+            "title": "Полный сброс VRLink",
+            "description": "Полный путь, ранее исправлявший сессии Quest 3: кэш сопряжения, локальное состояние среды выполнения SteamVR, папка конфигурации VRLink, старые логи, маркеры беты и проверка Steam."
+          },
+          "stable-validate": {
+            "title": "Проверка стабильной ветки",
+            "description": "Удалить только маркеры беты SteamVR и открыть проверку Steam для AppID 250820."
+          },
+          "safe-streaming": {
+            "title": "Безопасные настройки стриминга",
+            "description": "Записать консервативные безопасные для Quest настройки Steam Link, не очищая данные сопряжения."
+          }
+        },
+        "planActions": {
+          "stopSteamVrSteam": "Остановить SteamVR/Steam",
+          "backupLocalconfig": "Сделать резервную копию localconfig.vdf",
+          "removeQuestBlocks": "Удалить блоки потоковых устройств Quest",
+          "clearHtmlcache": "Очистить htmlcache SteamVR",
+          "stopSteamSteamVr": "Остановить Steam/SteamVR",
+          "backupAll": "Сделать резервную копию appmanifest/localconfig/настроек SteamVR",
+          "moveRuntimeState": "Убрать steamvr.vrsettings и vrstats",
+          "moveVrlinkConfig": "Убрать config/vrlink и remoteclients.vdf",
+          "archiveLogs": "Архивировать старые логи VRLink",
+          "openValidate": "Открыть steam://validate/250820",
+          "backupVrlinkConfig": "Сделать резервную копию config/vrlink и remoteclients.vdf",
+          "backupHtmlcache": "Сделать резервную копию htmlcache SteamVR",
+          "backupManifestLocalconfig": "Сделать резервную копию appmanifest/localconfig",
+          "removeBetaMarkers": "Удалить маркеры BetaKey / 250820-beta",
+          "backupVrsettings": "Сделать резервную копию steamvr.vrsettings",
+          "set80Auto": "Задать авто-пропускную способность 80 Мбит/с",
+          "set1x": "Задать суперсэмплинг 1.0x",
+          "set72hz": "Задать 72 Гц",
+          "disableMotionSmoothing": "Отключить сглаживание движения"
+        },
+        "profiles": {
+          "low-stability": {
+            "title": "Стабильность при низкой производительности",
+            "note": "Используйте, когда подключение устанавливается, но есть подтормаживания, размытие или чёрный экран."
+          },
+          "balanced-stable": {
+            "title": "Сбалансированная стабильность",
+            "note": "Рекомендация по умолчанию для Quest 2/3 на типичных роутерах Wi-Fi 5/6."
+          },
+          "quest3-clarity": {
+            "title": "Чёткость для Quest 3",
+            "note": "Повышайте качество изображения только после стабилизации сопряжения/сессии."
+          }
+        },
+        "repairActions": {
+          "stopProcess": "Остановить процесс {{name}} ({{pid}})",
+          "moveIntoBackup": "Переместить в резервную копию: {{path}}",
+          "archiveLog": "Архивировать старый лог SteamVR: {{path}}",
+          "backupPath": "Резервная копия: {{path}}",
+          "restorePath": "Восстановить из резервной копии: {{path}} ← {{backup}}",
+          "backupRemove": "Сделать резервную копию и удалить: {{path}}",
+          "removeManifestBeta": "Удалить строку BetaKey из файла: {{path}}",
+          "removeUserBeta": "Удалить маркеры 250820-beta / BetaKey из файла: {{path}}",
+          "removeQuestBlocks": "Удалить блоки потоковых устройств Quest / Steam Link из файла: {{path}}",
+          "applySafeStreaming": "Применить безопасные настройки стриминга Quest: авто-пропускная способность 80 Мбит/с, суперсэмплинг 1.0x, 72 Гц, сглаживание движения выключено",
+          "openValidateAfter": "После восстановления откройте steam://validate/250820 для проверки"
+        },
+        "backupPartial": "Резервное копирование Quest Link завершено с предупреждениями: {{msg}}",
+        "dryRunWarning": "Пробный прогон завершён с предупреждениями: {{msg}}",
+        "dryRunWarningShort": "Предупреждение пробного прогона",
+        "repairPartial": "Восстановление завершено с предупреждениями: {{msg}}",
+        "restorePartial": "Восстановление завершено с предупреждениями: {{msg}}",
+        "restoredShort": "Восстановлено",
+        "resultRestoreCount": "Число восстановленных",
+        "reviewFailures": "Просмотрите детали результата ниже."
+      },
+      "configNotFoundBadge": "Настройки не найдены",
+      "configNotFoundBody": "VRCSM не удалось прочитать файл настроек SteamVR. Диагностика и восстановление с предварительной резервной копией доступны; редактор параметров отключён, пока SteamVR не создаст файл.",
+      "configNotFoundTitle": "steamvr.vrsettings не найден",
+      "editorUnavailable": "Редактор конфигурации SteamVR недоступен: steamvr.vrsettings не установлен или ещё не создан.",
+      "effectiveResolution": {
+        "hint": "Разрешение энкодера, отображаемое Steam Link, — это данное значение. Изменение любого поля пересчитывает масштаб суперсэмплинга (0.5–2.0, шаг 0.1).",
+        "label": "Эффективное разрешение рендеринга (на глаз)",
+        "unknown": "Неизвестный шлем"
+      },
+      "knownDevices": "Обнаруженные VR-устройства:",
+      "profileApplied": "Применён {{name}} — нажмите «Сохранить настройки», чтобы закрепить.",
+      "unknownGpu": "Неизвестный GPU",
+      "vrIdle": "Среда выполнения VR простаивает",
+      "vrRunning": "Среда выполнения VR активна"
     },
     "configJson": {
       "cacheDirectory": {
@@ -1513,6 +3782,11 @@
           "name": "Визуальный поиск аватаров",
           "description": "Поиск визуально похожих аватаров по изображению с помощью локальной AI-модели. Добавляет действие 'Найти похожие' в контекстном меню карточки аватара.",
           "warning": "При первом использовании загружается модель CLIP размером ~150 MB. Вся обработка происходит локально; данные никуда не загружаются. Индексация большого кэша может занять несколько минут и интенсивно использует CPU без WebGPU."
+        },
+        "amplitudeHarvest": {
+          "name": "Сбор ID аватаров из Amplitude",
+          "description": "Читает id аватаров (avtr_...) из локального кэша аналитики Amplitude самого VRChat, чтобы пополнить базу моделей аватарами, которые вы встречали. Только для чтения: ничего не записывается, не удаляется и не загружается. Добавляет действие «Сканировать локальный кэш» на странице базы моделей.",
+          "warning": "Чтение кэша аналитики VRChat может быть расценено как нарушение Условий использования / правил обработки данных VRChat. Используйте на свой страх и риск. Всё остаётся строго локальным и только для чтения — извлекаются только avtr_ id, никакие другие данные аналитики не отображаются и никуда не отправляются."
         }
       },
       "visualSearch": {
@@ -1552,7 +3826,8 @@
       "steamvr": "SteamVR",
       "experimental": "Экспериментальные",
       "vrDiag": "Диагностика VR",
-      "data": "Данные"
+      "data": "Данные",
+      "hardware": "Оборудование"
     },
     "vrDiag": {
       "heading": "Диагностика VR",
@@ -1587,7 +3862,15 @@
       "found": "Найдено",
       "missing": "Отсутствует",
       "steamStreamingMicrophone": "Steam Streaming Microphone",
-      "vrlinkIssues": "Проблемы vrlink"
+      "vrlinkIssues": "Проблемы vrlink",
+      "openSteamLinkRepair": "Открыть восстановление Steam Link",
+      "linkRepairReady": "Панель восстановления Steam Link готова. Некорректных сессий: {{invalid}}, записей сопряжения Quest: {{questPairs}}.",
+      "virtualAdapterWarning": "Виртуальный адаптер «{{name}}» ({{description}}) включён с IP {{ip}} и может мешать VR-стримингу.",
+      "avgBitrate": "Средний битрейт",
+      "droppedFrames": "Потерянные кадры",
+      "linkQuality": "Качество связи",
+      "maxLatency": "Макс. задержка",
+      "supersampleFiltering": "Фильтрация суперсэмплинга"
     },
     "autoStart": {
       "label": "Запускать с Windows",
@@ -1650,6 +3933,64 @@
           "favorites": "Локальное избранное, заметки и теги"
         }
       }
+    },
+    "notify": {
+      "title": "Уведомления на рабочем столе",
+      "desc": "Показывать нативные уведомления Windows о живых событиях VRChat, пока VRCSM запущен. Каждый тип по умолчанию отключён.",
+      "friendOnline": {
+        "label": "Друг заходит онлайн",
+        "desc": "Уведомление, когда друг входит в VRChat."
+      },
+      "invite": {
+        "label": "Приглашения",
+        "desc": "Уведомление, когда вы получаете приглашение в инстанс."
+      },
+      "friendRequest": {
+        "label": "Заявки в друзья",
+        "desc": "Уведомление, когда кто-то отправляет вам заявку в друзья."
+      },
+      "vrOverlay": {
+        "label": "Показывать в VR-шлеме",
+        "desc": "Дублировать включённые выше уведомления в шлем через XSOverlay. Требуется запущенный XSOverlay."
+      },
+      "tts": {
+        "label": "Озвучивать уведомления",
+        "desc": "Зачитывать живые события вслух системным голосом, пока вы в VR.",
+        "unsupported": "Синтез речи недоступен в этой среде."
+      },
+      "ttsScope": {
+        "label": "Что озвучивать",
+        "desc": "«Только друзья» озвучивает заход друзей онлайн; «Все» также озвучивает приглашения и заявки в друзья.",
+        "all": "Все события",
+        "friends": "Только друзья"
+      }
+    },
+    "hardware": {
+      "applied": "Настройки применены! Перезапустите SteamVR.",
+      "apply": "Применить рекомендованные настройки",
+      "applying": "Применение…",
+      "bandwidth": "Пропускная способность",
+      "community": "Сообщество",
+      "cpu": "ЦП",
+      "cpuScore": "ЦП",
+      "detecting": "Определение оборудования…",
+      "ffr": "Уровень FFR",
+      "gpu": "GPU",
+      "gpuScore": "GPU",
+      "hmd": "Шлем",
+      "motionSmoothing": "Сглаживание движения",
+      "ram": "ОЗУ",
+      "ramBonus": "ОЗУ",
+      "recommendedTier": "Рекомендован уровень {{tier}}",
+      "refresh": "Определить заново",
+      "refreshRate": "Частота обновления",
+      "score": "Оценка железа",
+      "scoreBreakdown": "Разбивка оценки",
+      "subtitle": "Определите GPU и ЦП, чтобы вычислить рекомендованные настройки VRChat для Steam Link / Quest.",
+      "supersampling": "Суперсэмплинг",
+      "title": "Оборудование и GPU",
+      "totalScore": "Итого",
+      "vramBonus": "Видеопамять"
     }
   },
   "imageZoom": {
@@ -1679,7 +4020,8 @@
       "install": "Установить",
       "installing": "Установка…",
       "installed": "Установлено",
-      "empty": "Нет доступных плагинов."
+      "empty": "Нет доступных плагинов.",
+      "fetchErrorHint": "Удалённый фид магазина dwgx.github.io/VRCSM/plugins.json временно недоступен. Плагины Hello Plugin и VRChat Auto-Uploader, входящие в VRCSM, уже установлены и открываются из боковой панели; затронута только установка новых сторонних плагинов."
     },
     "detail": {
       "notFound": "Плагин не найден в ленте.",
@@ -1693,7 +4035,8 @@
       "hostMin": "Минимальная версия хоста",
       "sha256": "SHA-256",
       "downloadUrl": "URL загрузки",
-      "open": "Открыть"
+      "open": "Открыть",
+      "permissions": "Разрешения манифеста"
     },
     "installed": {
       "title": "Установленные плагины",
@@ -1720,6 +4063,12 @@
       "notInstalled": "Плагин {{id}} не установлен.",
       "disabled": "Плагин {{id}} отключён.",
       "noPanel": "Плагин {{id}} не предоставляет панель."
+    },
+    "install": {
+      "title": "Установить плагин",
+      "confirm": "Вы собираетесь установить «{{name}}». Пожалуйста, просмотрите разрешения перед продолжением.",
+      "permissions": "Разрешения манифеста",
+      "confirmBtn": "Установить"
     }
   },
   "avatar": {
@@ -1766,7 +4115,9 @@
     "groupsSignIn": "Войдите в VRChat, чтобы видеть события групп, в которых состоите.",
     "noGroups": "Вы ещё не вступили ни в одну группу VRChat.",
     "noGroupEvents": "В ваших {{count}} группах сейчас нет публичных событий.",
-    "openGroupPage": "Открыть страницу группы"
+    "openGroupPage": "Открыть страницу группы",
+    "resolvingPreview": "Поиск превью...",
+    "noPreview": "Нет изображения превью"
   },
   "worldHistory": {
     "title": "История миров",
@@ -1777,7 +4128,32 @@
     "unknownWorld": "(неизвестный мир)",
     "stillInWorld": "еще в мире",
     "instanceLabel": "инстанс",
-    "openAction": "открыть"
+    "openAction": "открыть",
+    "rejoinAction": "Войти снова",
+    "rejoinHint": "Запустить VRChat прямо в этот инстанс",
+    "heatmap": {
+      "title": "Тепловая карта активности",
+      "subtitle": "Когда вы заходите в миры, по дням недели и часам (последние {{days}} дн.)",
+      "empty": "Пока недостаточно истории посещений, чтобы построить график активности.",
+      "busiest": "Пик: {{day}} около {{hour}}",
+      "legendLess": "меньше",
+      "legendMore": "больше",
+      "cellTooltip": "{{day}} {{hour}}: посещений {{count}}",
+      "totalVisits": "На графике посещений: {{count}}"
+    },
+    "clear": "Очистить",
+    "clearDesc": "Это навсегда удалит все записанные посещения миров. Это действие необратимо.",
+    "clearFailed": "Не удалось очистить: {{error}}",
+    "clearSuccess": "История миров очищена.",
+    "clearTitle": "Очистить историю миров?",
+    "customLimit": "Пользовательский лимит строк истории миров",
+    "lastPlayerSeen": "последнее событие игрока {{time}}",
+    "limitLabel": "Строк",
+    "loggedPlayers": "Записано игроков: {{count}}",
+    "noLoggedPlayers": "Нет лога игроков",
+    "noPlayerCountHint": "В этом окне посещения не записано локальных событий входа/выхода игроков.",
+    "playerCountHint": "Локальных событий лога игроков в этом окне посещения: {{count}}.",
+    "recentLimit": "Последние {{count}} посещений"
   },
   "strangerAlert": {
     "title": "Незнакомец присоединился к вашему {{access}} инстансу",
@@ -1793,7 +4169,11 @@
     "guide1": "Записывает, кого вы встречаете в инстансах VRChat в реальном времени.",
     "guide2": "1. Введите название и нажмите «Начать запись». 2. Во время записи игроки, заходящие в ваш инстанс, автоматически фиксируются. 3. Нажмите «Стоп», чтобы завершить сеанс. Выберите запись, чтобы просмотреть участников.",
     "noRecordings": "Записей пока нет. Начните запись выше, чтобы отслеживать, кто заходит в ваш инстанс.",
-    "noAttendees": "Участники пока не зафиксированы."
+    "noAttendees": "Участники пока не зафиксированы.",
+    "delete": "Удалить запись",
+    "deleteDesc": "Это навсегда удалит «{{name}}» и записи её участников ({{count}}). Это действие необратимо.",
+    "deleteTitle": "Удалить запись?",
+    "deleted": "Запись удалена"
   },
   "socialGraph": {
     "title": "Социальная аналитика",
@@ -1804,7 +4184,22 @@
     "guide": "Собирает данные о посещениях миров и встречах с игроками из истории логов VRChat. Данные накапливаются по мере парсинга логов — держите приложение запущенным во время игры, чтобы аналитика пополнялась.",
     "noWorlds": "Данных о посещениях пока нет. История миров записывается, когда VRCSM обрабатывает логи VRChat.",
     "selfFiltered": "Ваш собственный ID игрока исключён из рейтинга встреч.",
-    "lazyWorlds": "Бейджи миров и миниатюры загружаются только при показе или открытии."
+    "lazyWorlds": "Бейджи миров и миниатюры загружаются только при показе или открытии.",
+    "tabRankings": "Рейтинги",
+    "tabGraph": "Граф связей",
+    "graphTitle": "Сеть совместного присутствия",
+    "graphGuide": "Игроки, бывшие с вами в одних инстансах, связанные по пересечению времени. Сплошные линии подтверждены (записаны из вашего инстанса); пунктирные линии — предполагаемое совместное присутствие между другими, а не подтверждённая дружба.",
+    "graphLoading": "Построение графа совместного присутствия…",
+    "graphEmpty": "Данных о совместном присутствии пока нет. Связи появятся, когда VRCSM зафиксирует игроков в ваших инстансах.",
+    "graphAria": "Граф связей совместного присутствия",
+    "legendConfirmed": "Подтверждённое совместное присутствие (ваш инстанс)",
+    "legendInferred": "Предполагаемое совместное присутствие (другие, не подтверждённые друзья)",
+    "clear": "Очистить",
+    "clearDesc": "Это навсегда удалит записанные встречи с игроками, используемые для рейтингов друзей и графа совместного присутствия. Рейтинги посещений миров очищаются отдельно на странице истории миров. Это действие необратимо.",
+    "clearFailed": "Не удалось очистить: {{error}}",
+    "clearSuccess": "Социальная аналитика очищена.",
+    "clearTitle": "Очистить социальную аналитику?",
+    "nodeFocused": "Фокус на {{name}}"
   },
   "benchmark": {
     "title": "Тест производительности аватара",
@@ -1831,7 +4226,16 @@
     "wearerCount": "{{count}} носитель(ей)",
     "seenTimes": "встречен {{count}} раз",
     "showWearers": "Носители",
-    "localEncounterIndexHint": "Построено из локальных логов VRChat. VRCSM предпочитает сохранённые превью и реальные ID аватаров; строки без ID разрешаются через точный публичный поиск при входе в систему, а неоднозначные/приватные строки сохраняют плейсхолдер."
+    "localEncounterIndexHint": "Построено из локальных логов VRChat. VRCSM предпочитает сохранённые превью и реальные ID аватаров; строки без ID разрешаются через точный публичный поиск при входе в систему, а неоднозначные/приватные строки сохраняют плейсхолдер.",
+    "clear": "Очистить",
+    "clearBenchmarkDesc": "Это удалит сохранённые снимки тестов. Аватары, ещё присутствующие в живом сканировании, снова появятся при следующем сканировании. Это действие необратимо.",
+    "clearBenchmarkTitle": "Очистить тесты аватаров?",
+    "clearFailed": "Не удалось очистить: {{error}}",
+    "clearSeenDesc": "Это навсегда удалит записанную историю аватаров, которые вы видели. Это действие необратимо.",
+    "clearSeenTitle": "Очистить историю замеченных аватаров?",
+    "clearSuccess": "Очищено.",
+    "copyId": "Скопировать ID аватара",
+    "wornBy": "используется"
   },
   "fbt": {
     "title": "Монитор калибровки FBT",
@@ -1853,6 +4257,166 @@
     "save": "Сохранить правило",
     "empty": "Правил пока нет. Создайте правило для автоматизации действий в VRChat.",
     "namePlaceholder": "Название правила...",
-    "history": "История срабатываний"
+    "history": "История срабатываний",
+    "yamlPlaceholder": "trigger: friend.online\ncondition: user.displayName contains 'Natsumi'\naction:\n  type: vrcsm.notification.show\n  title: Друг онлайн!\n  message: '{{user.displayName}} онлайн'"
+  },
+  "vrcPlus": {
+    "title": "Медиа VRC+",
+    "subtitle": "Управляйте своими принтами, галереей, иконками профиля и инвентарём. Загрузка и удаление применяются напрямую в VRChat.",
+    "tab": {
+      "prints": "Принты",
+      "gallery": "Галерея",
+      "icons": "Иконки",
+      "inventory": "Инвентарь",
+      "emoji": "Эмодзи",
+      "stickers": "Стикеры"
+    },
+    "uploadPrint": "Загрузить принт",
+    "uploadImage": "Загрузить изображение",
+    "uploadIcon": "Загрузить иконку",
+    "printUploaded": "Принт загружен",
+    "printDeleted": "Принт удалён",
+    "imageUploaded": "Изображение загружено",
+    "imageDeleted": "Изображение удалено",
+    "supporterRequired": "Для этого нужна активная подписка VRC+.",
+    "limitReached": "Вы достигли лимита VRC+ в {{limit}} для этого слота.",
+    "deletePrint": "Удалить принт",
+    "deleteImage": "Удалить",
+    "deletePrintTitle": "Удалить этот принт?",
+    "deletePrintBody": "Принт будет навсегда удалён из вашего аккаунта VRChat. Это действие необратимо.",
+    "deleteImageTitle": "Удалить это изображение?",
+    "deleteImageBody": "Изображение будет навсегда удалено из вашего аккаунта VRChat. Это действие необратимо.",
+    "noPrints": "Пока нет принтов.",
+    "noFiles": "Здесь пока пусто.",
+    "noInventory": "Инвентарь пуст.",
+    "uploadEmoji": "Загрузить эмодзи",
+    "uploadSticker": "Загрузить стикер",
+    "emoji": {
+      "static": "Статичный",
+      "animated": "Анимированный",
+      "explainer": "Анимированные эмодзи — это вертикальный спрайт-лист: сложите каждый кадр сверху вниз в один квадратный PNG, затем задайте число кадров и скорость воспроизведения.",
+      "pickSheet": "Выбрать спрайт-лист",
+      "frames": "Кадры",
+      "fps": "FPS",
+      "style": "Стиль",
+      "upload": "Загрузить анимированный эмодзи",
+      "uploaded": "Анимированный эмодзи загружен",
+      "badFrames": "Кадры и FPS должны быть не меньше 1.",
+      "empty": "Пока нет анимированных эмодзи."
+    }
+  },
+  "modelDb": {
+    "title": "База моделей",
+    "subtitle": "Управляйте аватарами, принадлежащими вашему аккаунту: переименуйте, измените видимость, замените изображение или удалите.",
+    "searchPlaceholder": "Фильтр по вашим аватарам",
+    "empty": "Собственные аватары не найдены.",
+    "loadFailed": "Не удалось загрузить ваши аватары.",
+    "manage": "Управление",
+    "manageTitle": "Управление аватаром",
+    "noChanges": "Нет изменений для сохранения.",
+    "saved": "Аватар обновлён.",
+    "deleted": "Аватар удалён.",
+    "imageReplaced": "Изображение аватара заменено.",
+    "replaceImage": "Заменить изображение",
+    "replaceImageConfirmTitle": "Заменить изображение этого аватара?",
+    "replaceImageConfirmBody": "Загрузить новое изображение для «{{name}}» и переназначить его в вашем аккаунте VRChat. Публичная миниатюра аватара изменится сразу.",
+    "delete": "Удалить аватар",
+    "deleteConfirmTitle": "Удалить этот аватар?",
+    "deleteConfirmBody": "Навсегда удалить «{{name}}»? VRChat скроет аватар, удалит его asset-файлы и навсегда зарезервирует id. Это действие необратимо.",
+    "filter": {
+      "all": "Все",
+      "public": "Публичный",
+      "private": "Приватный",
+      "hidden": "Скрытый"
+    },
+    "field": {
+      "name": "Имя",
+      "description": "Описание",
+      "visibility": "Видимость",
+      "image": "Изображение аватара"
+    },
+    "hidden": {
+      "explainer": "VRChat не может показать скрытые (удалённые) аватары. Ищите их по id — сканируйте id из локальных логов или вставьте конкретный avtr_ id. Найдутся только аватары, которыми вы владеете.",
+      "lookup": "Найти по id",
+      "scanHistory": "Сканировать историю логов",
+      "scanning": "Проверка {{done}} / {{total}} id…",
+      "scanDone": "Проверено {{checked}} id · найдено скрытых аватаров: {{found}}.",
+      "badId": "Введите корректный avtr_ id.",
+      "foundOne": "Скрытый аватар найден.",
+      "notHidden": "Этот аватар существует, но не скрыт.",
+      "notOwned": "Не удалось найти этот id — VRChat возвращает только аватары, которыми вы владеете.",
+      "noHistory": "В локальной истории пока нет id аватаров. Поиграйте в VRChat, чтобы её пополнить, или вставьте id выше."
+    },
+    "harvest": {
+      "empty": "В локальном кэше аналитики не найдено id аватаров (или VRChat ещё его не записал).",
+      "found": "Локально найдено id аватаров: {{total}} · {{fresh}} нет в списке ваших.",
+      "scan": "Сканировать локальный кэш",
+      "tooltip": "Сканирование локального кэша аналитики VRChat на id аватаров только для чтения (экспериментально)."
+    }
+  },
+  "feed": {
+    "tab": "Лента",
+    "title": "Лента активности",
+    "subtitle": "Единая постоянная хронология присутствия друзей, сессий и смен аватаров.",
+    "searchPlaceholder": "Поиск по имени, миру, деталям…",
+    "muteHint": "ПКМ, чтобы скрыть из вкладки «Все»",
+    "loginRequired": "Войдите в VRChat на странице настроек, чтобы просмотреть свою ленту активности.",
+    "loadFailed": "Не удалось загрузить ленту.",
+    "empty": "Активности пока нет. События появятся здесь, когда друзья заходят онлайн и перемещаются между инстансами.",
+    "unknownUser": "Неизвестно",
+    "category": {
+      "all": "Все",
+      "online": "Онлайн",
+      "offline": "Офлайн",
+      "location": "Локация",
+      "status": "Статус",
+      "avatar": "Аватар",
+      "joined": "Зашёл",
+      "left": "Вышел",
+      "friend-added": "Друг добавлен",
+      "friend-removed": "Друг удалён",
+      "video": "Видео",
+      "portal": "Портал",
+      "moderation": "Модерация",
+      "sticker": "Стикер",
+      "notification": "Уведомление",
+      "session": "Сессия",
+      "diagnostic": "Диагностика",
+      "other": "Прочее"
+    }
+  },
+  "gameLog": {
+    "tab": "Игровой лог",
+    "title": "Игровой лог",
+    "subtitle": "Живой поток необработанного выходного лога VRChat.",
+    "searchPlaceholder": "Фильтр строк…",
+    "lineCount": "{{n}} строк",
+    "pause": "Пауза",
+    "resume": "Возобновить",
+    "clear": "Очистить",
+    "jumpToBottom": "К последним",
+    "paused": "Поток на паузе. Возобновите, чтобы захватывать новые строки.",
+    "waiting": "Ожидание вывода лога VRChat… запустите VRChat, чтобы увидеть живые строки.",
+    "level": {
+      "all": "Все",
+      "info": "Инфо",
+      "warn": "Предупр.",
+      "error": "Ошибка"
+    },
+    "hideNoiseHint": "Скрыть спам повторов телеметрии EOS/Stomp от VRChat (это не ошибка VRCSM).",
+    "noiseHidden": "Шум скрыт",
+    "showAll": "Показать все"
+  },
+  "tts": {
+    "friendOnline": "{{name}} теперь онлайн",
+    "invite": "Приглашение от {{who}}",
+    "friendRequest": "Заявка в друзья от {{who}}",
+    "someone": "Кто-то"
+  },
+  "models": {
+    "tab": {
+      "browse": "Обзор",
+      "owned": "Мои аватары"
+    }
   }
 }

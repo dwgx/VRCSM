@@ -333,7 +333,7 @@
       "nextSendIn": "{{seconds}}秒后再发",
       "stopAutoShort": "停止",
       "startAutoShort": "自动",
-      "noCardSelected": "Select a card first"
+      "noCardSelected": "请先选择一张卡片"
     },
     "sendFailed": "OSC 发送失败",
     "page": {
