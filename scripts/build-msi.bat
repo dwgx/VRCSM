@@ -34,7 +34,7 @@ if not exist "%BUILD_DIR%\web\index.html" (
 if not exist "%WIX%" (
     echo [build-msi] ERROR: wix.exe not found.
     echo [build-msi] Set VRCSM_WIX, run: dotnet tool install -g wix
-    echo [build-msi] Or install locally: dotnet tool install --tool-path "%REPO%\build\tools" wix --version 6.*
+    echo [build-msi] Or install locally: dotnet tool install --tool-path "%REPO%\build\tools" wix --version 7.*
     exit /b 1
 )
 

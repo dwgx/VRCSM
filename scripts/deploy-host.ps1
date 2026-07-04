@@ -1,9 +1,9 @@
-$ErrorActionPreference = 'Stop'
-
 param(
     [ValidateSet('x64-debug', 'x64-release')]
     [string]$Preset = 'x64-debug'
 )
+
+$ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $srcRoot = Join-Path $repoRoot "build\$Preset\src\host"
