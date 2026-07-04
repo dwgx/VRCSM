@@ -56,7 +56,7 @@ VRCSM is a two-layer desktop app: a **C++ Win32 host** embedding **WebView2** th
 
 - **`src/core/`** — Static library (`vrcsm_core`). Contains all VRChat-specific logic: cache scanning (`CacheScanner`), log parsing (`LogParser`, `LogTailer`), bundle metadata (`BundleSniff`), path resolution (`PathProbe`), NTFS junction migration (`Migrator`, `JunctionUtil`), safe deletion (`SafeDelete`), VRChat API calls (`VrcApi`), auth/session (`AuthStore`), settings (`VrcSettings`, `VrcConfig`), avatar preview (`AvatarPreview`). Has **zero Win32 deps** except junction/process modules.
 - **`src/host/`** — Win32 executable. `main.cpp` → `App` → `MainWindow` → `WebViewHost` → `IpcBridge`. The host creates a borderless window with Mica backdrop, initializes WebView2, maps `https://app.vrcsm/` to the local `web/` folder, and routes all IPC through `IpcBridge::Dispatch()`.
-- **`web/`** — React SPA with 10 lazy-loaded pages, TanStack React Query for server state, `AuthContext`/`ReportContext` for shared state, i18next for localization.
+- **`web/`** — React SPA with 33 lazy-loaded pages, TanStack React Query for server state, `AuthContext`/`ReportContext` for shared state, i18next for localization.
 
 ### IPC Protocol
 

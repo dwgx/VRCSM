@@ -1,6 +1,32 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-06-25
+Last updated: 2026-07-04
+
+## Latest Session (2026-07-04) — READ FIRST
+
+A Wave-2 hardening + optimization + architecture-refactor effort landed. Current
+truth (supersedes the older "Current State" section below where they disagree):
+
+- **Branch `main` is 10 ahead / 1 behind `origin/main`.** The 1 behind is
+  `05b4d1e ci: add dependabot` (CI-only, no source conflict). Inspect the remote
+  before any `git pull`.
+- **Working tree is clean** except one intentionally-untracked file at repo root:
+  `2026-07-04-111708-...txt` (a large local command transcript). Do NOT commit it.
+- **Database god-object was split** into 9 domain translation units
+  (`Database_*.cpp`) + `Database_internal.h`, public `Database.h` frozen. Commit
+  `1fe701f`. `IpcBridge.h` was decoupled from heavy core headers, commit `ecec96d`.
+- **Verified green:** `cmake --build --preset x64-debug` rc=0, `ctest` **104/104**
+  pass (baseline was 100; +4 SafeDelete/Migrator/UdonVM tests). Web: `tsc` clean,
+  **280** vitest pass.
+- **Full architecture map:** `docs/reference/ARCHITECTURE-COMPREHENSION-2026-07.md`
+  (adversarially verified, HIGH confidence). Start there for a system model.
+- Optimization commits `e5bfd8f..48c2015` (percent-encode API params, bounded
+  shutdown waits, IPC response validation, Friends stale-guard + N+1 fix, graph
+  a11y, i18n en backfill, tinygltf drop + installer wasm exclude).
+
+> The "Current State" / "development paused" text below is from the 2026-06-25
+> v0.14.6 checkpoint and is STALE. Active development clearly resumed.
+
 
 ## Current State
 
