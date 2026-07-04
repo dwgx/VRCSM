@@ -1,1 +1,12 @@
 smoke-report.txt
+
+# UI smoke run outputs (screenshots, diffs, JSON reports, playwright report).
+tests/smoke/.artifacts/
+
+# Pixel-diff baselines are NOT committed yet: the first run's baselines would
+# capture the two known-buggy routes (/worlds, /tools/osc) as "golden". Bless
+# them with `pnpm run test:ui-smoke:update` AFTER those bugs are fixed, then
+# drop this ignore line to commit clean references. The heuristic offset gate
+# needs no baselines and is the real regression guard in the meantime.
+tests/smoke/__screenshots__/
+

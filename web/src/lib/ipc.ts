@@ -322,11 +322,48 @@ interface ChromeShim {
   webview?: WebViewBridge;
 }
 
+/**
+ * Dev-only smoke-tap record. Emitted for EVERY ipc.call when
+ * `window.__SMOKE_TAP__` is truthy so the real-browser UI smoke suite can
+ * detect dead interactions (mock-unimplemented) and mock/host drift. Zero cost
+ * in production: the flag is never set, so the tap branch is never taken.
+ */
+export interface SmokeIpcEvent {
+  method: string;
+  params: unknown;
+  ok: boolean;
+  error?: string;
+  isMock: boolean;
+  unimplemented: boolean;
+  ts: number;
+}
+
 declare global {
   interface Window {
     chrome?: ChromeShim;
     __VRCSM_MOCK__?: boolean;
+    /** Set true by the UI smoke harness (before app boot) to enable the tap. */
+    __SMOKE_TAP__?: boolean;
+    /** Append-only sink the smoke harness reads back. */
+    __SMOKE_EVENTS__?: SmokeIpcEvent[];
   }
+}
+
+// Shallow-redact obviously-sensitive params before recording them into the
+// smoke event log. Keeps the tap useful without leaking credentials/tokens.
+const SMOKE_REDACT_KEY = /pass(word)?|token|secret|cookie|auth|credential|otp|2fa/i;
+function smokeRedactParams(params: unknown): unknown {
+  if (!params || typeof params !== "object" || Array.isArray(params)) return params;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
+    out[k] = SMOKE_REDACT_KEY.test(k) ? "[redacted]" : v;
+  }
+  return out;
+}
+
+function smokePush(event: SmokeIpcEvent): void {
+  const sink = (window.__SMOKE_EVENTS__ ??= []);
+  sink.push(event);
 }
 
 type Pending = {
@@ -655,6 +692,43 @@ class IpcClient {
   }
 
   async call<TParams, TResult>(method: string, params?: TParams): Promise<TResult> {
+    // Dev-only smoke tap: when the UI smoke harness sets window.__SMOKE_TAP__
+    // before boot, record the outcome of every call (success + the
+    // mock-unimplemented/reject branch) so it can flag dead interactions and
+    // mock/host drift. Guarded by the flag → zero cost in production.
+    if (!window.__SMOKE_TAP__) {
+      return this.callInner<TParams, TResult>(method, params);
+    }
+    try {
+      const result = await this.callInner<TParams, TResult>(method, params);
+      smokePush({
+        method,
+        params: smokeRedactParams(params),
+        ok: true,
+        isMock: this.isMock,
+        unimplemented: false,
+        ts: Date.now(),
+      });
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const unimplemented =
+        (err instanceof IpcError && err.code === "mock_not_implemented") ||
+        msg.includes("Mock IPC method not implemented");
+      smokePush({
+        method,
+        params: smokeRedactParams(params),
+        ok: false,
+        error: msg,
+        isMock: this.isMock,
+        unimplemented,
+        ts: Date.now(),
+      });
+      throw err;
+    }
+  }
+
+  private async callInner<TParams, TResult>(method: string, params?: TParams): Promise<TResult> {
     if (!this.bridge) {
       return this.mockCall<TResult>(method, params);
     }
