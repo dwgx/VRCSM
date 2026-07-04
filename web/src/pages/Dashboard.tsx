@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useReport } from "@/lib/report-context";
 import { useAuth } from "@/lib/auth-context";
+import { useIpcQuery } from "@/hooks/useIpcQuery";
+import { countOnlineFriends } from "@/lib/vrcFriends";
 import { cn, formatBytes, formatDate } from "@/lib/utils";
 import { useVrcProcess } from "@/lib/vrc-context";
 import type { DbPlayerEvent, DbWorldVisit, FriendsListResult, Report } from "@/lib/types";
@@ -234,28 +236,18 @@ function Dashboard() {
   const [dbVisits, setDbVisits] = useState<DbWorldVisit[]>([]);
   const [dbSessionEvents, setDbSessionEvents] = useState<DbPlayerEvent[]>([]);
 
-  // ── Friends online count (fire-and-forget, non-blocking) ──
-  const [friendsOnline, setFriendsOnline] = useState<number | null>(null);
-  useEffect(() => {
-    if (!authStatus.authed) {
-      setFriendsOnline(null);
-      return;
-    }
-    let alive = true;
-    ipc
-      .call<undefined, FriendsListResult>("friends.list")
-      .then((r) => {
-        if (!alive) return;
-        const online = r.friends.filter(
-          (f) => f.location && f.location !== "offline",
-        ).length;
-        setFriendsOnline(online);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [authStatus.authed]);
+  // ── Friends online count (shared React Query cache) ──
+  // Reads the same friends.list cache the status bar uses (kept fresh by
+  // useFriendsPipelineSync) instead of a mount-time snapshot, so the card
+  // ticks live and never disagrees with the status-bar tally.
+  const { data: friendsData } = useIpcQuery<undefined, FriendsListResult>(
+    "friends.list",
+    undefined,
+    { enabled: authStatus.authed, staleTime: 30_000 },
+  );
+  const friendsOnline = friendsData
+    ? countOnlineFriends(friendsData.friends)
+    : null;
 
   useEffect(() => {
     let alive = true;

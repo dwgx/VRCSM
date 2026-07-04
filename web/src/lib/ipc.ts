@@ -739,6 +739,19 @@ class IpcClient {
       ? LONG_RUNNING_IPC_TIMEOUT_MS
       : DEFAULT_IPC_TIMEOUT_MS;
     const promise = new Promise<TResult>((resolve, reject) => {
+      // A uuid collision (or a caller re-using an id) must never silently
+      // clobber an in-flight slot — the original awaiter would then hang
+      // until timeout. Reject the duplicate instead of overwriting.
+      if (this.pending.has(id)) {
+        reject(
+          new IpcError(
+            "duplicate_request_id",
+            `IPC request id '${id}' collided with an in-flight call`,
+            0,
+          ),
+        );
+        return;
+      }
       const timerId = window.setTimeout(() => {
         if (!this.pending.has(id)) return;
         this.pending.delete(id);
@@ -2610,11 +2623,11 @@ class IpcClient {
     return this.call<undefined, VrcSettingsReport>("settings.readAll");
   }
 
-  async readConfig(params?: { path?: string }): Promise<any> {
-    return this.call<typeof params, any>("config.read", params);
+  async readConfig(params?: { path?: string }): Promise<Record<string, unknown>> {
+    return this.call<typeof params, Record<string, unknown>>("config.read", params);
   }
 
-  async writeConfig(params: { path?: string; config: any }): Promise<{ ok: boolean }> {
+  async writeConfig(params: { path?: string; config: Record<string, unknown> }): Promise<{ ok: boolean }> {
     return this.call<typeof params, { ok: boolean }>("config.write", params);
   }
 
@@ -2622,12 +2635,12 @@ class IpcClient {
     return this.call<undefined, SteamVrConfig>("steamvr.read");
   }
 
-  async writeSteamVrConfig(updates: any): Promise<{ ok: boolean }> {
+  async writeSteamVrConfig(updates: Record<string, unknown>): Promise<{ ok: boolean }> {
     // Pass the updates through as-is. SteamVrConfig::Write iterates the top
     // level keys (driver_vrlink / steamvr / ...) and deep-merges into
     // steamvr.vrsettings. Wrapping in { config } caused the merge to create
     // a stray "config" section while leaving the real sections untouched.
-    return this.call<any, { ok: boolean }>("steamvr.write", updates);
+    return this.call<Record<string, unknown>, { ok: boolean }>("steamvr.write", updates);
   }
 
   async diagnoseSteamVrLink(): Promise<SteamVrLinkDiagnostic> {

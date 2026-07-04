@@ -382,7 +382,7 @@ export interface SteamVrConfig {
     automaticBandwidth?: boolean;
     automaticStreamFormatWidth?: boolean;
     targetBandwidth?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   steamvr?: {
     supersampleScale?: number;
@@ -390,7 +390,7 @@ export interface SteamVrConfig {
     motionSmoothing?: boolean;
     allowSupersampleFiltering?: boolean;
     supersampleManualOverride?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   steamvr_running?: boolean;
 }

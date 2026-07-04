@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentRef,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -48,13 +49,19 @@ interface PreparedSceneMeta {
 
 const DISABLED_MOUSE_BUTTON = -1 as THREE.MOUSE;
 
+// The concrete controls instance drei's <OrbitControls> exposes via ref.
+// Derived from the component itself (three-stdlib's OrbitControlsImpl) so we
+// stay in lockstep with whatever three-stdlib version drei pulls in, without
+// importing that transitive package directly.
+type OrbitControlsInstance = ComponentRef<typeof OrbitControls>;
+
 // OrbitControls' built-in behaviour: when LEFT=ROTATE and the user holds
 // Shift (or Ctrl/Meta) during pointerdown, it *automatically* swaps to PAN
 // for that gesture. Mutating LEFT→PAN on our side actually inverts that —
 // OrbitControls then swaps back to ROTATE on Shift+LMB. So we keep LEFT
 // pinned to ROTATE and let drei handle the modifier. `shiftPanning` state
 // survives only to drive the UI badge, not the controls.
-function applyControlsMode(controls: any) {
+function applyControlsMode(controls: OrbitControlsInstance | null) {
   if (!controls) return;
   controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
   controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
@@ -538,11 +545,11 @@ function PreviewCameraRig({
 }: {
   sceneMeta: PreparedSceneMeta | null;
   fitTick: number;
-  onControlsReady: (controls: any | null) => void;
+  onControlsReady: (controls: OrbitControlsInstance | null) => void;
   onSettled: () => void;
 }) {
   const { camera, invalidate } = useThree();
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<OrbitControlsInstance>(null);
   const onSettledRef = useRef(onSettled);
   onSettledRef.current = onSettled;
   const onControlsReadyRef = useRef(onControlsReady);
@@ -743,7 +750,7 @@ function PreviewViewport({
     };
   }, []);
 
-  const handleControlsReady = useCallback((_controls: any | null) => {
+  const handleControlsReady = useCallback((_controls: OrbitControlsInstance | null) => {
     // Nothing to do — PreviewCameraRig already applied the static mode.
   }, []);
 
