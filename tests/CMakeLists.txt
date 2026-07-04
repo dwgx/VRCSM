@@ -14,6 +14,7 @@ add_executable(VRCSM_Tests
   main.cpp
   CommonTests.cpp
   PluginManifestTests.cpp
+  FriendAnalyticsTests.cpp
 )
 
 target_link_libraries(VRCSM_Tests PRIVATE

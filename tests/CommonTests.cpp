@@ -15,6 +15,7 @@
 #include "core/AvatarIdHarvest.h"
 #include "core/Common.h"
 #include "core/Database.h"
+#include "core/FriendAnalytics.h"
 #include "core/DiscordRpc.h"
 #include "core/ToastNotifier.h"
 #include "core/VrOverlayNotifier.h"
@@ -2851,3 +2852,176 @@ TEST(CommonTests, PostSplitTranslationUnitsRoundTrip)
 }
 
 
+// ─────────────────────────────────────────────────────────────────
+// FriendAnalytics free-function tests — the payoff of the extraction.
+// These build input row vectors entirely in-memory (NO SQLite) and
+// assert the JSON output on small hand-built scenarios, proving the
+// algorithms are testable without a Database.
+// ─────────────────────────────────────────────────────────────────
+
+// PAYOFF: a known online/offline history collapses to the expected
+// predicted window. Uses NAIVE-LOCAL timestamps (no 'Z'/offset) so
+// parsePresenceInstant→mktime and the compute's localtime_s round-trip
+// to the SAME wall-clock, making day_of_week/hour host-TZ independent.
+TEST(CommonTests, AnalyticsPredictKnownHistoryYieldsExpectedWindow)
+{
+    using namespace vrcsm::core::analytics;
+
+    // Eight consecutive Mondays in Jan-Feb 2026 (all standard time, no DST
+    // transition), each an online 20:00 → offline 22:00 session. That is
+    // 8 distinct observation days (>=7 gate), 8*120=960 online minutes
+    // (>=120 gate), and buckets for local hour 20 and 21 each observed on
+    // 8 distinct days (>= the 2-day per-bucket gate).
+    const char* mondays[] = {
+        "2026-01-05", "2026-01-12", "2026-01-19", "2026-01-26",
+        "2026-02-02", "2026-02-09", "2026-02-16", "2026-02-23",
+    };
+    std::vector<PredictPresenceRow> rows;
+    for (const char* d : mondays)
+    {
+        rows.push_back(PredictPresenceRow{"online", std::string(d) + "T20:00:00"});
+        rows.push_back(PredictPresenceRow{"offline", std::string(d) + "T22:00:00"});
+    }
+
+    // `now` injected in the same naive-local frame, just after the last event.
+    const std::time_t now = parsePresenceInstant("2026-02-24T00:00:00").value();
+    const auto out = predictFriendOnlineWindows(rows, "usr_friend", 3, 4, now, -300);
+
+    EXPECT_EQ(out["user_id"], "usr_friend");
+    EXPECT_EQ(out["status"], "ok");
+    EXPECT_EQ(out["observation_days"].get<int>(), 8);
+    EXPECT_EQ(out["timezone_offset_minutes"].get<int>(), -300); // passed through
+    EXPECT_DOUBLE_EQ(out["total_online_minutes"].get<double>(), 960.0);
+    ASSERT_EQ(out["heatmap"].size(), 168u); // full week grid once status==ok
+
+    // Exactly one merged window: local Monday (wday=1) 20:00–22:00.
+    ASSERT_GE(out["top_windows"].size(), 1u);
+    const auto& w = out["top_windows"][0];
+    EXPECT_EQ(w["day_of_week"].get<int>(), 1);  // Monday
+    EXPECT_EQ(w["start_hour"].get<int>(), 20);
+    EXPECT_EQ(w["end_hour"].get<int>(), 22);    // exclusive: merged hours 20+21
+    EXPECT_EQ(w["observation_days"].get<int>(), 8);
+    EXPECT_DOUBLE_EQ(w["score"].get<double>(), 1.0); // top window normalized to itself
+    EXPECT_EQ(w["label_key"], "predictor.window");
+}
+
+// A friend below BOTH sufficiency gates stays insufficient_data even with
+// a couple of sessions (only 2 distinct days here, gate is 7).
+TEST(CommonTests, AnalyticsPredictBelowDayGateIsInsufficient)
+{
+    using namespace vrcsm::core::analytics;
+    std::vector<PredictPresenceRow> rows{
+        {"online", "2026-01-05T20:00:00"},
+        {"offline", "2026-01-05T22:00:00"},
+        {"online", "2026-01-12T20:00:00"},
+        {"offline", "2026-01-12T22:00:00"},
+    };
+    const std::time_t now = parsePresenceInstant("2026-01-13T00:00:00").value();
+    const auto out = predictFriendOnlineWindows(rows, "usr_x", 3, 4, now, 0);
+    EXPECT_EQ(out["status"], "insufficient_data");
+    EXPECT_EQ(out["observation_days"].get<int>(), 2);
+    EXPECT_EQ(out["top_windows"].size(), 0u);
+}
+
+// Two NON-center users overlapping in one instance yield a single
+// "co_presence" (inferred, not confirmed) edge with exact overlap seconds.
+TEST(CommonTests, AnalyticsCoPresenceNonCenterEdgeIsInferred)
+{
+    using namespace vrcsm::core::analytics;
+    // B and C overlap 10:15–10:45 = 1800s in wrld_1/i1. Center usr_a is absent.
+    std::vector<PresenceEventRow> rows{
+        {"usr_b", "Bob",   "wrld_1", "i1", "joined", "2026-03-01T10:00:00Z"},
+        {"usr_c", "Cara",  "wrld_1", "i1", "joined", "2026-03-01T10:15:00Z"},
+        {"usr_b", "Bob",   "wrld_1", "i1", "left",   "2026-03-01T10:45:00Z"},
+        {"usr_c", "Cara",  "wrld_1", "i1", "left",   "2026-03-01T11:00:00Z"},
+    };
+    const std::time_t now = parsePresenceInstant("2026-03-02T00:00:00Z").value();
+    const auto out = coPresenceEgoNetwork(rows, "usr_a", 90, 60, now);
+
+    ASSERT_EQ(out["nodes"].size(), 2u);
+    ASSERT_EQ(out["edges"].size(), 1u);
+    const auto& e = out["edges"][0];
+    EXPECT_EQ(e["source"], "usr_b"); // deterministic ordering (usr_b < usr_c)
+    EXPECT_EQ(e["target"], "usr_c");
+    EXPECT_EQ(e["kind"], "co_presence"); // neither endpoint is the center
+    EXPECT_EQ(e["overlap_count"].get<int>(), 1);
+    EXPECT_EQ(e["overlap_seconds"].get<std::int64_t>(), 1800);
+}
+
+// Users in DIFFERENT instances never form an edge even though their
+// wall-clock times overlap — the session boundary is (world, instance).
+TEST(CommonTests, AnalyticsCoPresenceSeparateInstancesNoEdge)
+{
+    using namespace vrcsm::core::analytics;
+    std::vector<PresenceEventRow> rows{
+        {"usr_a", "Alice", "wrld_1", "i1", "joined", "2026-03-01T10:00:00Z"},
+        {"usr_a", "Alice", "wrld_1", "i1", "left",   "2026-03-01T11:00:00Z"},
+        {"usr_b", "Bob",   "wrld_1", "i2", "joined", "2026-03-01T10:00:00Z"},
+        {"usr_b", "Bob",   "wrld_1", "i2", "left",   "2026-03-01T11:00:00Z"},
+    };
+    const std::time_t now = parsePresenceInstant("2026-03-02T00:00:00Z").value();
+    const auto out = coPresenceEgoNetwork(rows, "usr_a", 90, 60, now);
+    EXPECT_EQ(out["edges"].size(), 0u); // same time, different instance → no overlap
+}
+
+// A missing "left" (crash/lost log) caps the open session at 4h but the
+// overlap against the other user's real interval stays exact.
+TEST(CommonTests, AnalyticsCoPresenceMissingLeftCapsOpenSession)
+{
+    using namespace vrcsm::core::analytics;
+    // usr_a joins 10:00 and NEVER leaves → capped to [10:00,14:00].
+    // usr_b joins 10:30 leaves 11:00 → [10:30,11:00]. Overlap = 1800s.
+    std::vector<PresenceEventRow> rows{
+        {"usr_a", "Alice", "wrld_1", "i1", "joined", "2026-03-01T10:00:00Z"},
+        {"usr_b", "Bob",   "wrld_1", "i1", "joined", "2026-03-01T10:30:00Z"},
+        {"usr_b", "Bob",   "wrld_1", "i1", "left",   "2026-03-01T11:00:00Z"},
+    };
+    const std::time_t now = parsePresenceInstant("2026-03-02T00:00:00Z").value();
+    const auto out = coPresenceEgoNetwork(rows, "usr_a", 90, 60, now);
+    ASSERT_EQ(out["edges"].size(), 1u);
+    const auto& e = out["edges"][0];
+    EXPECT_EQ(e["kind"], "confirmed"); // touches center usr_a
+    EXPECT_EQ(e["overlap_seconds"].get<std::int64_t>(), 1800);
+}
+
+// globalSearch ranks a text-matching favorite above a non-matching one and
+// paginates deterministically via limit/offset + nextOffset.
+TEST(CommonTests, AnalyticsGlobalSearchRanksAndPaginates)
+{
+    using namespace vrcsm::core::analytics;
+    GlobalSearchInput input;
+    input.favorites.push_back(FavoriteRow{
+        "world", "wrld_alpha", "My Worlds", "Alpha World",
+        std::nullopt, std::optional<std::string>{"2026-01-01T00:00:00Z"}, "", ""});
+    input.favorites.push_back(FavoriteRow{
+        "world", "wrld_beta", "My Worlds", "Beta World",
+        std::nullopt, std::optional<std::string>{"2026-01-02T00:00:00Z"}, "", ""});
+
+    const std::string raw = "Alpha";
+    const std::string norm = normalizeSearchQuery(raw); // "alpha"
+    nlohmann::json request = nlohmann::json::object();
+
+    // Page 1: limit 1 → the alpha match ranks first, nextOffset points to 1.
+    const auto page1 = globalSearch(input, request, raw, norm, 1, 0);
+    ASSERT_EQ(page1["items"].size(), 1u);
+    EXPECT_EQ(page1["items"][0]["id"], "wrld_alpha");
+    EXPECT_EQ(page1["nextOffset"].get<int>(), 1);
+
+    // Page 2: offset 1 → the remaining (non-matching) candidate, end of list.
+    const auto page2 = globalSearch(input, request, raw, norm, 1, 1);
+    ASSERT_EQ(page2["items"].size(), 1u);
+    EXPECT_EQ(page2["items"][0]["id"], "wrld_beta");
+    EXPECT_TRUE(page2["nextOffset"].is_null());
+}
+
+// parsePresenceInstant '+HH:MM' offset path resolves to the same absolute
+// UTC instant as the equivalent 'Z' timestamp, independent of host TZ.
+TEST(CommonTests, AnalyticsParsePresenceInstantOffsetIsTimezoneStable)
+{
+    using namespace vrcsm::core::analytics;
+    const auto withOffset = parsePresenceInstant("2026-01-01T12:00:00+02:00");
+    const auto asUtc = parsePresenceInstant("2026-01-01T10:00:00Z");
+    ASSERT_TRUE(withOffset.has_value());
+    ASSERT_TRUE(asUtc.has_value());
+    EXPECT_EQ(*withOffset, *asUtc); // +02:00 12:00 == 10:00Z
+}

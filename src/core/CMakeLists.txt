@@ -15,6 +15,7 @@ add_library(vrcsm_core STATIC
     Database_Recordings.cpp
     Database_Rules.cpp
     Database_Embeddings.cpp
+    FriendAnalytics.cpp
     LogAtoms.cpp
     LogParser.cpp
     LogTailer.cpp
