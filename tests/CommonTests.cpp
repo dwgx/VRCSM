@@ -2386,4 +2386,176 @@ TEST(CommonTests, VrOverlayBuildsXsOverlayPopupSchema)
     EXPECT_GT(payload.at("timeout").get<double>(), 0.0);
 }
 
+// ── SafeDelete::ExecutePlan happy path (Audit TOP-5 #2) ──────────────────
+// Builds a hex-style Cache-WindowsPlayer tree, plans a delete via the real
+// Plan() enumeration, and asserts the deletable entries are removed, the
+// preserved root markers (__info, vrc-version) survive, and the returned
+// count matches remove_all semantics (children + each entry directory).
+TEST(CommonTests, DeleteExecuteRemovesEntriesAndKeepsPreservedRootMarkers)
+{
+    if (vrcsm::core::ProcessGuard::IsVRChatRunning().running)
+    {
+        GTEST_SKIP() << "VRChat is running, so ExecutePlan rejects before deleting";
+    }
+
+    const auto dir = MakeTempTestDir(L"vrcsm-delete-happy");
+    const auto cwp = dir / L"Cache-WindowsPlayer";
+    std::filesystem::create_directories(cwp);
+
+    // Preserved root markers that a bulk delete must never touch.
+    WriteBytes(cwp / L"__info", "keep");
+    WriteBytes(cwp / L"vrc-version", "keep");
+
+    // Two hex-named cache entries, each carrying __info + __data.
+    const auto entry1 = cwp / L"a1b2c3d4";
+    const auto entry2 = cwp / L"deadbeef";
+    std::filesystem::create_directories(entry1);
+    std::filesystem::create_directories(entry2);
+    WriteBytes(entry1 / L"__info", "x");
+    WriteBytes(entry1 / L"__data", "yy");
+    WriteBytes(entry2 / L"__info", "x");
+    WriteBytes(entry2 / L"__data", "yy");
+
+    // The real planner enumerates the category root and drops the preserved
+    // markers, leaving only the two entry directories as targets.
+    const auto plan = vrcsm::core::SafeDelete::Plan(
+        dir, "cache_windows_player", std::nullopt);
+    ASSERT_EQ(plan.targets.size(), 2u);
+    for (const auto& t : plan.targets)
+    {
+        EXPECT_EQ(t.find("__info"), std::string::npos) << t;
+        EXPECT_EQ(t.find("vrc-version"), std::string::npos) << t;
+    }
+
+    const auto result = vrcsm::core::SafeDelete::ExecutePlan(dir, plan);
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    // Each entry: 2 files + the directory itself = 3; two entries = 6.
+    EXPECT_EQ(vrcsm::core::value(result), 6u);
+
+    EXPECT_FALSE(std::filesystem::exists(entry1));
+    EXPECT_FALSE(std::filesystem::exists(entry2));
+    EXPECT_TRUE(std::filesystem::exists(cwp / L"__info"));
+    EXPECT_TRUE(std::filesystem::exists(cwp / L"vrc-version"));
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// ── Migrator::execute real junction happy path (Audit #4) ────────────────
+// Exercises the irreversible copy → verify → swap → junction → verify →
+// backup-cleanup path against a controlled temp tree. execute() takes a plan
+// directly, so we bypass preflight's cache-root gate (which is pinned to the
+// machine's real VRChat base and must never be touched) while still driving
+// the genuine junction machinery. Junctions (IO_REPARSE_TAG_MOUNT_POINT) need
+// no admin rights on NTFS, but if the temp volume can't create one we skip
+// rather than fail flakily.
+TEST(CommonTests, MigratorExecuteEstablishesJunctionAndCleansBackup)
+{
+    if (vrcsm::core::ProcessGuard::IsVRChatRunning().running)
+    {
+        GTEST_SKIP() << "VRChat is running, so execute() aborts before copying";
+    }
+
+    const auto dir = MakeTempTestDir(L"vrcsm-migrate-exec");
+    const auto source = dir / L"source";
+    const auto target = dir / L"target"; // execute() creates this
+    std::filesystem::create_directories(source / L"sub");
+    WriteBytes(source / L"a.txt", "hello");
+    WriteBytes(source / L"sub" / L"b.txt", "world");
+
+    vrcsm::core::MigratePlan plan;
+    plan.source = vrcsm::core::toUtf8(source.wstring());
+    plan.target = vrcsm::core::toUtf8(target.wstring());
+    // blockers intentionally empty: we are testing execute(), not preflight.
+
+    const auto result = vrcsm::core::Migrator::execute(plan, nullptr);
+    if (!vrcsm::core::isOk(result))
+    {
+        const auto& err = vrcsm::core::error(result);
+        if (err.code.rfind("junction", 0) == 0)
+        {
+            GTEST_SKIP() << "junction creation unsupported in this env: " << err.message;
+        }
+        FAIL() << "execute failed: " << err.code << " / " << err.message;
+    }
+
+    const auto& summary = vrcsm::core::value(result);
+    EXPECT_TRUE(summary.ok);
+
+    // Source is now a junction that resolves to the copied target data.
+    EXPECT_TRUE(vrcsm::core::JunctionUtil::isReparsePoint(source));
+    {
+        std::ifstream a(source / L"a.txt", std::ios::binary);
+        std::string contents((std::istreambuf_iterator<char>(a)),
+                             std::istreambuf_iterator<char>());
+        EXPECT_EQ(contents, "hello");
+    }
+    {
+        std::ifstream b(target / L"sub" / L"b.txt", std::ios::binary);
+        std::string contents((std::istreambuf_iterator<char>(b)),
+                             std::istreambuf_iterator<char>());
+        EXPECT_EQ(contents, "world");
+    }
+
+    // Backup sidecar dropped on the clean-finish path.
+    const std::filesystem::path backup = source.wstring() + L".vrcsm-bak";
+    EXPECT_FALSE(std::filesystem::exists(backup));
+
+    // Unlink the junction before removing the tree so cleanup can't follow it.
+    (void)vrcsm::core::JunctionUtil::removeJunction(source);
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// ── Migrator::execute rollback guard: stale backup blocks the swap ───────
+// A leftover <source>.vrcsm-bak from a prior failed run must stop execute()
+// before it renames the source away, so the user's cache is left byte-for-byte
+// intact rather than half-migrated. This is the deterministic rollback-safety
+// branch (the rename→junction-failure→restore path can't be forced without
+// privilege/filesystem injection, so it isn't asserted here).
+TEST(CommonTests, MigratorExecuteRefusesWhenStaleBackupExists)
+{
+    if (vrcsm::core::ProcessGuard::IsVRChatRunning().running)
+    {
+        GTEST_SKIP() << "VRChat is running, so execute() aborts before the backup check";
+    }
+
+    const auto dir = MakeTempTestDir(L"vrcsm-migrate-backup-guard");
+    const auto source = dir / L"source";
+    const auto target = dir / L"target";
+    std::filesystem::create_directories(source);
+    WriteBytes(source / L"a.txt", "keep");
+
+    // Plant a stale backup exactly where execute() would rename the source.
+    const std::filesystem::path backup = source.wstring() + L".vrcsm-bak";
+    WriteBytes(backup, "stale");
+
+    vrcsm::core::MigratePlan plan;
+    plan.source = vrcsm::core::toUtf8(source.wstring());
+    plan.target = vrcsm::core::toUtf8(target.wstring());
+
+    const auto result = vrcsm::core::Migrator::execute(plan, nullptr);
+    ASSERT_FALSE(vrcsm::core::isOk(result));
+    EXPECT_EQ(vrcsm::core::error(result).code, "backup_exists");
+
+    // Source untouched: still a real directory with its original file, never
+    // turned into a junction.
+    EXPECT_FALSE(vrcsm::core::JunctionUtil::isReparsePoint(source));
+    EXPECT_TRUE(std::filesystem::exists(source / L"a.txt"));
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// ── UdonVMException classification golden line (Audit #10) ────────────────
+TEST(CommonTests, LogAtomsClassifyUdonVmException)
+{
+    const auto atom = vrcsm::core::ParseVrchatLogAtom(
+        "VRC.Udon.VM.UdonVMException: An exception occurred during Udon VM execution!");
+    ASSERT_TRUE(atom.has_value());
+    EXPECT_EQ(atom->kind, vrcsm::core::LogAtomKind::UdonException);
+    EXPECT_EQ(atom->getOr("message"),
+              "An exception occurred during Udon VM execution!");
+}
+
 
