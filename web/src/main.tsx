@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import App from "./App";
 import { APP_ICON_URL } from "./lib/assets";
-import "./i18n";
+import { i18nReady } from "./i18n";
 import "./styles/globals.css";
 
 document.documentElement.classList.add("dark");
@@ -23,13 +23,28 @@ if (!container) {
   throw new Error("Root container #root missing in index.html");
 }
 
-createRoot(container).render(
-  <React.StrictMode>
-    <HashRouter>
-      <App />
-    </HashRouter>
-  </React.StrictMode>,
-);
+// Gate the first render on the active locale being present. For en (the
+// eager, synchronous default) i18nReady is already resolved, so this is just a
+// microtask hop. For a non-en stored/detected language it awaits that single
+// locale chunk, so the first paint shows real strings instead of a flash of
+// English. The inline splash in index.html stays visible across this window.
+const renderApp = () => {
+  createRoot(container).render(
+    <React.StrictMode>
+      <HashRouter>
+        <App />
+      </HashRouter>
+    </React.StrictMode>,
+  );
+};
+
+// If the active locale chunk fails to load, i18nReady rejects — render anyway
+// rather than hang forever on the splash. en is always eagerly available, so
+// react-i18next falls back to it; the failed locale can be retried on switch.
+void i18nReady.then(renderApp, (err) => {
+  console.error("[i18n] active locale failed to load; rendering with en fallback", err);
+  renderApp();
+});
 
 // Fade out the inline splash after the first paint. Minimum on-screen
 // time keeps the anim from strobing on fast loads; the CSS transition

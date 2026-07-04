@@ -1,14 +1,14 @@
 import i18n from "i18next";
+import type { Resource } from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 
+// en is the fallback locale and the guaranteed first-paint locale, so it is
+// bundled eagerly and registered synchronously in init(). Every other locale
+// is fetched on demand via a per-code dynamic import() so rollup emits one
+// chunk per locale and the main app bundle drops the ~700KB of translation
+// JSON it used to inline.
 import en from "./locales/en.json";
-import hi from "./locales/hi.json";
-import ja from "./locales/ja.json";
-import ko from "./locales/ko.json";
-import ru from "./locales/ru.json";
-import th from "./locales/th.json";
-import zhCN from "./locales/zh-CN.json";
 
 export const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English", native: "English" },
@@ -21,8 +21,27 @@ export const SUPPORTED_LANGUAGES = [
 ] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]["code"];
+type LazyLanguage = Exclude<SupportedLanguage, "en">;
 
 const LS_KEY = "vrcsm.language";
+
+// Literal import() per code — do NOT template the path, or rollup would bundle
+// every locale back into one chunk and defeat the split.
+const LOADERS: Record<LazyLanguage, () => Promise<{ default: Resource }>> = {
+  ja: () => import("./locales/ja.json"),
+  ko: () => import("./locales/ko.json"),
+  ru: () => import("./locales/ru.json"),
+  th: () => import("./locales/th.json"),
+  hi: () => import("./locales/hi.json"),
+  "zh-CN": () => import("./locales/zh-CN.json"),
+};
+
+const SUPPORTED_CODES = new Set<string>(SUPPORTED_LANGUAGES.map((l) => l.code));
+
+// Guards against re-adding a bundle. en is always present after init().
+const loaded = new Set<SupportedLanguage>(["en"]);
+// Dedupe concurrent loads of the same locale (rapid switches).
+const inflight = new Map<LazyLanguage, Promise<void>>();
 
 void i18n
   .use(LanguageDetector)
@@ -30,12 +49,6 @@ void i18n
   .init({
     resources: {
       en: { translation: en },
-      hi: { translation: hi },
-      ja: { translation: ja },
-      ko: { translation: ko },
-      ru: { translation: ru },
-      th: { translation: th },
-      "zh-CN": { translation: zhCN },
     },
     fallbackLng: "en",
     supportedLngs: SUPPORTED_LANGUAGES.map((l) => l.code),
@@ -49,8 +62,64 @@ void i18n
     },
   });
 
-export function changeLanguage(lng: SupportedLanguage): Promise<unknown> {
-  return i18n.changeLanguage(lng);
+/**
+ * Normalize whatever the detector resolved (which may be a regional variant
+ * like "en-US" or "ja-JP", or an unsupported code) to a supported code, or
+ * "en" as the fallback. zh-CN stays region-specific on purpose.
+ */
+export function resolveSupportedLanguage(raw: string | undefined): SupportedLanguage {
+  if (!raw) return "en";
+  if (SUPPORTED_CODES.has(raw)) return raw as SupportedLanguage;
+  const base = raw.split("-")[0];
+  const match = SUPPORTED_LANGUAGES.find((l) => l.code === base);
+  return match ? (match.code as SupportedLanguage) : "en";
 }
+
+/**
+ * Fetch and register a locale's resource bundle. Does NOT change the active
+ * language. en (and any already-loaded code) resolves immediately.
+ */
+export function loadLanguage(code: SupportedLanguage): Promise<void> {
+  if (code === "en" || loaded.has(code)) return Promise.resolve();
+  const lazy = code as LazyLanguage;
+  const pending = inflight.get(lazy);
+  if (pending) return pending;
+
+  const task = LOADERS[lazy]()
+    .then((mod) => {
+      if (!loaded.has(code)) {
+        i18n.addResourceBundle(code, "translation", mod.default, true, true);
+        loaded.add(code);
+      }
+    })
+    .finally(() => {
+      inflight.delete(lazy);
+    });
+
+  inflight.set(lazy, task);
+  return task;
+}
+
+/**
+ * Load the target locale's bundle (if needed) THEN switch to it, so i18next
+ * emits 'languageChanged' with the resources already present — no raw-key
+ * flash on switch.
+ */
+export function changeLanguage(lng: SupportedLanguage): Promise<unknown> {
+  return loadLanguage(lng).then(() => i18n.changeLanguage(lng));
+}
+
+/**
+ * Resolves once the initially detected/stored locale is ready to render.
+ * en resolves synchronously-fast (no fetch); a non-en stored language awaits
+ * its single chunk so the first paint has real strings, not a flash of
+ * English. init() itself is synchronous, so i18n.language is already populated
+ * here (LanguageDetector reads localStorage in the same tick).
+ */
+export const i18nReady: Promise<void> = (async () => {
+  const target = resolveSupportedLanguage(i18n.resolvedLanguage ?? i18n.language);
+  if (target === "en") return;
+  await changeLanguage(target);
+})();
 
 export default i18n;
