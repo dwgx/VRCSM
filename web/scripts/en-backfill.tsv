@@ -1,0 +1,527 @@
+Beta	Beta
+BetaKey、250820-beta 或编码过的 Beta 标记可能把 SteamVR 固定在配对状态异常的 VRLink 构建上。	BetaKey, 250820-beta or encoded Beta markers can pin SteamVR to a VRLink build with broken pairing state.
+Daydream 输入	Daydream input
+Embodied 输入	Embodied input
+FBT 脊柱模式	FBT spine mode
+FPS 显示模式	FPS display mode
+HPMotion 输入	HPMotion input
+HUD 不透明度	HUD opacity
+HUD 位置显示设置	HUD position display setting
+HUD 布局模式	HUD layout mode
+HUD 显示右动作菜单	Show right action menu on HUD
+HUD 显示左动作菜单	Show left action menu on HUD
+HUD 锚点位置	HUD anchor position
+IK 手腕角度	IK wrist angle
+IK 校准可视化	IK calibration visualization
+IK 校准范围	IK calibration range
+IK 模型测量类型	IK avatar measurement type
+IK 膝盖角度	IK knee angle
+IK 调试日志	IK debug logging
+IK 身高比例	IK height ratio
+IK 追踪器模型	IK tracker model
+OSC 设置状态	OSC settings state
+OpenXR 输入	OpenXR input
+Quest 2/3 在普通 Wi-Fi 5/6 路由器上的默认推荐。	Default recommendation for Quest 2/3 on typical Wi-Fi 5/6 routers.
+Quest 3 清晰度	Quest 3 clarity
+Quest 手部输入	Quest hand input
+Quest 配对缓存	Quest pairing cache
+Steam Link / Quest 连接修复	Steam Link / Quest connection repair
+Steam Link VR 需要 AppID 250820。请先安装 SteamVR，再运行校验。	Steam Link VR requires AppID 250820. Install SteamVR first, then run validation.
+Steam Link 修复失败：{{msg}}	Steam Link repair failed: {{msg}}
+Steam Link 带宽设置偏高	Steam Link bandwidth set high
+Steam Link 最推荐电脑走有线以太网，头显连接同一路由器。	Steam Link works best with the PC on wired Ethernet and the headset on the same router.
+Steam Link 诊断失败：{{msg}}	Steam Link diagnosis failed: {{msg}}
+Steam Link 诊断完成。	Steam Link diagnosis complete.
+Steam 路径	Steam path
+SteamVR 因主进程丢失而关闭；需要检查 VRLink 配对和运行时进程稳定性。	SteamVR closed because the master process was lost; check VRLink pairing and runtime process stability.
+SteamVR 因未知主进程原因关闭	SteamVR closed for an unknown master-process reason
+SteamVR 处在 manifest 切换/下载过程中时，Steam Link 可能连接失败。先让 Steam 完成更新，再重新配对。	When SteamVR is mid manifest switch/download, Steam Link may fail to connect. Let Steam finish updating, then re-pair.
+SteamVR 有待更新或未完成下载	SteamVR has a pending update or unfinished download
+SteamVR2 输入	SteamVR2 input
+Touch 灵敏度	Touch sensitivity
+Touch 自动转向速度	Touch auto-turn speed
+Touch 输入	Touch input
+UI 状态偏好	UI state preference
+UI 音效静音开关	UI sound mute toggle
+UI 音效音量	UI sound volume
+Unity 云用户 ID	Unity cloud user ID
+Unity 会话遥测	Unity session telemetry
+Unity 选择显示器	Unity selected monitor
+VR 显示个人面镜	Show personal face mirror in VR
+VR 面镜 X 偏移	VR face mirror X offset
+VR 面镜 Y 偏移	VR face mirror Y offset
+VR 面镜不透明度	VR face mirror opacity
+VR 面镜缩放	VR face mirror scale
+VR 面镜缩放倍率	VR face mirror zoom
+VR 麦克风设备名	VR microphone device name
+VR 麦克风输入等级	VR microphone input level
+VRC+	VRC+
+VRC+ 自拍面追踪点击次数	VRC+ selfie face-tracking click count
+VRCSM 会关闭 Steam/SteamVR，先备份当前文件，再恢复你选择的备份。	VRCSM closes Steam/SteamVR, backs up the current files first, then restores the backup you select.
+VRLink 会话 ID 不匹配	VRLink session ID mismatch
+VRLink 会话不匹配：Quest 的数据包已经到达电脑，但 SteamVR 拒绝了无线头显会话。	VRLink session mismatch: Quest packets reached the PC, but SteamVR rejected the wireless headset session.
+Valve Index 输入	Valve Index input
+Vive 输入	Vive input
+Vive 高级输入	Vive advanced input
+Wave 输入	Wave input
+Wing UI 选择状态	Wing UI selection state
+{{bandwidth}} Mbps 对共享 Wi-Fi 可能过于激进。排障时建议先用 80-120 Mbps。	{{bandwidth}} Mbps may be too aggressive for shared Wi-Fi. When troubleshooting, start with 80-120 Mbps.
+下载	Download
+下载模型包	Download avatar package
+严重	Critical
+个人镜子 X 缩放	Personal mirror X scale
+个人镜子 Y 缩放	Personal mirror Y scale
+个人镜子不透明度	Personal mirror opacity
+个人镜子移动模式	Personal mirror movement mode
+中风险	Medium risk
+主名牌显示模式	Primary nameplate display mode
+主菜单锁定移动	Lock movement while main menu open
+主进程丢失	Master process lost
+主页地图区域	Home world region
+主页地图隐私预设	Home world privacy preset
+仅好友加入离开传送提醒	Friend-only join/leave portal notifications
+从 Steam localconfig.vdf 移除用户级 250820-beta / BetaKey 标记。	Remove user-level 250820-beta / BetaKey markers from Steam localconfig.vdf.
+从备份恢复：{{path}} ← {{backup}}	Restore from backup: {{path}} ← {{backup}}
+从文件移除 250820-beta / BetaKey 标记：{{path}}	Remove 250820-beta / BetaKey markers from file: {{path}}
+从文件移除 BetaKey 行：{{path}}	Remove BetaKey line from file: {{path}}
+从文件移除 Quest / Steam Link 串流设备块：{{path}}	Remove Quest / Steam Link streaming device blocks from file: {{path}}
+从解析的 VRChat 日志中提取的近期使用模型。	Recently worn avatars extracted from parsed VRChat logs.
+传统 IK	Legacy IK
+传统全身校准流程	Legacy full-body calibration flow
+传送前舒适模式	Comfort mode before holoport
+传送门前先询问	Ask before entering portals
+传送门模式 v2	Portal mode v2
+位置上下文	Location context
+位置上下文地图	Location context world
+低性能稳定	Low-performance stability
+低显存 GPU 上超采样偏高	Supersampling high on low-VRAM GPU
+低风险	Low risk
+使用之前修好 Quest 3 会话的完整路径：配对缓存、SteamVR 本地运行时状态、VRLink 配置文件夹、旧日志、Beta 标记和 Steam 校验。	The full path that has fixed Quest 3 sessions before: pairing cache, SteamVR local runtime state, VRLink config folder, old logs, Beta markers, and Steam validation.
+使用像素偏移 HUD	Use pixel-shifting HUD
+使用原生分辨率	Use native resolution
+使用通用实例名称	Use generic instance names
+保存相机元数据	Save camera metadata
+信任等级	Trust rank
+修复后打开 steam://validate/250820 校验	After repair, open steam://validate/250820 to validate
+修复已应用，并已打开 Steam 校验。	Repair applied and Steam validation opened.
+停止 Steam/SteamVR	Stop Steam/SteamVR
+停止 SteamVR/Steam	Stop SteamVR/Steam
+停止进程 {{name}} ({{pid}})	Stop process {{name}} ({{pid}})
+停止进程数	Processes stopped
+允许 Discord 好友集成	Allow Discord friends integration
+允许专注视图	Allow focus view
+允许共享连接	Allow shared connections
+允许复制模型	Allow avatar copying
+允许展示台分享	Allow pedestal shares
+允许打印分享	Allow print shares
+允许打开不受信任 URL	Allow opening untrusted URLs
+允许直接分享	Allow direct shares
+先从头显重试；如果失败，再运行预览修复并对比新的日志尾部。	Retry from the headset first; if it fails, run the preview repair and compare the new log tail.
+先备份 localconfig.vdf，再移除旧的 Oculus Quest / Steam Link 串流设备记录。	Back up localconfig.vdf first, then remove old Oculus Quest / Steam Link streaming device records.
+先让 Steam 完成 SteamVR 更新/校验，再重试 Steam Link。	Let Steam finish the SteamVR update/validation, then retry Steam Link.
+全局模型安全预设	Global avatar safety preset
+全屏模式	Fullscreen mode
+全身追踪移动开关	Full-body tracking movement toggle
+关联账号	Linked accounts
+关闭自拍面追踪次数	Selfie face-tracking off count
+关闭运动平滑	Disable motion smoothing
+写入保守的 Quest 安全 Steam Link 参数，不清理配对数据。	Write conservative Quest-safe Steam Link settings without clearing pairing data.
+减少非必要动画	Reduce non-essential animations
+分辨率宽度	Resolution width
+分辨率高度	Resolution height
+列表排序选项	List sort option
+刷新	Refresh
+加入时开启麦克风	Enable microphone on join
+加载时显示前往按钮	Show go button while loading
+动作菜单单手移动	Action menu one-hand move
+动作菜单轻扫选择	Action menu flick select
+单手校准流程开关	One-hand calibration flow toggle
+双击主菜单 SteamVR2	Double-tap main menu SteamVR2
+反转手柄垂直视角	Invert controller vertical look
+发现 VRLink 无效会话包	Invalid VRLink session packets found
+发现 VRLink 无效会话包：{{count}}	Invalid VRLink session packets found: {{count}}
+发现 {{count}} 个无效会话包，同时 SteamVR 报告无线头显未连接。	Found {{count}} invalid session packets while SteamVR reports the wireless headset is not connected.
+只创建 SteamVR、VRLink、Quest 配对和 SteamVR manifest 的可恢复快照，不修改任何设置。	Create restorable snapshots of SteamVR, VRLink, Quest pairing and the SteamVR manifest only, without changing any settings.
+只看在线好友	Online friends only
+只看我的团体	My groups only
+只移除 SteamVR Beta 标记，并打开 AppID 250820 的 Steam 校验。	Remove only the SteamVR Beta markers and open Steam validation for AppID 250820.
+可恢复	Restorable
+可显示摄像头面追踪按钮	Can show camera face-tracking button
+可显示自拍面追踪弹窗	Can show selfie face-tracking popup
+可用时使用替身	Use impostor when available
+右动作菜单 HUD X 角度	Right action menu HUD X angle
+右动作菜单 HUD Y 角度	Right action menu HUD Y angle
+右动作菜单不透明度	Right action menu opacity
+右动作菜单大小比例	Right action menu size percentage
+名牌不透明度	Nameplate opacity
+名牌显示群组	Show group on nameplate
+名牌显示耳罩图标	Show earmuff icon on nameplate
+名牌显示设置	Nameplate display setting
+名牌缩放倍率	Nameplate scale
+名牌附加状态内容	Nameplate additional status content
+后台调试日志收集开关	Background debug log collection toggle
+向他人显示群组徽章	Show group badge to others
+启动时清除内容缓存	Clear content cache on start
+启用 AFK	Enable AFK
+启用 Boop	Enable Boop
+启用 Boop 表情效果	Enable Boop emoji effect
+启用 OSC 输入输出	Enable OSC input/output
+启用 UI 触觉反馈	Enable UI haptics
+启用 Wing 持久化	Enable Wing persistence
+启用个人面镜串流	Enable personal face mirror stream
+启用主播模式	Enable streamer mode
+启用主菜单自由放置	Enable main menu free placement
+启用互动触觉反馈	Enable interaction haptics
+启用坐姿游玩	Enable seated play
+启用手势条	Enable gesture bar
+启用手指跳跃	Enable finger jump
+启用日志	Enable logging
+启用标题点击重置滚动	Enable header click scroll reset
+启用模型显示数量上限	Enable maximum number of shown avatars
+启用移动端快捷选择	Enable mobile quick select
+启用移动端次级性能 UI	Enable mobile secondary performance UI
+启用移动端自动持握	Enable mobile auto-grab
+启用移动端自动行走	Enable mobile auto-walk
+启用移动端通知服务	Enable mobile notifications service
+启用群组兴趣自动通知	Enable group interest auto-notifications
+启用聊天气泡音频	Enable chat bubble audio
+启用自拍手部追踪	Enable selfie hand tracking
+启用自拍面部追踪	Enable selfie face tracking
+启用色彩滤镜辅助	Enable color filter accessibility
+在 Steam localconfig.vdf 中发现 {{count}} 个 Quest 配对标记。	Found {{count}} Quest pairing markers in Steam localconfig.vdf.
+地图提示模式	World tooltip mode
+地图音效静音开关	World SFX mute toggle
+地图音效音量	World SFX volume
+均衡稳定	Balanced stability
+备份 SteamVR htmlcache	Back up SteamVR htmlcache
+备份 appmanifest/localconfig	Back up appmanifest/localconfig
+备份 appmanifest/localconfig/SteamVR 设置	Back up appmanifest/localconfig/SteamVR settings
+备份 config/vrlink 和 remoteclients.vdf	Back up config/vrlink and remoteclients.vdf
+备份 localconfig.vdf	Back up localconfig.vdf
+备份 steamvr.vrsettings	Back up steamvr.vrsettings
+备份与恢复	Backups and restore
+备份并修复	Back up and repair
+备份并移除：{{path}}	Back up and remove: {{path}}
+备份当前 Quest Link 设置	Back up current Quest Link settings
+备份数量	Backups created
+备份：{{path}}	Back up: {{path}}
+外观分区跳转设置	Cosmetics section redirect setting
+头顶聊天气泡 v2	Chat bubble above head v2
+安全串流参数	Safe streaming settings
+安卓麦克风模式	Android microphone mode
+完整 VRLink 重置	Full VRLink reset
+将关闭 Steam/SteamVR，备份 SteamVR 设置、appmanifest 和 localconfig.vdf，清理 Steam Link 配对缓存，移除 SteamVR Beta 标记，并打开 Steam 校验。继续吗？	This will close Steam/SteamVR, back up SteamVR settings, appmanifest and localconfig.vdf, clear the Steam Link pairing cache, remove SteamVR Beta markers, and open Steam validation. Continue?
+将模型 .vrca 资源包下载到本地文件夹。需要登录。	Download the avatar .vrca asset bundle to a local folder. Sign-in required.
+屏幕亮度调整	Screen brightness adjustment
+屏幕对比度调整	Screen contrast adjustment
+展示台分享可见性	Pedestal sharing visibility
+左动作菜单 HUD X 角度	Left action menu HUD X angle
+左动作菜单 HUD Y 角度	Left action menu HUD Y angle
+左动作菜单不透明度	Left action menu opacity
+左动作菜单大小比例	Left action menu size percentage
+已下载到 {{path}}	Downloaded to {{path}}
+已保存地图搜索	Saved world searches
+已写入参数	Settings written
+已准备好 Steam Link 修复面板。无效会话：{{invalid}}，Quest 配对记录：{{questPairs}}。	Steam Link repair panel ready. Invalid sessions: {{invalid}}, Quest pairing records: {{questPairs}}.
+已创建 Quest Link/SteamVR 设置备份。	Quest Link/SteamVR settings backup created.
+已应用	Applied
+已恢复 {{count}} 个备份项。	Restored {{count}} backup items.
+已恢复项目	Items restored
+已打开正在直播页面	Opened the live-now page
+已看过 2025 节日活动提示	Seen the 2025 holiday event callout
+已看过 AVM 迁移提示	Seen the AVM migration callout
+已看过 Rabbids 商店提示	Seen the Rabbids shop callout
+已看过 VRC+ 专属物品提示	Seen the VRC+ exclusive items callout
+已看过测试版活动发现	Seen event discovery in beta
+已看过相机滑轨提示	Seen the camera dolly callout
+市场概览	Marketplace
+帧率上限模式	FPS cap mode
+应用安全 Quest 串流参数：80 Mbps 自动带宽、1.0x 超采样、72 Hz、关闭运动平滑	Apply safe Quest streaming settings: 80 Mbps auto bandwidth, 1.0x supersampling, 72 Hz, motion smoothing off
+开启自拍面追踪次数	Selfie face-tracking on count
+强制眼动追踪射线	Force eye-tracking ray
+归档旧 SteamVR 日志：{{path}}	Archive old SteamVR log: {{path}}
+归档旧 VRLink 日志	Archive old VRLink logs
+当前用户调色板	Current user color palette
+待更新	Pending update
+快捷菜单显示调试信息	Show debug info in quick menu
+快速筛选	Quick filters
+总输出音量	Master output volume
+总音频静音开关	Master audio mute toggle
+恢复	Restore
+恢复 Steam Link 备份	Restore Steam Link backup
+恢复前当前文件备份	Backup of current files before restore
+恢复备份失败：{{msg}}	Failed to restore backup: {{msg}}
+恢复这个备份	Restore this backup
+手指抓取设置	Finger grab setting
+手指行走设置	Finger walk setting
+手指触觉强度	Finger haptic strength
+手指触觉灵敏度	Finger haptic sensitivity
+手指追踪幽灵手	Finger tracking ghost hand
+手指追踪显示 Pinch UI	Finger tracking show pinch UI
+手指追踪模型使用	Finger tracking avatar use
+手指追踪独占模式	Finger tracking exclusive mode
+手部菜单开启模式	Hands menu open mode
+手部追踪教程已完成	Hand tracking tutorial completed
+打印分享可见性	Print sharing visibility
+打开 Steam Link 修复	Open Steam Link repair
+打开 steam://validate/250820	Open steam://validate/250820
+执行	Apply
+执行“{{name}}”？VRCSM 会先备份，并报告任何写入失败。	Apply "{{name}}"? VRCSM backs up first and reports any write failures.
+执行中…	Applying…
+扫描到的 SteamVR 日志尾部包含 {{count}} 个 invalid-session 包。	The scanned SteamVR log tail contains {{count}} invalid-session packets.
+扫描到的 SteamVR 日志里没有明确的 VRLink 失败特征。	No clear VRLink failure signature in the scanned SteamVR logs.
+扫描尾部没有看到 Beta、待更新或 invalid-session 爆发。请从头显重试，失败后马上再跑一次诊断。	No Beta, pending update or invalid-session burst in the scanned tail. Retry from the headset, and rerun diagnosis immediately if it fails.
+扫描的日志尾部没有匹配行。	No matching lines in the scanned log tail.
+扳机拍照	Trigger takes photos
+抗锯齿采样数	Anti-aliasing sample count
+折叠状态	Foldout states
+拒绝 VRC+ 自拍面追踪弹窗次数	VRC+ selfie face-tracking popup dismissed count
+拒绝自拍面追踪弹窗次数	Selfie face-tracking popup dismissed count
+按住说话或切换说话	Push-to-talk or toggle-to-talk
+按模型校准调整	Per-avatar calibration adjustment
+排队组件展示 ID	Queue widget showcase ID
+推荐	Recommended
+描边麦克风图标	Outline microphone icon
+提示	Info
+搜索显示实验室地图	Show community labs worlds in search
+摄像头设备名	Webcam device name
+播放通知音效	Play notification sounds
+无效会话包	Invalid session packets
+无法获取模型详情。它可能是私有或已删除。	Could not fetch avatar details. It may be private or deleted.
+日志证据	Log evidence
+时钟样式	Clock variant
+时间格式模式	Time format mode
+显示 OSC 追踪提醒	Show OSC tracking reminder
+显示个人镜子边框	Show personal mirror border
+显示传送门通知	Show portal notifications
+显示兼容性警告	Show compatibility warnings
+显示好友加入通知	Show friend join notifications
+显示好友离开通知	Show friend leave notifications
+显示好友请求通知	Show friend request notifications
+显示无人机迁移标记	Show drone migration marker
+显示校准镜	Show calibration mirror
+显示模型最低性能评级	Minimum avatar performance rating to display
+显示模型迁移标记	Show avatar migration marker
+显示眼动追踪调试	Show eye-tracking debug
+显示社交等级	Show social rank
+显示社区实验室	Show community labs
+显示群组徽章	Show group badge
+显示自己的聊天气泡	Show own chat bubble
+显示输入提示	Show input tooltips
+显示邀请通知	Show invite notifications
+最大实时像素灯光数	Maximum realtime pixel light count
+最近日志里出现 SteamVR Ready，且扫描范围内没有无效会话爆发。	SteamVR Ready appears in the recent logs and there is no invalid-session burst in the scanned range.
+未发现明确阻断 Steam Link 的特征	No clear signature blocking Steam Link
+未找到 SteamVR 或运行时目录	SteamVR or runtime directory not found
+未找到该模型可下载的资源 URL。	No downloadable asset URL found for this avatar.
+未检测到活动的物理 IPv4 网卡	No active physical IPv4 network adapter detected
+校准身高用公制单位	Use metric units for calibration height
+桌面 FOV 设置	Desktop FOV setting
+桌面准星	Desktop reticle
+桌面强制眼动追踪射线	Desktop force eye-tracking ray
+桌面显示个人面镜	Show personal face mirror on desktop
+桌面面镜 X 偏移	Desktop face mirror X offset
+桌面面镜 Y 偏移	Desktop face mirror Y offset
+桌面面镜不透明度	Desktop face mirror opacity
+桌面面镜缩放	Desktop face mirror scale
+桌面面镜缩放倍率	Desktop face mirror zoom
+桌面麦克风设备名	Desktop microphone device name
+桌面麦克风输入增益	Desktop microphone input gain
+检测到 Quest / Steam Link 配对缓存	Quest / Steam Link pairing cache detected
+检测到 Steam Link / Quest 配对记录；旧记录可以在备份后安全重置。	Steam Link / Quest pairing records detected; old records can be safely reset after backup.
+检测到 SteamVR Beta 或用户级 Beta 标记；这可能把 SteamVR 固定在有问题的 VRLink 构建上。	SteamVR Beta or user-level Beta markers detected; this may pin SteamVR to a problematic VRLink build.
+检测到 SteamVR Beta 标记	SteamVR Beta markers detected
+检测到 {{count}} 个活动虚拟网卡。VRCSM 不会自动改它们；如果配对持续失败，请临时关闭 VPN / Hyper-V。	Detected {{count}} active virtual network adapters. VRCSM won't change them automatically; if pairing keeps failing, temporarily disable VPN / Hyper-V.
+检测到的问题	Detected issues
+模型互动等级	Avatar interaction level
+模型显示下载设置	Avatar display download setting
+模型最大压缩下载大小	Avatar maximum compressed download size
+模型最大未压缩大小	Avatar maximum uncompressed size
+模型音频静音开关	Avatar audio mute toggle
+模型音频音量	Avatar audio volume
+模拟色盲配置	Simulate color blindness profile
+正在生成预览…	Generating preview…
+正常	Normal
+泛光强度覆盖	Bloom intensity override
+清理 Steam 账号级 Quest / Steam Link 配对记录和 SteamVR Web 缓存，然后让头显重新干净配对。	Clear account-level Quest / Steam Link pairing records and the SteamVR web cache, then let the headset re-pair cleanly.
+清理 SteamVR htmlcache	Clear SteamVR htmlcache
+滑块吸附	Slider snapping
+滤镜应用到地图渲染	Apply filter to world rendering
+版本构建	Build
+物件音频静音开关	Prop audio mute toggle
+物件音频音量	Prop audio volume
+玩家手势开关	Player gesture toggle
+玩家身高	Player height
+生成预览失败：{{msg}}	Failed to generate preview: {{msg}}
+用户 ID	User ID
+用户上次过期订阅	User last expired subscription
+用户代理模型显示距离	User proxy avatar show-at-range
+用户代理模型最大数量	User proxy avatar maximum number
+用户代理模型距离开关	User proxy avatar range toggle
+用户好友最近访问历史	User friend last-visit history
+用户已打开快捷菜单	User has opened quick menu
+用户已打开正在直播页面	User has opened the live-now page
+用户开菜单帮助次数	User open-menu help shown count
+用户无人机手柄设置	User drone controller settings
+用户无人机飞行预设	User drone flight presets
+用户最近使用表情	User recently used emojis
+用户最近使用贴纸	User recently used stickers
+用户最近访问历史	User recently visited history
+用户模型数量上限开关	User avatar count limit toggle
+用户相机分辨率	User camera resolution
+用户穿过的模型历史	User worn avatar history
+用户群组顺序	User group order
+用户背景材质	User background material
+登录后才能下载模型资源包。	Sign in to download avatar asset bundles.
+直接分享可见性	Direct sharing visibility
+相机串流分辨率	Camera stream resolution
+相机第三人称视角	Camera third-person view
+相机近裁剪覆盖模式	Camera near clip override mode
+确认 FBT 校准	Confirm FBT calibration
+确认备份并修复	Confirm back up and repair
+确认执行“{{name}}”	Confirm "{{name}}"
+社交动态	Social pulse
+禁用游戏内麦克风按钮	Disable in-game microphone button
+禁用眼睑追踪	Disable eyelid tracking
+禁用眼神追踪	Disable eye gaze tracking
+禁用肩部追踪贡献	Disable shoulder tracking contribution
+移入备份：{{path}}	Move into backup: {{path}}
+移动方式	Movement mode
+移动端 DPI 缩放	Mobile DPI scaling
+移动端交互模式	Mobile interaction mode
+移动端横屏 FOV	Mobile landscape FOV
+移动端竖屏 FOV	Mobile portrait FOV
+移走 config/vrlink 和 remoteclients.vdf	Move away config/vrlink and remoteclients.vdf
+移走 steamvr.vrsettings 和 vrstats	Move away steamvr.vrsettings and vrstats
+移除 250820-beta 块	Remove 250820-beta blocks
+移除 BetaKey / 250820-beta 标记	Remove BetaKey / 250820-beta markers
+移除 BetaKey 行	Remove BetaKey line
+移除 Quest 串流设备块	Remove Quest streaming device blocks
+移除 Quest 设备块	Remove Quest device blocks
+移除 SteamVR BetaKey，并校验 AppID 250820 以回到稳定分支。	Remove the SteamVR BetaKey and validate AppID 250820 to return to the stable branch.
+稳定分支校验	Stable branch validation
+稳定参数档案	Stable setting profiles
+稳定版	Stable
+窗口 X 位置	Window X position
+窗口 Y 位置	Window Y position
+窗口宽度	Window width
+窗口高度	Window height
+立体 3D	Stereo 3D
+第三人称视角距离	Third-person view distance
+算啦，先不动	Cancel, leave it
+粒子物理画质预设	Particle physics quality preset
+细节层级画质预设	Level-of-detail quality preset
+结果	Result
+缓存最佳区域选择	Cache best region selection
+缺少清单	Manifest missing
+耳罩模式	Earmuff mode
+耳罩模式偏移	Earmuff mode offset
+耳罩模式半径	Earmuff mode radius
+耳罩模式模型	Earmuff mode avatars
+耳罩模式衰减	Earmuff mode falloff
+耳罩模式跟随头部	Earmuff mode follow head
+耳罩模式锁定旋转	Earmuff mode lock rotation
+耳罩模式锥形值	Earmuff mode cone value
+耳罩视觉辅助	Earmuff visual aide
+耳罩降低音量	Earmuff reduced volume
+聊天气泡不透明度	Chat bubble opacity
+聊天气泡可见性	Chat bubble visibility
+聊天气泡缩放	Chat bubble scale
+聊天气泡脏话过滤	Chat bubble profanity filter
+聊天气泡自动发送	Chat bubble auto-send
+聊天气泡超时	Chat bubble timeout
+聊天气泡音频音量	Chat bubble audio volume
+聊天气泡高度	Chat bubble height
+肩宽补偿开关	Shoulder width compensation toggle
+自定义帧率上限	Custom FPS limit
+自定义表情贴纸分组	Custom emoji/sticker group
+自己的模型互动	Own avatar interaction
+自拍面追踪居中速度	Selfie face-tracking centering speed
+自拍面部追踪画质	Selfie face-tracking quality
+自拍面部追踪自动画质	Selfie face-tracking auto quality
+舒适模式	Comfort mode
+舒适转向	Comfort turning
+色彩滤镜强度	Color filter intensity
+色彩滤镜预设	Color filter preset
+虚拟网卡“{{name}}”（{{description}}）正在启用，IP 为 {{ip}}，可能干扰 VR 串流。	Virtual adapter "{{name}}" ({{description}}) is enabled with IP {{ip}} and may interfere with VR streaming.
+虚拟网卡处于启用状态	Virtual network adapter is enabled
+视线输入	Gaze input
+警告	Warning
+计划执行	Planned actions
+认证或安装令牌	Authentication or install token
+记录上次货架更新	Store last seen shelf update
+设置 1.0x 超采样	Set 1.0x supersampling
+设置 72 Hz	Set 72 Hz
+设置 80 Mbps 自动带宽	Set 80 Mbps auto bandwidth
+设置迁移标记	Settings migration marker
+诊断	Diagnose
+诊断 VRLink 会话 ID 不匹配、WirelessHmdNotConnected、旧 Quest 配对缓存、SteamVR Beta 标记和 SteamVR 未完成更新。修复前会先备份，默认先做 dry-run 预览。	Diagnose VRLink session ID mismatches, WirelessHmdNotConnected, stale Quest pairing caches, SteamVR Beta markers and unfinished SteamVR updates. Repairs back up first and default to a dry-run preview.
+语言代码	Language code
+语音聊天静音开关	Voice chat mute toggle
+语音聊天音量	Voice chat volume
+请先检查下面列出的具体文件和动作。只有点击“执行”后才会真正修改。	Review the specific files and actions listed below first. Nothing is modified until you click "Apply".
+输入个人空间	Input personal space
+输入安全等级	Input safety rank
+输入第三人称旋转	Input third-person rotation
+运行模式	Runtime mode
+还没有记录模型历史。	No avatar history recorded yet.
+这通常跟 VRLink 握手失败连在一起。先重置配对，再从头显重试。	This is usually tied to a VRLink handshake failure. Reset pairing first, then retry from the headset.
+这里列出 VRCSM 创建的可恢复备份。恢复时会先备份当前文件。	Restorable backups created by VRCSM are listed here. Restoring backs up the current files first.
+进入会话时默认麦克风	Default microphone when entering a session
+进地图禁用模型克隆	Disable avatar cloning on entering world
+远程商店源 dwgx.github.io/VRCSM/plugins.json 暂时无法访问。随 VRCSM 打包的 Hello Plugin 和 VRChat Auto-Uploader 已经装上并可直接从左侧栏打开使用；仅安装新的第三方插件会受影响。	The remote store feed dwgx.github.io/VRCSM/plugins.json is temporarily unreachable. The Hello Plugin and VRChat Auto-Uploader bundled with VRCSM are already installed and can be opened from the sidebar; only installing new third-party plugins is affected.
+连接能成功但抖动、发糊或黑屏时使用。	Use when the connection succeeds but stutters, blurs or goes black.
+追踪器断开时冻结 FBT 姿态	Freeze FBT pose when a tracker disconnects
+追踪器预测	Tracker prediction
+追踪平滑退出	Tracking smoothing exit
+通用输入	Generic input
+通过 OSC 发送头显手腕追踪	Send headset wrist tracking over OSC
+部分完成	Partial
+配对/会话稳定后再提高画质。	Raise visual quality only after pairing/session is stable.
+重置 Steam Link / Quest 配对缓存，然后从头显重新配对。	Reset the Steam Link / Quest pairing cache, then re-pair from the headset.
+重置配对	Reset pairing
+镜中显示 UI	Show UI in mirror
+镜中显示其他玩家	Show remote players in mirror
+镜中显示环境	Show environment in mirror
+镜子分辨率	Mirror resolution
+镜子可抓取	Mirror grabbable
+镜子吸附行为	Mirror snapping behavior
+镜子沉浸移动模式	Mirror immersive move mode
+阴影画质预设	Shadow quality preset
+限制粒子系统	Limit particle systems
+随机传送效果	Randomize warp effect
+随机传送门	Randomize portal
+随机加载画面	Randomize loading screen
+随机无人机	Randomize drone
+隐藏备用模型	Hide fallback avatar
+隐藏屏蔽记录	Hide moderations
+隐藏无人机迁移标记	Hide drone migration marker
+隐藏模型迁移标记	Hide avatar migration marker
+隐藏通知图片预览	Hide notification photo previews
+静音时禁用眼动追踪	Disable eye tracking when muted
+面镜所有者	Face mirror owner
+预览	Preview
+预览中没有动作。	No actions in the preview.
+预览修复	Preview repair
+预览完成。请检查计划执行的修复步骤。	Preview complete. Review the planned repair steps.
+预设画质等级	Preset graphics quality
+飞行时相机滚转	Camera roll while flying
+首选 Photon 区域	Preferred Photon region
+首选时区 2	Preferred timezone 2
+验证链路时先把超采样降到 0.8-1.0；连接稳定后再提高。	Lower supersampling to 0.8-1.0 while validating the link; raise it once the connection is stable.
+高级画质预设	Advanced graphics quality preset
+高风险	High risk
+麦克风 HUD 不透明度	Microphone HUD opacity
+麦克风切换音量	Microphone toggle volume
+麦克风噪声门阈值	Microphone noise gate threshold
+麦克风图标可见性	Microphone icon visibility
+麦克风总开关	Microphone master toggle
+麦克风输入模式	Microphone input mode
+麦克风降噪	Microphone noise suppression
+默认全屏模式	Default fullscreen mode
+默认分辨率宽度	Default resolution width
+默认分辨率高度	Default resolution height
+默认原生分辨率	Default native resolution
+默认无人机配色	Default drone skin palette
+鼠标反转	Inverted mouse
+鼠标灵敏度	Mouse sensitivity

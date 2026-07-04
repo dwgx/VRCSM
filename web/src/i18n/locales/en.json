@@ -557,7 +557,26 @@
     "subscriptionSignals": "Signals",
     "lastExpiredSubscription": "Last expired",
     "liveSignal": "Live signal",
-    "notOwnedAvatar": "This avatar isn't yours — VRChat doesn't provide a download for it."
+    "notOwnedAvatar": "This avatar isn't yours — VRChat doesn't provide a download for it.",
+    "quickFilters": "Quick filters",
+    "onlyOnlineFriends": "Online friends only",
+    "onlyMyGroups": "My groups only",
+    "hideModerations": "Hide moderations",
+    "runtimeMode": "Runtime mode",
+    "trustRankQuick": "Trust rank",
+    "vrcPlusQuick": "VRC+",
+    "linkedAccountsQuick": "Linked accounts",
+    "socialPulse": "Social pulse",
+    "marketplaceQuick": "Marketplace",
+    "avatarHistoryDesc": "Recently worn avatars extracted from parsed VRChat logs.",
+    "noAvatarHistory": "No avatar history recorded yet.",
+    "avatarDownloads": "Download avatar package",
+    "avatarDownloadsDesc": "Download the avatar .vrca asset bundle to a local folder. Sign-in required.",
+    "download": "Download",
+    "downloadComplete": "Downloaded to {{path}}",
+    "signInRequired": "Sign in to download avatar asset bundles.",
+    "avatarDetailsFailed": "Could not fetch avatar details. It may be private or deleted.",
+    "noAssetUrl": "No downloadable asset URL found for this avatar."
   },
   "friends": {
     "title": "Friends",
@@ -1669,6 +1688,1799 @@
         "next": "Next",
         "page": "Page {{page}} / {{total}}",
         "range": "{{from}}–{{to}} of {{total}}"
+      },
+      "keys": {
+        "AUDIO_GAME_AVATARS_ENABLED": {
+          "description": "Avatar audio mute toggle"
+        },
+        "AUDIO_GAME_AVATARS_STEAMAUDIO": {
+          "description": "Avatar audio volume"
+        },
+        "AUDIO_GAME_PROPS_ENABLED": {
+          "description": "Prop audio mute toggle"
+        },
+        "AUDIO_GAME_PROPS_STEAMAUDIO": {
+          "description": "Prop audio volume"
+        },
+        "AUDIO_GAME_SFX_ENABLED": {
+          "description": "World SFX mute toggle"
+        },
+        "AUDIO_GAME_SFX_STEAMAUDIO": {
+          "description": "World SFX volume"
+        },
+        "AUDIO_GAME_VOICE_ENABLED": {
+          "description": "Voice chat mute toggle"
+        },
+        "AUDIO_GAME_VOICE_STEAMAUDIO": {
+          "description": "Voice chat volume"
+        },
+        "AUDIO_MASTER_ENABLED": {
+          "description": "Master audio mute toggle"
+        },
+        "AUDIO_MASTER_STEAMAUDIO": {
+          "description": "Master output volume"
+        },
+        "AUDIO_UI_ENABLED": {
+          "description": "UI sound mute toggle"
+        },
+        "AUDIO_UI_STEAMAUDIO": {
+          "description": "UI sound volume"
+        },
+        "VRC_ANDROID_MIC_MODE": {
+          "description": "Android microphone mode"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_ENABLED": {
+          "description": "Enable chat bubble audio"
+        },
+        "VRC_CHAT_BUBBLE_AUDIO_VOLUME": {
+          "description": "Chat bubble audio volume"
+        },
+        "VRC_EARMUFF_MODE": {
+          "description": "Earmuff mode"
+        },
+        "VRC_EARMUFF_MODE_AVATARS": {
+          "description": "Earmuff mode avatars"
+        },
+        "VRC_EARMUFF_MODE_CONE_VALUE": {
+          "description": "Earmuff mode cone value"
+        },
+        "VRC_EARMUFF_MODE_FALLOFF": {
+          "description": "Earmuff mode falloff"
+        },
+        "VRC_EARMUFF_MODE_FOLLOW_HEAD": {
+          "description": "Earmuff mode follow head"
+        },
+        "VRC_EARMUFF_MODE_LOCK_ROTATION": {
+          "description": "Earmuff mode lock rotation"
+        },
+        "VRC_EARMUFF_MODE_OFFSET_VALUE": {
+          "description": "Earmuff mode offset"
+        },
+        "VRC_EARMUFF_MODE_RADIUS": {
+          "description": "Earmuff mode radius"
+        },
+        "VRC_EARMUFF_MODE_REDUCED_VOLUME": {
+          "description": "Earmuff reduced volume"
+        },
+        "VRC_EARMUFF_MODE_SHOW_ICON_IN_NAMEPLATE": {
+          "description": "Show earmuff icon on nameplate"
+        },
+        "VRC_EARMUFF_MODE_VISUAL_AIDE": {
+          "description": "Earmuff visual aide"
+        },
+        "VRC_HUD_MIC_OPACITY": {
+          "description": "Microphone HUD opacity"
+        },
+        "VRC_INPUT_DISABLE_MIC_BUTTON": {
+          "description": "Disable in-game microphone button"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_Desktop": {
+          "description": "Desktop microphone device name"
+        },
+        "VRC_INPUT_MIC_DEVICE_NAME_VR": {
+          "description": "VR microphone device name"
+        },
+        "VRC_INPUT_MIC_ENABLED": {
+          "description": "Microphone master toggle"
+        },
+        "VRC_INPUT_MIC_LEVEL_DESK": {
+          "description": "Desktop microphone input gain"
+        },
+        "VRC_INPUT_MIC_LEVEL_VR": {
+          "description": "VR microphone input level"
+        },
+        "VRC_INPUT_MIC_MODE": {
+          "description": "Microphone input mode"
+        },
+        "VRC_INPUT_MIC_NOISE_GATE": {
+          "description": "Microphone noise gate threshold"
+        },
+        "VRC_INPUT_MIC_NOISE_SUPPRESSION": {
+          "description": "Microphone noise suppression"
+        },
+        "VRC_INPUT_MIC_ON_JOIN": {
+          "description": "Enable microphone on join"
+        },
+        "VRC_INPUT_TALK_DEFAULT_ON": {
+          "description": "Default microphone when entering a session"
+        },
+        "VRC_INPUT_TALK_TOGGLE": {
+          "description": "Push-to-talk or toggle-to-talk"
+        },
+        "VRC_MIC_ICON_VISIBILITY": {
+          "description": "Microphone icon visibility"
+        },
+        "VRC_MIC_TOGGLE_VOLUME": {
+          "description": "Microphone toggle volume"
+        },
+        "VRC_USE_OUTLINE_MIC_ICON": {
+          "description": "Outline microphone icon"
+        },
+        "COLOR_PALETTES_CURRENT_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Current user color palette"
+        },
+        "FIELD_OF_VIEW": {
+          "description": "Desktop FOV setting"
+        },
+        "FPSCapType": {
+          "description": "FPS cap mode"
+        },
+        "FPSType": {
+          "description": "FPS display mode"
+        },
+        "FPS_LIMIT": {
+          "description": "Custom FPS limit"
+        },
+        "FaceMirrorOwner": {
+          "description": "Face mirror owner"
+        },
+        "LOD_QUALITY": {
+          "description": "Level-of-detail quality preset"
+        },
+        "PARTICLE_PHYSICS_QUALITY": {
+          "description": "Particle physics quality preset"
+        },
+        "PIXEL_LIGHT_COUNT": {
+          "description": "Maximum realtime pixel light count"
+        },
+        "PersonalMirror.FaceMirrorOpacity": {
+          "description": "VR face mirror opacity"
+        },
+        "PersonalMirror.FaceMirrorOpacityDesktop": {
+          "description": "Desktop face mirror opacity"
+        },
+        "PersonalMirror.FaceMirrorPosX": {
+          "description": "VR face mirror X offset"
+        },
+        "PersonalMirror.FaceMirrorPosXDesktop": {
+          "description": "Desktop face mirror X offset"
+        },
+        "PersonalMirror.FaceMirrorPosY": {
+          "description": "VR face mirror Y offset"
+        },
+        "PersonalMirror.FaceMirrorPosYDesktop": {
+          "description": "Desktop face mirror Y offset"
+        },
+        "PersonalMirror.FaceMirrorScale": {
+          "description": "VR face mirror scale"
+        },
+        "PersonalMirror.FaceMirrorScaleDesktop": {
+          "description": "Desktop face mirror scale"
+        },
+        "PersonalMirror.FaceMirrorSpoutEnabled": {
+          "description": "Enable personal face mirror stream"
+        },
+        "PersonalMirror.FaceMirrorZoom": {
+          "description": "VR face mirror zoom"
+        },
+        "PersonalMirror.FaceMirrorZoomDesktop": {
+          "description": "Desktop face mirror zoom"
+        },
+        "PersonalMirror.Grabbable": {
+          "description": "Mirror grabbable"
+        },
+        "PersonalMirror.ImmersiveMove": {
+          "description": "Mirror immersive move mode"
+        },
+        "PersonalMirror.MirrorOpacity": {
+          "description": "Personal mirror opacity"
+        },
+        "PersonalMirror.MirrorScaleX": {
+          "description": "Personal mirror X scale"
+        },
+        "PersonalMirror.MirrorScaleY": {
+          "description": "Personal mirror Y scale"
+        },
+        "PersonalMirror.MirrorSnapping": {
+          "description": "Mirror snapping behavior"
+        },
+        "PersonalMirror.MovementMode": {
+          "description": "Personal mirror movement mode"
+        },
+        "PersonalMirror.ShowBorder": {
+          "description": "Show personal mirror border"
+        },
+        "PersonalMirror.ShowCalibrationMirror": {
+          "description": "Show calibration mirror"
+        },
+        "PersonalMirror.ShowEnvironmentInMirror": {
+          "description": "Show environment in mirror"
+        },
+        "PersonalMirror.ShowFaceMirror": {
+          "description": "Show personal face mirror in VR"
+        },
+        "PersonalMirror.ShowFaceMirrorDesktop": {
+          "description": "Show personal face mirror on desktop"
+        },
+        "PersonalMirror.ShowRemotePlayerInMirror": {
+          "description": "Show remote players in mirror"
+        },
+        "PersonalMirror.ShowUIInMirror": {
+          "description": "Show UI in mirror"
+        },
+        "SHADOW_QUALITY": {
+          "description": "Shadow quality preset"
+        },
+        "USER_CAMERA_RESOLUTION": {
+          "description": "User camera resolution"
+        },
+        "USER_CAMERA_ROLL_WHILE_FLYING": {
+          "description": "Camera roll while flying"
+        },
+        "USER_CAMERA_SAVE_METADATA": {
+          "description": "Save camera metadata"
+        },
+        "USER_CAMERA_STREAM_RESOLUTION": {
+          "description": "Camera stream resolution"
+        },
+        "USER_CAMERA_TRIGGER_TAKES_PHOTOS": {
+          "description": "Trigger takes photos"
+        },
+        "UnityGraphicsQuality": {
+          "description": "Preset graphics quality"
+        },
+        "UnitySelectMonitor": {
+          "description": "Unity selected monitor"
+        },
+        "VRC_ADVANCED_GRAPHICS_ANTIALIASING": {
+          "description": "Anti-aliasing sample count"
+        },
+        "VRC_ADVANCED_GRAPHICS_QUALITY": {
+          "description": "Advanced graphics quality preset"
+        },
+        "VRC_BLOOM_INTENSITY": {
+          "description": "Bloom intensity override"
+        },
+        "VRC_CAMERA_NEAR_CLIP_OVERRIDE_MODE": {
+          "description": "Camera near clip override mode"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW": {
+          "description": "Camera third-person view"
+        },
+        "VRC_CAMERA_THIRD_PERSON_VIEW_DISTANCE": {
+          "description": "Third-person view distance"
+        },
+        "VRC_COLOR_BLINDNESS_SIMULATE": {
+          "description": "Simulate color blindness profile"
+        },
+        "VRC_DEFAULT_DRONE_SKIN_PALETTE": {
+          "description": "Default drone skin palette"
+        },
+        "VRC_LANDSCAPE_FOV": {
+          "description": "Mobile landscape FOV"
+        },
+        "VRC_MIRROR_RESOLUTION": {
+          "description": "Mirror resolution"
+        },
+        "VRC_PORTRAIT_FOV": {
+          "description": "Mobile portrait FOV"
+        },
+        "VRC_RANDOMIZE_DRONE": {
+          "description": "Randomize drone"
+        },
+        "VRC_RANDOMIZE_LOADING_SCREEN": {
+          "description": "Randomize loading screen"
+        },
+        "VRC_RANDOMIZE_WARP_EFFECT": {
+          "description": "Randomize warp effect"
+        },
+        "VRC_SCREEN_BRIGHTNESS": {
+          "description": "Screen brightness adjustment"
+        },
+        "VRC_SCREEN_CONTRAST": {
+          "description": "Screen contrast adjustment"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING_AUTO_QUALITY": {
+          "description": "Selfie face-tracking auto quality"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_QUALITY_LEVEL": {
+          "description": "Selfie face-tracking quality"
+        },
+        "BestRegionCache": {
+          "description": "Cache best region selection"
+        },
+        "LocationContext": {
+          "description": "Location context"
+        },
+        "LocationContext_World": {
+          "description": "Location context world"
+        },
+        "VRC_ASK_TO_PORTAL": {
+          "description": "Ask before entering portals"
+        },
+        "VRC_COMFORT_MODE_PRE_HOLOPORT": {
+          "description": "Comfort mode before holoport"
+        },
+        "VRC_HOME_REGION": {
+          "description": "Home world region"
+        },
+        "VRC_ONLY_SHOW_FRIEND_JOIN_LEAVE_PORTAL_NOTIFICATIONS": {
+          "description": "Friend-only join/leave portal notifications"
+        },
+        "VRC_PORTAL_MODE_V2": {
+          "description": "Portal mode v2"
+        },
+        "VRC_RANDOMIZE_PORTAL": {
+          "description": "Randomize portal"
+        },
+        "VRC_SELECTED_NETWORK_REGION": {
+          "description": "Preferred Photon region"
+        },
+        "VRC_SHOW_PORTAL_NOTIFICATIONS": {
+          "description": "Show portal notifications"
+        },
+        "AVATAR_WORN_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "User worn avatar history"
+        },
+        "SortSelection_UGCAvatars": {
+          "description": "List sort option"
+        },
+        "VRC_ALLOW_AVATAR_COPYING": {
+          "description": "Allow avatar copying"
+        },
+        "VRC_AVATAR_FALLBACK_HIDDEN": {
+          "description": "Hide fallback avatar"
+        },
+        "VRC_AVATAR_HAPTICS_ENABLED": {
+          "description": "Avatar display download setting"
+        },
+        "VRC_AVATAR_MAXIMUM_DOWNLOAD_SIZE": {
+          "description": "Avatar maximum compressed download size"
+        },
+        "VRC_AVATAR_MAXIMUM_UNCOMPRESSED_SIZE": {
+          "description": "Avatar maximum uncompressed size"
+        },
+        "VRC_AVATAR_PERFORMANCE_RATING_MINIMUM_TO_DISPLAY": {
+          "description": "Minimum avatar performance rating to display"
+        },
+        "VRC_AV_INTERACT_LEVEL": {
+          "description": "Avatar interaction level"
+        },
+        "VRC_AV_INTERACT_SELF": {
+          "description": "Own avatar interaction"
+        },
+        "VRC_DISABLE_AVATAR_CLONING_ON_ENTER_WORLD": {
+          "description": "Disable avatar cloning on entering world"
+        },
+        "VRC_FINGERTRACKING_AVATARS_USE": {
+          "description": "Finger tracking avatar use"
+        },
+        "VRC_GESTURE_BAR_ENABLED": {
+          "description": "Enable gesture bar"
+        },
+        "VRC_IK_AVATAR_MEASUREMENT_TYPE": {
+          "description": "IK avatar measurement type"
+        },
+        "VRC_IK_PER_AVATAR_CALIBRATION_ADJUSTMENT": {
+          "description": "Per-avatar calibration adjustment"
+        },
+        "VRC_IMPOSTOR_WHEN_AVAILABLE": {
+          "description": "Use impostor when available"
+        },
+        "VRC_INPUT_SELECTED_SAFETY_RANK": {
+          "description": "Input safety rank"
+        },
+        "VRC_PLAYER_GESTURE_TOGGLE": {
+          "description": "Player gesture toggle"
+        },
+        "VRC_SAFETY_LEVEL": {
+          "description": "Global avatar safety preset"
+        },
+        "VRC_SHOW_SOCIAL_RANK": {
+          "description": "Show social rank"
+        },
+        "Wing_Right_Avatars_Category": {
+          "description": "Wing UI selection state"
+        },
+        "Wing_Right_Avatars_SortBy": {
+          "description": "Wing UI selection state"
+        },
+        "avatarProxyAlwaysShowExplicit": {
+          "description": "Avatar display download setting"
+        },
+        "avatarProxyAlwaysShowFriends": {
+          "description": "Avatar display download setting"
+        },
+        "avatarProxyShowAtRange": {
+          "description": "Avatar display download setting"
+        },
+        "avatarProxyShowAtRangeToggle": {
+          "description": "Avatar display download setting"
+        },
+        "avatarProxyShowMaxNumber": {
+          "description": "Avatar display download setting"
+        },
+        "currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "Enable maximum number of shown avatars"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRange": {
+          "description": "User proxy avatar show-at-range"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowAtRangeToggle": {
+          "description": "User proxy avatar range toggle"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_avatarProxyShowMaxNumber": {
+          "description": "User proxy avatar maximum number"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_currentShowMaxNumberOfAvatarsEnabled": {
+          "description": "User avatar count limit toggle"
+        },
+        "VRC_ACTION_MENU_FLICK_SELECT": {
+          "description": "Action menu flick select"
+        },
+        "VRC_ACTION_MENU_ONE_HAND_MOVE": {
+          "description": "Action menu one-hand move"
+        },
+        "VRC_DOUBLE_TAP_MAIN_MENU_STEAMVR2": {
+          "description": "Double-tap main menu SteamVR2"
+        },
+        "VRC_FINGER_GRAB_SETTING": {
+          "description": "Finger grab setting"
+        },
+        "VRC_FINGER_HAPTIC_SENSITIVITY": {
+          "description": "Finger haptic sensitivity"
+        },
+        "VRC_FINGER_HAPTIC_STRENGTH": {
+          "description": "Finger haptic strength"
+        },
+        "VRC_FINGER_JUMP_ENABLED": {
+          "description": "Enable finger jump"
+        },
+        "VRC_FINGER_WALK_SETTING": {
+          "description": "Finger walk setting"
+        },
+        "VRC_HANDS_MENU_OPEN_MODE": {
+          "description": "Hands menu open mode"
+        },
+        "VRC_INPUT_DAYDREAM": {
+          "description": "Daydream input"
+        },
+        "VRC_INPUT_EMBODIED": {
+          "description": "Embodied input"
+        },
+        "VRC_INPUT_GAZE": {
+          "description": "Gaze input"
+        },
+        "VRC_INPUT_GENERIC": {
+          "description": "Generic input"
+        },
+        "VRC_INPUT_HPMOTION": {
+          "description": "HPMotion input"
+        },
+        "VRC_INPUT_MOBILE_INTERACTION_MODE": {
+          "description": "Mobile interaction mode"
+        },
+        "VRC_INPUT_OPENXR": {
+          "description": "OpenXR input"
+        },
+        "VRC_INPUT_PERSONAL_SPACE": {
+          "description": "Input personal space"
+        },
+        "VRC_INPUT_QUEST_HANDS": {
+          "description": "Quest hand input"
+        },
+        "VRC_INPUT_SHOW_TOOLTIPS": {
+          "description": "Show input tooltips"
+        },
+        "VRC_INPUT_STEAMVR2": {
+          "description": "SteamVR2 input"
+        },
+        "VRC_INPUT_THIRD_PERSON_ROTATION": {
+          "description": "Input third-person rotation"
+        },
+        "VRC_INPUT_TOUCH": {
+          "description": "Touch input"
+        },
+        "VRC_INPUT_VALVE_INDEX": {
+          "description": "Valve Index input"
+        },
+        "VRC_INPUT_VIVE": {
+          "description": "Vive input"
+        },
+        "VRC_INPUT_VIVE_ADVANCED": {
+          "description": "Vive advanced input"
+        },
+        "VRC_INPUT_WAVE": {
+          "description": "Wave input"
+        },
+        "VRC_INTERACT_HAPTICS_ENABLED": {
+          "description": "Enable interaction haptics"
+        },
+        "VRC_INVERTED_MOUSE": {
+          "description": "Inverted mouse"
+        },
+        "VRC_INVERT_CONTROLLER_VERTICAL_LOOK": {
+          "description": "Invert controller vertical look"
+        },
+        "VRC_IS_BOOPING_ENABLED": {
+          "description": "Enable Boop"
+        },
+        "VRC_MOBILE_QUICK_SELECT_ENABLED": {
+          "description": "Enable mobile quick select"
+        },
+        "VRC_MOUSE_SENSITIVITY": {
+          "description": "Mouse sensitivity"
+        },
+        "VRC_SHOW_FRIEND_REQUESTS": {
+          "description": "Show friend request notifications"
+        },
+        "VRC_TOUCH_AUTO_ROTATE_SPEED": {
+          "description": "Touch auto-turn speed"
+        },
+        "VRC_TOUCH_SENSITIVITY": {
+          "description": "Touch sensitivity"
+        },
+        "VRC_UI_HAPTICS_ENABLED": {
+          "description": "Enable UI haptics"
+        },
+        "VRC_USE_GENERIC_INSTANCE_NAMES": {
+          "description": "Use generic instance names"
+        },
+        "VRC_WEBCAM_DEVICE_NAME": {
+          "description": "Webcam device name"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneControllerSettings": {
+          "description": "User drone controller settings"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_DroneFlightPresetValues": {
+          "description": "User drone flight presets"
+        },
+        "UI.Settings.Osc": {
+          "description": "OSC settings state"
+        },
+        "VRC_INPUT_OSC": {
+          "description": "Enable OSC input/output"
+        },
+        "PREF_HAND_TRACKING_TUTORIAL_COMPLETED": {
+          "description": "Hand tracking tutorial completed"
+        },
+        "PlayerHeight": {
+          "description": "Player height"
+        },
+        "SeatedPlayEnabled": {
+          "description": "Enable seated play"
+        },
+        "VRC_COMFORT_MODE": {
+          "description": "Comfort mode"
+        },
+        "VRC_FINGERTRACKING_SHOW_PINCHUI": {
+          "description": "Finger tracking show pinch UI"
+        },
+        "VRC_FINGERTRACKING_USE_EXCLUSIVE": {
+          "description": "Finger tracking exclusive mode"
+        },
+        "VRC_FINGERTRACKING_USE_GHOSTHAND": {
+          "description": "Finger tracking ghost hand"
+        },
+        "VRC_IK_CALIBRATION_RANGE": {
+          "description": "IK calibration range"
+        },
+        "VRC_IK_CALIBRATION_VIS": {
+          "description": "IK calibration visualization"
+        },
+        "VRC_IK_DEBUG_LOGGING": {
+          "description": "IK debug logging"
+        },
+        "VRC_IK_DISABLE_SHOULDER_TRACKING": {
+          "description": "Disable shoulder tracking contribution"
+        },
+        "VRC_IK_FBT_CONFIRM_CALIBRATE": {
+          "description": "Confirm FBT calibration"
+        },
+        "VRC_IK_FBT_LOCOMOTION": {
+          "description": "Full-body tracking movement toggle"
+        },
+        "VRC_IK_FBT_SPINE_MODE": {
+          "description": "FBT spine mode"
+        },
+        "VRC_IK_FREEZE_TRACKING_ON_DISCONNECT": {
+          "description": "Freeze FBT pose when a tracker disconnects"
+        },
+        "VRC_IK_HEIGHT_RATIO": {
+          "description": "IK height ratio"
+        },
+        "VRC_IK_KNEE_ANGLE": {
+          "description": "IK knee angle"
+        },
+        "VRC_IK_LEGACY": {
+          "description": "Legacy IK"
+        },
+        "VRC_IK_LEGACY_CALIBRATION": {
+          "description": "Legacy full-body calibration flow"
+        },
+        "VRC_IK_ONE_HANDED_CALIBRATION": {
+          "description": "One-hand calibration flow toggle"
+        },
+        "VRC_IK_SHOULDER_WIDTH_COMPENSATION": {
+          "description": "Shoulder width compensation toggle"
+        },
+        "VRC_IK_TRACKER_MODEL": {
+          "description": "IK tracker model"
+        },
+        "VRC_IK_USE_METRIC_HEIGHT": {
+          "description": "Use metric units for calibration height"
+        },
+        "VRC_IK_WRIST_ANGLE": {
+          "description": "IK wrist angle"
+        },
+        "VRC_INPUT_COMFORT_TURNING": {
+          "description": "Comfort turning"
+        },
+        "VRC_INPUT_LOCOMOTION_METHOD": {
+          "description": "Movement mode"
+        },
+        "VRC_MAIN_MENU_MOVEMENT_LOCKED": {
+          "description": "Lock movement while main menu open"
+        },
+        "VRC_MOBILE_AUTO_HOLD_ENABLED": {
+          "description": "Enable mobile auto-grab"
+        },
+        "VRC_MOBILE_AUTO_WALK_ENABLED": {
+          "description": "Enable mobile auto-walk"
+        },
+        "VRC_TRACKING_CAN_SHOW_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "Can show selfie face-tracking popup"
+        },
+        "VRC_TRACKING_CAN_SHOW_TRY_WEBCAM_FACE_TRACKING_BUTTON": {
+          "description": "Can show camera face-tracking button"
+        },
+        "VRC_TRACKING_DISABLE_EYELIDTRACKING": {
+          "description": "Disable eyelid tracking"
+        },
+        "VRC_TRACKING_DISABLE_EYELOOKTRACKING": {
+          "description": "Disable eye gaze tracking"
+        },
+        "VRC_TRACKING_DISABLE_EYETRACKING_ON_MUTE": {
+          "description": "Disable eye tracking when muted"
+        },
+        "VRC_TRACKING_DISPLAY_EYETRACKING_DEBUG": {
+          "description": "Show eye-tracking debug"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_FACE_TRACKING": {
+          "description": "Enable selfie face tracking"
+        },
+        "VRC_TRACKING_ENABLE_SELFIE_HAND_TRACKING": {
+          "description": "Enable selfie hand tracking"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST": {
+          "description": "Force eye-tracking ray"
+        },
+        "VRC_TRACKING_FORCE_EYETRACKING_RAYCAST_DESKTOP2": {
+          "description": "Desktop force eye-tracking ray"
+        },
+        "VRC_TRACKING_GRACEFUL_QUIT": {
+          "description": "Tracking smoothing exit"
+        },
+        "VRC_TRACKING_NUM_TIMES_DISABLED_SELFIE_FACE_TRACKING": {
+          "description": "Selfie face-tracking off count"
+        },
+        "VRC_TRACKING_NUM_TIMES_ENABLED_SELFIE_FACE_TRACKING": {
+          "description": "Selfie face-tracking on count"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP": {
+          "description": "Selfie face-tracking popup dismissed count"
+        },
+        "VRC_TRACKING_NUM_TIMES_REFUSED_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS": {
+          "description": "VRC+ selfie face-tracking popup dismissed count"
+        },
+        "VRC_TRACKING_NUM_TIMES_SELFIE_FACE_TRACKING_POPUP_VRC_PLUS_CLICKED": {
+          "description": "VRC+ selfie face-tracking click count"
+        },
+        "VRC_TRACKING_SELFIE_FACE_TRACKING_RECENTER_SPEED": {
+          "description": "Selfie face-tracking centering speed"
+        },
+        "VRC_TRACKING_SEND_VR_SYSTEM_HEAD_AND_WRIST_OSC_DATA": {
+          "description": "Send headset wrist tracking over OSC"
+        },
+        "VRC_TRACKING_SHOULD_SHOW_OSC_TRACKING_DATA_REMINDER": {
+          "description": "Show OSC tracking reminder"
+        },
+        "VRC_TRACKING_TRACKER_PREDICTION": {
+          "description": "Tracker prediction"
+        },
+        "BACKGROUND_MATERIAL_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "User background material"
+        },
+        "CosmeticsSectionRedirect_Settings": {
+          "description": "Cosmetics section redirect setting"
+        },
+        "FOLDOUT_STATES": {
+          "description": "Foldout states"
+        },
+        "FRIEND_LAST_VISIT_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "User friend last-visit history"
+        },
+        "HasSeenCameraDollyUserCameraCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Seen the camera dolly callout"
+        },
+        "HasSeenHolidayEvent2025QMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Seen the 2025 holiday event callout"
+        },
+        "HasSeenShopRabbidsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Seen the Rabbids shop callout"
+        },
+        "HasSeenVRCPlusExclusiveItemsQMCalloutusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Seen the VRC+ exclusive items callout"
+        },
+        "InQueueWidgetInfoShowcaseID": {
+          "description": "Queue widget showcase ID"
+        },
+        "RECENTLY_VISITED_HISTORY_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "User recently visited history"
+        },
+        "SavedWorldSearchesusr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "Saved world searches"
+        },
+        "SortSelection_AllFriends": {
+          "description": "List sort option"
+        },
+        "SortSelection_Authored": {
+          "description": "List sort option"
+        },
+        "SortSelection_Favorites0": {
+          "description": "List sort option"
+        },
+        "SortSelection_FriendLocations": {
+          "description": "List sort option"
+        },
+        "SortSelection_GroupActivity": {
+          "description": "List sort option"
+        },
+        "SortSelection_InRoom": {
+          "description": "List sort option"
+        },
+        "SortSelection_Recent": {
+          "description": "List sort option"
+        },
+        "SortSelection_Sdk": {
+          "description": "List sort option"
+        },
+        "SortSelection_UGCPlaylist1": {
+          "description": "List sort option"
+        },
+        "SortSelection_UGCWorlds": {
+          "description": "List sort option"
+        },
+        "SortSelection_WorldInstances": {
+          "description": "List sort option"
+        },
+        "UI.Emojis.CustomGroup0": {
+          "description": "Custom emoji/sticker group"
+        },
+        "UI.Emojis.CustomGroup1": {
+          "description": "Custom emoji/sticker group"
+        },
+        "UI.Emojis.CustomGroup2": {
+          "description": "Custom emoji/sticker group"
+        },
+        "UI.MenuPlacementZDepthVR": {
+          "description": "UI state preference"
+        },
+        "UI.MotionSmoothingEnabled": {
+          "description": "UI state preference"
+        },
+        "UI.Props.CustomGroup0": {
+          "description": "Custom emoji/sticker group"
+        },
+        "UI.Stickers.CustomGroup0": {
+          "description": "Custom emoji/sticker group"
+        },
+        "UI.Stickers.CustomGroup1": {
+          "description": "Custom emoji/sticker group"
+        },
+        "UI.Stickers.CustomGroup2": {
+          "description": "Custom emoji/sticker group"
+        },
+        "UI.usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726.WingState": {
+          "description": "UI state preference"
+        },
+        "VRC.UI.QuickMenu.ShowQMDebugInfo": {
+          "description": "Show debug info in quick menu"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_X": {
+          "description": "Left action menu HUD X angle"
+        },
+        "VRC_ACTION_MENU_L_HUD_ANGLE_Y": {
+          "description": "Left action menu HUD Y angle"
+        },
+        "VRC_ACTION_MENU_L_MENU_OPACITY": {
+          "description": "Left action menu opacity"
+        },
+        "VRC_ACTION_MENU_L_MENU_SIZE_PERCENTAGE": {
+          "description": "Left action menu size percentage"
+        },
+        "VRC_ACTION_MENU_L_SHOW_ON_HUD": {
+          "description": "Show left action menu on HUD"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_X": {
+          "description": "Right action menu HUD X angle"
+        },
+        "VRC_ACTION_MENU_R_HUD_ANGLE_Y": {
+          "description": "Right action menu HUD Y angle"
+        },
+        "VRC_ACTION_MENU_R_MENU_OPACITY": {
+          "description": "Right action menu opacity"
+        },
+        "VRC_ACTION_MENU_R_MENU_SIZE_PERCENTAGE": {
+          "description": "Right action menu size percentage"
+        },
+        "VRC_ACTION_MENU_R_SHOW_ON_HUD": {
+          "description": "Show right action menu on HUD"
+        },
+        "VRC_BOOP_EMOJI_EFFECT_ENABLED": {
+          "description": "Enable Boop emoji effect"
+        },
+        "VRC_CHAT_BUBBLE_ABOVE_HEAD_V2": {
+          "description": "Chat bubble above head v2"
+        },
+        "VRC_CHAT_BUBBLE_AUTO_SEND": {
+          "description": "Chat bubble auto-send"
+        },
+        "VRC_CHAT_BUBBLE_OPACITY": {
+          "description": "Chat bubble opacity"
+        },
+        "VRC_CHAT_BUBBLE_POS_HEIGHT": {
+          "description": "Chat bubble height"
+        },
+        "VRC_CHAT_BUBBLE_PROFANITY_FILTER": {
+          "description": "Chat bubble profanity filter"
+        },
+        "VRC_CHAT_BUBBLE_SCALE": {
+          "description": "Chat bubble scale"
+        },
+        "VRC_CHAT_BUBBLE_SHOW_OWN": {
+          "description": "Show own chat bubble"
+        },
+        "VRC_CHAT_BUBBLE_TIMEOUT": {
+          "description": "Chat bubble timeout"
+        },
+        "VRC_CHAT_BUBBLE_VISIBILITY": {
+          "description": "Chat bubble visibility"
+        },
+        "VRC_CLOCK_VARIANT": {
+          "description": "Clock variant"
+        },
+        "VRC_COLOR_FILTER_INTENSITY": {
+          "description": "Color filter intensity"
+        },
+        "VRC_COLOR_FILTER_SELECTION": {
+          "description": "Color filter preset"
+        },
+        "VRC_COLOR_FILTER_TO_WORLD": {
+          "description": "Apply filter to world rendering"
+        },
+        "VRC_CURRENT_LANGUAGE": {
+          "description": "Language code"
+        },
+        "VRC_DESKTOP_RETICLE": {
+          "description": "Desktop reticle"
+        },
+        "VRC_ENABLE_GROUP_INTEREST_AUTO_NOTIFICATIONS": {
+          "description": "Enable group interest auto-notifications"
+        },
+        "VRC_GROUP_ON_NAMEPLATE": {
+          "description": "Show group on nameplate"
+        },
+        "VRC_GROUP_ORDER_usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726": {
+          "description": "User group order"
+        },
+        "VRC_HIDE_NOTIFICATION_PHOTOS": {
+          "description": "Hide notification photo previews"
+        },
+        "VRC_HUD_ANCHOR": {
+          "description": "HUD anchor position"
+        },
+        "VRC_HUD_MODE": {
+          "description": "HUD layout mode"
+        },
+        "VRC_HUD_OPACITY": {
+          "description": "HUD opacity"
+        },
+        "VRC_HUD_SMOOTHING_Desktop": {
+          "description": "HUD position display setting"
+        },
+        "VRC_HUD_SMOOTHING_VR": {
+          "description": "HUD position display setting"
+        },
+        "VRC_MM_FREE_PLACEMENT_ENABLED": {
+          "description": "Enable main menu free placement"
+        },
+        "VRC_MOBILE_DPI_SCALING": {
+          "description": "Mobile DPI scaling"
+        },
+        "VRC_MOBILE_NOTIFICATIONS_SERVICE_ENABLED": {
+          "description": "Enable mobile notifications service"
+        },
+        "VRC_MOBILE_PERFORMANCE_SECONDARY_UI_ENABLED": {
+          "description": "Enable mobile secondary performance UI"
+        },
+        "VRC_NAMEPLATE_FALLBACK_ICON_VISIBLE": {
+          "description": "Nameplate display setting"
+        },
+        "VRC_NAMEPLATE_MODE": {
+          "description": "Primary nameplate display mode"
+        },
+        "VRC_NAMEPLATE_OPACITY": {
+          "description": "Nameplate opacity"
+        },
+        "VRC_NAMEPLATE_QUICK_MENU_INFO": {
+          "description": "Nameplate display setting"
+        },
+        "VRC_NAMEPLATE_SCALE_V2": {
+          "description": "Nameplate scale"
+        },
+        "VRC_NAMEPLATE_STATUS_MODE": {
+          "description": "Nameplate additional status content"
+        },
+        "VRC_PLAY_NOTIFICATION_AUDIO": {
+          "description": "Play notification sounds"
+        },
+        "VRC_REDUCE_ANIMATIONS": {
+          "description": "Reduce non-essential animations"
+        },
+        "VRC_SHOW_COMMUNITY_LABS": {
+          "description": "Show community labs"
+        },
+        "VRC_SHOW_COMMUNITY_LAB_WORLDS_IN_SEARCH": {
+          "description": "Show community labs worlds in search"
+        },
+        "VRC_SHOW_GO_BUTTON_IN_LOAD": {
+          "description": "Show go button while loading"
+        },
+        "VRC_SHOW_GROUP_BADGES": {
+          "description": "Show group badge"
+        },
+        "VRC_SHOW_INVITES_NOTIFICATION": {
+          "description": "Show invite notifications"
+        },
+        "VRC_SHOW_JOIN_NOTIFICATIONS": {
+          "description": "Show friend join notifications"
+        },
+        "VRC_SHOW_LEAVE_NOTIFICATIONS": {
+          "description": "Show friend leave notifications"
+        },
+        "VRC_SLIDER_SNAPPING": {
+          "description": "Slider snapping"
+        },
+        "VRC_STORE_LAST_SEEN_SHELF_UPDATE": {
+          "description": "Store last seen shelf update"
+        },
+        "VRC_TIME_FORMAT_MODE": {
+          "description": "Time format mode"
+        },
+        "VRC_UI_HEADER_CLICK_SCROLL_RESET_ENABLED": {
+          "description": "Enable header click scroll reset"
+        },
+        "VRC_USE_COLOR_FILTER": {
+          "description": "Enable color filter accessibility"
+        },
+        "VRC_USE_PIXEL_SHIFTING_HUD": {
+          "description": "Use pixel-shifting HUD"
+        },
+        "VRC_WING_PERSISTENCE_ENABLED": {
+          "description": "Enable Wing persistence"
+        },
+        "VRC_WORLD_TOOLTIP_MODE": {
+          "description": "World tooltip mode"
+        },
+        "has_opened_live_now_page": {
+          "description": "Opened the live-now page"
+        },
+        "has_seen_avm-explore-to-cm-migration": {
+          "description": "Seen the AVM migration callout"
+        },
+        "has_seen_event_discovery_in_beta": {
+          "description": "Seen event discovery in beta"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenMenuHelpShownCount": {
+          "description": "User open-menu help shown count"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_OpenedQuickMenu": {
+          "description": "User has opened quick menu"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Emojis.CustomGroup0": {
+          "description": "Custom emoji/sticker group"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Props.CustomGroup0": {
+          "description": "Custom emoji/sticker group"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedEmojis": {
+          "description": "User recently used emojis"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.RecentlyUsedStickers": {
+          "description": "User recently used stickers"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_UI.Stickers.CustomGroup0": {
+          "description": "Custom emoji/sticker group"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_has_opened_live_now_page": {
+          "description": "User has opened the live-now page"
+        },
+        "BACKGROUND_DEBUG_LOG_COLLECTION": {
+          "description": "Background debug log collection toggle"
+        },
+        "VRC_ALLOW_DIRECT_SHARES": {
+          "description": "Allow direct shares"
+        },
+        "VRC_ALLOW_DISCORD_FRIENDS": {
+          "description": "Allow Discord friends integration"
+        },
+        "VRC_ALLOW_FOCUS_VIEW": {
+          "description": "Allow focus view"
+        },
+        "VRC_ALLOW_PEDESTAL_SHARES": {
+          "description": "Allow pedestal shares"
+        },
+        "VRC_ALLOW_PRINTS": {
+          "description": "Allow print shares"
+        },
+        "VRC_ALLOW_SHARED_CONNECTIONS": {
+          "description": "Allow shared connections"
+        },
+        "VRC_ALLOW_UNTRUSTED_URL": {
+          "description": "Allow opening untrusted URLs"
+        },
+        "VRC_DIRECT_SHARING_VISIBILITY": {
+          "description": "Direct sharing visibility"
+        },
+        "VRC_HOME_ACCESS_TYPE": {
+          "description": "Home world privacy preset"
+        },
+        "VRC_PEDESTAL_SHARING_VISIBILITY": {
+          "description": "Pedestal sharing visibility"
+        },
+        "VRC_PRINT_VISIBILITY": {
+          "description": "Print sharing visibility"
+        },
+        "VRC_SHOW_GROUP_BADGE_TO_OTHERS": {
+          "description": "Show group badge to others"
+        },
+        "VRC_STREAMER_MODE_ENABLED": {
+          "description": "Enable streamer mode"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanSpeak": {
+          "description": "Advanced 1 can speak"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "Advanced 1 can use animated emoji"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseAvatarAudio": {
+          "description": "Advanced 1 can use avatar audio"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAnimations": {
+          "description": "Advanced 1 can use custom animations"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomAvatar": {
+          "description": "Advanced 1 can use custom avatar"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseCustomShaders": {
+          "description": "Advanced 1 can use custom shaders"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseDrone": {
+          "description": "Advanced 1 can use drone"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "Advanced 1 can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseParticleSystems": {
+          "description": "Advanced 1 can use particle systems"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseTriggers": {
+          "description": "Advanced 1 can use triggers"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel1_CanUseUserIcons": {
+          "description": "Advanced 1 can use user icons"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanSpeak": {
+          "description": "Advanced 2 can speak"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "Advanced 2 can use animated emoji"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseAvatarAudio": {
+          "description": "Advanced 2 can use avatar audio"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAnimations": {
+          "description": "Advanced 2 can use custom animations"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomAvatar": {
+          "description": "Advanced 2 can use custom avatar"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseCustomShaders": {
+          "description": "Advanced 2 can use custom shaders"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseDrone": {
+          "description": "Advanced 2 can use drone"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "Advanced 2 can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseParticleSystems": {
+          "description": "Advanced 2 can use particle systems"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseTriggers": {
+          "description": "Advanced 2 can use triggers"
+        },
+        "CustomTrustLevel_AdvancedTrustLevel2_CanUseUserIcons": {
+          "description": "Advanced 2 can use user icons"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanSpeak": {
+          "description": "Basic can speak"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "Basic can use animated emoji"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseAvatarAudio": {
+          "description": "Basic can use avatar audio"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAnimations": {
+          "description": "Basic can use custom animations"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomAvatar": {
+          "description": "Basic can use custom avatar"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseCustomShaders": {
+          "description": "Basic can use custom shaders"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseDrone": {
+          "description": "Basic can use drone"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "Basic can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseParticleSystems": {
+          "description": "Basic can use particle systems"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseTriggers": {
+          "description": "Basic can use triggers"
+        },
+        "CustomTrustLevel_BasicTrustLevel1_CanUseUserIcons": {
+          "description": "Basic can use user icons"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanSpeak": {
+          "description": "Basic can speak"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Basic can use animated emoji"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseAvatarAudio": {
+          "description": "Basic can use avatar audio"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAnimations": {
+          "description": "Basic can use custom animations"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomAvatar": {
+          "description": "Basic can use custom avatar"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseCustomShaders": {
+          "description": "Basic can use custom shaders"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseDrone": {
+          "description": "Basic can use drone"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Basic can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseParticleSystems": {
+          "description": "Basic can use particle systems"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseTriggers": {
+          "description": "Basic can use triggers"
+        },
+        "CustomTrustLevel_BasicTrustLevel_CanUseUserIcons": {
+          "description": "Basic can use user icons"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanSpeak": {
+          "description": "Developer can speak"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Developer can use animated emoji"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseAvatarAudio": {
+          "description": "Developer can use avatar audio"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAnimations": {
+          "description": "Developer can use custom animations"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomAvatar": {
+          "description": "Developer can use custom avatar"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseCustomShaders": {
+          "description": "Developer can use custom shaders"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseDrone": {
+          "description": "Developer can use drone"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Developer can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseParticleSystems": {
+          "description": "Developer can use particle systems"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseTriggers": {
+          "description": "Developer can use triggers"
+        },
+        "CustomTrustLevel_DeveloperTrustLevel_CanUseUserIcons": {
+          "description": "Developer can use user icons"
+        },
+        "CustomTrustLevel_Friend_CanSpeak": {
+          "description": "Friend can speak"
+        },
+        "CustomTrustLevel_Friend_CanUseAnimatedEmoji": {
+          "description": "Friend can use animated emoji"
+        },
+        "CustomTrustLevel_Friend_CanUseAvatarAudio": {
+          "description": "Friend can use avatar audio"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAnimations": {
+          "description": "Friend can use custom animations"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomAvatar": {
+          "description": "Friend can use custom avatar"
+        },
+        "CustomTrustLevel_Friend_CanUseCustomShaders": {
+          "description": "Friend can use custom shaders"
+        },
+        "CustomTrustLevel_Friend_CanUseDrone": {
+          "description": "Friend can use drone"
+        },
+        "CustomTrustLevel_Friend_CanUseEmojiStickersSharing": {
+          "description": "Friend can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_Friend_CanUseParticleSystems": {
+          "description": "Friend can use particle systems"
+        },
+        "CustomTrustLevel_Friend_CanUseTriggers": {
+          "description": "Friend can use triggers"
+        },
+        "CustomTrustLevel_Friend_CanUseUserIcons": {
+          "description": "Friend can use user icons"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanSpeak": {
+          "description": "Intermediate 1 can speak"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "Intermediate 1 can use animated emoji"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseAvatarAudio": {
+          "description": "Intermediate 1 can use avatar audio"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAnimations": {
+          "description": "Intermediate 1 can use custom animations"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomAvatar": {
+          "description": "Intermediate 1 can use custom avatar"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseCustomShaders": {
+          "description": "Intermediate 1 can use custom shaders"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseDrone": {
+          "description": "Intermediate 1 can use drone"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "Intermediate 1 can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseParticleSystems": {
+          "description": "Intermediate 1 can use particle systems"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseTriggers": {
+          "description": "Intermediate 1 can use triggers"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel1_CanUseUserIcons": {
+          "description": "Intermediate 1 can use user icons"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanSpeak": {
+          "description": "Intermediate 2 can speak"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "Intermediate 2 can use animated emoji"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseAvatarAudio": {
+          "description": "Intermediate 2 can use avatar audio"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAnimations": {
+          "description": "Intermediate 2 can use custom animations"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomAvatar": {
+          "description": "Intermediate 2 can use custom avatar"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseCustomShaders": {
+          "description": "Intermediate 2 can use custom shaders"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseDrone": {
+          "description": "Intermediate 2 can use drone"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "Intermediate 2 can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseParticleSystems": {
+          "description": "Intermediate 2 can use particle systems"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseTriggers": {
+          "description": "Intermediate 2 can use triggers"
+        },
+        "CustomTrustLevel_IntermediateTrustLevel2_CanUseUserIcons": {
+          "description": "Intermediate 2 can use user icons"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanSpeak": {
+          "description": "Known can speak"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Known can use animated emoji"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseAvatarAudio": {
+          "description": "Known can use avatar audio"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAnimations": {
+          "description": "Known can use custom animations"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomAvatar": {
+          "description": "Known can use custom avatar"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseCustomShaders": {
+          "description": "Known can use custom shaders"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseDrone": {
+          "description": "Known can use drone"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Known can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseParticleSystems": {
+          "description": "Known can use particle systems"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseTriggers": {
+          "description": "Known can use triggers"
+        },
+        "CustomTrustLevel_KnownTrustLevel_CanUseUserIcons": {
+          "description": "Known can use user icons"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanSpeak": {
+          "description": "Legend can speak"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Legend can use animated emoji"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseAvatarAudio": {
+          "description": "Legend can use avatar audio"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAnimations": {
+          "description": "Legend can use custom animations"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomAvatar": {
+          "description": "Legend can use custom avatar"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseCustomShaders": {
+          "description": "Legend can use custom shaders"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseDrone": {
+          "description": "Legend can use drone"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Legend can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseParticleSystems": {
+          "description": "Legend can use particle systems"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseTriggers": {
+          "description": "Legend can use triggers"
+        },
+        "CustomTrustLevel_LegendTrustLevel_CanUseUserIcons": {
+          "description": "Legend can use user icons"
+        },
+        "CustomTrustLevel_LocalPlayer_CanSpeak": {
+          "description": "Local player can speak"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAnimatedEmoji": {
+          "description": "Local player can use animated emoji"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseAvatarAudio": {
+          "description": "Local player can use avatar audio"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAnimations": {
+          "description": "Local player can use custom animations"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomAvatar": {
+          "description": "Local player can use custom avatar"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseCustomShaders": {
+          "description": "Local player can use custom shaders"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseDrone": {
+          "description": "Local player can use drone"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseEmojiStickersSharing": {
+          "description": "Local player can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseParticleSystems": {
+          "description": "Local player can use particle systems"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseTriggers": {
+          "description": "Local player can use triggers"
+        },
+        "CustomTrustLevel_LocalPlayer_CanUseUserIcons": {
+          "description": "Local player can use user icons"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanSpeak": {
+          "description": "Negative can speak"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAnimatedEmoji": {
+          "description": "Negative can use animated emoji"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseAvatarAudio": {
+          "description": "Negative can use avatar audio"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAnimations": {
+          "description": "Negative can use custom animations"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomAvatar": {
+          "description": "Negative can use custom avatar"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseCustomShaders": {
+          "description": "Negative can use custom shaders"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseDrone": {
+          "description": "Negative can use drone"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseEmojiStickersSharing": {
+          "description": "Negative can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseParticleSystems": {
+          "description": "Negative can use particle systems"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseTriggers": {
+          "description": "Negative can use triggers"
+        },
+        "CustomTrustLevel_NegativeTrustLevel1_CanUseUserIcons": {
+          "description": "Negative can use user icons"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanSpeak": {
+          "description": "Negative can speak"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAnimatedEmoji": {
+          "description": "Negative can use animated emoji"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseAvatarAudio": {
+          "description": "Negative can use avatar audio"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAnimations": {
+          "description": "Negative can use custom animations"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomAvatar": {
+          "description": "Negative can use custom avatar"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseCustomShaders": {
+          "description": "Negative can use custom shaders"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseDrone": {
+          "description": "Negative can use drone"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseEmojiStickersSharing": {
+          "description": "Negative can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseParticleSystems": {
+          "description": "Negative can use particle systems"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseTriggers": {
+          "description": "Negative can use triggers"
+        },
+        "CustomTrustLevel_NegativeTrustLevel2_CanUseUserIcons": {
+          "description": "Negative can use user icons"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanSpeak": {
+          "description": "Negative can speak"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Negative can use animated emoji"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "Negative can use avatar audio"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "Negative can use custom animations"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "Negative can use custom avatar"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseCustomShaders": {
+          "description": "Negative can use custom shaders"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseDrone": {
+          "description": "Negative can use drone"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Negative can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseParticleSystems": {
+          "description": "Negative can use particle systems"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseTriggers": {
+          "description": "Negative can use triggers"
+        },
+        "CustomTrustLevel_NegativeTrustLevel_CanUseUserIcons": {
+          "description": "Negative can use user icons"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanSpeak": {
+          "description": "Trusted can speak"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Trusted can use animated emoji"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseAvatarAudio": {
+          "description": "Trusted can use avatar audio"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAnimations": {
+          "description": "Trusted can use custom animations"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomAvatar": {
+          "description": "Trusted can use custom avatar"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseCustomShaders": {
+          "description": "Trusted can use custom shaders"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseDrone": {
+          "description": "Trusted can use drone"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Trusted can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseParticleSystems": {
+          "description": "Trusted can use particle systems"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseTriggers": {
+          "description": "Trusted can use triggers"
+        },
+        "CustomTrustLevel_TrustedTrustLevel_CanUseUserIcons": {
+          "description": "Trusted can use user icons"
+        },
+        "CustomTrustLevel_Untrusted_CanSpeak": {
+          "description": "Untrusted can speak"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAnimatedEmoji": {
+          "description": "Untrusted can use animated emoji"
+        },
+        "CustomTrustLevel_Untrusted_CanUseAvatarAudio": {
+          "description": "Untrusted can use avatar audio"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAnimations": {
+          "description": "Untrusted can use custom animations"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomAvatar": {
+          "description": "Untrusted can use custom avatar"
+        },
+        "CustomTrustLevel_Untrusted_CanUseCustomShaders": {
+          "description": "Untrusted can use custom shaders"
+        },
+        "CustomTrustLevel_Untrusted_CanUseDrone": {
+          "description": "Untrusted can use drone"
+        },
+        "CustomTrustLevel_Untrusted_CanUseEmojiStickersSharing": {
+          "description": "Untrusted can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_Untrusted_CanUseParticleSystems": {
+          "description": "Untrusted can use particle systems"
+        },
+        "CustomTrustLevel_Untrusted_CanUseTriggers": {
+          "description": "Untrusted can use triggers"
+        },
+        "CustomTrustLevel_Untrusted_CanUseUserIcons": {
+          "description": "Untrusted can use user icons"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanSpeak": {
+          "description": "Negative can speak"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Negative can use animated emoji"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseAvatarAudio": {
+          "description": "Negative can use avatar audio"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAnimations": {
+          "description": "Negative can use custom animations"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomAvatar": {
+          "description": "Negative can use custom avatar"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseCustomShaders": {
+          "description": "Negative can use custom shaders"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseDrone": {
+          "description": "Negative can use drone"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Negative can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseParticleSystems": {
+          "description": "Negative can use particle systems"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseTriggers": {
+          "description": "Negative can use triggers"
+        },
+        "CustomTrustLevel_VeryNegativeTrustLevel_CanUseUserIcons": {
+          "description": "Negative can use user icons"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanSpeak": {
+          "description": "Veteran can speak"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAnimatedEmoji": {
+          "description": "Veteran can use animated emoji"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseAvatarAudio": {
+          "description": "Veteran can use avatar audio"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAnimations": {
+          "description": "Veteran can use custom animations"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomAvatar": {
+          "description": "Veteran can use custom avatar"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseCustomShaders": {
+          "description": "Veteran can use custom shaders"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseDrone": {
+          "description": "Veteran can use drone"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseEmojiStickersSharing": {
+          "description": "Veteran can use emoji/sticker sharing"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseParticleSystems": {
+          "description": "Veteran can use particle systems"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseTriggers": {
+          "description": "Veteran can use triggers"
+        },
+        "CustomTrustLevel_VeteranTrustLevel_CanUseUserIcons": {
+          "description": "Veteran can use user icons"
+        },
+        "VRC_LIMIT_PARTICLE_SYSTEMS": {
+          "description": "Limit particle systems"
+        },
+        "14C4B06B824EC593239362517F538B29": {
+          "description": "Authentication or install token"
+        },
+        "5F4DCC3B5AA765D61D8327DEB882CF99": {
+          "description": "Authentication or install token"
+        },
+        "785C2BDD2C43070A10BC35E5E687A467": {
+          "description": "Authentication or install token"
+        },
+        "93D3AE97F80BEDA8E396065DC4770A93": {
+          "description": "Authentication or install token"
+        },
+        "BCD9D91ED8D8F1926B20D3D620647C8E": {
+          "description": "Authentication or install token"
+        },
+        "BD2E932A03A19217AB5A1DFB5AA93340": {
+          "description": "Authentication or install token"
+        },
+        "E1F946CE2FD302B954E26AD92C0B30BF": {
+          "description": "Authentication or install token"
+        },
+        "ForceSettings_AutoWalk": {
+          "description": "Settings migration marker"
+        },
+        "ForceSettings_ClearFoldoutPrefKeys": {
+          "description": "Settings migration marker"
+        },
+        "ForceSettings_MicToggle": {
+          "description": "Settings migration marker"
+        },
+        "ForceSettings_MigrateMicSettings": {
+          "description": "Settings migration marker"
+        },
+        "ForceSettings_Mixer": {
+          "description": "Settings migration marker"
+        },
+        "ForceSettings_PedestalSharing": {
+          "description": "Settings migration marker"
+        },
+        "ForceSettings_SteamAudioSliderRemap": {
+          "description": "Settings migration marker"
+        },
+        "ForceSettings_WorldTooltipMode": {
+          "description": "Settings migration marker"
+        },
+        "LOGGING_ENABLED": {
+          "description": "Enable logging"
+        },
+        "Screenmanager Fullscreen mode": {
+          "description": "Fullscreen mode"
+        },
+        "Screenmanager Fullscreen mode Default": {
+          "description": "Default fullscreen mode"
+        },
+        "Screenmanager Resolution Height": {
+          "description": "Resolution height"
+        },
+        "Screenmanager Resolution Height Default": {
+          "description": "Default resolution height"
+        },
+        "Screenmanager Resolution Use Native": {
+          "description": "Use native resolution"
+        },
+        "Screenmanager Resolution Use Native Default": {
+          "description": "Default native resolution"
+        },
+        "Screenmanager Resolution Width": {
+          "description": "Resolution width"
+        },
+        "Screenmanager Resolution Width Default": {
+          "description": "Default resolution width"
+        },
+        "Screenmanager Resolution Window Height": {
+          "description": "Window height"
+        },
+        "Screenmanager Resolution Window Width": {
+          "description": "Window width"
+        },
+        "Screenmanager Stereo 3D": {
+          "description": "Stereo 3D"
+        },
+        "Screenmanager Window Position X": {
+          "description": "Window X position"
+        },
+        "Screenmanager Window Position Y": {
+          "description": "Window Y position"
+        },
+        "UserId": {
+          "description": "User ID"
+        },
+        "VRC_CLEAR_CACHE_ON_START": {
+          "description": "Clear content cache on start"
+        },
+        "VRC_SHOW_COMPATIBILITY_WARNINGS": {
+          "description": "Show compatibility warnings"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideAvatar": {
+          "description": "Hide avatar migration marker"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-HideDrone": {
+          "description": "Hide drone migration marker"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowAvatar": {
+          "description": "Show avatar migration marker"
+        },
+        "migrated-local-pmods-usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726-ShowDrone": {
+          "description": "Show drone migration marker"
+        },
+        "unity.cloud_userid": {
+          "description": "Unity cloud user ID"
+        },
+        "unity.player_session_count": {
+          "description": "Unity session telemetry"
+        },
+        "unity.player_sessionid": {
+          "description": "Unity session telemetry"
+        },
+        "usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726_LastExpiredSubscription": {
+          "description": "User last expired subscription"
+        },
+        "VRC_AFK_ENABLED": {
+          "description": "Enable AFK"
+        },
+        "VRC_PREFERRED_TIMEZONE_2": {
+          "description": "Preferred timezone 2"
+        }
       }
     },
     "tabs": {
@@ -1814,6 +3626,216 @@
       "supersampleFiltering": {
         "label": "Supersample Filtering",
         "hint": "Reduces aliasing at the cost of slight blur"
+      },
+      "linkRepair": {
+        "title": "Steam Link / Quest connection repair",
+        "body": "Diagnose VRLink session ID mismatches, WirelessHmdNotConnected, stale Quest pairing caches, SteamVR Beta markers and unfinished SteamVR updates. Repairs back up first and default to a dry-run preview.",
+        "diagnose": "Diagnose",
+        "dryRun": "Preview repair",
+        "dryRunShort": "Preview",
+        "apply": "Back up and repair",
+        "applyShort": "Apply",
+        "confirm": "This will close Steam/SteamVR, back up SteamVR settings, appmanifest and localconfig.vdf, clear the Steam Link pairing cache, remove SteamVR Beta markers, and open Steam validation. Continue?",
+        "confirmPlan": "Apply \"{{name}}\"? VRCSM backs up first and reports any write failures.",
+        "invalidSessionToast": "Invalid VRLink session packets found: {{count}}",
+        "diagnoseDone": "Steam Link diagnosis complete.",
+        "diagnoseFailed": "Steam Link diagnosis failed: {{msg}}",
+        "dryRunDone": "Preview complete. Review the planned repair steps.",
+        "repairDone": "Repair applied and Steam validation opened.",
+        "backupDone": "Quest Link/SteamVR settings backup created.",
+        "repairFailed": "Steam Link repair failed: {{msg}}",
+        "previewFailed": "Failed to generate preview: {{msg}}",
+        "restoreDone": "Restored {{count}} backup items.",
+        "restoreFailed": "Failed to restore backup: {{msg}}",
+        "confirmDialogTitle": "Confirm \"{{name}}\"",
+        "confirmDialogDesc": "Review the specific files and actions listed below first. Nothing is modified until you click \"Apply\".",
+        "restoreDialogTitle": "Restore Steam Link backup",
+        "restoreDialogDesc": "VRCSM closes Steam/SteamVR, backs up the current files first, then restores the backup you select.",
+        "previewing": "Generating preview…",
+        "executing": "Applying…",
+        "noPlannedActions": "No actions in the preview.",
+        "confirmDialogCancel": "Cancel, leave it",
+        "confirmDialogApply": "Confirm back up and repair",
+        "restoreConfirm": "Restore this backup",
+        "steamPath": "Steam path",
+        "build": "Build",
+        "beta": "Beta",
+        "stable": "Stable",
+        "invalidSessions": "Invalid session packets",
+        "questPairs": "Quest pairing cache",
+        "pendingDownload": "Pending update",
+        "lostMaster": "Master process lost",
+        "issues": "Detected issues",
+        "evidence": "Log evidence",
+        "noEvidence": "No matching lines in the scanned log tail.",
+        "recommended": "Recommended",
+        "best": "Recommended",
+        "settingProfiles": "Stable setting profiles",
+        "actions": "Planned actions",
+        "result": "Result",
+        "applied": "Applied",
+        "partial": "Partial",
+        "resultBetaKey": "Remove BetaKey line",
+        "resultQuestBlocks": "Remove Quest device blocks",
+        "resultBetaBlocks": "Remove 250820-beta blocks",
+        "resultStopped": "Processes stopped",
+        "resultBackups": "Backups created",
+        "resultSettingsApplied": "Settings written",
+        "resultRestored": "Items restored",
+        "currentBackupDir": "Backup of current files before restore",
+        "backupsTitle": "Backups and restore",
+        "backupsHint": "Restorable backups created by VRCSM are listed here. Restoring backs up the current files first.",
+        "refreshBackups": "Refresh",
+        "restorable": "Restorable",
+        "metadataMissing": "Manifest missing",
+        "restore": "Restore",
+        "severity": {
+          "critical": "Critical",
+          "warning": "Warning",
+          "info": "Info",
+          "ok": "Normal"
+        },
+        "risk": {
+          "low": "Low risk",
+          "medium": "Medium risk",
+          "high": "High risk"
+        },
+        "summary": {
+          "vrlinkSessionMismatch": "VRLink session mismatch: Quest packets reached the PC, but SteamVR rejected the wireless headset session.",
+          "betaMarkers": "SteamVR Beta or user-level Beta markers detected; this may pin SteamVR to a problematic VRLink build.",
+          "readyNoInvalid": "SteamVR Ready appears in the recent logs and there is no invalid-session burst in the scanned range.",
+          "lostMaster": "SteamVR closed because the master process was lost; check VRLink pairing and runtime process stability.",
+          "pairingRecords": "Steam Link / Quest pairing records detected; old records can be safely reset after backup.",
+          "noSignature": "No clear VRLink failure signature in the scanned SteamVR logs."
+        },
+        "recommendations": {
+          "resetPairing": "Reset the Steam Link / Quest pairing cache, then re-pair from the headset.",
+          "removeManifestBeta": "Remove the SteamVR BetaKey and validate AppID 250820 to return to the stable branch.",
+          "removeUserBeta": "Remove user-level 250820-beta / BetaKey markers from Steam localconfig.vdf.",
+          "removeQuestDevices": "Back up localconfig.vdf first, then remove old Oculus Quest / Steam Link streaming device records.",
+          "finishUpdate": "Let Steam finish the SteamVR update/validation, then retry Steam Link.",
+          "retryThenDryRun": "Retry from the headset first; if it fails, run the preview repair and compare the new log tail."
+        },
+        "issuesMap": {
+          "steamvr_missing": {
+            "title": "SteamVR or runtime directory not found",
+            "detail": "Steam Link VR requires AppID 250820. Install SteamVR first, then run validation."
+          },
+          "steamvr_pending_update": {
+            "title": "SteamVR has a pending update or unfinished download",
+            "detail": "When SteamVR is mid manifest switch/download, Steam Link may fail to connect. Let Steam finish updating, then re-pair."
+          },
+          "vrlink_session_mismatch": {
+            "title": "VRLink session ID mismatch",
+            "detail": "Found {{count}} invalid session packets while SteamVR reports the wireless headset is not connected."
+          },
+          "vrlink_invalid_session": {
+            "title": "Invalid VRLink session packets found",
+            "detail": "The scanned SteamVR log tail contains {{count}} invalid-session packets."
+          },
+          "steamvr_unknown_shutdown": {
+            "title": "SteamVR closed for an unknown master-process reason",
+            "detail": "This is usually tied to a VRLink handshake failure. Reset pairing first, then retry from the headset."
+          },
+          "quest_pairing_cache": {
+            "title": "Quest / Steam Link pairing cache detected",
+            "detail": "Found {{count}} Quest pairing markers in Steam localconfig.vdf."
+          },
+          "steamvr_beta_marker": {
+            "title": "SteamVR Beta markers detected",
+            "detail": "BetaKey, 250820-beta or encoded Beta markers can pin SteamVR to a VRLink build with broken pairing state."
+          },
+          "no_physical_ipv4_adapter": {
+            "title": "No active physical IPv4 network adapter detected",
+            "detail": "Steam Link works best with the PC on wired Ethernet and the headset on the same router."
+          },
+          "virtual_network_adapter": {
+            "title": "Virtual network adapter is enabled",
+            "detail": "Detected {{count}} active virtual network adapters. VRCSM won't change them automatically; if pairing keeps failing, temporarily disable VPN / Hyper-V."
+          },
+          "high_bandwidth": {
+            "title": "Steam Link bandwidth set high",
+            "detail": "{{bandwidth}} Mbps may be too aggressive for shared Wi-Fi. When troubleshooting, start with 80-120 Mbps."
+          },
+          "overscaled_low_vram": {
+            "title": "Supersampling high on low-VRAM GPU",
+            "detail": "Lower supersampling to 0.8-1.0 while validating the link; raise it once the connection is stable."
+          },
+          "no_blocker_found": {
+            "title": "No clear signature blocking Steam Link",
+            "detail": "No Beta, pending update or invalid-session burst in the scanned tail. Retry from the headset, and rerun diagnosis immediately if it fails."
+          }
+        },
+        "plans": {
+          "quest-link-backup": {
+            "title": "Back up current Quest Link settings",
+            "description": "Create restorable snapshots of SteamVR, VRLink, Quest pairing and the SteamVR manifest only, without changing any settings."
+          },
+          "pairing-reset": {
+            "title": "Reset pairing",
+            "description": "Clear account-level Quest / Steam Link pairing records and the SteamVR web cache, then let the headset re-pair cleanly."
+          },
+          "full-vrlink-reset": {
+            "title": "Full VRLink reset",
+            "description": "The full path that has fixed Quest 3 sessions before: pairing cache, SteamVR local runtime state, VRLink config folder, old logs, Beta markers, and Steam validation."
+          },
+          "stable-validate": {
+            "title": "Stable branch validation",
+            "description": "Remove only the SteamVR Beta markers and open Steam validation for AppID 250820."
+          },
+          "safe-streaming": {
+            "title": "Safe streaming settings",
+            "description": "Write conservative Quest-safe Steam Link settings without clearing pairing data."
+          }
+        },
+        "planActions": {
+          "stopSteamVrSteam": "Stop SteamVR/Steam",
+          "backupLocalconfig": "Back up localconfig.vdf",
+          "removeQuestBlocks": "Remove Quest streaming device blocks",
+          "clearHtmlcache": "Clear SteamVR htmlcache",
+          "stopSteamSteamVr": "Stop Steam/SteamVR",
+          "backupAll": "Back up appmanifest/localconfig/SteamVR settings",
+          "moveRuntimeState": "Move away steamvr.vrsettings and vrstats",
+          "moveVrlinkConfig": "Move away config/vrlink and remoteclients.vdf",
+          "archiveLogs": "Archive old VRLink logs",
+          "openValidate": "Open steam://validate/250820",
+          "backupVrlinkConfig": "Back up config/vrlink and remoteclients.vdf",
+          "backupHtmlcache": "Back up SteamVR htmlcache",
+          "backupManifestLocalconfig": "Back up appmanifest/localconfig",
+          "removeBetaMarkers": "Remove BetaKey / 250820-beta markers",
+          "backupVrsettings": "Back up steamvr.vrsettings",
+          "set80Auto": "Set 80 Mbps auto bandwidth",
+          "set1x": "Set 1.0x supersampling",
+          "set72hz": "Set 72 Hz",
+          "disableMotionSmoothing": "Disable motion smoothing"
+        },
+        "profiles": {
+          "low-stability": {
+            "title": "Low-performance stability",
+            "note": "Use when the connection succeeds but stutters, blurs or goes black."
+          },
+          "balanced-stable": {
+            "title": "Balanced stability",
+            "note": "Default recommendation for Quest 2/3 on typical Wi-Fi 5/6 routers."
+          },
+          "quest3-clarity": {
+            "title": "Quest 3 clarity",
+            "note": "Raise visual quality only after pairing/session is stable."
+          }
+        },
+        "repairActions": {
+          "stopProcess": "Stop process {{name}} ({{pid}})",
+          "moveIntoBackup": "Move into backup: {{path}}",
+          "archiveLog": "Archive old SteamVR log: {{path}}",
+          "backupPath": "Back up: {{path}}",
+          "restorePath": "Restore from backup: {{path}} ← {{backup}}",
+          "backupRemove": "Back up and remove: {{path}}",
+          "removeManifestBeta": "Remove BetaKey line from file: {{path}}",
+          "removeUserBeta": "Remove 250820-beta / BetaKey markers from file: {{path}}",
+          "removeQuestBlocks": "Remove Quest / Steam Link streaming device blocks from file: {{path}}",
+          "applySafeStreaming": "Apply safe Quest streaming settings: 80 Mbps auto bandwidth, 1.0x supersampling, 72 Hz, motion smoothing off",
+          "openValidateAfter": "After repair, open steam://validate/250820 to validate"
+        }
       }
     },
     "experimental": {
@@ -1896,7 +3918,10 @@
       "found": "Found",
       "missing": "Missing",
       "steamStreamingMicrophone": "Steam Streaming Microphone",
-      "vrlinkIssues": "vrlink Issues"
+      "vrlinkIssues": "vrlink Issues",
+      "openSteamLinkRepair": "Open Steam Link repair",
+      "linkRepairReady": "Steam Link repair panel ready. Invalid sessions: {{invalid}}, Quest pairing records: {{questPairs}}.",
+      "virtualAdapterWarning": "Virtual adapter \"{{name}}\" ({{description}}) is enabled with IP {{ip}} and may interfere with VR streaming."
     },
     "autoStart": {
       "label": "Launch with Windows",
@@ -2057,7 +4082,8 @@
       "install": "Install",
       "installing": "Installing…",
       "installed": "Installed",
-      "empty": "No plugins available."
+      "empty": "No plugins available.",
+      "fetchErrorHint": "The remote store feed dwgx.github.io/VRCSM/plugins.json is temporarily unreachable. The Hello Plugin and VRChat Auto-Uploader bundled with VRCSM are already installed and can be opened from the sidebar; only installing new third-party plugins is affected."
     },
     "detail": {
       "notFound": "Plugin not found in the feed.",
