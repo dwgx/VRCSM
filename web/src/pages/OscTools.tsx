@@ -182,7 +182,7 @@ export default function OscTools() {
         onImported={(firstId) => setSelectedId(firstId)}
       />
 
-      <section className="grid gap-3 xl:grid-cols-[minmax(300px,340px)_minmax(420px,1fr)_minmax(320px,380px)]">
+      <section className="grid gap-3 xl:grid-cols-[minmax(240px,320px)_minmax(360px,1fr)_minmax(260px,340px)]">
         {/* Column 1 — message list */}
         <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
           <div className="unity-panel-header flex items-center justify-between gap-2">

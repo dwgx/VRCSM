@@ -198,3 +198,85 @@ small (make the outer container a non-button element, e.g. a `div`/`article` wit
 a click handler and role, or hoist the favorite toggle out of the tile button).
 The `/tools/osc` 19px overflow is real but lower-blast-radius and a
 pure-CSS width/grid fix.
+
+---
+
+## Resolution (2026-07-04)
+
+Both gated defects are fixed. Full smoke suite now **54 passed / 0 failed**
+(was 52 passed / 2 failed). `tsc -b` and `pnpm build` both green. Assertions
+were **not** weakened — the same 1280x820 hard gate (high-severity offsets +
+`console.error`/`pageerror`) is unchanged; the routes now pass it on merit.
+
+### Fix 1 — `/worlds` nested `<button>` (correctness/accessibility)
+
+`WorldTile` was an outer real `<button>` wrapping `WorldThumb`, which contains
+its own "Save to library" `<button>` — invalid HTML that React warns breaks
+hydration. Replaced the outer `<button>` with a `role="button"` `<div>` and
+restored keyboard access via `tabIndex={0}` + Enter/Space `onKeyDown`, plus a
+`focus-visible` ring and `cursor-pointer`. The inner favorite-toggle `<button>`
+is untouched, so no button is nested in a button.
+
+`src/pages/Worlds.tsx` (~line 306):
+
+```diff
+-    <button
+-      type="button"
++    <div
++      role="button"
++      tabIndex={0}
+       onClick={onSelect}
++      onKeyDown={(e) => {
++        if (e.key === "Enter" || e.key === " ") {
++          e.preventDefault();
++          onSelect();
++        }
++      }}
+       className={
+-        "group relative flex flex-col overflow-hidden rounded-[var(--radius-sm)] border text-left transition-colors " +
++        "group relative flex flex-col cursor-pointer overflow-hidden rounded-[var(--radius-sm)] border text-left transition-colors " +
++        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary)/0.6)] " +
+         ...
+       }
+-    </button>
++    </div>
+```
+
+- Before: `console.error` (44 lines) "`<button>` cannot be a descendant of
+  `<button>`" fired on render; route failed the render-boundary gate.
+- After: 0 console errors on `/worlds`; `high==0` at 1280.
+
+### Fix 2 — `/tools/osc` horizontal overflow (layout)
+
+The three-column grid used min column widths
+(`minmax(300px,340px)_minmax(420px,1fr)_minmax(320px,380px)`) whose minimums
+plus gaps exceeded the 1280 content box, pushing the card and ~40 inner rows
+to `right≈1298.5px` (19px past the viewport). Reduced the column minimums to
+`minmax(240px,320px)_minmax(360px,1fr)_minmax(260px,340px)`.
+
+`src/pages/OscTools.tsx` (line 182):
+
+```diff
+-      <section className="grid gap-3 xl:grid-cols-[minmax(300px,340px)_minmax(420px,1fr)_minmax(320px,380px)]">
++      <section className="grid gap-3 xl:grid-cols-[minmax(240px,320px)_minmax(360px,1fr)_minmax(260px,340px)]">
+```
+
+- Before: 45 high-severity out-of-viewport elements; outermost card
+  `right=1298.5` (19px over `viewportWidth=1280`).
+- After: `high==0` at 1280 (`docScrollWidth==viewportWidth==1280`, 0 problems).
+  The route was already clean at 1024/900; still clean there.
+
+### Verification numbers (this run)
+
+| Check | Before | After |
+|-------|--------|-------|
+| Full smoke suite | 52 passed / 2 failed | **54 passed / 0 failed** |
+| `/tools/osc` high @1280 | 45 | **0** |
+| `/worlds` high @1280 | 1 (console.error gate) | **0** |
+| Routes with high>0 @1280 | 2 | **0** (all 27 routes clean) |
+| IPC load phase | 1000 calls, 0 unimpl, 0 err | 1008 calls, **0 unimpl, 0 err**, 37 methods |
+| `tsc -b` | green | **green** |
+| `pnpm build` | green | **green** |
+
+No route regressed. The offset heuristic, gate list, and viewport projects are
+unchanged from the original findings above.

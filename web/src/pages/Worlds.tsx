@@ -303,11 +303,23 @@ function WorldTile({
   const { asset } = useAsset("world", id, { enabled: visible, hintName: name });
   const display = asset?.displayName ?? name ?? shortenId(id);
   return (
-    <button
-      type="button"
+    // Rendered as a role="button" div, not a real <button>, because WorldThumb
+    // contains its own "save to library" <button> — a button nested in a button
+    // is invalid HTML and triggers React hydration errors plus undefined click
+    // behaviour. Keyboard access is preserved via tabIndex + Enter/Space.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       className={
-        "group relative flex flex-col overflow-hidden rounded-[var(--radius-sm)] border text-left transition-colors " +
+        "group relative flex flex-col cursor-pointer overflow-hidden rounded-[var(--radius-sm)] border text-left transition-colors " +
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary)/0.6)] " +
         (isSelected
           ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.14)]"
           : "border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] hover:border-[hsl(var(--border-strong))]")
@@ -330,7 +342,7 @@ function WorldTile({
           {shortenId(id, 8, 4)}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
