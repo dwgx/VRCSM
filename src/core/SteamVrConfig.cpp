@@ -2,7 +2,9 @@
 
 #include "Common.h"
 
+#include <cctype>
 #include <fstream>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <system_error>
@@ -136,6 +138,39 @@ bool isProcessRunning(const wchar_t* processName)
 
     CloseHandle(snap);
     return false;
+}
+
+// The Steam Link / VRLink virtual HMD caches a generic, often stale, friendly
+// name in LastKnown.HMDModel (e.g. reports "Quest 2" while a Quest 3 is
+// connected). The serial number carries the reliable generation token
+// (e.g. "VRLINKHMDQUEST3"), so when the active driver is vrlink we prefer a
+// model name inferred from the serial. Returns nullopt when no Quest token
+// is present, leaving the raw model untouched.
+std::optional<std::string> resolveVrlinkHmdModel(const std::string& driver, const std::string& serial)
+{
+    std::string lowerDriver = driver;
+    for (auto& c : lowerDriver) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (lowerDriver != "vrlink")
+    {
+        return std::nullopt;
+    }
+
+    // Uppercase and strip separators so "QUEST 3", "QUEST_3" and "QUEST3"
+    // all collapse to a single comparable token.
+    std::string upperSerial;
+    upperSerial.reserve(serial.size());
+    for (unsigned char c : serial)
+    {
+        if (std::isalnum(c)) upperSerial.push_back(static_cast<char>(std::toupper(c)));
+    }
+
+    // Match in specificity order so "QUEST3S" is not shadowed by "QUEST3",
+    // and "QUEST3" is not shadowed by "QUEST" alone.
+    if (upperSerial.find("QUEST3S") != std::string::npos) return "Quest 3S";
+    if (upperSerial.find("QUEST3") != std::string::npos) return "Quest 3";
+    if (upperSerial.find("QUESTPRO") != std::string::npos) return "Quest Pro";
+    if (upperSerial.find("QUEST2") != std::string::npos) return "Quest 2";
+    return std::nullopt;
 }
 
 } // namespace
@@ -410,6 +445,13 @@ SteamVrHardwareInfo SteamVrConfig::ExtractHardwareInfo(const nlohmann::json& doc
         {
             info.hmdSerial = hmd["HMDSerialNumber"].get<std::string>();
         }
+    }
+
+    // The vrlink virtual HMD reports a stale/generic model name; prefer the
+    // generation token embedded in the serial for the friendly label.
+    if (auto resolved = resolveVrlinkHmdModel(info.hmdDriver, info.hmdSerial))
+    {
+        info.hmdModel = *resolved;
     }
 
     return info;
