@@ -3,18 +3,28 @@
 #include "../pch.h"
 
 #include "../core/Common.h"
-#include "../core/Database.h"
-#include "../core/DiscordRpc.h"
-#include "../core/LogTailer.h"
-#include "../core/OscBridge.h"
-#include "../core/Pipeline.h"
-#include "../core/ScreenshotWatcher.h"
-#include "../core/TaskQueue.h"
-#include "../core/VrcRadarEngine.h"
+#include "../core/TaskQueue.h"        // m_previewQueue — held by value
+#include "../core/VrcRadarEngine.h"   // m_radarEngine  — held by value
 
 #include <future>
 
 class WebViewHost;
+
+// These core types are only ever held here through std::unique_ptr, and the
+// IpcBridge destructor is defined out-of-line in IpcBridge.cpp (which includes
+// the full definitions), so a forward declaration is sufficient for the header.
+// Keeping the heavy includes out of IpcBridge.h means the 19 bridges/*.cpp that
+// pull it in via BridgeCommon.h no longer recompile against these headers.
+// (Database is likewise no longer re-exported here: every Database-using bridge
+// includes core/Database.h directly.)
+namespace vrcsm::core
+{
+class DiscordRpc;
+class LogTailer;
+class OscBridge;
+class Pipeline;
+class ScreenshotWatcher;
+} // namespace vrcsm::core
 
 // Structured exception carrying a full Error. Bridge handlers throw this
 // when a core Result<T> fails so DispatchFromOrigin can preserve the stable

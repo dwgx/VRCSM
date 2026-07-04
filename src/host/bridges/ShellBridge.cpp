@@ -4,8 +4,13 @@
 #include "../../core/AuthStore.h"
 #include "../../core/Common.h"
 #include "../../core/Database.h"
+#include "../../core/DiscordRpc.h"
+#include "../../core/LogTailer.h"
+#include "../../core/OscBridge.h"
 #include "../../core/PathProbe.h"
+#include "../../core/Pipeline.h"
 #include "../../core/ProcessGuard.h"
+#include "../../core/ScreenshotWatcher.h"
 #include "../../core/VrcApi.h"
 #include "../WebViewHost.h"
 

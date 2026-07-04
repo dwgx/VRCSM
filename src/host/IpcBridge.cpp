@@ -12,6 +12,15 @@
 #include "../core/PathProbe.h"
 #include "../core/ProcessGuard.h"
 
+// Full definitions of the unique_ptr member types (forward-declared in
+// IpcBridge.h). The out-of-line ~IpcBridge below calls Stop()/StopListen() on
+// them, so their complete types must be visible in this translation unit.
+#include "../core/DiscordRpc.h"
+#include "../core/LogTailer.h"
+#include "../core/OscBridge.h"
+#include "../core/Pipeline.h"
+#include "../core/ScreenshotWatcher.h"
+
 #include "../core/plugins/PluginRegistry.h"
 
 #include <cctype>

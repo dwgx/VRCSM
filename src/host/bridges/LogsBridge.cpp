@@ -3,6 +3,7 @@
 
 #include "../../core/LogEventClassifier.h"
 #include "../../core/LogParser.h"
+#include "../../core/LogTailer.h"
 #include "../../core/ProcessGuard.h"
 #include "../../core/PathProbe.h"
 #include "../../core/Database.h"
