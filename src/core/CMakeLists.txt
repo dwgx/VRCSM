@@ -6,6 +6,15 @@ add_library(vrcsm_core STATIC
     CacheScanner.cpp
     BundleSniff.cpp
     Database.cpp
+    Database_History.cpp
+    Database_Avatars.cpp
+    Database_Friends.cpp
+    Database_Favorites.cpp
+    Database_Analytics.cpp
+    Database_AssetCache.cpp
+    Database_Recordings.cpp
+    Database_Rules.cpp
+    Database_Embeddings.cpp
     LogAtoms.cpp
     LogParser.cpp
     LogTailer.cpp
