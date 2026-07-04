@@ -148,8 +148,20 @@ export function RelationshipGraph({ graph, onSelect }: RelationshipGraphProps) {
     );
   }
 
+  const focusedNode = hovered !== null ? posById.get(hovered)?.node : undefined;
+
   return (
     <div className="flex flex-col gap-2">
+      {/* Announce the hovered/focused node to assistive tech so keyboard users
+          get the same context sighted users get on hover. */}
+      <div className="sr-only" aria-live="polite" role="status">
+        {focusedNode
+          ? t("socialGraph.nodeFocused", {
+              defaultValue: "{{name}} focused",
+              name: focusedNode.display_name || focusedNode.user_id,
+            })
+          : ""}
+      </div>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -194,12 +206,24 @@ export function RelationshipGraph({ graph, onSelect }: RelationshipGraphProps) {
               <g
                 key={node.user_id}
                 transform={`translate(${x} ${y})`}
-                style={{ cursor: "pointer", opacity: dim ? 0.25 : 1 }}
+                style={{ cursor: "pointer", opacity: dim ? 0.25 : 1, outline: "none" }}
                 onMouseEnter={() => setHovered(node.user_id)}
                 onMouseLeave={() => setHovered(null)}
+                onFocus={() => setHovered(node.user_id)}
+                onBlur={() => setHovered(null)}
                 onClick={() => onSelect?.(node.user_id)}
+                // Keyboard access: Enter/Space activates like a click. Matches the
+                // role="button" div pattern in Avatars.tsx (tabIndex + Enter/Space).
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect?.(node.user_id);
+                  }
+                }}
                 role="button"
+                tabIndex={0}
                 aria-label={node.display_name || node.user_id}
+                className="focus-visible:outline-none [&>circle]:focus-visible:stroke-[hsl(var(--primary))] [&>circle]:focus-visible:[stroke-width:3]"
               >
                 <circle
                   r={r}
