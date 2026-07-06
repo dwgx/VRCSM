@@ -25,6 +25,12 @@ inline constexpr UINT WM_APP_FACTORY_RESET_QUIT = WM_APP + 2;
 // WebViewHost::RefreshPluginMappings().
 inline constexpr UINT WM_APP_REFRESH_PLUGIN_MAPPINGS = WM_APP + 3;
 
+// Callback message registered with Shell_NotifyIcon for the system-tray
+// icon. Shell posts this to the owner window on tray interaction; LParam
+// low word carries the originating mouse message (e.g. WM_LBUTTONUP).
+// WParam is the tray icon id. Handled entirely on the UI thread.
+inline constexpr UINT WM_APP_TRAY_CALLBACK = WM_APP + 4;
+
 // Marshalled payload for WM_APP_POST_WEB_MESSAGE. `targetPluginId`
 // is non-empty only when the message should go to a specific plugin
 // iframe; otherwise DeliverWebMessage falls back to the top-level

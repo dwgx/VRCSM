@@ -4,6 +4,7 @@
 #include "WebViewHost.h"
 
 #include <dwmapi.h>
+#include <shellapi.h>
 #include <string>
 
 MainWindow::MainWindow() = default;
@@ -47,6 +48,10 @@ void MainWindow::RegisterWindowClass(HINSTANCE hInstance)
     {
         appIcon = LoadIconW(nullptr, IDI_APPLICATION);
     }
+
+    // Cached for the tray icon (NOTIFYICONDATA.hIcon). LoadIconW returns a
+    // shared/system-managed handle, so it must not be DestroyIcon'd.
+    m_appIcon = appIcon;
 
     WNDCLASSEXW wc{};
     wc.cbSize = sizeof(wc);
@@ -104,6 +109,128 @@ void MainWindow::ApplyWindowChrome()
         sizeof(backdropType));
 }
 
+void MainWindow::AddTrayIcon()
+{
+    if (m_trayIconAdded || m_hwnd == nullptr)
+    {
+        return;
+    }
+
+    NOTIFYICONDATAW nid{};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = m_hwnd;
+    nid.uID = kTrayIconId;
+    nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    nid.uCallbackMessage = WM_APP_TRAY_CALLBACK;
+    nid.hIcon = m_appIcon;
+    // Tooltip. NOTIFYICONDATAW.szTip is a fixed wchar_t buffer.
+    wcscpy_s(nid.szTip, L"VRCSM");
+
+    if (Shell_NotifyIconW(NIM_ADD, &nid))
+    {
+        m_trayIconAdded = true;
+    }
+}
+
+void MainWindow::RemoveTrayIcon()
+{
+    if (!m_trayIconAdded)
+    {
+        return;
+    }
+
+    NOTIFYICONDATAW nid{};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = m_hwnd;
+    nid.uID = kTrayIconId;
+    Shell_NotifyIconW(NIM_DELETE, &nid);
+    m_trayIconAdded = false;
+}
+
+void MainWindow::RestoreFromTray()
+{
+    if (m_hwnd == nullptr)
+    {
+        return;
+    }
+
+    ShowWindow(m_hwnd, SW_SHOW);
+    // If the window was minimized, SW_RESTORE brings it back to its prior
+    // (non-minimized) size; harmless when already normal.
+    ShowWindow(m_hwnd, SW_RESTORE);
+    SetForegroundWindow(m_hwnd);
+}
+
+void MainWindow::HideToTray()
+{
+    if (m_hwnd == nullptr)
+    {
+        return;
+    }
+
+    // Ensure a tray icon exists to restore from before hiding, so the
+    // window can never become unreachable.
+    if (!m_trayIconAdded)
+    {
+        AddTrayIcon();
+    }
+    ShowWindow(m_hwnd, SW_HIDE);
+}
+
+void MainWindow::ShowTrayMenu()
+{
+    if (m_hwnd == nullptr)
+    {
+        return;
+    }
+
+    HMENU menu = CreatePopupMenu();
+    if (menu == nullptr)
+    {
+        return;
+    }
+
+    AppendMenuW(menu, MF_STRING, kTrayCmdShow, L"Show VRCSM");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, kTrayCmdQuit, L"Quit");
+
+    POINT cursor{};
+    GetCursorPos(&cursor);
+
+    // Per MSDN, the owner window must be foreground for the menu to
+    // dismiss correctly when the user clicks elsewhere.
+    SetForegroundWindow(m_hwnd);
+    TrackPopupMenu(
+        menu,
+        TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
+        cursor.x,
+        cursor.y,
+        0,
+        m_hwnd,
+        nullptr);
+    // Posting a null message flushes the menu's message queue quirk.
+    PostMessageW(m_hwnd, WM_NULL, 0, 0);
+
+    DestroyMenu(menu);
+}
+
+void MainWindow::QuitFromTray()
+{
+    if (m_quitting)
+    {
+        return;
+    }
+    m_quitting = true;
+
+    // Remove the tray icon first so no ghost lingers if teardown races.
+    RemoveTrayIcon();
+
+    if (m_hwnd != nullptr && IsWindow(m_hwnd))
+    {
+        DestroyWindow(m_hwnd);
+    }
+}
+
 LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     MainWindow* instance = nullptr;
@@ -136,8 +263,50 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         ApplyWindowChrome();
         m_webViewHost = std::make_unique<WebViewHost>();
         THROW_IF_FAILED(m_webViewHost->Initialize(m_hwnd));
+        AddTrayIcon();
         return 0;
     }
+    case WM_SYSCOMMAND:
+        // Minimize-to-tray: hide the window instead of minimizing to the
+        // taskbar. Close (WM_CLOSE) is left alone so the app remains
+        // quittable via its title bar; the tray menu also offers Quit.
+        if ((wParam & 0xFFF0) == SC_MINIMIZE)
+        {
+            HideToTray();
+            return 0;
+        }
+        return DefWindowProcW(m_hwnd, message, wParam, lParam);
+    case WM_APP_TRAY_CALLBACK:
+    {
+        const UINT mouseEvent = LOWORD(lParam);
+        switch (mouseEvent)
+        {
+        case WM_LBUTTONUP:
+        case WM_LBUTTONDBLCLK:
+            RestoreFromTray();
+            break;
+        case WM_RBUTTONUP:
+        case WM_CONTEXTMENU:
+            ShowTrayMenu();
+            break;
+        default:
+            break;
+        }
+        return 0;
+    }
+    case WM_COMMAND:
+        switch (LOWORD(wParam))
+        {
+        case kTrayCmdShow:
+            RestoreFromTray();
+            return 0;
+        case kTrayCmdQuit:
+            QuitFromTray();
+            return 0;
+        default:
+            break;
+        }
+        return DefWindowProcW(m_hwnd, message, wParam, lParam);
     case WM_SIZE:
         if (m_webViewHost != nullptr)
         {
@@ -147,6 +316,7 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         }
         return 0;
     case WM_DESTROY:
+        RemoveTrayIcon();
         PostQuitMessage(0);
         return 0;
     case WM_APP_POST_WEB_MESSAGE:
