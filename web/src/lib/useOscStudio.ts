@@ -29,8 +29,10 @@ import {
   type HardwareTelemetrySnapshot,
   type OscStudioCard,
   type OscStudioProfile,
+  type OscTemplateContext,
   type OscValueType,
 } from "@/lib/osc-studio";
+import { useNowPlaying } from "@/lib/useNowPlaying";
 
 export const MAX_LOG_ENTRIES = 200;
 export const AUTO_TELEMETRY_REFRESH_MS = 5000;
@@ -118,6 +120,9 @@ function isChatboxCard(card: OscStudioCard): boolean {
 
 export function useOscStudio() {
   const { t } = useTranslation();
+
+  // --- Now-playing media snapshot (polled + pushed) --------------------------
+  const nowPlaying = useNowPlaying();
 
   // --- Profiles + cards ------------------------------------------------------
   const [profilesState, setProfilesState] = useState(() => loadOscStudioProfiles());
@@ -388,6 +393,21 @@ export function useOscStudio() {
     return { status: "sent", message: trimmed };
   }
 
+  // Build a render context from live refs (not React state) so the recursive
+  // auto-send loop and the 1s send cadence always read the freshest hardware +
+  // music snapshot and the NowPlayingPanel's width/ASCII-fold controls, with
+  // {music.position} extrapolated at each send via `now`.
+  function liveTemplateContext(): OscTemplateContext {
+    return {
+      hardware: hardwareRef.current,
+      now: new Date(),
+      music: nowPlaying.musicRef.current,
+      musicProgressWidth: nowPlaying.progressWidthRef.current,
+      musicMarqueeWidth: nowPlaying.marqueeWidthRef.current,
+      asciiFold: nowPlaying.asciiFoldRef.current,
+    };
+  }
+
   async function sendCard(card: OscStudioCard, options: SendCardOptions = {}): Promise<SendOutcome> {
     if (!card.enabled) {
       return { status: "skipped", reason: t("osc.studio.cardDisabled", { defaultValue: "Card is disabled" }) };
@@ -401,7 +421,7 @@ export function useOscStudio() {
 
     if (isChatboxCard(card)) {
       return await sendChatboxWithLimit(
-        () => cardPreview(card, { hardware: hardwareRef.current, now: new Date() }),
+        () => cardPreview(card, liveTemplateContext()),
         options,
       );
     }
@@ -645,6 +665,10 @@ export function useOscStudio() {
     hardwareLoading,
     hardwareRef,
     refreshHardware,
+
+    // now-playing music
+    nowPlaying,
+    liveTemplateContext,
 
     // sending
     sendCard,

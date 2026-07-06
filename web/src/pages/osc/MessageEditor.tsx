@@ -14,7 +14,7 @@ import {
   type OscValueType,
 } from "@/lib/osc-studio";
 import type { AutoSendStatus } from "@/lib/useOscStudio";
-import { isTemplateCard, outgoingSpecForCard } from "./shared";
+import { isTemplateCard, outgoingSpecForCard, type TemplateExtras } from "./shared";
 
 const VALUE_TYPES: OscValueType[] = ["int", "float", "string", "bool"];
 
@@ -22,6 +22,7 @@ interface MessageEditorProps {
   card: OscStudioCard | null;
   hardware: HardwareSnapshot | null;
   now: Date;
+  musicExtras?: TemplateExtras;
   sending: boolean;
   autoActive: boolean;
   autoStatus: AutoSendStatus | null;
@@ -43,6 +44,7 @@ export function MessageEditor({
   card,
   hardware,
   now,
+  musicExtras = {},
   sending,
   autoActive,
   autoStatus,
@@ -66,7 +68,7 @@ export function MessageEditor({
 
   const templateCard = isTemplateCard(card);
   const templateText = card.template ?? "";
-  const spec = outgoingSpecForCard(card, hardware, now);
+  const spec = outgoingSpecForCard(card, hardware, now, musicExtras);
   const rendered = spec.argPreview;
   const nextSendInSec = autoStatus?.nextSendAt
     ? Math.max(0, Math.ceil((autoStatus.nextSendAt - nowMs) / 1000))
@@ -130,7 +132,7 @@ export function MessageEditor({
               <span className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
                 {t("osc.editor.template", { defaultValue: "Chatbox text" })}
               </span>
-              <VariablePicker hardware={hardware} now={now} onInsert={insertToken} />
+              <VariablePicker hardware={hardware} now={now} musicExtras={musicExtras} onInsert={insertToken} />
             </div>
             <textarea
               ref={textareaRef}

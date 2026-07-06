@@ -29,7 +29,8 @@ import { AddMessageMenu } from "./osc/AddMessageMenu";
 import { LoopPanel } from "./osc/LoopPanel";
 import { HardwarePanel } from "./osc/HardwarePanel";
 import { AvatarScanPanel } from "./osc/AvatarScanPanel";
-import { outgoingSpecForCard } from "./osc/shared";
+import { NowPlayingPanel } from "./osc/NowPlayingPanel";
+import { outgoingSpecForCard, type TemplateExtras } from "./osc/shared";
 
 function makeId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
@@ -84,7 +85,15 @@ export default function OscTools() {
     startAutoSend,
     stopAutoSend,
     hardwareLoading,
+    nowPlaying,
   } = studio;
+
+  const musicExtras: TemplateExtras = {
+    music: nowPlaying.music,
+    musicProgressWidth: nowPlaying.progressWidth,
+    musicMarqueeWidth: nowPlaying.marqueeWidth,
+    asciiFold: nowPlaying.asciiFold,
+  };
 
   const [selectedId, setSelectedId] = useState<string | null>(() => cards[0]?.id ?? null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -120,7 +129,7 @@ export default function OscTools() {
     // Use spec.argPreview for the arg column (rendered text for chatbox,
     // coerced value for value cards). outcome.message for value cards is
     // "<address> <value>", which would duplicate the address column.
-    const spec = outgoingSpecForCard(card, hardware, new Date());
+    const spec = outgoingSpecForCard(card, hardware, new Date(), musicExtras);
     const entry: OscLogEntry = {
       ts: new Date().toISOString().slice(11, 23),
       address: spec.address,
@@ -242,8 +251,8 @@ export default function OscTools() {
                   active={card.id === selectedId}
                   autoActive={activeAutoId === card.id}
                   sending={sendingId === card.id}
-                  preview={cardPreview(card, { hardware, now })}
-                  outgoing={outgoingSpecForCard(card, hardware, now).address}
+                  preview={cardPreview(card, { hardware, now, ...musicExtras })}
+                  outgoing={outgoingSpecForCard(card, hardware, now, musicExtras).address}
                   canMoveUp={index > 0}
                   canMoveDown={index < cards.length - 1}
                   dragging={draggedId === card.id}
@@ -273,6 +282,7 @@ export default function OscTools() {
             hardware={hardware}
             now={now}
             nowMs={clockTick}
+            musicExtras={musicExtras}
             sending={sendingId === selectedCard?.id}
             autoActive={activeAutoId !== null && activeAutoId === selectedCard?.id}
             autoStatus={autoStatus}
@@ -285,8 +295,17 @@ export default function OscTools() {
           <LoopPanel studio={studio} />
         </div>
 
-        {/* Column 3 — hardware + avatar sources */}
+        {/* Column 3 — now playing + hardware + avatar sources */}
         <div className="grid content-start gap-3">
+          <NowPlayingPanel
+            nowPlaying={nowPlaying}
+            now={now}
+            onAddCard={handleAddCard}
+            onSetTemplate={(template) =>
+              selectedCard && patchCard(selectedCard.id, { template })
+            }
+            canSetTemplate={selectedCard?.address === "/chatbox/input" || selectedCard?.template !== undefined}
+          />
           <HardwarePanel hardware={hardware} loading={hardwareLoading} />
           <AvatarScanPanel localAvatars={localAvatars} onAddCard={handleAddCard} />
         </div>

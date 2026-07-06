@@ -14,10 +14,12 @@ import {
   renderOscTemplate,
   type HardwareSnapshot,
 } from "@/lib/osc-studio";
+import type { TemplateExtras } from "./shared";
 
 interface VariablePickerProps {
   hardware: HardwareSnapshot | null;
   now: Date;
+  musicExtras?: TemplateExtras;
   onInsert: (token: string) => void;
   disabled?: boolean;
 }
@@ -27,7 +29,7 @@ interface VariablePickerProps {
  * library. Click a token to insert it at the caret; a live sample value is
  * shown next to each so users know what the token resolves to right now.
  */
-export function VariablePicker({ hardware, now, onInsert, disabled }: VariablePickerProps) {
+export function VariablePicker({ hardware, now, musicExtras = {}, onInsert, disabled }: VariablePickerProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -70,7 +72,7 @@ export function VariablePicker({ hardware, now, onInsert, disabled }: VariablePi
                   {group.label}
                 </div>
                 {group.tokens.map((token) => {
-                  const sample = renderOscTemplate(token, { hardware, now });
+                  const sample = renderOscTemplate(token, { hardware, now, ...musicExtras });
                   return (
                     <button
                       key={token}

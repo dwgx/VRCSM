@@ -1036,6 +1036,28 @@ class IpcClient {
       case "osc.listen.start":
       case "osc.listen.stop":
         return { ok: true } as unknown as TResult;
+      case "music.nowPlaying": {
+        // Browser dev mode has no GSMTC session. Return a deterministic
+        // "playing" fixture so the NowPlayingPanel + {music.*} tokens render
+        // real-looking output without a host attached. position_at_ms=now so
+        // client-side extrapolation advances from the sampled position.
+        const durationMs = 214_000;
+        const positionMs = 72_000;
+        return {
+          active: true,
+          title: "Mock Song Title",
+          artist: "Mock Artist",
+          album: "Mock Album",
+          status: "playing",
+          app_id: "Spotify.exe",
+          app_name: "Spotify",
+          position_ms: positionMs,
+          duration_ms: durationMs,
+          position_at_ms: Date.now(),
+          playback_rate: 1.0,
+          has_thumbnail: true,
+        } as unknown as TResult;
+      }
       case "junction.repair":
         return { ok: true } as unknown as TResult;
       case "thumbnails.fetch": {

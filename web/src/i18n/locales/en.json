@@ -410,6 +410,28 @@
       "live": "Live sensors",
       "sensorNeeded": "Needs sensor provider"
     },
+    "music": {
+      "title": "Now playing",
+      "live": "live",
+      "idle": "no media",
+      "unknownTitle": "Unknown title",
+      "artist": "Artist",
+      "album": "Album",
+      "source": "Source",
+      "emptyHint": "Play a track in any app (Spotify, browser, foobar2000...) and it appears here.",
+      "templates": "Templates",
+      "presetSimple": "Simple",
+      "presetProgress": "Progress",
+      "presetMarquee": "Marquee",
+      "presetCompact": "Compact",
+      "applyToSelected": "Click to set the selected message's template.",
+      "addAsCard": "Click to add a new chatbox message.",
+      "preview": "Chatbox preview",
+      "previewEmpty": "(nothing playing)",
+      "barWidth": "Progress bar width",
+      "asciiFold": "ASCII fold",
+      "asciiFoldHint": "Strip non-ASCII for fonts that mangle CJK"
+    },
     "auto": {
       "badge": "AUTO",
       "stats": "Sent {{sent}} · skipped {{skipped}}",

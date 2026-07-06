@@ -447,6 +447,28 @@
       "live": "实时传感器",
       "sensorNeeded": "需要传感器提供程序"
     },
+    "music": {
+      "title": "正在播放",
+      "live": "实时",
+      "idle": "无媒体",
+      "unknownTitle": "未知曲目",
+      "artist": "艺术家",
+      "album": "专辑",
+      "source": "来源",
+      "emptyHint": "在任意应用（Spotify、浏览器、foobar2000…）中播放音乐，即可在此显示。",
+      "templates": "模板",
+      "presetSimple": "简洁",
+      "presetProgress": "进度",
+      "presetMarquee": "滚动",
+      "presetCompact": "紧凑",
+      "applyToSelected": "点击可将所选消息的模板设置为此项。",
+      "addAsCard": "点击添加一条新的 chatbox 消息。",
+      "preview": "聊天框预览",
+      "previewEmpty": "（无播放）",
+      "barWidth": "进度条宽度",
+      "asciiFold": "ASCII 转换",
+      "asciiFoldHint": "去除非 ASCII 字符，适配无法正确显示 CJK 的字体"
+    },
     "auto": {
       "badge": "AUTO",
       "stats": "已发送 {{sent}} · 已跳过 {{skipped}}",

@@ -127,9 +127,37 @@ export interface HardwareTelemetrySnapshot {
   sources?: TelemetrySourceStatus[] | null;
 }
 
+/**
+ * Snapshot of the OS-level "now playing" media session, mirrored 1:1 from the
+ * C++ `music.nowPlaying` IPC result (snake_case keys). `active` is false when no
+ * media session is present; all string fields may be empty in that case.
+ */
+export interface NowPlayingSnapshot {
+  active: boolean;
+  title: string;
+  artist: string;
+  album: string;
+  status: "playing" | "paused" | "stopped" | string;
+  app_id: string;
+  app_name: string;
+  position_ms: number;
+  duration_ms: number;
+  position_at_ms: number;
+  playback_rate: number;
+  has_thumbnail: boolean;
+}
+
 export interface OscTemplateContext {
   hardware?: HardwareSnapshot | null;
   now?: Date;
+  /** Live now-playing snapshot; when null/undefined all {music.*} render empty. */
+  music?: NowPlayingSnapshot | null;
+  /** Character width for the {music.progressBar} token (default 10). */
+  musicProgressWidth?: number;
+  /** Character width for the {music.marquee} scrolling window (default 20). */
+  musicMarqueeWidth?: number;
+  /** When true, fold the rendered line to ASCII (strip/transliterate). */
+  asciiFold?: boolean;
 }
 
 export type OscTemplateComponentGroup = "time" | "cpu" | "gpu" | "memory" | "system";
@@ -222,7 +250,66 @@ export const OSC_VARIABLE_GROUPS = [
     label: "System",
     tokens: ["{motherboard.vendor}", "{motherboard.model}", "{motherboard.name}", "{hmd.model}", "{hmd.manufacturer}", "{os.build}", "{sensor.count}", "{fan.count}", "{fan.0}", "{power.0}"],
   },
+  {
+    id: "music",
+    label: "Music",
+    tokens: ["{music.title}", "{music.artist}", "{music.album}", "{music.status}", "{music.position}", "{music.duration}", "{music.progressBar}", "{music.percent}", "{music.appName}", "{music.marquee}"],
+  },
 ] as const;
+
+/**
+ * Now-playing chatbox template presets (doc §5). Insertable — never auto-added
+ * to the enabled default cards, so they don't spam the chatbox on first load.
+ */
+export interface MusicPreset {
+  id: string;
+  labelKey: string;
+  label: string;
+  template: string;
+}
+
+export const MUSIC_PRESETS: MusicPreset[] = [
+  {
+    id: "music-simple",
+    labelKey: "osc.music.presetSimple",
+    label: "Simple",
+    template: "♪ {music.title} — {music.artist}",
+  },
+  {
+    id: "music-progress",
+    labelKey: "osc.music.presetProgress",
+    label: "Progress",
+    template: "{music.status} {music.title} [{music.progressBar}] {music.position}/{music.duration}",
+  },
+  {
+    id: "music-marquee",
+    labelKey: "osc.music.presetMarquee",
+    label: "Marquee",
+    template: "♪ {music.marquee} — {music.artist}",
+  },
+  {
+    id: "music-compact",
+    labelKey: "osc.music.presetCompact",
+    label: "Compact",
+    template: "♪ {music.title}",
+  },
+];
+
+/** Build a fresh chatbox card from a music preset (unique id, disabled auto). */
+export function makeMusicPresetCard(preset: MusicPreset): OscStudioCard {
+  return {
+    id: `${preset.id}-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 6)}`,
+    kind: "chatbox-template",
+    title: `Music — ${preset.label}`,
+    group: "chatbox",
+    enabled: true,
+    address: "/chatbox/input",
+    valueType: "string",
+    value: "",
+    template: preset.template,
+    autoIntervalSec: 1,
+  };
+}
 
 export const OSC_VARIABLES = OSC_VARIABLE_GROUPS.flatMap((group) => group.tokens);
 
@@ -390,6 +477,24 @@ export const OSC_STUDIO_SCENES: Array<{ id: string; label: string; cards: OscStu
         valueType: "string",
         value: "",
         template: "Thermal | CPU {cpu.tempC} {cpu.powerW} | GPU {gpu.tempC} {gpu.powerW} | {fan.0}",
+        autoIntervalSec: 1,
+      },
+    ],
+  },
+  {
+    id: "template-now-playing",
+    label: "Now Playing",
+    cards: [
+      {
+        id: "scene-now-playing",
+        kind: "chatbox-template",
+        title: "Now Playing",
+        group: "chatbox",
+        enabled: true,
+        address: "/chatbox/input",
+        valueType: "string",
+        value: "",
+        template: "{music.status} {music.title} [{music.progressBar}] {music.position}/{music.duration}",
         autoIntervalSec: 1,
       },
     ],
@@ -717,6 +822,129 @@ export function coerceOscValue(
   }
 }
 
+// ── Now-playing render helpers (pure, unit-tested) ──────────────────────────
+
+/** Status → chatbox glyph. Hardcoded so templates read the same everywhere. */
+export const MUSIC_STATUS_GLYPHS: Record<string, string> = {
+  playing: "▶", // ▶
+  paused: "⏸", // ⏸
+  stopped: "⏹", // ⏹
+};
+
+/**
+ * Format a millisecond duration as `m:ss` (or `h:mm:ss` past one hour).
+ * Negative / non-finite input is treated as 0.
+ */
+export function mmss(ms: number): string {
+  const totalSec = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0;
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  const ss = String(seconds).padStart(2, "0");
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${ss}`;
+  }
+  return `${minutes}:${ss}`;
+}
+
+/**
+ * Render a fixed-width progress bar. `posMs` is clamped to `[0, durMs]`; a
+ * non-positive `durMs` yields an all-empty bar (unknown length → no progress).
+ */
+export function oscProgressBar(
+  posMs: number,
+  durMs: number,
+  width = 10,
+  fill = "▬", // ▬
+  empty = "▭", // ▭
+): string {
+  const w = Number.isFinite(width) && width > 0 ? Math.floor(width) : 0;
+  if (w <= 0) return "";
+  if (!Number.isFinite(durMs) || durMs <= 0) return empty.repeat(w);
+  const pos = Math.min(Math.max(Number.isFinite(posMs) ? posMs : 0, 0), durMs);
+  const filled = Math.min(w, Math.max(0, Math.round((pos / durMs) * w)));
+  return fill.repeat(filled) + empty.repeat(w - filled);
+}
+
+/**
+ * Windowed marquee scroll. Returns `text` unchanged when it already fits within
+ * `width`; otherwise scrolls a `width`-wide window across the text (wrapping
+ * through a separator) advanced by `tick` (one step per unit). Code-point safe.
+ */
+export function oscMarquee(text: string, width: number, tick: number): string {
+  const w = Number.isFinite(width) && width > 0 ? Math.floor(width) : 0;
+  if (w <= 0) return "";
+  const chars = Array.from(text);
+  if (chars.length <= w) return text;
+  const sep = Array.from("   •   "); // 3 spaces + bullet + 3 spaces
+  const loop = [...chars, ...sep];
+  const period = loop.length;
+  const start = ((Math.floor(Number.isFinite(tick) ? tick : 0) % period) + period) % period;
+  const doubled = [...loop, ...loop];
+  return doubled.slice(start, start + w).join("");
+}
+
+/**
+ * Compute the current playback position at render time. While playing, advances
+ * `position_ms` by `(nowMs - position_at_ms) * playback_rate`; paused/stopped is
+ * frozen at `position_ms`. Result floored at 0 and (when the track length is
+ * known) capped at `duration_ms`.
+ */
+export function extrapolatePosition(music: NowPlayingSnapshot, nowMs: number): number {
+  const dur = Number.isFinite(music.duration_ms) && music.duration_ms > 0 ? music.duration_ms : 0;
+  let pos = Number.isFinite(music.position_ms) ? music.position_ms : 0;
+  if (music.status === "playing") {
+    const rate = Number.isFinite(music.playback_rate) ? music.playback_rate : 1;
+    const at = Number.isFinite(music.position_at_ms) ? music.position_at_ms : nowMs;
+    pos += (nowMs - at) * rate;
+  }
+  if (pos < 0) pos = 0;
+  if (dur > 0 && pos > dur) pos = dur;
+  return pos;
+}
+
+/**
+ * Build the {music.*} → string map. Returns every token as "" when there is no
+ * active track, so a card with only music tokens resolves to empty (and is
+ * skipped by the send loop) instead of leaking placeholder dashes.
+ */
+function musicReplacements(
+  music: NowPlayingSnapshot | null | undefined,
+  now: Date,
+  progressWidth: number,
+  marqueeWidth: number,
+): Record<string, string> {
+  const empties: Record<string, string> = {
+    "{music.title}": "",
+    "{music.artist}": "",
+    "{music.album}": "",
+    "{music.status}": "",
+    "{music.position}": "",
+    "{music.duration}": "",
+    "{music.progressBar}": "",
+    "{music.percent}": "",
+    "{music.appName}": "",
+    "{music.marquee}": "",
+  };
+  if (!music || !music.active) return empties;
+  const nowMs = now.getTime();
+  const pos = extrapolatePosition(music, nowMs);
+  const dur = Number.isFinite(music.duration_ms) && music.duration_ms > 0 ? music.duration_ms : 0;
+  const percent = dur > 0 ? `${Math.round((pos / dur) * 100)}%` : "";
+  return {
+    "{music.title}": music.title ?? "",
+    "{music.artist}": music.artist ?? "",
+    "{music.album}": music.album ?? "",
+    "{music.status}": MUSIC_STATUS_GLYPHS[music.status] ?? "",
+    "{music.position}": mmss(pos),
+    "{music.duration}": dur > 0 ? mmss(dur) : "",
+    "{music.progressBar}": oscProgressBar(pos, dur, progressWidth),
+    "{music.percent}": percent,
+    "{music.appName}": music.app_name ?? "",
+    "{music.marquee}": oscMarquee(music.title ?? "", marqueeWidth, Math.floor(nowMs / 1000)),
+  };
+}
+
 export function renderOscTemplate(
   template: string,
   context: OscTemplateContext = {},
@@ -781,13 +1009,39 @@ export function renderOscTemplate(
     "{fan.count}": `${fans.length}`,
     "{fan.0}": formatSensor(fans[0]),
     "{power.0}": formatSensor(power[0]),
+    // Music tokens render "" (not "--") when no track is playing, so a music
+    // card resolves to empty and the send loop skips it instead of spamming.
+    ...musicReplacements(
+      context.music,
+      now,
+      context.musicProgressWidth ?? 10,
+      context.musicMarqueeWidth ?? 20,
+    ),
   };
 
   const rendered = Object.entries(replacements).reduce(
     (text, [token, value]) => text.replaceAll(token, value),
     template,
   );
-  return cleanRenderedTemplate(rendered.replace(/\{[a-zA-Z0-9_.-]+\}/g, "--"), template);
+  const cleaned = cleanRenderedTemplate(rendered.replace(/\{[a-zA-Z0-9_.-]+\}/g, "--"), template);
+  return context.asciiFold ? foldToAscii(cleaned) : cleaned;
+}
+
+/**
+ * Best-effort ASCII fold: NFKD-normalize (splits accents), drop combining
+ * marks, then remove any remaining non-ASCII code point and collapse the
+ * whitespace that leaves behind. Off by default; opt-in for users whose fonts
+ * mangle CJK/glyphs in the VRChat chatbox.
+ */
+export function foldToAscii(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[^\x00-\x7f]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +\n/g, "\n")
+    .trim();
 }
 
 export function cardPreview(card: OscStudioCard, context: OscTemplateContext): string {

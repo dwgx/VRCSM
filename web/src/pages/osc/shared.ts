@@ -3,8 +3,19 @@ import {
   coerceOscValue,
   type HardwareSnapshot,
   type OscStudioCard,
+  type OscTemplateContext,
   type OscValueType,
 } from "@/lib/osc-studio";
+
+/**
+ * Extra render inputs beyond hardware/time — the live music snapshot plus the
+ * NowPlayingPanel's width / ASCII-fold controls. Optional so existing callers
+ * that only render hardware/time templates keep working unchanged.
+ */
+export type TemplateExtras = Pick<
+  OscTemplateContext,
+  "music" | "musicProgressWidth" | "musicMarqueeWidth" | "asciiFold"
+>;
 
 /** Shape returned by the `avatar.parameters.local` IPC method. */
 export interface AvatarParametersResponse {
@@ -38,12 +49,13 @@ export function outgoingSpecForCard(
   card: OscStudioCard,
   hardware: HardwareSnapshot | null,
   now: Date,
+  extras: TemplateExtras = {},
 ): OutgoingSpec {
   if (isTemplateCard(card)) {
     return {
       address: "/chatbox/input",
       valueType: "string",
-      argPreview: cardPreview(card, { hardware, now }),
+      argPreview: cardPreview(card, { hardware, now, ...extras }),
     };
   }
   const coerced = coerceOscValue(card.valueType, card.value);
