@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   IpcError,
   checkResultShape,
+  ipcResponseTimeoutMs,
   registerResultValidator,
 } from "../ipc";
 
@@ -41,6 +42,17 @@ describe("checkResultShape — built-in validators", () => {
     expect(checkResultShape("db.stats.overview", null)?.code).toBe(
       "shape_mismatch",
     );
+  });
+});
+
+describe("ipcResponseTimeoutMs", () => {
+  it("does not time out cache migrations while the host is still working", () => {
+    expect(ipcResponseTimeoutMs("migrate.execute")).toBeNull();
+  });
+
+  it("keeps finite ceilings for other long-running methods", () => {
+    expect(ipcResponseTimeoutMs("scan")).toBe(15 * 60_000);
+    expect(ipcResponseTimeoutMs("auth.status")).toBe(60_000);
   });
 });
 

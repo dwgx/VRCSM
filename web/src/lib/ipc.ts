@@ -381,21 +381,15 @@ type Pending = {
 const DEFAULT_IPC_TIMEOUT_MS = 60_000;
 
 // Long-running methods get a generous-but-finite ceiling instead of the 60s
-// default. They legitimately exceed 60s (multi-GB cache copies, AssetRipper
-// extraction, full favorites round-trips, slow multipart uploads), but an
-// *unbounded* wait reopens the pending-promise leak: if the host never replies
-// the slot + awaiting Promise/spinner would survive for the whole window
-// lifetime. 15 minutes is well past any real completion while still reaping a
-// truly stuck call.
+// default. They legitimately exceed 60s (full scans, AssetRipper extraction,
+// full favorites round-trips, slow multipart uploads), but an unbounded wait
+// reopens the pending-promise leak if the host never replies.
 const LONG_RUNNING_IPC_TIMEOUT_MS = 15 * 60_000;
 
-// Methods that legitimately take longer than the default ceiling. Cache
-// migration copies tens of GB; avatar extraction shells out to AssetRipper;
-// favorites.syncOfficial round-trips the full VRChat favorites graph. These
-// use LONG_RUNNING_IPC_TIMEOUT_MS instead of the 60s default — finite, so a
-// stuck host call is still eventually reaped instead of leaking forever.
+// Methods that legitimately take longer than the default ceiling. These use
+// LONG_RUNNING_IPC_TIMEOUT_MS instead of the 60s default — finite, so a stuck
+// host call is still eventually reaped instead of leaking forever.
 const LONG_RUNNING_METHODS = new Set<string>([
-  "migrate.execute",
   "scan",
   "avatar.bundle.download",
   "avatar.preview",
@@ -411,6 +405,20 @@ const LONG_RUNNING_METHODS = new Set<string>([
   // a stuck call should not pin the pending map forever — let the default
   // 60s timeout reject it so memo entries can clear and retry.
 ]);
+
+// Cache migration is different from the long-running read/upload calls above:
+// the host may spend longer than 15 minutes copying and junctioning a large
+// VRChat cache, and the operation is still live after the renderer gives up.
+// Keep the pending request until the host responds or the session is reset.
+const NO_RESPONSE_TIMEOUT_METHODS = new Set<string>([
+  "migrate.execute",
+]);
+
+export function ipcResponseTimeoutMs(method: string): number | null {
+  if (NO_RESPONSE_TIMEOUT_METHODS.has(method)) return null;
+  if (LONG_RUNNING_METHODS.has(method)) return LONG_RUNNING_IPC_TIMEOUT_MS;
+  return DEFAULT_IPC_TIMEOUT_MS;
+}
 
 /**
  * Structured IPC error — mirrors the C++ `Error` struct's JSON shape.
@@ -735,9 +743,7 @@ class IpcClient {
     const id = uuid();
     const envelope: IpcEnvelopeRequest<TParams> = { id, method };
     if (params !== undefined) envelope.params = params;
-    const timeoutMs = LONG_RUNNING_METHODS.has(method)
-      ? LONG_RUNNING_IPC_TIMEOUT_MS
-      : DEFAULT_IPC_TIMEOUT_MS;
+    const timeoutMs = ipcResponseTimeoutMs(method);
     const promise = new Promise<TResult>((resolve, reject) => {
       // A uuid collision (or a caller re-using an id) must never silently
       // clobber an in-flight slot — the original awaiter would then hang
@@ -752,17 +758,20 @@ class IpcClient {
         );
         return;
       }
-      const timerId = window.setTimeout(() => {
-        if (!this.pending.has(id)) return;
-        this.pending.delete(id);
-        reject(
-          new IpcError(
-            "timeout",
-            `IPC '${method}' did not respond within ${timeoutMs}ms`,
-            0,
-          ),
-        );
-      }, timeoutMs);
+      const timerId =
+        timeoutMs === null
+          ? null
+          : window.setTimeout(() => {
+              if (!this.pending.has(id)) return;
+              this.pending.delete(id);
+              reject(
+                new IpcError(
+                  "timeout",
+                  `IPC '${method}' did not respond within ${timeoutMs}ms`,
+                  0,
+                ),
+              );
+            }, timeoutMs);
       this.pending.set(id, {
         resolve: (v) => resolve(v as TResult),
         reject,

@@ -52,9 +52,9 @@
     </ComponentGroup>
 
     <ComponentGroup Id="WebFiles" Directory="VRCSMWebDir">
-      <!-- Ship everything under web/ except the ~23.5MB ort-wasm-*.wasm blobs,
-           which back a default-off feature and would bloat the installer. -->
-      <Files Include="$(var.BuildDir)\web\**" Exclude="$(var.BuildDir)\web\**\ort-wasm*.wasm" />
+      <!-- Ship the full web tree. Experimental visual search loads the
+           Vite-emitted ort-wasm*.wasm runtime assets at startup when enabled. -->
+      <Files Include="$(var.BuildDir)\web\**" />
     </ComponentGroup>
 
     <ComponentGroup Id="BundledPlugins" Directory="VRCSMPluginsDir">
