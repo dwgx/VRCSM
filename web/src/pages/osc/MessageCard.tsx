@@ -63,7 +63,7 @@ export function MessageCard({
       role="button"
       tabIndex={0}
       aria-pressed={active}
-      className={`group rounded-[var(--radius-sm)] border bg-[hsl(var(--surface-raised))] p-2 transition-opacity ${
+      className={`group min-w-0 rounded-[var(--radius-sm)] border bg-[hsl(var(--surface-raised))] p-2 transition-opacity ${
         active
           ? "border-[hsl(var(--primary))] ring-1 ring-[hsl(var(--primary)/0.4)]"
           : "border-[hsl(var(--border))]"
@@ -102,7 +102,7 @@ export function MessageCard({
       </div>
 
       <div
-        className="mt-1.5 line-clamp-2 min-h-[2rem] rounded-[var(--radius-sm)] bg-[hsl(var(--canvas))] px-2 py-1 font-mono text-[10px] text-[hsl(var(--muted-foreground))]"
+        className="mt-1.5 line-clamp-2 min-h-[2rem] break-words rounded-[var(--radius-sm)] bg-[hsl(var(--canvas))] px-2 py-1 font-mono text-[10px] text-[hsl(var(--muted-foreground))]"
         title={preview}
       >
         {preview || t("osc.card.emptyPreview", { defaultValue: "(no output)" })}

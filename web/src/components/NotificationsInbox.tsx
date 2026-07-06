@@ -5,6 +5,7 @@ import {
   Bell,
   BellDot,
   Check,
+  User,
   UserPlus,
   MessageSquare,
   Mail,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FriendDetailDialog } from "@/components/FriendDetailDialog";
 import { useAuth } from "@/lib/auth-context";
 import { subscribePipelineEvent } from "@/lib/pipeline-events";
 import {
@@ -22,7 +24,35 @@ import {
   markNotificationSeen,
   respondToNotification,
 } from "@/lib/social";
-import type { NotificationEntry } from "@/lib/types";
+import type { Friend, NotificationEntry } from "@/lib/types";
+
+/**
+ * Build the minimal `Friend` shape `FriendDetailDialog` needs from a
+ * notification's sender. The dialog re-fetches the full profile via
+ * `user.getProfile` off `friend.id`, so only the identity fields have to be
+ * real; the rest are honest nulls until that query resolves.
+ */
+function friendFromNotification(n: NotificationEntry): Friend | null {
+  const id = n.senderUserId;
+  if (!id || !id.startsWith("usr_")) return null;
+  return {
+    id,
+    displayName: n.senderUsername || id,
+    currentAvatarImageUrl: null,
+    currentAvatarThumbnailImageUrl: null,
+    statusDescription: null,
+    status: null,
+    location: null,
+    last_platform: null,
+    bio: null,
+    developerType: null,
+    last_login: null,
+    last_activity: null,
+    profilePicOverride: null,
+    userIcon: null,
+    tags: [],
+  };
+}
 
 function formatDistanceShort(date: Date): string {
   const diff = Date.now() - date.getTime();
@@ -72,6 +102,7 @@ export function NotificationsInbox() {
   const { status } = useAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationEntry[]>([]);
+  const [detailFriend, setDetailFriend] = useState<Friend | null>(null);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const bellRef = useRef<HTMLButtonElement | null>(null);
@@ -360,7 +391,12 @@ export function NotificationsInbox() {
               </div>
             ) : (
               <ul className="divide-y divide-[hsl(var(--border))]">
-                {items.map((n) => (
+                {items.map((n) => {
+                  const friend = friendFromNotification(n);
+                  const openDetail = () => {
+                    if (friend) setDetailFriend(friend);
+                  };
+                  return (
                   <li
                     key={n.id}
                     className={`flex items-start gap-2 px-3 py-2 ${
@@ -371,28 +407,55 @@ export function NotificationsInbox() {
                       {notificationIcon(n.type)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <div className="truncate text-[12px] font-medium">
-                          {n.senderUsername || n.senderUserId || n.type}
-                        </div>
-                        <div className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]">
-                          {n.created_at
-                            ? formatDistanceShort(new Date(n.created_at))
-                            : ""}
-                        </div>
-                      </div>
-                      {n.message ? (
-                        <div className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
-                          {n.message}
-                        </div>
-                      ) : null}
+                      {friend ? (
+                        <button
+                          type="button"
+                          onClick={openDetail}
+                          title={t("notifications.openProfile", { defaultValue: "Open profile" })}
+                          className="group -mx-1 -mt-0.5 block w-[calc(100%+0.5rem)] rounded-[var(--radius-sm)] px-1 pb-0.5 pt-0.5 text-left transition-colors hover:bg-[hsl(var(--surface-bright))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+                        >
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div className="truncate text-[12px] font-medium group-hover:text-[hsl(var(--primary))]">
+                              {n.senderUsername || n.senderUserId || n.type}
+                            </div>
+                            <div className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]">
+                              {n.created_at
+                                ? formatDistanceShort(new Date(n.created_at))
+                                : ""}
+                            </div>
+                          </div>
+                          {n.message ? (
+                            <div className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
+                              {n.message}
+                            </div>
+                          ) : null}
+                        </button>
+                      ) : (
+                        <>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div className="truncate text-[12px] font-medium">
+                              {n.senderUsername || n.senderUserId || n.type}
+                            </div>
+                            <div className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]">
+                              {n.created_at
+                                ? formatDistanceShort(new Date(n.created_at))
+                                : ""}
+                            </div>
+                          </div>
+                          {n.message ? (
+                            <div className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
+                              {n.message}
+                            </div>
+                          ) : null}
+                        </>
+                      )}
                       <div className="mt-1 flex items-center gap-1">
                         {n.type === "friendRequest" ? (
                           <Button
                             size="sm"
                             variant="tonal"
                             className="h-6 px-2 text-[11px]"
-                            onClick={() => void accept(n.id)}
+                            onClick={(e) => { e.stopPropagation(); void accept(n.id); }}
                           >
                             <Check className="size-3" />
                             {t("notifications.accept")}
@@ -403,17 +466,28 @@ export function NotificationsInbox() {
                             size="sm"
                             variant="tonal"
                             className="h-6 px-2 text-[11px]"
-                            onClick={() => void respondAccept(n.id)}
+                            onClick={(e) => { e.stopPropagation(); void respondAccept(n.id); }}
                           >
                             <Check className="size-3" />
                             {t("notifications.reply")}
+                          </Button>
+                        ) : null}
+                        {friend ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-[11px]"
+                            onClick={(e) => { e.stopPropagation(); openDetail(); }}
+                          >
+                            <User className="size-3" />
+                            {t("notifications.viewProfile", { defaultValue: "Profile" })}
                           </Button>
                         ) : null}
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-6 px-2 text-[11px]"
-                          onClick={() => void hide(n.id)}
+                          onClick={(e) => { e.stopPropagation(); void hide(n.id); }}
                         >
                           <X className="size-3" />
                           {t("notifications.hide")}
@@ -421,12 +495,15 @@ export function NotificationsInbox() {
                       </div>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </ScrollArea>
         </div>
       ) : null}
+
+      <FriendDetailDialog friend={detailFriend} onClose={() => setDetailFriend(null)} />
     </div>
   );
 }

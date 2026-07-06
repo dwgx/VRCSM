@@ -161,7 +161,9 @@
     "accepted": "已接受",
     "replied": "已发送回复",
     "cleared": "收件箱已清空",
-    "inviteAccept": "我马上到！"
+    "inviteAccept": "我马上到！",
+    "openProfile": "打开资料",
+    "viewProfile": "资料"
   },
   "friendDetail": {
     "title": "好友详情",
@@ -1499,7 +1501,13 @@
     "clearHistoryFailed": "清空失败：{{error}}",
     "clearHistorySuccess": "历史已清空，朋友备注已保留。",
     "loginRequired": "请在设置页登录 VRChat 以查看好友活动历史。",
-    "perPage": "每页条数"
+    "perPage": "每页条数",
+    "pageLabel": "第 {{page}} 页",
+    "range": "第 {{start}}–{{end}} 条",
+    "rangeOfTotal": "第 {{start}}–{{end}} 条，共 {{total}} 条",
+    "searchScopePage": "（搜索仅筛选当前页）",
+    "noMatchesOnPage": "本页没有匹配项。请翻页或清除搜索。",
+    "emptyPage": "本页没有内容。"
   },
   "settings": {
     "title": "设置",
@@ -4425,6 +4433,10 @@
     "jumpToBottom": "跳到最新",
     "paused": "流已暂停。继续以捕获新行。",
     "waiting": "等待 VRChat 日志输出…启动 VRChat 以查看实时行。",
+    "noLogDir": "未找到 VRChat 日志文件夹。请先启动一次 VRChat 以创建它。",
+    "runningNoLog": "VRChat 正在运行但尚未写入日志。稍后会出现日志行。",
+    "notRunning": "VRChat 未运行且未找到日志。启动 VRChat 以查看实时行。",
+    "notRunningHaveLog": "VRChat 未运行。正在显示上一次会话日志的末尾;启动 VRChat 以查看实时行。",
     "level": {
       "all": "全部",
       "info": "信息",

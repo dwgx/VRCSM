@@ -101,7 +101,7 @@ export function MessageEditor({
         </Button>
       </div>
 
-      <div className="grid gap-3 p-3">
+      <div className="grid min-w-0 gap-3 p-3">
         {/* Title + group */}
         <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
           <label className="grid gap-1">
@@ -127,7 +127,7 @@ export function MessageEditor({
         </div>
 
         {templateCard ? (
-          <div className="grid gap-2">
+          <div className="grid min-w-0 gap-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
                 {t("osc.editor.template", { defaultValue: "Chatbox text" })}
@@ -138,7 +138,8 @@ export function MessageEditor({
               ref={textareaRef}
               value={templateText}
               onChange={(e) => onPatch({ template: e.target.value })}
-              className="min-h-[96px] resize-y rounded-[var(--radius-sm)] border border-[hsl(var(--border-strong))] bg-[hsl(var(--surface-bright))] px-2 py-2 font-mono text-[12px] leading-relaxed outline-none focus:border-[hsl(var(--primary))]"
+              wrap="soft"
+              className="min-h-[96px] w-full min-w-0 resize-y whitespace-pre-wrap break-words rounded-[var(--radius-sm)] border border-[hsl(var(--border-strong))] bg-[hsl(var(--surface-bright))] px-2 py-2 font-mono text-[12px] leading-relaxed outline-none focus:border-[hsl(var(--primary))]"
               placeholder={t("osc.editor.templatePlaceholder", { defaultValue: "Type text and insert {variables}. Example: CPU {cpu.loadPct} {cpu.tempC}" })}
             />
           </div>
@@ -191,11 +192,11 @@ export function MessageEditor({
               </div>
             </>
           ) : null}
-          <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-            <span className="text-[hsl(var(--primary))]">{spec.address}</span>
-            <ArrowRight className="size-3 text-[hsl(var(--muted-foreground))]" />
-            <Badge variant="muted" className="h-4 px-1.5 text-[9px]">{spec.valueType}</Badge>
-            <span className="truncate text-[hsl(var(--foreground))]" title={spec.argPreview}>{spec.argPreview || "--"}</span>
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[10px]">
+            <span className="min-w-0 break-all text-[hsl(var(--primary))]">{spec.address}</span>
+            <ArrowRight className="size-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+            <Badge variant="muted" className="h-4 shrink-0 px-1.5 text-[9px]">{spec.valueType}</Badge>
+            <span className="min-w-0 break-all text-[hsl(var(--foreground))]" title={spec.argPreview}>{spec.argPreview || "--"}</span>
           </div>
         </div>
 

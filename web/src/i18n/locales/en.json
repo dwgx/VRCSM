@@ -206,7 +206,9 @@
     "accepted": "Accepted",
     "replied": "Reply sent",
     "cleared": "Inbox cleared",
-    "inviteAccept": "On my way!"
+    "inviteAccept": "On my way!",
+    "openProfile": "Open profile",
+    "viewProfile": "Profile"
   },
   "friendDetail": {
     "title": "Friend Details",
@@ -1574,6 +1576,10 @@
     "jumpToBottom": "Jump to latest",
     "paused": "Stream paused. Resume to capture new lines.",
     "waiting": "Waiting for VRChat log output… launch VRChat to see live lines.",
+    "noLogDir": "No VRChat log folder found. Launch VRChat at least once to create it.",
+    "runningNoLog": "VRChat is running but hasn't written a log yet. Lines will appear shortly.",
+    "notRunning": "VRChat isn't running and no log was found. Launch VRChat to see live lines.",
+    "notRunningHaveLog": "VRChat isn't running. Showing the tail of the last session's log; launch VRChat for live lines.",
     "level": {
       "all": "All",
       "info": "Info",
@@ -1646,7 +1652,13 @@
     "clearHistory": "Clear History",
     "clearHistoryConfirm": "Clear stored session history and social change history? Friend notes will be kept.",
     "loginRequired": "Log in to VRChat via the Settings page to view friend activity history.",
-    "perPage": "Items per page"
+    "perPage": "Items per page",
+    "pageLabel": "Page {{page}}",
+    "range": "items {{start}}–{{end}}",
+    "rangeOfTotal": "{{start}}–{{end}} of {{total}}",
+    "searchScopePage": "(search filters this page only)",
+    "noMatchesOnPage": "No matches on this page. Try another page or clear the search.",
+    "emptyPage": "No items on this page."
   },
   "settings": {
     "title": "Settings",
