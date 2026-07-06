@@ -18,6 +18,13 @@ namespace
 
 constexpr std::size_t kReadBufferSize = 65536;
 constexpr auto kPollInterval = std::chrono::milliseconds(1000);
+// On first attach to an already-existing log, replay at most this many
+// trailing lines so a panel opened mid-session shows immediate history.
+constexpr std::size_t kBackfillLines = 400;
+// Cap how far back from EOF we scan to gather those lines. VRChat log lines
+// are typically well under a few hundred bytes, so 512 KiB comfortably holds
+// far more than kBackfillLines while bounding the read on a huge file.
+constexpr std::uint64_t kBackfillScanBytes = 512u * 1024u;
 // Defensive cap on the carry-over buffer: if a "line" ever exceeds this
 // without hitting a newline, the file is corrupt (or something rotated out
 // from under us mid-read) and we drop the buffer so it can't grow forever.
@@ -87,6 +94,8 @@ void LogTailer::Stop()
     m_currentFile.clear();
     m_offset = 0;
     m_carryover.clear();
+    m_attachedOnce = false;
+    m_pendingBackfill = false;
 }
 
 std::filesystem::path LogTailer::FindLatestLog() const
@@ -140,11 +149,6 @@ void LogTailer::OnFileSwitched(const std::filesystem::path& path)
     m_carryover.clear();
     m_attachedOnce = true;
 
-    // First attach: seek to EOF so the panel doesn't replay history. The
-    // batch `LogParser` already fills the UI with the last session's
-    // structured events — this class only produces "what happened since I
-    // started watching".
-    //
     // Subsequent file switches mean VRChat rotated to a new output_log_*.
     // VRChat may have written several seconds of lines between file
     // creation and our 1-second poll noticing it. Start at byte 0 so those
@@ -155,6 +159,14 @@ void LogTailer::OnFileSwitched(const std::filesystem::path& path)
         return;
     }
 
+    // First attach: replay the tail of the existing file so a panel opened
+    // while VRChat is already running shows immediate history, then continue
+    // live-tailing from EOF. Previously we seeked straight to EOF, which left
+    // GameLog / the console dock blank until VRChat happened to append a new
+    // line — for an idle-but-running session that could be a very long wait,
+    // and if VRChat wasn't writing at all the panel looked broken. The batch
+    // `LogParser` still owns structured session history; backfilled raw lines
+    // are flagged so stateful consumers ignore them.
     HANDLE handle = OpenShared(path);
     if (handle == INVALID_HANDLE_VALUE)
     {
@@ -163,6 +175,94 @@ void LogTailer::OnFileSwitched(const std::filesystem::path& path)
     }
     m_offset = FileSize(handle);
     CloseHandle(handle);
+    m_pendingBackfill = true;
+}
+
+void LogTailer::BackfillTail()
+{
+    m_pendingBackfill = false;
+
+    if (m_currentFile.empty() || m_offset == 0)
+    {
+        return;
+    }
+
+    HANDLE handle = OpenShared(m_currentFile);
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        return;
+    }
+
+    // Read the trailing window [start, m_offset) where m_offset is EOF as of
+    // OnFileSwitched. We only replay complete lines: the first partial line in
+    // the window (everything before the first '\n') is dropped so we never
+    // emit a fragment.
+    const std::uint64_t eof = m_offset;
+    const std::uint64_t start = eof > kBackfillScanBytes ? eof - kBackfillScanBytes : 0;
+    const std::uint64_t span = eof - start;
+
+    LARGE_INTEGER pos{};
+    pos.QuadPart = static_cast<LONGLONG>(start);
+    if (!SetFilePointerEx(handle, pos, nullptr, FILE_BEGIN))
+    {
+        CloseHandle(handle);
+        return;
+    }
+
+    std::string window;
+    window.reserve(static_cast<std::size_t>(span));
+    std::vector<char> buffer(kReadBufferSize);
+    std::uint64_t remaining = span;
+    while (remaining > 0 && !m_stop.load())
+    {
+        const DWORD toRead = static_cast<DWORD>(
+            std::min<std::uint64_t>(kReadBufferSize, remaining));
+        DWORD bytesRead = 0;
+        if (!ReadFile(handle, buffer.data(), toRead, &bytesRead, nullptr) || bytesRead == 0)
+        {
+            break;
+        }
+        window.append(buffer.data(), bytesRead);
+        remaining -= bytesRead;
+    }
+    CloseHandle(handle);
+
+    // Split into complete lines. Drop a leading partial line if we started
+    // mid-file (start > 0), and drop anything after the final newline (that
+    // trailing fragment is picked up by the live ReadNewBytes carry-over,
+    // whose offset is EOF, so it isn't lost — VRChat will terminate it).
+    std::vector<std::string_view> lines;
+    std::size_t lineStart = 0;
+    if (start > 0)
+    {
+        const std::size_t firstNl = window.find('\n');
+        if (firstNl == std::string::npos)
+        {
+            return; // Window held no complete line.
+        }
+        lineStart = firstNl + 1;
+    }
+    std::size_t nl = 0;
+    while ((nl = window.find('\n', lineStart)) != std::string::npos)
+    {
+        std::string_view piece(window.data() + lineStart, nl - lineStart);
+        if (!piece.empty() && piece.back() == '\r')
+        {
+            piece.remove_suffix(1);
+        }
+        if (!piece.empty())
+        {
+            lines.push_back(piece);
+        }
+        lineStart = nl + 1;
+    }
+
+    // Keep only the last kBackfillLines so a giant window doesn't flood the UI.
+    std::size_t begin = lines.size() > kBackfillLines ? lines.size() - kBackfillLines : 0;
+    for (std::size_t i = begin; i < lines.size() && !m_stop.load(); ++i)
+    {
+        EmitLine(lines[i], /*backfill=*/true);
+    }
 }
 
 void LogTailer::ReadNewBytes()
@@ -246,10 +346,11 @@ void LogTailer::ReadNewBytes()
     CloseHandle(handle);
 }
 
-void LogTailer::EmitLine(std::string_view raw)
+void LogTailer::EmitLine(std::string_view raw, bool backfill)
 {
     LogTailLine out;
     out.source = m_currentFile.filename().string();
+    out.backfill = backfill;
 
     // Strip the "YYYY.MM.DD HH:MM:SS Log        -  " prefix and surface its
     // timestamp + severity as separate fields. `std::regex_search` on
@@ -291,6 +392,10 @@ void LogTailer::Run()
             }
             try
             {
+                if (m_pendingBackfill)
+                {
+                    BackfillTail();
+                }
                 ReadNewBytes();
             }
             catch (...)

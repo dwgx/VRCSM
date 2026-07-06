@@ -359,6 +359,20 @@ export interface LogStreamChunk {
   level?: LogStreamLevel;
   timestamp?: string;
   source?: string;
+  /** True for lines replayed from the tail of an existing log on first attach. */
+  backfill?: boolean;
+}
+
+/** Result of `logs.stream.start` — carries enough state for a specific empty-state. */
+export interface LogStreamStartResult {
+  running: boolean;
+  subscribers: number;
+  /** VRChat's %LocalLow% log directory exists. */
+  baseDirExists?: boolean;
+  /** At least one output_log_*.txt was found to tail. */
+  logFound?: boolean;
+  /** VRChat.exe is currently running. */
+  vrcRunning?: boolean;
 }
 
 export type VrcSettingType = "int" | "float" | "string" | "bool" | "raw";
@@ -925,6 +939,14 @@ export interface FriendLogEvent {
 
 export interface PagedItems<T> {
   items: T[];
+  /**
+   * Total row count across all pages, when the host reports it. The friend-log
+   * / player-event bridges currently return only `items`, so this is optional;
+   * the UI falls back to a "known so far" count when it is absent.
+   */
+  total?: number;
+  /** Offset of the next page when the host precomputes it; otherwise derived. */
+  nextOffset?: number | null;
 }
 
 // Headline counters from `db.stats.overview` (Database::StatsOverview).

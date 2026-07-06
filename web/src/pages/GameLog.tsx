@@ -8,7 +8,7 @@ import { ipc } from "@/lib/ipc";
 import { isLogNoise } from "@/lib/log-noise";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { cn } from "@/lib/utils";
-import type { LogStreamChunk, LogStreamLevel } from "@/lib/types";
+import type { LogStreamChunk, LogStreamLevel, LogStreamStartResult } from "@/lib/types";
 
 // Cap retained lines so a long session can't grow the array unbounded.
 // The raw GameLog is chatty; 5k lines is plenty of scrollback while keeping
@@ -66,6 +66,10 @@ export function GameLogPanel({ embedded = false }: GameLogPanelProps) {
   const [search, setSearch] = useState("");
   const [follow, setFollow] = useState(true);
   const [hideNoise, setHideNoise] = useUiPrefBoolean("vrcsm.gamelog.hideNoise", true);
+  // Stream status from the host's logs.stream.start reply — drives a specific
+  // empty-state (no log dir / no log file / VRChat not running) instead of a
+  // silent blank when there's nothing to tail yet.
+  const [streamStatus, setStreamStatus] = useState<LogStreamStartResult | null>(null);
 
   const idRef = useRef(0);
   const pausedRef = useRef(paused);
@@ -88,7 +92,13 @@ export function GameLogPanel({ embedded = false }: GameLogPanelProps) {
   }, []);
 
   useEffect(() => {
-    void ipc.call("logs.stream.start").catch(() => undefined);
+    let cancelled = false;
+    void ipc
+      .call<undefined, LogStreamStartResult>("logs.stream.start")
+      .then((res) => {
+        if (!cancelled) setStreamStatus(res);
+      })
+      .catch(() => undefined);
 
     const scheduleFlush = () => {
       if (flushTimerRef.current !== null) return;
@@ -117,6 +127,7 @@ export function GameLogPanel({ embedded = false }: GameLogPanelProps) {
     });
 
     return () => {
+      cancelled = true;
       off();
       // Drop our refcount on the shared tailer; the host tears it down only
       // when no other subscriber (Logs page, Console dock) is still attached.
@@ -137,6 +148,41 @@ export function GameLogPanel({ embedded = false }: GameLogPanelProps) {
       return true;
     });
   }, [lines, level, search, hideNoise]);
+
+  // Choose a specific empty-state message. Distinguishes "paused",
+  // "VRChat not running / no log yet" (the common cause of a blank panel),
+  // and the generic waiting state, so a silent blank never looks broken.
+  const emptyStateMessage = useMemo(() => {
+    if (paused) {
+      return t("gameLog.paused", { defaultValue: "Stream paused. Resume to capture new lines." });
+    }
+    // Only trust a definitive host reply; in mock/browser mode streamStatus
+    // stays null and we fall through to the generic waiting copy.
+    if (streamStatus) {
+      if (streamStatus.baseDirExists === false) {
+        return t("gameLog.noLogDir", {
+          defaultValue: "No VRChat log folder found. Launch VRChat at least once to create it.",
+        });
+      }
+      if (streamStatus.logFound === false) {
+        return streamStatus.vrcRunning
+          ? t("gameLog.runningNoLog", {
+              defaultValue: "VRChat is running but hasn't written a log yet. Lines will appear shortly.",
+            })
+          : t("gameLog.notRunning", {
+              defaultValue: "VRChat isn't running and no log was found. Launch VRChat to see live lines.",
+            });
+      }
+      if (streamStatus.vrcRunning === false) {
+        return t("gameLog.notRunningHaveLog", {
+          defaultValue: "VRChat isn't running. Showing the tail of the last session's log; launch VRChat for live lines.",
+        });
+      }
+    }
+    return t("gameLog.waiting", {
+      defaultValue: "Waiting for VRChat log output… launch VRChat to see live lines.",
+    });
+  }, [paused, streamStatus, t]);
 
   // Auto-scroll to bottom on new lines while following.
   useEffect(() => {
@@ -258,9 +304,7 @@ export function GameLogPanel({ embedded = false }: GameLogPanelProps) {
           >
             {filtered.length === 0 ? (
               <div className="flex h-full items-center justify-center text-center text-[12px] text-[hsl(var(--muted-foreground))]">
-                {paused
-                  ? t("gameLog.paused", { defaultValue: "Stream paused. Resume to capture new lines." })
-                  : t("gameLog.waiting", { defaultValue: "Waiting for VRChat log output… launch VRChat to see live lines." })}
+                {emptyStateMessage}
               </div>
             ) : (
               filtered.map((l) => (

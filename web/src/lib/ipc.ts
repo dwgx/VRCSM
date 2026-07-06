@@ -968,10 +968,16 @@ class IpcClient {
         } as unknown as TResult;
       case "logs.stream.start":
         this.startMockLogStream();
-        return { ok: true } as unknown as TResult;
+        return {
+          running: true,
+          subscribers: 1,
+          baseDirExists: true,
+          logFound: true,
+          vrcRunning: true,
+        } as unknown as TResult;
       case "logs.stream.stop":
         this.stopMockLogStream();
-        return { ok: true } as unknown as TResult;
+        return { running: false, subscribers: 0 } as unknown as TResult;
       case "migrate.preflight": {
         const p = (params ?? {}) as { source?: string; target?: string };
         return {

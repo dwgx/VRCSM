@@ -26,6 +26,12 @@ struct LogTailLine
     std::string level;
     std::string iso_time;
     std::string source;
+    /// True for lines replayed from the tail of an already-existing log on
+    /// first attach (see `OnFileSwitched`). Consumers should surface these in
+    /// a raw console/dock view for immediate history, but must NOT feed them
+    /// into live/stateful panels or re-persist them — the batch `LogParser`
+    /// already owns history for the current session.
+    bool backfill{false};
 };
 
 /// Follow VRChat's newest `output_log_*.txt` the same way VRCX's LogWatcher.cs
@@ -47,9 +53,13 @@ struct LogTailLine
 /// `// FileSystemWatcher() is unreliable` at the top of LogWatcher.cs. Poll
 /// every second, like they do.
 ///
-/// Start semantics: on the first tick we seek to EOF of the current file so
-/// the dock doesn't get spammed with historical content — the batch LogParser
-/// handles history, this class handles "new since you opened the panel".
+/// Start semantics: on the first tick we replay the last `kBackfillLines`
+/// lines of the current file (marked `backfill=true`) so a panel opened while
+/// VRChat is already running shows immediate history instead of a blank view,
+/// then continue tailing from EOF for genuinely-new lines. Backfilled lines
+/// are flagged so stateful consumers can ignore them — the batch LogParser
+/// still owns structured session history; this replay is purely so the raw
+/// console/GameLog dock isn't empty until the next append.
 ///
 /// `Stop()` is synchronous: it signals the worker, joins it, and clears
 /// internal state, so it's safe to destruct immediately after.
@@ -73,8 +83,9 @@ private:
     void Run();
     std::filesystem::path FindLatestLog() const;
     void OnFileSwitched(const std::filesystem::path& path);
+    void BackfillTail();
     void ReadNewBytes();
-    void EmitLine(std::string_view raw);
+    void EmitLine(std::string_view raw, bool backfill = false);
 
     std::filesystem::path m_logDir;
     Callback m_callback;
@@ -93,6 +104,9 @@ private:
     // byte 0 instead of EOF so we don't lose the lines written between
     // file creation and the next 1-second poll.
     bool m_attachedOnce{false};
+    // Set on first attach to an existing file; consumed by the first
+    // ReadNewBytes tick to replay the tail before live-tailing continues.
+    bool m_pendingBackfill{false};
 };
 
 } // namespace vrcsm::core

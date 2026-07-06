@@ -88,7 +88,15 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
     if (m_logTailer)
     {
         m_logTailerRefCount += 1;
-        return nlohmann::json{{"running", true}, {"subscribers", m_logTailerRefCount}};
+        const auto probe = vrcsm::core::PathProbe::Probe();
+        const bool logFound = probe.baseDirExists && !FindLatestLogFile(probe.baseDir).empty();
+        return nlohmann::json{
+            {"running", true},
+            {"subscribers", m_logTailerRefCount},
+            {"baseDirExists", probe.baseDirExists},
+            {"logFound", logFound},
+            {"vrcRunning", vrcsm::core::ProcessGuard::IsVRChatRunning().running},
+        };
     }
 
     const auto probe = vrcsm::core::PathProbe::Probe();
@@ -96,6 +104,12 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
     {
         throw std::runtime_error("logs.stream.start: VRChat log directory not found");
     }
+
+    // Surface whether a log file actually exists + whether VRChat is live so
+    // the UI can render a specific empty-state ("no log / not running")
+    // instead of a silent blank when there's nothing to tail yet.
+    const bool logFound = !FindLatestLogFile(probe.baseDir).empty();
+    const bool vrcRunning = vrcsm::core::ProcessGuard::IsVRChatRunning().running;
 
     // Backfill historical log data into DB, then seed current-world
     // state from the latest switch. We always scan the newest log files
@@ -182,7 +196,9 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                 return;
             }
 
-            // 1) Raw line → logs.stream for the Console dock.
+            // 1) Raw line → logs.stream for the Console dock / GameLog. This
+            // includes backfilled tail lines so a panel opened while VRChat is
+            // already running shows immediate history, not a blank view.
             {
                 nlohmann::json data{
                     {"line", line.line},
@@ -193,10 +209,24 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                 {
                     data["timestamp"] = line.iso_time;
                 }
+                if (line.backfill)
+                {
+                    data["backfill"] = true;
+                }
                 m_host.PostMessageToWeb(nlohmann::json{
                     {"event", "logs.stream"},
                     {"data", std::move(data)}
                 }.dump());
+            }
+
+            // Backfilled lines are historical replay for the raw dock only.
+            // The batch LogParser above already seeded structured history into
+            // the DB and live panels hydrate from `scan`, so classifying and
+            // re-persisting these would double-count events and inject stale
+            // joins/world-switches into the live radar. Stop after the raw emit.
+            if (line.backfill)
+            {
+                return;
             }
 
             // 2) Classified event → logs.stream.event for live panels.
@@ -480,7 +510,13 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
     // states stay coherent for any other caller that acquires the lock.
     m_logTailerRefCount += 1;
     int refs = m_logTailerRefCount;
-    return nlohmann::json{{"running", true}, {"subscribers", refs}};
+    return nlohmann::json{
+        {"running", true},
+        {"subscribers", refs},
+        {"baseDirExists", true},
+        {"logFound", logFound},
+        {"vrcRunning", vrcRunning},
+    };
 }
 
 nlohmann::json IpcBridge::HandleLogsStreamStop(const nlohmann::json&, const std::optional<std::string>&)
