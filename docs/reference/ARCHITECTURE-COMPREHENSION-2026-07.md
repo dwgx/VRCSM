@@ -386,7 +386,7 @@ real caller; `plugin.*` recursion and `vrchat://` opens hard-blocked inside);
 `PostMessageToWeb` must marshal onto the UI thread; plugin responses must target
 the specific `ICoreWebView2Frame2`; async handlers touch bridge state only
 through the alive `shared_ptr` guard — `~IpcBridge` sets `*m_alive=false`, drains
-active tasks (5s bounded), then stops LogTailer BEFORE the mutex members it
+active tasks to zero, then stops LogTailer BEFORE the mutex members it
 locks are destroyed (member declaration order matters); `data.clear` accepts
 only allowlisted target keys (key selects a compile-time path/table list, never
 a path segment); filesystem-exposing handlers (`bundle.preview`, `screenshots.*`,
@@ -533,8 +533,9 @@ sync-web-dist, icon, sync-plugins; install RUNTIME DESTINATION .).
 `cmake/sync-web-dist.cmake` (28 — POST_BUILD, no-op if `web/dist` missing else
 REMOVE_RECURSE dest + `file(COPY)`; web/dist is NOT a CMake output).
 `cmake/sync-plugins.cmake` (25). `installer/vrcsm.wxs` (98 — WiX v7 perUser to
-LocalAppData\VRCSM; groups HostFiles/WebFiles(exclude `ort-wasm*.wasm`)/
-BundledPlugins/Shortcuts; MajorUpgrade AllowSameVersionUpgrades).
+LocalAppData\VRCSM; groups HostFiles/WebFiles(full `web/**`, including
+`ort-wasm*.wasm` for visual search)/BundledPlugins/Shortcuts; MajorUpgrade
+AllowSameVersionUpgrades).
 `scripts/build-msi.bat` (60). `package_release.ps1` (end-to-end packager; the
 `SHA256:` release-notes line is a hard updater constraint). `vcpkg.json` (14 —
 v0.14.6; `tinygltf` dropped). `web/package.json` (63 — v0.14.6; build =
@@ -558,9 +559,10 @@ host+web/**+plugins/**, computes SHA256 into release-notes; the in-app updater
 **Invariants.** Version single-sourced from `VERSION` (VERSION, vcpkg.json,
 web/package.json all `0.14.6`); `web/dist` must be rebuilt BEFORE the host build;
 sync-web-dist/sync-plugins purge (REMOVE_RECURSE) the destination first to
-prevent stale-chunk leakage; MSI must exclude `ort-wasm*.wasm` (~23.5MB,
-default-off CLIP feature, ~80% installer bloat); `package_release.ps1`'s
-`SHA256:` line is a hard fail-closed updater constraint; tech stack is locked
+prevent stale-chunk leakage; MSI must include `ort-wasm*.wasm` because
+experimental visual search loads onnxruntime-web assets from the installed
+`web` tree; `package_release.ps1`'s `SHA256:` line is a hard fail-closed
+updater constraint; tech stack is locked
 (C++20 + WebView2 + React 19 + Vite 6 + Tailwind 4 + shadcn + WiX v7;
 Qt/Electron/Tauri/WPF/etc forbidden); MSVC runtime is MultiThreadedDLL,
 `gtest_force_shared_crt ON` must match.
@@ -711,9 +713,9 @@ frame. ~14 pushed event names: `process.vrcStatusChanged`, `logs.stream(.event)`
   the C++ host build or the POST_BUILD copy no-ops / ships a stale bundle. Do not
   run two builds against the same build dir concurrently.
 - `~IpcBridge` shutdown order is deliberate: set `*m_alive=false`, drain async
-  tasks (5s bounded — does NOT force-kill wedged workers), then stop LogTailer
-  BEFORE the mutex members it locks are destroyed. Member declaration order
-  matters.
+  tasks to zero, then stop LogTailer BEFORE the mutex members it locks are
+  destroyed. Member declaration order matters; real cancellation is still the
+  missing piece for a truly wedged worker.
 - `PostMessageToWeb` must marshal onto the UI thread; plugin responses must
   target the specific frame.
 - `FriendsListResult.__touchedAt` is a CLIENT-ONLY monotonic marker, never sent
@@ -751,8 +753,10 @@ frame. ~14 pushed event names: `process.vrcStatusChanged`, `logs.stream(.event)`
    god-functions (`CoPresenceEgoNetwork` ~300 lines, `PredictFriendOnlineWindows`
    ~255 lines) that resisted the split and remain hardest to test.
    `Friends.tsx` (~1060) and `App.tsx AppContent` (~600) are the web analogues.
-3. **Shutdown / hang surface (MEDIUM).** The 5s async drain does not force-kill
-   wedged workers — a truly stuck worker leaks past shutdown (no longer hangs it).
+3. **Shutdown / hang surface (MEDIUM).** The async IPC drain waits until active
+   queued/running handlers finish before bridge-owned state is destroyed. That
+   fixes the shutdown UAF hazard, but a truly wedged worker can now hold shutdown
+   until real cancellation is added.
    `DiscordRpc::Stop` closes the pipe handle from the Stop thread while the worker
    may be blocked in a synchronous `ReadFrame` (`m_pipe` is a plain `void*` with
    no mutex — a data race / potential use-after-close, DiscordRpc.cpp:204-303,
@@ -778,8 +782,8 @@ frame. ~14 pushed event names: `process.vrcStatusChanged`, `logs.stream(.event)`
    `ProcessMemoryReader.ReadString` emits unvalidated UTF-8; `[session-diag]`
    spdlog::warn traces in `AuthStore` log encrypted-blob byte counts;
    copy-paste `samePathLexical` across Migrator/JunctionUtil/SafeDelete; the WiX
-   `web\**` glob is a denylist (one `ort-wasm*` Exclude) so future large
-   default-off assets get swept into the MSI.
+   `web\**` glob intentionally ships visual-search wasm today, so future large
+   default-off assets need an explicit packaging/runtime-loading decision.
 
 ---
 
@@ -866,5 +870,3 @@ they need edits in the cited docs (respecting the main-agent-commits rule).
 - **`docs/reference/04-build-release.md:69` flags a hardcoded default API key
   literal committed in `web/scripts/i18n-translate.mjs:29`** — key-hygiene smell
   to scrub.
-
-

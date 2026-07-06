@@ -1,6 +1,30 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-07-04
+Last updated: 2026-07-07
+
+## Latest Session (2026-07-07) - READ FIRST
+
+Review-remediation patch for async IPC shutdown, cache migration timeout, and
+MSI visual-search packaging:
+
+- `~IpcBridge` now marks the bridge draining, flips `m_alive` false, and waits
+  until all queued/running async IPC tasks have finished before stopping
+  bridge-owned tailer/pipeline/DB state. The earlier 5s "proceed anyway" drain
+  is gone because async lambdas capture `this`.
+- `web/src/lib/ipc.ts` keeps `migrate.execute` pending until the host responds
+  or the session is reset. Other long-running methods still use the 15-minute
+  ceiling; default IPC calls still use 60 seconds.
+- `installer/vrcsm.wxs` ships the complete `web/**` tree again, including
+  `ort-wasm*.wasm`, because experimental avatar visual search initializes
+  onnxruntime-web from the installed assets.
+- Verification for this patch: targeted vitest
+  `src/lib/__tests__/ipc-result-validator.test.ts` passed 9/9; `corepack pnpm
+  --dir web build` passed and emitted `ort-wasm-simd-threaded.asyncify-*.wasm`;
+  release host build `cmake --build --preset x64-release --target vrcsm
+  --parallel 1` passed and synced web/plugins; release `ctest` had 0 failures
+  out of 104 tests with 5 skipped; `package_release.ps1` passed. MSI decompile
+  confirmed the `ort-wasm-simd-threaded.asyncify-*.wasm` file is present in the
+  installer.
 
 ## Latest Session (2026-07-04) — READ FIRST
 
@@ -20,9 +44,10 @@ truth (supersedes the older "Current State" section below where they disagree):
   **280** vitest pass.
 - **Full architecture map:** `docs/reference/ARCHITECTURE-COMPREHENSION-2026-07.md`
   (adversarially verified, HIGH confidence). Start there for a system model.
-- Optimization commits `e5bfd8f..48c2015` (percent-encode API params, bounded
-  shutdown waits, IPC response validation, Friends stale-guard + N+1 fix, graph
-  a11y, i18n en backfill, tinygltf drop + installer wasm exclude).
+- Optimization commits `e5bfd8f..48c2015` (percent-encode API params, IPC
+  response validation, Friends stale-guard + N+1 fix, graph a11y, i18n en
+  backfill, tinygltf drop). Its bounded shutdown wait and installer wasm exclude
+  were superseded by the 2026-07-07 remediation above.
 
 > The "Current State" / "development paused" text below is from the 2026-06-25
 > v0.14.6 checkpoint and is STALE. Active development clearly resumed.

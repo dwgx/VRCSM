@@ -1,6 +1,6 @@
 # VRCSM Agent Memory
 
-Last updated: 2026-06-24
+Last updated: 2026-07-07
 
 This is the repo-local handoff entrypoint. It exists because future agents should not have to rediscover the project state, document map, or the avatar/SteamVR decisions from chat history.
 
@@ -31,6 +31,21 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 - This session verified/finished all HIGH + security-MEDIUM fixes. Most had already landed; the remaining gaps closed here were **lib H2** (LRU `memoSet` cap added to `thumbnails.ts` + `assets-cache.ts`, matching `image-cache.ts`) and **build-docs H1** (`.gitignore` now covers `_build_*.bat`, `_tmp_*.bat`, `*-review.png`).
 - Verified 2026-07-03: `pnpm build` clean, `pnpm test` 238/238, `test:smoke` 27/27, C++ release build up-to-date, `ctest` 100/100 (1 skipped: `RealLogClassificationTally`).
 - See `docs/review-2026-07/REVIEW-SUMMARY.md` → "Remediation Status" for the per-finding evidence table and remaining non-security carry-overs.
+
+### 2026-07-07 review-remediation session
+
+- Fixed the async IPC shutdown regression from the bounded-drain optimization:
+  `~IpcBridge` now waits for active queued/running async handlers to finish
+  before destroying tailer/pipeline/DB state.
+- `migrate.execute` is no longer subject to the frontend's 15-minute response
+  timeout; the UI keeps the pending migration request until the host replies or
+  the session is reset.
+- MSI packaging again includes `ort-wasm*.wasm` because experimental avatar
+  visual search loads onnxruntime-web assets from the installed `web` tree.
+- Verified targeted IPC vitest 9/9, `corepack pnpm --dir web build`, release
+  host build target `vrcsm`, release `ctest` 0 failures out of 104 tests with
+  5 skipped, `package_release.ps1`, and MSI decompile showing the
+  `ort-wasm-simd-threaded.asyncify-*.wasm` file present.
 
 ## Release Workflow
 

@@ -9,6 +9,7 @@ them rather than as a terse bullet list. Dates are UTC.
 ## [Unreleased]
 
 - Development is paused after `v0.14.6`. Only critical bugfixes, packaging repairs, or security updates should land here unless work is explicitly resumed.
+- Fixed three release-blocking regressions: shutdown now waits for active async IPC workers before destroying bridge-owned state, `migrate.execute` no longer hits a fixed renderer timeout while a large cache migration is still running, and MSI installs again include the ONNX wasm runtime used by experimental avatar visual search.
 
 ## [0.14.6] — 2026-06-24
 

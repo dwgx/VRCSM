@@ -23,7 +23,7 @@
 
 **为什么必须这一跳**：WebView2 的 `PostWebMessageAsString` 只能在 WebView2 UI 线程调用（`WebViewHost.h:47-59`）。worker 线程/tailer 线程/socket 线程产生的结果都必须经 `WM_APP_POST_WEB_MESSAGE` 编组回 UI 线程。
 
-请求发出端也共用：`call()` 生成 uuid、组信封、按方法名决定超时（`LONG_RUNNING_METHODS` 15 分钟 / 默认 60 秒）、把 `{resolve, reject, timerId}` 存入 `pending`、`postMessage`（`ipc.ts:558-588`）。
+请求发出端也共用：`call()` 生成 uuid、组信封、按方法名决定超时（默认 60 秒，`LONG_RUNNING_METHODS` 15 分钟，`migrate.execute` 无渲染端响应超时）、把 `{resolve, reject, timerId}` 存入 `pending`、`postMessage`（`ipc.ts:558-588`）。
 
 Host 入口统一为 `add_WebMessageReceived` 回调：`TryGetWebMessageAsString` 取正文，`get_Source` 取来源 origin（取不到默认 `https://app.vrcsm/`），调 `DispatchFromOrigin`（`WebViewHost.cpp:354-390`）。
 

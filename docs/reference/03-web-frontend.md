@@ -16,7 +16,7 @@
 
 1. 无 bridge → `mockCall`。
 2. 生成 `id=uuid()`，组 `{id, method, params?}`（`params===undefined` 时不写入）。
-3. **超时分级**：`LONG_RUNNING_METHODS`（`migrate.execute`/`scan`/`avatar.bundle.download`/`avatar.preview`/`favorites.sync*`/`prints.upload`/`files.uploadImage`，`:355-371`）用 15 分钟，其余 60 秒。超时后从 `pending` 删除并 reject `IpcError("timeout")` —— 修复"宿主 worker 死锁致 pending map 无限增长"的泄漏（`:335-347`）。
+3. **超时分级**：普通 IPC 60 秒，`LONG_RUNNING_METHODS`（`scan`/`avatar.bundle.download`/`avatar.preview`/`favorites.sync*`/`prints.upload`/`files.uploadImage`）15 分钟；`migrate.execute` 不设渲染端响应超时，因为大型缓存迁移可能超过任何固定上限且宿主仍在执行。超时调用会从 `pending` 删除并 reject `IpcError("timeout")`；无超时的迁移调用由宿主响应或 `cancelAll` 清理。
 4. 存 pending，`postMessage` 后返回 Promise。
 
 **响应/事件分发 `handle()`（`:502-547`）**：坏 JSON/非对象静默丢弃；含 `"event"` → `CustomEvent` 派发到 `events` 总线；含 `"id"` → 查 pending，有 `error` 则构造 `IpcError`（`isAuthExpired` 时额外派发 window 级 `vrcsm:auth-expired`）后 reject，否则 resolve。

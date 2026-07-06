@@ -95,7 +95,7 @@ Vite：`base:"./"`（适配 `https://app.vrcsm/` 虚拟主机）；注入 `__VRC
 
 1. **前置**：版本来自 `VERSION`，校验 `build/x64-release/src/host/VRCSM.exe` 与 `.../web/index.html` 存在（依赖 §1.3 post-build 已跑）。定位 wix.exe。
 2. **ZIP**：把 `build/x64-release/src/host` 整目录（排除 `.old` 陈旧备份）压缩。ZIP 内含 exe + dll + web/ + plugins/。
-3. **MSI**：`wix build vrcsm.wxs -arch x64`。`vrcsm.wxs` 为 **perUser** 安装到 `LocalAppData\VRCSM`，四个组件组：HostFiles/WebFiles/BundledPlugins/Shortcuts。`MajorUpgrade` 允许同版本升级。
+3. **MSI**：`wix build vrcsm.wxs -arch x64`。`vrcsm.wxs` 为 **perUser** 安装到 `LocalAppData\VRCSM`，四个组件组：HostFiles/WebFiles/BundledPlugins/Shortcuts；WebFiles ships the full `web/**` tree, including `ort-wasm*.wasm` for experimental visual search. `MajorUpgrade` 允许同版本升级。
 4. **SHA256 + release-notes**：算 MSI/ZIP 的 SHA256，生成 `..._release-notes.txt`，含 `SHA256: <hex>` 行。
 
 > [!IMPORTANT] **`SHA256:` 行是硬约束**：in-app updater（`UpdatePackage.cpp`）要求 GitHub release notes 里有匹配的 `SHA256:` 行，否则拒装（fail-closed）。这条约束由 `CommonTests` 的 `UpdatePackageValidationRejectsMissingSha256/WrongSha256` 守护。粘贴该行是强制发布步骤。见 [更新子系统文档](core/hw-updater-plugins.md#二更新子系统srccoreupdater)。
