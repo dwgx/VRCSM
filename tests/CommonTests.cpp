@@ -24,6 +24,7 @@
 #include "core/LogEventClassifier.h"
 #include "core/LogParser.h"
 #include "core/Migrator.h"
+#include "core/NowPlaying.h"
 #include "core/OscBridge.h"
 #include "core/ProcessGuard.h"
 #include "core/SafeDelete.h"
@@ -3024,4 +3025,41 @@ TEST(CommonTests, AnalyticsParsePresenceInstantOffsetIsTimezoneStable)
     ASSERT_TRUE(withOffset.has_value());
     ASSERT_TRUE(asUtc.has_value());
     EXPECT_EQ(*withOffset, *asUtc); // +02:00 12:00 == 10:00Z
+}
+
+// ReadNowPlaying() must never surface an Error for the ordinary "no media
+// session" case — CI has no player running, so it should return active=false
+// with empty strings and zeroed numeric fields. When a session IS present
+// (developer machine with music playing) the snapshot must still be
+// well-formed: a non-empty status string. Either way, no Error and no throw.
+TEST(CommonTests, NowPlayingReadsCleanlyWithOrWithoutSession)
+{
+    const auto result = vrcsm::core::ReadNowPlaying();
+
+    ASSERT_TRUE(vrcsm::core::isOk(result))
+        << "ReadNowPlaying returned an error: " << vrcsm::core::error(result).message;
+
+    const auto& snap = vrcsm::core::value(result);
+    if (!snap.active)
+    {
+        // The hermetic CI path: no session → everything empty / zero.
+        EXPECT_TRUE(snap.title.empty());
+        EXPECT_TRUE(snap.artist.empty());
+        EXPECT_TRUE(snap.album.empty());
+        EXPECT_TRUE(snap.status.empty());
+        EXPECT_TRUE(snap.appId.empty());
+        EXPECT_TRUE(snap.appName.empty());
+        EXPECT_EQ(snap.positionMs, 0);
+        EXPECT_EQ(snap.durationMs, 0);
+        EXPECT_EQ(snap.positionAtMs, 0);
+        EXPECT_FALSE(snap.hasThumbnail);
+    }
+    else
+    {
+        // A live session (local dev run) — status is one of the mapped strings
+        // and the position sample time was stamped.
+        EXPECT_TRUE(snap.status == "playing" || snap.status == "paused" ||
+                    snap.status == "stopped");
+        EXPECT_GT(snap.positionAtMs, 0);
+    }
 }

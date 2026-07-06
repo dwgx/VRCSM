@@ -123,6 +123,11 @@ private:
     nlohmann::json HandleHwDetect(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwRecommend(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwTelemetry(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // Now-playing music — read the system's currently-playing media via GSMTC
+    // (src/core/NowPlaying.cpp) and surface it as a snake_case snapshot.
+    // Implementation in bridges/MusicBridge.cpp.
+    nlohmann::json HandleMusicNowPlaying(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleModerationsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarDiscover(const nlohmann::json& params, const std::optional<std::string>& id);
