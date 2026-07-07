@@ -184,7 +184,7 @@ export function MessageEditor({
           </div>
           {templateCard ? (
             <>
-              <div className="whitespace-pre-wrap break-words rounded-[var(--radius-sm)] bg-[hsl(var(--surface-bright))] px-2 py-1.5 text-[13px] leading-relaxed">
+              <div className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] break-all rounded-[var(--radius-sm)] bg-[hsl(var(--surface-bright))] px-2 py-1.5 text-[13px] leading-relaxed">
                 {rendered || t("osc.editor.noOutput", { defaultValue: "(nothing — template resolves to empty)" })}
               </div>
               <div className="text-right font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
