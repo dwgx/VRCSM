@@ -33,7 +33,10 @@ struct NowPlayingSnapshot
 // Read the current media session. A missing session is NOT an error — it
 // returns a snapshot with active=false and empty/zero fields. WinRT init
 // failure (or any unexpected WinRT error) returns Error{"nowplaying_unavailable"}.
-// Never throws; never hangs (the underlying WinRT calls are cheap local ops).
+// Never throws. The underlying GSMTC async calls round-trip into the media
+// source app and can stall, so each is bounded by an internal timeout
+// (~1.5s); on timeout the call degrades to empty/partial data rather than
+// blocking the caller's thread. Intended to be invoked off the UI thread.
 Result<NowPlayingSnapshot> ReadNowPlaying();
 
 } // namespace vrcsm::core

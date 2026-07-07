@@ -45,8 +45,15 @@ export function useNowPlaying() {
 
   useEffect(() => {
     let cancelled = false;
+    // In-flight guard: the host read can stall (it round-trips into the media
+    // source app), and the interval fires on a fixed 2s cadence regardless. If
+    // a poll is still awaiting when the next tick fires, skipping it prevents
+    // overlapping reads from piling onto the shared host IPC worker pool.
+    let inFlight = false;
 
     async function poll() {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const snapshot = await ipc.call<undefined, NowPlayingSnapshot>("music.nowPlaying");
         if (!cancelled) apply(snapshot);
@@ -54,6 +61,8 @@ export function useNowPlaying() {
         // No media session / host unavailable — treat as "nothing playing"
         // rather than surfacing an error toast on a background poll.
         if (!cancelled && musicRef.current !== null) apply(null);
+      } finally {
+        inFlight = false;
       }
     }
 

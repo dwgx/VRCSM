@@ -70,6 +70,40 @@ long long NowEpochMs()
         .count();
 }
 
+// Convert a WinRT DateTime (FILETIME-based, 1601 epoch, UTC) to Unix-epoch ms.
+// winrt::clock::to_sys yields a std::chrono::system_clock::time_point, so the
+// result is in the same clock/units as NowEpochMs(). Returns 0 when the source
+// never reported a timeline (DateTime{0} maps to a large negative Unix value).
+long long DateTimeToEpochMs(const winrt::Windows::Foundation::DateTime& dt)
+{
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        winrt::clock::to_sys(dt).time_since_epoch())
+                        .count();
+    return ms > 0 ? ms : 0;
+}
+
+// GSMTC's async calls (RequestAsync, TryGetMediaPropertiesAsync) round-trip
+// into the media source app's process and can stall for seconds — or hang
+// indefinitely — when that app is unresponsive. A bare `.get()` would block
+// the shared IPC worker thread for the whole hang; enough overlapping reads
+// could then exhaust the pool and stall unrelated IPC. Bound every wait: on
+// timeout we Cancel() the operation (so it doesn't leak) and throw so the
+// caller's catch degrades to empty/partial data instead of hanging.
+// (Pool threads are MTA, so this blocking wait cannot deadlock — the risk is
+// duration, not deadlock.)
+constexpr std::chrono::milliseconds kAsyncTimeout{1500};
+
+template <typename TAsync>
+auto AwaitBounded(TAsync&& op) -> decltype(op.GetResults())
+{
+    if (op.wait_for(kAsyncTimeout) != winrt::Windows::Foundation::AsyncStatus::Completed)
+    {
+        op.Cancel();
+        throw winrt::hresult_error(RPC_E_TIMEOUT, L"GSMTC async timed out");
+    }
+    return op.GetResults();
+}
+
 std::string StatusToString(wmc::GlobalSystemMediaTransportControlsSessionPlaybackStatus status)
 {
     using Status = wmc::GlobalSystemMediaTransportControlsSessionPlaybackStatus;
@@ -122,7 +156,7 @@ Result<NowPlayingSnapshot> ReadNowPlaying()
 
         NowPlayingSnapshot snap;
 
-        auto mgr = wmc::GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
+        auto mgr = AwaitBounded(wmc::GlobalSystemMediaTransportControlsSessionManager::RequestAsync());
         if (!mgr)
         {
             return snap; // no manager — treat as no session, not an error
@@ -139,7 +173,7 @@ Result<NowPlayingSnapshot> ReadNowPlaying()
         // Media properties: title / artist / album / thumbnail availability.
         try
         {
-            auto props = session.TryGetMediaPropertiesAsync().get();
+            auto props = AwaitBounded(session.TryGetMediaPropertiesAsync());
             if (props)
             {
                 snap.title = winrt::to_string(props.Title());
@@ -155,12 +189,18 @@ Result<NowPlayingSnapshot> ReadNowPlaying()
         }
 
         // Timeline: position / duration + the sample time for extrapolation.
+        // The anchor MUST be LastUpdatedTime (the UTC instant the source last
+        // reported Position), NOT the read time — GSMTC does not self-advance
+        // Position, so stamping "now" makes the client extrapolate from a stale
+        // position and the progress bar snaps backward on each poll (sawtooth).
+        // Fall back to now only when the source never reported a timeline.
         try
         {
             auto tl = session.GetTimelineProperties();
             snap.durationMs = TimeSpanToMs(tl.EndTime());
             snap.positionMs = TimeSpanToMs(tl.Position());
-            snap.positionAtMs = NowEpochMs();
+            const long long updatedAt = DateTimeToEpochMs(tl.LastUpdatedTime());
+            snap.positionAtMs = updatedAt > 0 ? updatedAt : NowEpochMs();
         }
         catch (const winrt::hresult_error&)
         {
