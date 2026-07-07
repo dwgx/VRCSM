@@ -161,7 +161,9 @@
     "accepted": "수락됨",
     "replied": "답장을 보냈습니다",
     "cleared": "받은편지함을 비웠습니다",
-    "inviteAccept": "지금 갑니다!"
+    "inviteAccept": "지금 갑니다!",
+    "openProfile": "프로필 열기",
+    "viewProfile": "프로필"
   },
   "friendDetail": {
     "title": "친구 세부 정보",
@@ -255,7 +257,7 @@
     "title": "OSC 도구",
     "subtitle": "VRChat과 Open Sound Control 메시지를 주고받습니다. 기본값은 발신 → :9000, 수신 ← :9001입니다.",
     "send": "전송",
-    "sendDesc": "단일 OSC 메시지를 전송합니다. 아바타 파라미터의 경우 /avatar/parameters/Foo, ChatBox의 경우 /chatbox/input과 같은 주소를 사용하세요.",
+    "sendDesc": "단일 OSC 메시지를 전송합니다. 아바타 파라미터의 경우 /avatar/parameters/Foo, 채팅창의 경우 /chatbox/input과 같은 주소를 사용하세요.",
     "sendButton": "전송",
     "listen": "수신",
     "listenDesc": "UDP 소켓을 바인딩하고 VRChat(또는 모든 발신자)이 내보내는 모든 OSC 메시지를 기록합니다.",
@@ -275,7 +277,7 @@
       "send": "보내기",
       "sent": "채팅창 메시지를 보냈습니다",
       "rateLimit": "메시지 사이에 2초간 기다려 주세요 (VRChat 속도 제한)",
-      "rateLimitBurst": "Chatbox는 5초당 수동 메시지 5개까지 허용돼요. {{seconds}}초 기다려 주세요."
+      "rateLimitBurst": "채팅창은 5초당 수동 메시지 5개까지 허용합니다. {{seconds}}초 기다려 주세요."
     },
     "studio": {
       "title": "OSC Studio",
@@ -391,7 +393,7 @@
       "delete": "메시지 삭제",
       "name": "이름",
       "group": "그룹",
-      "template": "Chatbox 텍스트",
+      "template": "채팅창 텍스트",
       "templatePlaceholder": "텍스트를 입력하고 {variables}를 삽입하세요. 예: CPU {cpu.loadPct} {cpu.tempC}",
       "address": "OSC 주소",
       "type": "타입",
@@ -402,14 +404,14 @@
       "send": "지금 전송",
       "startAuto": "자동 전송",
       "stopAuto": "자동 중지",
-      "rateHint": "Chatbox 제한: 5초당 수동 전송 5회, 자동 전송은 2초당 1회로 제한됩니다.",
+      "rateHint": "채팅창 제한: 5초당 수동 전송 5회, 자동 전송은 2초당 1회로 제한됩니다.",
       "insertVariable": "변수 삽입",
       "searchVariable": "CPU, GPU, 시간 검색...",
       "noVariables": "일치하는 변수가 없습니다."
     },
     "add": {
       "button": "메시지 추가",
-      "chatbox": "빈 Chatbox 메시지",
+      "chatbox": "빈 채팅창 메시지",
       "raw": "빈 OSC 값 메시지",
       "presets": "프리셋"
     },
@@ -431,14 +433,14 @@
       "out": "송신"
     },
     "avatar": {
-      "title": "Avatar 파라미터",
-      "hint": "로컬 Avatar의 OSC 설정을 읽어 해당 파라미터를 값 메시지로 추가합니다.",
-      "missing": "Avatar ID를 입력하거나 선택하세요",
+      "title": "아바타 파라미터",
+      "hint": "로컬 아바타의 OSC 설정을 읽어 해당 파라미터를 값 메시지로 추가합니다.",
+      "missing": "아바타 ID를 입력하거나 선택하세요",
       "loaded": "파라미터 {{count}}개 불러옴",
       "load": "불러오기",
       "paramName": "파라미터 이름",
       "paramType": "파라미터 유형",
-      "noParams": "이 Avatar 파일에 파라미터가 없습니다."
+      "noParams": "이 아바타 파일에 파라미터가 없습니다."
     },
     "hw": {
       "title": "하드웨어 값",
@@ -446,6 +448,28 @@
       "identity": "식별 정보",
       "live": "실시간 센서",
       "sensorNeeded": "센서 제공자 필요"
+    },
+    "music": {
+      "title": "재생 중",
+      "live": "실시간",
+      "idle": "미디어 없음",
+      "unknownTitle": "알 수 없는 제목",
+      "artist": "아티스트",
+      "album": "앨범",
+      "source": "소스",
+      "emptyHint": "Spotify, 브라우저, foobar2000 등 아무 앱에서나 트랙을 재생하면 여기에 표시됩니다.",
+      "templates": "템플릿",
+      "presetSimple": "간단",
+      "presetProgress": "진행률",
+      "presetMarquee": "흐르는 텍스트",
+      "presetCompact": "컴팩트",
+      "applyToSelected": "클릭하면 선택한 메시지의 템플릿으로 설정합니다.",
+      "addAsCard": "클릭하면 새 채팅창 메시지를 추가합니다.",
+      "preview": "채팅창 미리보기",
+      "previewEmpty": "(재생 중인 항목 없음)",
+      "barWidth": "진행률 막대 너비",
+      "asciiFold": "ASCII 변환",
+      "asciiFoldHint": "CJK를 제대로 표시하지 못하는 폰트를 위해 비ASCII 문자를 제거합니다."
     },
     "auto": {
       "badge": "AUTO",
@@ -593,20 +617,20 @@
       "unknown": "알 수 없음"
     },
     "bucket": {
-      "joinMe": "Join Me",
-      "active": "활성",
-      "askMe": "Ask Me",
+      "joinMe": "참가 가능",
+      "active": "활동 중",
+      "askMe": "초대 요청",
       "busy": "바쁨",
       "offline": "오프라인"
     },
     "trust": {
-      "troll": "Nuisance",
-      "veteran": "Trusted User",
-      "trusted": "Known User",
-      "known": "User",
-      "user": "New User",
-      "new": "Visitor",
-      "visitor": "Visitor",
+      "troll": "요주의 사용자",
+      "veteran": "신뢰받는 사용자",
+      "trusted": "알려진 사용자",
+      "known": "사용자",
+      "user": "새 사용자",
+      "new": "방문자",
+      "visitor": "방문자",
       "label": "신뢰 등급"
     },
     "badges": {
@@ -1171,10 +1195,10 @@
       "loading": "추출 중…",
       "cache_missing": "캐시에 접근할 수 없습니다",
       "bundle_not_found": "캐시된 번들이 없습니다",
-      "extractor_missing": "Extractor 가 설치되지 않았습니다",
-      "converter_missing": "Converter 가 설치되지 않았습니다",
-      "extractor_failed": "Extractor 실패",
-      "converter_failed": "Converter 실패",
+      "extractor_missing": "추출기가 설치되지 않았습니다",
+      "converter_missing": "변환기가 설치되지 않았습니다",
+      "extractor_failed": "추출기 실패",
+      "converter_failed": "변환기 실패",
       "encrypted": "에셋이 암호화되었습니다",
       "preview_failed": "미리보기를 사용할 수 없습니다",
       "missing_avatar_id": "아바타 ID 가 없습니다",
@@ -1186,7 +1210,7 @@
       "controlsTitle": "Blender 스타일 조작",
       "controlsBody": "좌클릭 회전 · Shift+좌클릭 이동 · 휠 확대/축소 · 우클릭 이동",
       "panning": "이동 모드",
-      "textureNote": "현재 extractor 는 메시와 UV 데이터만 유지합니다. 내장 텍스처는 아직 GLB 로 내보내지지 않습니다.",
+      "textureNote": "현재 추출기는 메시와 UV 데이터만 유지합니다. 내장 텍스처는 아직 GLB 로 내보내지지 않습니다.",
       "expandedTitle": "확대된 아바타 미리보기",
       "expandedBody": "더 큰 뷰포트로 실루엣, 본, 머티리얼을 확인하세요. Shift+좌드래그나 우드래그로 이동할 수 있고, WebView 문제를 피하기 위해 가운데 버튼 클릭은 비활성화되어 있습니다.",
       "retry": "재시도"
@@ -1209,7 +1233,7 @@
     "pickOne": "아바타 선택",
     "noMatch": "필터에 맞는 아바타가 없습니다.",
     "nameNote": "아바타 이름은 VRChat 출력 로그에서 추출됩니다. 이 기기에서 한 번 이상 로드된 아바타만 이름이 표시됩니다.",
-    "previewWorkbench": "인스펙터 미리보기는 의도적으로 작게 유지되며, 오른쪽 위 확대 버튼을 누르면 더 큰 중앙 뷰어가 열립니다. 현재 extractor 는 아직 텍스처를 GLB 에 포함하지 않으므로 원본 모드는 추출된 머티리얼 상태만 표시합니다. 휠로 확대/축소하고, Shift+드래그 또는 우드래그로 이동하세요.",
+    "previewWorkbench": "인스펙터 미리보기는 의도적으로 작게 유지되며, 오른쪽 위 확대 버튼을 누르면 더 큰 중앙 뷰어가 열립니다. 현재 추출기는 아직 텍스처를 GLB 에 포함하지 않으므로 원본 모드는 추출된 머티리얼 상태만 표시합니다. 휠로 확대/축소하고, Shift+드래그 또는 우드래그로 이동하세요.",
     "unityPackages": "{{count}}개 플랫폼 패키지",
     "hiddenCount": "+{{count}}개 더 있음. 검색으로 필터링하세요.",
     "encounterLog": "확인됨",
@@ -1274,8 +1298,8 @@
     "launchFailed": "실행 실패: {{error}}",
     "joinHistory": "입장 기록",
     "accessPublic": "공개",
-    "accessFriends": "Friends",
-    "accessHidden": "Friends+",
+    "accessFriends": "친구",
+    "accessHidden": "친구+",
     "accessPrivate": "초대 전용",
     "accessGroup": "그룹",
     "ownerLabel": "소유자:",
@@ -1465,7 +1489,13 @@
     "clearHistory": "기록 삭제",
     "clearHistoryConfirm": "저장된 세션 기록과 소셜 변경 기록을 삭제하시겠습니까? 친구 메모는 유지됩니다.",
     "loginRequired": "친구 활동 기록을 보려면 설정 페이지에서 VRChat에 로그인하세요.",
-    "perPage": "페이지당 항목 수"
+    "perPage": "페이지당 항목 수",
+    "pageLabel": "페이지 {{page}}",
+    "range": "항목 {{start}}–{{end}}",
+    "rangeOfTotal": "총 {{total}}개 중 {{start}}–{{end}}",
+    "searchScopePage": "(검색은 현재 페이지만 필터링합니다)",
+    "noMatchesOnPage": "이 페이지에 일치하는 항목이 없습니다. 다른 페이지를 보거나 검색을 지우세요.",
+    "emptyPage": "이 페이지에 항목이 없습니다."
   },
   "settings": {
     "title": "설정",
@@ -3429,7 +3459,7 @@
       "hideUnfriends": "친구 삭제 이벤트 숨기기",
       "hideUnfriendsHint": "친구 활동 로그에서 \"나를 삭제함\"/친구 끊기 항목을 숨깁니다. 다른 이벤트는 계속 표시됩니다.",
       "statusShapes": "색맹용 상태 도형",
-      "statusShapesHint": "각 상태 표시(Join Me, 활성, Ask Me, 바쁨, 오프라인)에 고유한 도형을 추가해 색상에 의존하지 않고도 구분할 수 있게 합니다.",
+      "statusShapesHint": "각 상태 표시(참가 가능, 활동 중, 초대 요청, 바쁨, 오프라인)에 고유한 도형을 추가해 색상에 의존하지 않고도 구분할 수 있게 합니다.",
       "userColor": "사용자별 이름 색상",
       "userColorHint": "각 사용자의 이름을 ID에서 도출한 고유하고 일관된 색상으로 표시해, 피드와 명단에서 사람을 한눈에 알아보기 쉽게 합니다."
     },
@@ -3909,19 +3939,19 @@
       "item": {
         "cache": {
           "thumbnails": "썸네일 캐시",
-          "previews": "Avatar 미리보기 캐시",
+          "previews": "아바타 미리보기 캐시",
           "screenshotThumbs": "스크린샷 썸네일",
           "updates": "다운로드된 업데이트",
           "pluginFeed": "플러그인 피드 캐시",
           "index": "캐시 색인",
           "assetCache": "에셋 메타데이터 캐시",
-          "benchmark": "Avatar 벤치마크 캐시",
-          "onlineMirror": "온라인 미러 (avatar, print, 인벤토리)"
+          "benchmark": "아바타 벤치마크 캐시",
+          "onlineMirror": "온라인 미러 (아바타, 프린트, 인벤토리)"
         },
         "history": {
           "worldVisits": "월드 방문 기록",
           "playerEvents": "플레이어 이벤트 및 만남",
-          "avatarHistory": "Avatar 기록",
+          "avatarHistory": "아바타 기록",
           "friendLog": "친구 로그 및 접속 상태",
           "sessions": "세션 기록",
           "logEvents": "로그 이벤트"
@@ -4397,6 +4427,10 @@
     "jumpToBottom": "최신으로 이동",
     "paused": "스트림이 일시정지되었습니다. 새 줄을 캡처하려면 재개하세요.",
     "waiting": "VRChat 로그 출력을 기다리는 중… 실시간 줄을 보려면 VRChat을 실행하세요.",
+    "noLogDir": "VRChat 로그 폴더를 찾을 수 없습니다. 한 번 이상 VRChat을 실행해 생성하세요.",
+    "runningNoLog": "VRChat은 실행 중이지만 아직 로그를 쓰지 않았습니다. 잠시 후 줄이 나타납니다.",
+    "notRunning": "VRChat이 실행 중이 아니며 로그도 없습니다. 실시간 줄을 보려면 VRChat을 실행하세요.",
+    "notRunningHaveLog": "VRChat이 실행 중이 아닙니다. 마지막 세션 로그의 끝부분을 표시합니다. 실시간 줄을 보려면 VRChat을 실행하세요.",
     "level": {
       "all": "전체",
       "info": "정보",

@@ -33,7 +33,7 @@
       "workspace": "वर्कस्पेस"
     },
     "osc": "OSC टूल्स",
-    "worldHistory": "विश्व इतिहास",
+    "worldHistory": "वर्ल्ड इतिहास",
     "calendar": "कैलेंडर और जैम",
     "events": "इवेंट रिकॉर्डर",
     "social": "सामाजिक विश्लेषण",
@@ -48,7 +48,7 @@
     "title": "मेरा प्रोफ़ाइल",
     "subtitle": "अपना VRChat प्रोफ़ाइल देखें और संपादित करें",
     "switchAvatar": "अवतार बदलें",
-    "switchAvatarHint": "अवतार पेज पर जाएं, मॉडल चुनें और “Switch to this avatar” दबाकर लाइव बदलें। इसके लिए VRChat में साइन-इन होना जरूरी है।",
+    "switchAvatarHint": "अवतार पेज पर जाएं, मॉडल चुनें और “इस अवतार पर स्विच करें” दबाकर लाइव बदलें। इसके लिए VRChat में साइन-इन होना जरूरी है।",
     "editProfile": "प्रोफ़ाइल संपादित करें",
     "viewOnVrchat": "vrchat.com पर देखें",
     "bio": "बायो",
@@ -64,7 +64,7 @@
     "cancel": "रद्द करें",
     "noneTitle": "प्रोफ़ाइल उपलब्ध नहीं है",
     "notSignedIn": "साइन-इन नहीं है",
-    "quickActions": "नेेटिव वर्कस्पेस",
+    "quickActions": "नेटिव वर्कस्पेस",
     "quickActionsDesc": "VRCSM का बिल्ट-इन वर्कस्पेस खोलें और VRChat वेबसाइट पर जाए बिना मित्र, अवतार, वर्ल्ड और फेवरेट्स मैनेज करें।",
     "openProfileWeb": "वेब प्रोफ़ाइल खोलें",
     "openAvatarManager": "अवतार मैनेजर खोलें",
@@ -161,7 +161,9 @@
     "accepted": "स्वीकार किया",
     "replied": "उत्तर भेजा गया",
     "cleared": "इनबॉक्स साफ़ किया",
-    "inviteAccept": "अभी आ रहा हूँ!"
+    "inviteAccept": "अभी आ रहा हूँ!",
+    "openProfile": "प्रोफ़ाइल खोलें",
+    "viewProfile": "प्रोफ़ाइल"
   },
   "friendDetail": {
     "title": "मित्र विवरण",
@@ -255,7 +257,7 @@
     "title": "OSC टूल्स",
     "subtitle": "VRChat के लिए Open Sound Control संदेश भेजें और प्राप्त करें। डिफ़ॉल्ट रूप से Out → :9000, In ← :9001।",
     "send": "भेजें",
-    "sendDesc": "एकल OSC संदेश भेजें। अवतार पैरामीटर के लिए /avatar/parameters/Foo या ChatBox के लिए /chatbox/input जैसे पतों का उपयोग करें।",
+    "sendDesc": "एक OSC संदेश भेजें। अवतार पैरामीटर के लिए /avatar/parameters/Foo या ChatBox के लिए /chatbox/input जैसे पतों का उपयोग करें।",
     "sendButton": "भेजें",
     "listen": "सुनें",
     "listenDesc": "UDP सॉकेट को बाइंड करें और VRChat (या किसी भी सेंडर) द्वारा भेजे गए प्रत्येक OSC संदेश को लॉग करें।",
@@ -275,39 +277,39 @@
       "send": "भेजें",
       "sent": "चैटबॉक्स भेजा गया",
       "rateLimit": "संदेशों के बीच 2 सेकंड प्रतीक्षा करें (VRChat दर सीमा)",
-      "rateLimitBurst": "Chatbox हर 5 सेकंड में 5 manual messages की अनुमति देता है। {{seconds}}s प्रतीक्षा करें।"
+      "rateLimitBurst": "चैटबॉक्स हर 5 सेकंड में 5 मैनुअल संदेशों की अनुमति देता है। {{seconds}}s प्रतीक्षा करें।"
     },
     "studio": {
       "title": "OSC Studio",
-      "subtitle": "ड्रैग किए जा सकने वाले हार्डवेयर कार्ड, 4 टेम्प्लेट, लाइव प्रीव्यू और नियंत्रित ऑटो-सेंड से OSC बनाएं.",
+      "subtitle": "ड्रैग किए जा सकने वाले हार्डवेयर कार्ड, चार प्रीसेट, लाइव प्रीव्यू और नियंत्रित ऑटो-सेंड से OSC बनाएं।",
       "refreshHardware": "हार्डवेयर",
       "cards": "कार्ड",
-      "addScene": "Scene जोड़ें",
+      "addScene": "सीन जोड़ें",
       "exported": "प्रोफ़ाइल कॉपी हो गई",
       "exportReady": "प्रोफ़ाइल तैयार",
       "imported": "प्रोफ़ाइल इम्पोर्ट हो गई",
-      "avatarMissing": "Avatar ID चुनें या दर्ज करें",
-      "avatarLoaded": "{{count}} parameters loaded",
-      "preview": "Preview और Send",
+      "avatarMissing": "अवतार ID चुनें या दर्ज करें",
+      "avatarLoaded": "{{count}} पैरामीटर लोड हुए",
+      "preview": "प्रीव्यू और भेजें",
       "autoRunning": "AUTO",
-      "noPreview": "Output preview करने के लिए कोई card चुनें।",
-      "sendSelected": "Selected भेजें",
-      "stopAuto": "Auto रोकें",
+      "noPreview": "आउटपुट प्रीव्यू देखने के लिए कोई कार्ड चुनें।",
+      "sendSelected": "चुना हुआ भेजें",
+      "stopAuto": "ऑटो रोकें",
       "startAuto": "ऑटो भेजें",
       "hardware": "हार्डवेयर वेरिएबल",
       "profile": "प्रोफ़ाइल इम्पोर्ट/एक्सपोर्ट",
       "variables": "टेम्पलेट वेरिएबल",
       "avatarParams": "अवतार पैरामीटर स्कैन",
-      "noAvatarParams": "इस local avatar file में कोई parameter नहीं मिला।",
+      "noAvatarParams": "इस लोकल अवतार फ़ाइल में कोई पैरामीटर नहीं मिला।",
       "interval": "हर",
       "type": "प्रकार",
-      "insertVariable": "Variable डालें",
-      "autoStarted": "Auto send शुरू हुआ",
+      "insertVariable": "वेरिएबल डालें",
+      "autoStarted": "ऑटो-सेंड शुरू हुआ",
       "templatePresets": "टेम्प्लेट",
       "builder": "टेम्प्लेट बिल्डर",
       "editArea": "एडिट क्षेत्र",
-      "dropHint": "यहां टेक्स्ट लिखें, या दाईं तरफ से हार्डवेयर कार्ड ड्रैग करें.",
-      "chatboxPreview": "Chatbox प्रीव्यू",
+      "dropHint": "यहां टेक्स्ट लिखें, या दाईं तरफ से हार्डवेयर कार्ड ड्रैग करें।",
+      "chatboxPreview": "चैटबॉक्स प्रीव्यू",
       "componentCards": "कंपोनेंट कार्ड",
       "dragComponent": "एडिटर में ड्रैग करें या क्लिक करके जोड़ें",
       "composer": "कंपोजर",
@@ -330,52 +332,52 @@
       "cardDisabled": "कार्ड बंद है",
       "autoCardMissing": "ऑटो-सेंड कार्ड हटा दिया गया",
       "autoStats": "भेजे {{sent}} / छोड़े {{skipped}}",
-      "nextSendIn": "{{seconds}}s में अगला",
+      "nextSendIn": "{{seconds}}s में अगला संदेश",
       "stopAutoShort": "रोकें",
       "startAutoShort": "ऑटो",
       "noCardSelected": "पहले एक कार्ड चुनें"
     },
     "sendFailed": "OSC भेजना विफल रहा",
     "page": {
-      "subtitle": "VRChat OSC messages बनाएं, भेजे जाने वाले content का सटीक preview देखें, और send/receive loop एक ही जगह देखें।"
+      "subtitle": "VRChat OSC संदेश बनाएं, भेजी जाने वाली सामग्री का सटीक प्रीव्यू देखें, और भेजने/पाने का लूप एक ही जगह देखें।"
     },
     "profile": {
       "label": "प्रोफ़ाइल",
       "cardCount": "{{count}} कार्ड",
-      "new": "नया profile",
-      "rename": "Profile का नाम बदलें",
-      "delete": "Profile हटाएं",
-      "renameTitle": "Profile का नाम बदलें",
-      "deleteTitle": "यह profile हटाएं?",
-      "deleteBody": "\"{{name}}\" और इसके cards हट जाएंगे। यह वापस नहीं होगा।"
+      "new": "नई प्रोफ़ाइल",
+      "rename": "प्रोफ़ाइल का नाम बदलें",
+      "delete": "प्रोफ़ाइल हटाएं",
+      "renameTitle": "प्रोफ़ाइल का नाम बदलें",
+      "deleteTitle": "यह प्रोफ़ाइल हटाएं?",
+      "deleteBody": "\"{{name}}\" और इसके कार्ड हट जाएंगे। यह वापस नहीं होगा।"
     },
     "conn": {
       "label": "लक्ष्य",
       "host": "OSC होस्ट",
       "sendPort": "सेंड पोर्ट",
       "hardware": "हार्डवेयर",
-      "hardwareNone": "कोई hardware data नहीं"
+      "hardwareNone": "कोई हार्डवेयर डेटा नहीं"
     },
     "io": {
       "button": "इम्पोर्ट / एक्सपोर्ट",
-      "title": "Profile Import / Export",
-      "desc": "Export active profile के cards को JSON के रूप में कॉपी करता है। JSON पेस्ट करके import करें ताकि इस profile के cards बदल जाएं।",
+      "title": "प्रोफ़ाइल इम्पोर्ट / एक्सपोर्ट",
+      "desc": "एक्सपोर्ट सक्रिय प्रोफ़ाइल के कार्ड JSON के रूप में कॉपी करता है। JSON पेस्ट करके इम्पोर्ट करें ताकि इस प्रोफ़ाइल के कार्ड बदल जाएं।",
       "export": "एक्सपोर्ट",
       "import": "इम्पोर्ट",
       "loadFile": "फ़ाइल लोड करें",
-      "copied": "Profile clipboard पर कॉपी हुआ",
-      "exportReady": "Profile कॉपी के लिए तैयार",
-      "imported": "Profile import हुआ"
+      "copied": "प्रोफ़ाइल क्लिपबोर्ड पर कॉपी हुई",
+      "exportReady": "प्रोफ़ाइल कॉपी के लिए तैयार",
+      "imported": "प्रोफ़ाइल इम्पोर्ट हुई"
     },
     "list": {
       "title": "संदेश",
       "reset": "डिफ़ॉल्ट पर रीसेट करें",
-      "resetTitle": "Messages रीसेट करें?",
-      "resetBody": "यह मौजूदा profile के messages को बिल्ट-इन डिफ़ॉल्ट से बदल देगा।",
-      "empty": "अभी कोई message नहीं। शुरू करने के लिए \"Add message\" इस्तेमाल करें।"
+      "resetTitle": "संदेश रीसेट करें?",
+      "resetBody": "यह मौजूदा प्रोफ़ाइल के संदेशों को बिल्ट-इन डिफ़ॉल्ट से बदल देगा।",
+      "empty": "अभी कोई संदेश नहीं। शुरू करने के लिए \"संदेश जोड़ें\" इस्तेमाल करें।"
     },
     "card": {
-      "emptyPreview": "(कोई output नहीं)",
+      "emptyPreview": "(कोई आउटपुट नहीं)",
       "send": "भेजें",
       "autoTitle": "तय अंतराल पर अपने-आप भेजें",
       "autoStart": "ऑटो",
@@ -386,31 +388,31 @@
       "moveDown": "नीचे ले जाएँ"
     },
     "editor": {
-      "empty": "बाईं ओर से कोई संदेश चुनें, या editing शुरू करने के लिए नया जोड़ें।",
+      "empty": "बाईं ओर से कोई संदेश चुनें, या संपादन शुरू करने के लिए नया जोड़ें।",
       "title": "संदेश संपादित करें",
       "delete": "संदेश हटाएँ",
       "name": "नाम",
       "group": "समूह",
-      "template": "Chatbox टेक्स्ट",
+      "template": "चैटबॉक्स टेक्स्ट",
       "templatePlaceholder": "टेक्स्ट लिखें और {variables} डालें। उदाहरण: CPU {cpu.loadPct} {cpu.tempC}",
       "address": "OSC पता",
       "type": "प्रकार",
       "value": "मान",
       "previewLabel": "यह भेजा जाएगा",
-      "noOutput": "(कुछ नहीं — template खाली है)",
+      "noOutput": "(कुछ नहीं — टेम्प्लेट खाली है)",
       "interval": "हर",
       "send": "अभी भेजें",
-      "startAuto": "Auto भेजें",
-      "stopAuto": "Auto रोकें",
-      "rateHint": "Chatbox सीमा: 5 सेकंड में 5 मैनुअल sends; auto send हर 2 सेकंड में एक संदेश तक सीमित रहता है।",
-      "insertVariable": "Variable डालें",
+      "startAuto": "ऑटो भेजें",
+      "stopAuto": "ऑटो रोकें",
+      "rateHint": "चैटबॉक्स सीमा: 5 सेकंड में 5 मैनुअल संदेश; ऑटो-सेंड हर 2 सेकंड में एक संदेश तक सीमित रहता है।",
+      "insertVariable": "वेरिएबल डालें",
       "searchVariable": "CPU, GPU, समय खोजें...",
-      "noVariables": "कोई variable मेल नहीं खाता।"
+      "noVariables": "कोई वेरिएबल मेल नहीं खाता।"
     },
     "add": {
       "button": "संदेश जोड़ें",
-      "chatbox": "खाली chatbox संदेश",
-      "raw": "खाली OSC value संदेश",
+      "chatbox": "खाली चैटबॉक्स संदेश",
+      "raw": "खाली OSC वैल्यू संदेश",
       "presets": "प्रीसेट"
     },
     "loop": {
@@ -426,26 +428,48 @@
       "stop": "रोकें",
       "clear": "साफ़ करें",
       "waiting": "संदेशों की प्रतीक्षा में...",
-      "idle": "संदेश भेजें या listener चालू करें।",
+      "idle": "संदेश भेजें या लिस्नर चालू करें।",
       "in": "अंदर",
       "out": "बाहर"
     },
     "avatar": {
       "title": "अवतार पैरामीटर",
-      "hint": "लोकल Avatar का OSC config पढ़कर उसके parameters को value messages के रूप में जोड़ता है।",
-      "missing": "Avatar id डालें या चुनें",
-      "loaded": "{{count}} parameters लोड हुए",
+      "hint": "लोकल अवतार का OSC कॉन्फिग पढ़कर उसके पैरामीटरों को वैल्यू संदेशों के रूप में जोड़ता है।",
+      "missing": "अवतार ID डालें या चुनें",
+      "loaded": "{{count}} पैरामीटर लोड हुए",
       "load": "लोड करें",
-      "paramName": "Parameter का नाम",
-      "paramType": "Parameter टाइप",
-      "noParams": "इस Avatar फ़ाइल में कोई parameters नहीं हैं।"
+      "paramName": "पैरामीटर का नाम",
+      "paramType": "पैरामीटर टाइप",
+      "noParams": "इस अवतार फ़ाइल में कोई पैरामीटर नहीं हैं।"
     },
     "hw": {
       "title": "हार्डवेयर वैल्यू",
       "loading": "लोड हो रहा है",
       "identity": "पहचान",
-      "live": "लाइव sensors",
-      "sensorNeeded": "sensor provider ज़रूरी"
+      "live": "लाइव सेंसर",
+      "sensorNeeded": "सेंसर प्रोवाइडर ज़रूरी"
+    },
+    "music": {
+      "title": "अभी चल रहा है",
+      "live": "लाइव",
+      "idle": "कोई मीडिया नहीं",
+      "unknownTitle": "अज्ञात शीर्षक",
+      "artist": "कलाकार",
+      "album": "एल्बम",
+      "source": "स्रोत",
+      "emptyHint": "किसी भी ऐप में ट्रैक चलाएँ (Spotify, ब्राउज़र, foobar2000...), वह यहाँ दिखेगा।",
+      "templates": "टेम्प्लेट",
+      "presetSimple": "सरल",
+      "presetProgress": "प्रगति",
+      "presetMarquee": "मार्की",
+      "presetCompact": "कॉम्पैक्ट",
+      "applyToSelected": "चुने गए संदेश का टेम्प्लेट सेट करने के लिए क्लिक करें।",
+      "addAsCard": "नया चैटबॉक्स संदेश जोड़ने के लिए क्लिक करें।",
+      "preview": "चैटबॉक्स प्रीव्यू",
+      "previewEmpty": "(कुछ नहीं चल रहा)",
+      "barWidth": "प्रगति बार की चौड़ाई",
+      "asciiFold": "ASCII फ़ोल्ड",
+      "asciiFoldHint": "CJK अक्षरों को बिगाड़ने वाले फ़ॉन्ट के लिए non-ASCII हटाएँ"
     },
     "auto": {
       "badge": "AUTO",
@@ -497,7 +521,7 @@
     "socialPulse": "सोशल पल्स",
     "marketplaceQuick": "मार्केट",
     "favoriteAvatars": "पसंदीदा अवतार",
-    "favoriteWorlds": "पसंदीदा दुनिया",
+    "favoriteWorlds": "पसंदीदा वर्ल्ड",
     "downloadReady": "डाउनलोड के लिए तैयार",
     "block": "ब्लॉक",
     "mute": "म्यूट",
@@ -552,7 +576,7 @@
       "overview": "अवलोकन",
       "social": "सोशल",
       "vrcPlus": "VRC+",
-      "worlds": "दुनिया"
+      "worlds": "वर्ल्ड"
     },
     "notOwnedAvatar": "यह अवतार आपका नहीं है — VRChat इसके लिए डाउनलोड नहीं देता।",
     "avatarHistoryDesc": "पार्स किए गए VRChat लॉग से निकाले गए हाल में पहने अवतार।",
@@ -849,7 +873,7 @@
         "avatarChanges": "अवतार में बदलाव",
         "totalSessions": "सत्र",
         "uniquePlayers": "अद्वितीय खिलाड़ी",
-        "uniqueWorlds": "अद्वितीय दुनिया"
+        "uniqueWorlds": "अद्वितीय वर्ल्ड"
       },
       "empty": "स्थानीय लॉग्स में कोई सत्र नहीं मिला।",
       "ongoing": "जारी है",
@@ -863,7 +887,7 @@
       "sessionsDesc": "स्थानीय लॉग्स से पुनर्निर्मित — सबसे नया पहले।",
       "tab": "ऐतिहासिक विश्लेषण",
       "topPlayers": "सबसे ज्यादा मिले खिलाड़ी",
-      "topWorlds": "सबसे अधिक विज़िट की गई दुनिया",
+      "topWorlds": "सबसे अधिक विज़िट किए गए वर्ल्ड",
       "loginRequired": "सेशन इतिहास के लिए लोकल लॉग स्कैन करने हेतु लॉगिन ज़रूरी है।",
       "unclosed": "बंद नहीं हुआ"
     },
@@ -1404,8 +1428,8 @@
     "download": "डाउनलोड"
   },
   "friendLog": {
-    "subtitle": "लोकल डेटाबेस में रखे गए सेशन encounter history और social change records।",
-    "searchPlaceholder": "खिलाड़ी, user id, world id या event से खोजें…",
+    "subtitle": "लोकल डेटाबेस में रखे गए सेशन मुलाक़ात इतिहास और सामाजिक बदलाव के रिकॉर्ड।",
+    "searchPlaceholder": "खिलाड़ी, यूज़र ID, वर्ल्ड ID या इवेंट से खोजें…",
     "loadFailed": "लॉग डेटा लोड नहीं हो सका: {{error}}",
     "loadMore": "और लोड करें",
     "tabs": {
@@ -1428,8 +1452,8 @@
     },
     "social": {
       "title": "मित्र परिवर्तन फ़ीड",
-      "desc": "लोकल डेटाबेस में ट्रैक किए गए लंबे समय के सामाजिक बदलाव।",
-      "empty": "अभी तक मित्र परिवर्तन रिकॉर्ड नहीं हैं।",
+      "desc": "लोकल डेटाबेस में ट्रैक किए गए लंबे समय के सामाजिक बदलाव। जब कोई मित्र स्टेटस, अवतार या डिस्प्ले नाम बदलता है, या आप मित्र जोड़ते/हटाते हैं, तब रिकॉर्ड लिखे जाते हैं। इसके लिए VRChat सेशन और Pipeline (WebSocket) कनेक्ट होना चाहिए।",
+      "empty": "अभी तक मित्र परिवर्तन रिकॉर्ड नहीं हैं।\n\nयहाँ नई पंक्ति कब आती है:\n• आप VRChat में साइन-इन हों और Pipeline कनेक्ट हो (ऊपर दाईं ओर अपने नाम के पास चिप देखें)\n• कोई मित्र अपना अवतार, स्टेटस या डिस्प्ले नाम बदले\n• आप कोई मित्र जोड़ें या हटाएँ\n\nनई इंस्टॉल में कम से कम एक मित्र इवेंट होने तक यहाँ कुछ नहीं दिखेगा।",
       "unknownUser": "अज्ञात यूज़र",
       "from": "से",
       "to": "तक",
@@ -1464,8 +1488,14 @@
     "clearHistoryFailed": "हिस्ट्री मिटाने में विफल: {{error}}",
     "clearHistory": "हिस्ट्री मिटाएं",
     "clearHistoryConfirm": "संग्रहीत सेशन हिस्ट्री और सामाजिक बदलाव की हिस्ट्री मिटाएं? दोस्तों के नोट्स सुरक्षित रहेंगे।",
-    "loginRequired": "मित्र गतिविधि इतिहास देखने के लिए Settings पेज से VRChat में लॉग इन करें।",
-    "perPage": "प्रति पेज आइटम"
+    "loginRequired": "मित्र गतिविधि इतिहास देखने के लिए सेटिंग्स पेज से VRChat में लॉग इन करें।",
+    "perPage": "प्रति पेज आइटम",
+    "pageLabel": "पेज {{page}}",
+    "range": "आइटम {{start}}–{{end}}",
+    "rangeOfTotal": "{{start}}–{{end}} / {{total}}",
+    "searchScopePage": "(खोज केवल इस पेज को फ़िल्टर करती है)",
+    "noMatchesOnPage": "इस पेज पर कोई मिलान नहीं। दूसरा पेज आज़माएँ या खोज साफ़ करें।",
+    "emptyPage": "इस पेज पर कोई आइटम नहीं।"
   },
   "settings": {
     "title": "सेटिंग्स",
@@ -3421,9 +3451,9 @@
       "layoutDesc": "नियंत्रित करें कि पूरे ऐप में कौन से साइड पैनल डिफ़ॉल्ट रूप से दिखाई दें।",
       "layoutTitle": "वर्कस्पेस लेआउट",
       "profileContext": "प्रोफ़ाइल लाइव संदर्भ",
-      "profileContextHint": "मेरी प्रोफ़ाइल पर दाईं ओर लाइव अवतार और दुनिया का संदर्भ दिखाएं।",
-      "worldInspector": "दुनिया इंस्पेक्टर",
-      "worldInspectorHint": "मैप सूची के बगल में आकार बदलने योग्य दुनिया इंस्पेक्टर को खुला रखें।",
+      "profileContextHint": "मेरी प्रोफ़ाइल पर दाईं ओर लाइव अवतार और वर्ल्ड संदर्भ दिखाएं।",
+      "worldInspector": "वर्ल्ड इंस्पेक्टर",
+      "worldInspectorHint": "मैप सूची के बगल में आकार बदलने योग्य वर्ल्ड इंस्पेक्टर खुला रखें।",
       "showInstanceId": "इंस्टेंस ID दिखाएं",
       "showInstanceIdHint": "बंद होने पर, इंस्टेंस नंबर मित्रों की लोकेशन से छिपा रहता है। वर्ल्ड, प्रकार और क्षेत्र फिर भी दिखते हैं।",
       "hideUnfriends": "अनफ़्रेंड इवेंट छिपाएं",
@@ -3716,7 +3746,7 @@
         "unknown": "अज्ञात HMD"
       },
       "knownDevices": "पता चले VR डिवाइस:",
-      "profileApplied": "{{name}} लागू किया — स्थायी करने के लिए Save Settings क्लिक करें।",
+      "profileApplied": "{{name}} लागू किया — स्थायी करने के लिए “सेटिंग्स सेव करें” क्लिक करें।",
       "unknownGpu": "अज्ञात GPU",
       "vrIdle": "VR रनटाइम निष्क्रिय",
       "vrRunning": "VR रनटाइम सक्रिय"
@@ -3760,7 +3790,7 @@
         "label": "FPS सीमा (VR)"
       },
       "ignoreParticles": {
-        "hint": "भीड़-भाड़ वाली दुनिया में प्रदर्शन में नाटकीय रूप से सुधार करता है",
+        "hint": "भीड़-भाड़ वाले वर्ल्ड में प्रदर्शन में नाटकीय रूप से सुधार करता है",
         "label": "पार्टिकल्स को अनदेखा करें"
       },
       "defaultPlaceholder": "(डिफ़ॉल्ट)",
@@ -3879,8 +3909,8 @@
     },
     "data": {
       "heading": "डेटा प्रबंधन",
-      "blurb": "VRCSM इस मशीन पर जो cache और डेटा रखता है, उसकी समीक्षा करें और साफ़ करें। दोबारा बनने वाले cache साफ़ करना सुरक्षित है; history और asset डेटा हमेशा के लिए हट जाते हैं।",
-      "dbSize": "Database फ़ाइल (vrcsm.db): {{size}}",
+      "blurb": "VRCSM इस मशीन पर जो कैश और डेटा रखता है, उसकी समीक्षा करें और साफ़ करें। दोबारा बनने वाले कैश साफ़ करना सुरक्षित है; हिस्ट्री और एसेट डेटा हमेशा के लिए हट जाते हैं।",
+      "dbSize": "डेटाबेस फ़ाइल (vrcsm.db): {{size}}",
       "loading": "उपयोग लोड हो रहा है…",
       "loadError": "उपयोग लोड नहीं हुआ: {{error}}",
       "rowCount": "{{count}} पंक्तियां",
@@ -3892,26 +3922,26 @@
       "clearError": "सफ़ाई विफल: {{error}}",
       "confirmTitle": "सफ़ाई की पुष्टि करें",
       "confirmIrreversible": "नीचे दिए आइटम हमेशा के लिए हट जाएंगे। इसे पूर्ववत नहीं किया जा सकता।",
-      "confirmSafe": "नीचे दिए आइटम साफ़ हो जाएंगे। Cache अपने आप दोबारा बन जाते हैं।",
+      "confirmSafe": "नीचे दिए आइटम साफ़ हो जाएंगे। कैश अपने आप दोबारा बन जाते हैं।",
       "confirmClear": "अभी साफ़ करें",
       "cancel": "रद्द करें",
-      "dangerAck": "मैं समझता हूं कि इससे मेरे अपने asset (favorites, notes, tags) हमेशा के लिए मिट जाएंगे।",
+      "dangerAck": "मैं समझता हूं कि इससे मेरे अपने एसेट (फेवरेट्स, नोट्स, टैग) हमेशा के लिए मिट जाएंगे।",
       "group": {
-        "cache": "दोबारा बनने वाले cache",
+        "cache": "दोबारा बनने वाले कैश",
         "cacheDesc": "साफ़ करना सुरक्षित है। VRCSM इन्हें ज़रूरत अनुसार अपने आप दोबारा बना लेता है।",
-        "history": "History और analytics डेटा",
+        "history": "हिस्ट्री और एनालिटिक्स डेटा",
         "historyDesc": "स्थानीय रूप से दर्ज गतिविधि। साफ़ करना स्थायी है और पूर्ववत नहीं हो सकता।",
-        "experimental": "Experimental feature डेटा",
-        "experimentalDesc": "Experimental features से बना डेटा।",
+        "experimental": "प्रयोगात्मक फीचर डेटा",
+        "experimentalDesc": "प्रयोगात्मक फीचर से बना डेटा।",
         "danger": "खतरे का क्षेत्र",
-        "dangerDesc": "आपके अपने assets। साफ़ करने पर favorites, notes और tags हमेशा के लिए मिट जाएँगे।"
+        "dangerDesc": "आपके अपने एसेट। साफ़ करने पर फेवरेट्स, नोट्स और टैग हमेशा के लिए मिट जाएँगे।"
       },
       "item": {
         "cache": {
           "thumbnails": "थंबनेल कैश",
           "previews": "अवतार प्रीव्यू कैश",
           "screenshotThumbs": "स्क्रीनशॉट थंबनेल",
-          "updates": "डाउनलोड किए updates",
+          "updates": "डाउनलोड किए अपडेट",
           "pluginFeed": "प्लगइन फ़ीड कैश",
           "index": "कैश इंडेक्स",
           "assetCache": "एसेट मेटाडेटा कैश",
@@ -3919,18 +3949,18 @@
           "onlineMirror": "ऑनलाइन मिरर (अवतार, प्रिंट, इन्वेंटरी)"
         },
         "history": {
-          "worldVisits": "World visit इतिहास",
-          "playerEvents": "Player events और मुलाक़ातें",
-          "avatarHistory": "Avatar इतिहास",
-          "friendLog": "Friend log और presence",
-          "sessions": "Session इतिहास",
+          "worldVisits": "वर्ल्ड विज़िट इतिहास",
+          "playerEvents": "प्लेयर इवेंट और मुलाक़ातें",
+          "avatarHistory": "अवतार इतिहास",
+          "friendLog": "फ्रेंड लॉग और उपस्थिति",
+          "sessions": "सेशन इतिहास",
           "logEvents": "लॉग इवेंट"
         },
         "experimental": {
           "embeddings": "विज़ुअल खोज एम्बेडिंग"
         },
         "assets": {
-          "favorites": "स्थानीय favorites, notes और tags"
+          "favorites": "स्थानीय फेवरेट्स, नोट्स और टैग"
         }
       }
     },
@@ -4120,13 +4150,13 @@
     "noPreview": "कोई प्रीव्यू इमेज नहीं"
   },
   "worldHistory": {
-    "title": "विश्व इतिहास",
+    "title": "वर्ल्ड इतिहास",
     "subtitle": "अंतिम 100 विज़िट · VRChat आउटपुट-लॉग टेलर द्वारा लॉग किया गया",
     "loading": "लोड हो रहा है...",
     "errorPrefix": "त्रुटि: {{detail}}",
-    "empty": "अभी तक कोई विश्व भ्रमण दर्ज नहीं किया गया है। VRChat लॉन्च करें और एक दुनिया में शामिल हों — VRCSM गेम लॉग से विज़िट को कैप्चर करेगा।",
-    "unknownWorld": "(अज्ञात दुनिया)",
-    "stillInWorld": "अभी भी दुनिया में है",
+    "empty": "अभी तक कोई वर्ल्ड विज़िट दर्ज नहीं हुई। VRChat लॉन्च करें और किसी वर्ल्ड में जाएँ — VRCSM गेम लॉग से विज़िट कैप्चर करेगा।",
+    "unknownWorld": "(अज्ञात वर्ल्ड)",
+    "stillInWorld": "अभी भी वर्ल्ड में है",
     "instanceLabel": "इंस्टेंस",
     "openAction": "खोलें",
     "rejoinAction": "फिर से जॉइन करें",
@@ -4180,11 +4210,11 @@
     "topWorlds": "सबसे ज़्यादा देखे गए वर्ल्ड्स",
     "topEncounters": "सबसे ज़्यादा मिले खिलाड़ी",
     "noVisits": "अभी तक कोई विज़िट डेटा नहीं है।",
-    "noEncounters": "अभी encounter data नहीं है। Player encounters VRChat output logs से रिकॉर्ड होते हैं।",
+    "noEncounters": "अभी मुलाक़ात डेटा नहीं है। प्लेयर मुलाक़ातें VRChat आउटपुट लॉग से रिकॉर्ड होती हैं।",
     "guide": "आपकी VRChat लॉग हिस्ट्री से वर्ल्ड विज़िट और खिलाड़ियों से मुलाकात का डेटा एकत्र करता है। VRCSM लॉग पार्स करते समय डेटा जमा होता रहता है — एनालिटिक्स बनाने के लिए खेलते समय ऐप चालू रखें।",
     "noWorlds": "अभी तक कोई विज़िट डेटा नहीं है। जब VRCSM आपके VRChat लॉग पार्स करता है तब वर्ल्ड हिस्ट्री रिकॉर्ड होती है।",
-    "selfFiltered": "Encounter rankings से आपका अपना player ID हटाया गया है।",
-    "lazyWorlds": "विश्व बैज और थंबनेल सिर्फ दिखने या खुलने पर लोड होते हैं।",
+    "selfFiltered": "मुलाक़ात रैंकिंग से आपका अपना प्लेयर ID हटाया गया है।",
+    "lazyWorlds": "वर्ल्ड बैज और थंबनेल सिर्फ दिखने या खुलने पर लोड होते हैं।",
     "tabRankings": "रैंकिंग",
     "tabGraph": "रिश्ता ग्राफ़",
     "graphTitle": "सह-उपस्थिति नेटवर्क",
@@ -4359,8 +4389,8 @@
     "title": "गतिविधि फ़ीड",
     "subtitle": "मित्रों की मौजूदगी, सेशन और अवतार बदलावों की एकीकृत, स्थायी टाइमलाइन।",
     "searchPlaceholder": "नाम, वर्ल्ड, विवरण खोजें…",
-    "muteHint": "All व्यू से छिपाने के लिए राइट-क्लिक करें",
-    "loginRequired": "अपनी गतिविधि फ़ीड देखने के लिए Settings पेज से VRChat में लॉग इन करें।",
+    "muteHint": "सभी व्यू से छिपाने के लिए राइट-क्लिक करें",
+    "loginRequired": "अपनी गतिविधि फ़ीड देखने के लिए सेटिंग्स पेज से VRChat में लॉग इन करें।",
     "loadFailed": "फ़ीड लोड नहीं हो सका।",
     "empty": "अभी कोई गतिविधि नहीं। जैसे-जैसे आपके मित्र ऑनलाइन आते हैं और इंस्टेंस बदलते हैं, इवेंट यहाँ दिखेंगे।",
     "unknownUser": "अज्ञात",
@@ -4397,6 +4427,10 @@
     "jumpToBottom": "नवीनतम पर जाएं",
     "paused": "स्ट्रीम रुकी। नई पंक्तियाँ कैप्चर करने के लिए जारी रखें।",
     "waiting": "VRChat लॉग आउटपुट का इंतज़ार… लाइव पंक्तियाँ देखने के लिए VRChat लॉन्च करें।",
+    "noLogDir": "VRChat लॉग फ़ोल्डर नहीं मिला। इसे बनाने के लिए VRChat कम से कम एक बार लॉन्च करें।",
+    "runningNoLog": "VRChat चल रहा है, लेकिन अभी कोई लॉग नहीं लिखा। पंक्तियाँ थोड़ी देर में दिखेंगी।",
+    "notRunning": "VRChat चल नहीं रहा और कोई लॉग नहीं मिला। लाइव पंक्तियाँ देखने के लिए VRChat लॉन्च करें।",
+    "notRunningHaveLog": "VRChat चल नहीं रहा। पिछले सेशन के लॉग का अंतिम हिस्सा दिखाया जा रहा है; लाइव पंक्तियों के लिए VRChat लॉन्च करें।",
     "level": {
       "all": "सभी",
       "info": "जानकारी",

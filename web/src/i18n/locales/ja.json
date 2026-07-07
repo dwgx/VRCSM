@@ -161,7 +161,9 @@
     "accepted": "承認しました",
     "replied": "返信を送信しました",
     "cleared": "受信箱をクリアしました",
-    "inviteAccept": "今行きます！"
+    "inviteAccept": "今行きます！",
+    "openProfile": "プロフィールを開く",
+    "viewProfile": "プロフィール"
   },
   "friendDetail": {
     "title": "フレンド詳細",
@@ -255,11 +257,11 @@
     "title": "OSC ツール",
     "subtitle": "VRChat との間で Open Sound Control メッセージを送受信します。デフォルトでは送信は :9000、受信は :9001 です。",
     "send": "送信",
-    "sendDesc": "単一の OSC メッセージを送信します。アバターのパラメーターには /avatar/parameters/Foo を、ChatBox には /chatbox/input などのアドレスを使用します。",
+    "sendDesc": "単一の OSC メッセージを送信します。アバターのパラメーターには /avatar/parameters/Foo を、Chatbox には /chatbox/input などのアドレスを使用します。",
     "sendButton": "送信",
-    "listen": "リッスン",
+    "listen": "受信",
     "listenDesc": "UDP ソケットをバインドし、VRChat (または任意の送信元) が発行するすべての OSC メッセージをログに記録します。",
-    "listening": "リッスン中",
+    "listening": "受信中",
     "start": "開始",
     "stop": "停止",
     "empty": "メッセージを待機しています…",
@@ -275,7 +277,7 @@
       "send": "送信",
       "sent": "チャットボックスに送信しました",
       "rateLimit": "メッセージ間は2秒待ってください (VRChatのレート制限)",
-      "rateLimitBurst": "Chatboxは5秒ごとに手動メッセージ5件まで。あと{{seconds}}秒待ってください。"
+      "rateLimitBurst": "Chatbox は5秒ごとに手動メッセージ5件までです。あと{{seconds}}秒待ってください。"
     },
     "studio": {
       "title": "OSC スタジオ",
@@ -325,7 +327,7 @@
       "componentHint": "まず安定したカードから始めます。温度、ファン、ボードのカードはセンサープロバイダーに依存するため別タブにあります。",
       "clickToInsert": "クリックで挿入",
       "noComponents": "このフィルターに一致するコンポーネントはありません。",
-      "avatarParamsHint": "ローカルアバターの OSC 設定を読み取り、パラメーターを操作カードに変換します。アバターモデルの解包機能ではありません。",
+      "avatarParamsHint": "ローカルアバターの OSC 設定を読み取り、パラメーターを操作カードに変換します。アバターモデルの展開機能ではありません。",
       "emptyRendered": "テンプレートに利用可能な値がありません",
       "cardDisabled": "カードは無効です",
       "autoCardMissing": "自動送信カードが削除されました",
@@ -391,7 +393,7 @@
       "delete": "メッセージを削除",
       "name": "名前",
       "group": "グループ",
-      "template": "chatboxテキスト",
+      "template": "Chatbox テキスト",
       "templatePlaceholder": "テキストを入力して{variables}を挿入。例: CPU {cpu.loadPct} {cpu.tempC}",
       "address": "OSCアドレス",
       "type": "タイプ",
@@ -402,14 +404,14 @@
       "send": "今すぐ送信",
       "startAuto": "自動送信",
       "stopAuto": "自動送信を停止",
-      "rateHint": "chatboxの制限: 手動送信は5秒で5回まで、自動送信は2秒に1回まで。",
+      "rateHint": "Chatbox の制限: 手動送信は5秒で5回まで、自動送信は2秒に1回まで。",
       "insertVariable": "変数を挿入",
       "searchVariable": "CPU、GPU、時刻を検索...",
       "noVariables": "一致する変数なし。"
     },
     "add": {
       "button": "メッセージを追加",
-      "chatbox": "空のchatboxメッセージ",
+      "chatbox": "空の Chatbox メッセージ",
       "raw": "空のOSC値メッセージ",
       "presets": "プリセット"
     },
@@ -431,14 +433,14 @@
       "out": "送信"
     },
     "avatar": {
-      "title": "Avatar パラメータ",
-      "hint": "ローカルの Avatar の OSC 設定を読み込み、パラメータを値メッセージとして追加します。",
-      "missing": "Avatar ID を入力または選択してください",
+      "title": "アバターパラメータ",
+      "hint": "ローカルアバターの OSC 設定を読み込み、パラメータを値メッセージとして追加します。",
+      "missing": "アバター ID を入力または選択してください",
       "loaded": "{{count}} 個のパラメータを読み込みました",
       "load": "読み込み",
       "paramName": "パラメータ名",
       "paramType": "パラメータの型",
-      "noParams": "この Avatar ファイルにパラメータがありません。"
+      "noParams": "このアバターファイルにパラメータがありません。"
     },
     "hw": {
       "title": "ハードウェア値",
@@ -446,6 +448,28 @@
       "identity": "識別情報",
       "live": "ライブセンサー",
       "sensorNeeded": "センサープロバイダーが必要"
+    },
+    "music": {
+      "title": "再生中",
+      "live": "ライブ",
+      "idle": "メディアなし",
+      "unknownTitle": "不明なタイトル",
+      "artist": "アーティスト",
+      "album": "アルバム",
+      "source": "ソース",
+      "emptyHint": "Spotify、ブラウザ、foobar2000 などで曲を再生すると、ここに表示されます。",
+      "templates": "テンプレート",
+      "presetSimple": "シンプル",
+      "presetProgress": "進行状況",
+      "presetMarquee": "マーキー",
+      "presetCompact": "コンパクト",
+      "applyToSelected": "選択中のメッセージのテンプレートに設定します。",
+      "addAsCard": "新しい Chatbox メッセージとして追加します。",
+      "preview": "Chatbox プレビュー",
+      "previewEmpty": "（再生中の曲はありません）",
+      "barWidth": "進行バーの幅",
+      "asciiFold": "ASCII 化",
+      "asciiFoldHint": "CJK が崩れるフォント向けに非 ASCII 文字を除去します"
     },
     "auto": {
       "badge": "AUTO",
@@ -826,7 +850,7 @@
     "stats": {
       "timeInWorld": "滞在時間",
       "peakPlayers": "最大人数",
-      "uniquePlayers": "ユニークプレイヤー",
+      "uniquePlayers": "固有プレイヤー",
       "avatarChanges": "アバター変更回数"
     },
     "timeline": {
@@ -848,8 +872,8 @@
       "aggregate": {
         "avatarChanges": "アバター変更回数",
         "totalSessions": "セッション",
-        "uniquePlayers": "ユニークプレイヤー",
-        "uniqueWorlds": "ユニークワールド"
+        "uniquePlayers": "固有プレイヤー",
+        "uniqueWorlds": "固有ワールド"
       },
       "empty": "ローカルログにセッションが見つかりません。",
       "ongoing": "進行中",
@@ -1093,7 +1117,7 @@
     "defaultCollectionHint": "既定のクロスタイプ ローカル棚",
     "emptyCollections": "コレクションはまだありません。",
     "collectionMeta": "{{count}} 件 · 最新 {{date}}",
-    "searchPlaceholder": "名前、id、タグ、メモで絞り込み…",
+    "searchPlaceholder": "名前、ID、タグ、メモで絞り込み…",
     "filters": {
       "all": "すべて"
     },
@@ -1171,10 +1195,10 @@
       "loading": "展開中…",
       "cache_missing": "キャッシュにアクセスできません",
       "bundle_not_found": "キャッシュ済みバンドルがありません",
-      "extractor_missing": "Extractor が未インストールです",
-      "converter_missing": "Converter が未インストールです",
-      "extractor_failed": "Extractor 失敗",
-      "converter_failed": "Converter 失敗",
+      "extractor_missing": "抽出ツールが未インストールです",
+      "converter_missing": "変換ツールが未インストールです",
+      "extractor_failed": "抽出に失敗しました",
+      "converter_failed": "変換に失敗しました",
       "encrypted": "アセットは暗号化されています",
       "preview_failed": "プレビューできません",
       "missing_avatar_id": "アバター ID がありません",
@@ -1186,7 +1210,7 @@
       "controlsTitle": "Blender 風操作",
       "controlsBody": "左ドラッグ回転 · Shift+左ドラッグ平行移動 · ホイールズーム · 右ドラッグ平行移動",
       "panning": "平行移動モード",
-      "textureNote": "現在の extractor はメッシュと UV データのみ保持します。埋め込みテクスチャはまだ GLB に書き出されません。",
+      "textureNote": "現在の抽出処理はメッシュと UV データのみ保持します。埋め込みテクスチャはまだ GLB に書き出されません。",
       "expandedTitle": "拡大アバタープレビュー",
       "expandedBody": "大きいビューポートでシルエット、ボーン、マテリアルを確認します。Shift+左ドラッグでも右ドラッグでも平行移動でき、中クリックは WebView の不具合回避のため無効です。",
       "retry": "再試行"
@@ -1194,7 +1218,7 @@
     "thumbnailNote": "VRChat のアバター API は公開アバターでも匿名リクエストを拒否するため、VRCSM は実サムネイルの代わりに ID ベースの安定したキューブを描画します。ワールドは公開 API があるため実画像を表示できます。",
     "unknownUser": "不明なユーザー",
     "listPaneTitle": "ローカルアバター",
-    "filterPlaceholder": "名前または id で絞り込み…",
+    "filterPlaceholder": "名前または ID で絞り込み…",
     "includeLogOnly": "ログのみのエントリを表示",
     "includeLogOnlyHint": "VRChat の出力ログにのみ存在し、ディスク上にメタデータがないアバターを表示します。",
     "inspectorPaneTitle": "インスペクター",
@@ -1209,7 +1233,7 @@
     "pickOne": "アバターを選択",
     "noMatch": "条件に一致するアバターはありません。",
     "nameNote": "アバター名は VRChat 出力ログから抽出されます。この端末で一度以上読み込まれたアバターのみ名前が表示されます。",
-    "previewWorkbench": "インスペクターのプレビューは意図的にコンパクト化されており、右上の拡大ボタンで大きな中央ビューアーを開けます。現在の extractor はまだテクスチャを GLB に埋め込まないため、オリジナルモードでは書き出された生のマテリアル状態のみ表示します。ホイールでズーム、Shift+ドラッグで平行移動、右ドラッグでも平行移動できます。",
+    "previewWorkbench": "インスペクターのプレビューは意図的にコンパクト化されており、右上の拡大ボタンで大きな中央ビューアーを開けます。現在の抽出処理ではまだテクスチャを GLB に埋め込まないため、オリジナルモードでは書き出された生のマテリアル状態のみ表示します。ホイールでズーム、Shift+ドラッグで平行移動、右ドラッグでも平行移動できます。",
     "unityPackages": "{{count}}個のプラットフォーム",
     "hiddenCount": "他{{count}}件。検索で絞り込み。",
     "encounterLog": "遭遇",
@@ -1258,7 +1282,7 @@
     "totalCount_one": "{{count}} 個のワールド",
     "totalCount_other": "{{count}} 個のワールド",
     "gridPaneTitle": "最近のワールド",
-    "filterPlaceholder": "名前または id で絞り込み…",
+    "filterPlaceholder": "名前または ID で絞り込み…",
     "inspectorPaneTitle": "インスペクター",
     "noMatch": "条件に一致するワールドはありません。",
     "unknownName": "不明なワールド",
@@ -1405,7 +1429,7 @@
   },
   "friendLog": {
     "subtitle": "ローカルデータベースに保存された遭遇履歴とソーシャル変化の記録です。",
-    "searchPlaceholder": "プレイヤー名、ユーザー id、ワールド id、イベントで検索…",
+    "searchPlaceholder": "プレイヤー名、ユーザー ID、ワールド ID、イベントで検索…",
     "loadFailed": "ログデータ読み込み失敗: {{error}}",
     "loadMore": "さらに読み込む",
     "tabs": {
@@ -1414,7 +1438,7 @@
     },
     "stats": {
       "sessionEvents": "セッションイベント",
-      "uniquePlayers": "ユニークプレイヤー",
+      "uniquePlayers": "固有プレイヤー",
       "socialChanges": "ソーシャル変化"
     },
     "session": {
@@ -1465,7 +1489,13 @@
     "clearHistory": "履歴をクリア",
     "clearHistoryConfirm": "保存されたセッション履歴とソーシャル変更履歴をクリアしますか？フレンドのメモは保持されます。",
     "loginRequired": "フレンドアクティビティ履歴を表示するには、設定ページからVRChatにログインしてください。",
-    "perPage": "1ページあたりの件数"
+    "perPage": "1ページあたりの件数",
+    "pageLabel": "{{page}}ページ",
+    "range": "{{start}}〜{{end}}件",
+    "rangeOfTotal": "{{start}}〜{{end}} / {{total}}件",
+    "searchScopePage": "（検索対象はこのページのみ）",
+    "noMatchesOnPage": "このページに一致する項目はありません。別のページを試すか、検索をクリアしてください。",
+    "emptyPage": "このページに項目はありません。"
   },
   "settings": {
     "title": "設定",
@@ -3909,19 +3939,19 @@
       "item": {
         "cache": {
           "thumbnails": "サムネイルキャッシュ",
-          "previews": "Avatarプレビューキャッシュ",
+          "previews": "アバタープレビューキャッシュ",
           "screenshotThumbs": "スクリーンショットのサムネイル",
           "updates": "ダウンロード済みアップデート",
           "pluginFeed": "プラグインフィードキャッシュ",
           "index": "キャッシュインデックス",
           "assetCache": "アセットメタデータキャッシュ",
-          "benchmark": "Avatarベンチマークキャッシュ",
-          "onlineMirror": "オンラインミラー(Avatar、プリント、インベントリ)"
+          "benchmark": "アバターベンチマークキャッシュ",
+          "onlineMirror": "オンラインミラー（アバター、プリント、インベントリ）"
         },
         "history": {
           "worldVisits": "ワールド訪問履歴",
           "playerEvents": "プレイヤーイベントと遭遇",
-          "avatarHistory": "Avatar履歴",
+          "avatarHistory": "アバター履歴",
           "friendLog": "フレンドログとプレゼンス",
           "sessions": "セッション履歴",
           "logEvents": "ログイベント"
@@ -4397,6 +4427,10 @@
     "jumpToBottom": "最新へ移動",
     "paused": "ストリームを一時停止しました。再開すると新しい行を取得します。",
     "waiting": "VRChatのログ出力を待機中… VRChatを起動するとリアルタイムの行が表示されます。",
+    "noLogDir": "VRChat のログフォルダーが見つかりません。少なくとも一度 VRChat を起動すると作成されます。",
+    "runningNoLog": "VRChat は起動していますが、まだログを書き込んでいません。まもなく行が表示されます。",
+    "notRunning": "VRChat は起動しておらず、ログも見つかりません。ライブ行を表示するには VRChat を起動してください。",
+    "notRunningHaveLog": "VRChat は起動していません。前回セッションのログ末尾を表示しています。ライブ行を表示するには VRChat を起動してください。",
     "level": {
       "all": "すべて",
       "info": "情報",
