@@ -721,18 +721,30 @@ export function FriendLogPanel({ embedded = false }: FriendLogPanelProps) {
                   </span>
                   <span className="mx-1.5 opacity-50">·</span>
                   <span className="tabular-nums">
-                    {reportedTotal !== undefined
-                      ? t("friendLog.rangeOfTotal", {
-                          defaultValue: "{{start}}–{{end}} of {{total}}",
-                          start: rangeStart,
-                          end: rangeEnd,
-                          total: reportedTotal,
-                        })
-                      : t("friendLog.range", {
-                          defaultValue: "items {{start}}–{{end}}",
-                          start: rangeStart,
-                          end: rangeEnd,
-                        })}
+                    {pageItems.length === 0
+                      ? // Empty later page (overshot Next heuristic, or history
+                        // cleared from a later page): a "0–N" range is bogus, so
+                        // show an explicit "no items" instead.
+                        reportedTotal !== undefined
+                        ? t("friendLog.emptyPageOfTotal", {
+                            defaultValue: "no items of {{total}}",
+                            total: reportedTotal,
+                          })
+                        : t("friendLog.emptyPageRange", {
+                            defaultValue: "no items",
+                          })
+                      : reportedTotal !== undefined
+                        ? t("friendLog.rangeOfTotal", {
+                            defaultValue: "{{start}}–{{end}} of {{total}}",
+                            start: rangeStart,
+                            end: rangeEnd,
+                            total: reportedTotal,
+                          })
+                        : t("friendLog.range", {
+                            defaultValue: "items {{start}}–{{end}}",
+                            start: rangeStart,
+                            end: rangeEnd,
+                          })}
                   </span>
                   {searchActive ? (
                     <span className="ml-1.5 opacity-75">

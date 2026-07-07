@@ -1493,6 +1493,8 @@
     "pageLabel": "पेज {{page}}",
     "range": "आइटम {{start}}–{{end}}",
     "rangeOfTotal": "{{start}}–{{end}} / {{total}}",
+    "emptyPageRange": "कोई आइटम नहीं",
+    "emptyPageOfTotal": "{{total}} में से कोई आइटम नहीं",
     "searchScopePage": "(खोज केवल इस पेज को फ़िल्टर करती है)",
     "noMatchesOnPage": "इस पेज पर कोई मिलान नहीं। दूसरा पेज आज़माएँ या खोज साफ़ करें।",
     "emptyPage": "इस पेज पर कोई आइटम नहीं।"

@@ -103,6 +103,10 @@ export function NotificationsInbox() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationEntry[]>([]);
   const [detailFriend, setDetailFriend] = useState<Friend | null>(null);
+  // A friendRequest sender is NOT a friend yet, so friend-only actions
+  // (Unfriend, Boop/requestInvite) must be suppressed until the request is
+  // accepted. Tracks whether the currently-open detail dialog is such a case.
+  const [detailReadOnly, setDetailReadOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const bellRef = useRef<HTMLButtonElement | null>(null);
@@ -393,8 +397,17 @@ export function NotificationsInbox() {
               <ul className="divide-y divide-[hsl(var(--border))]">
                 {items.map((n) => {
                   const friend = friendFromNotification(n);
+                  // A friendRequest sender isn't a friend yet — open their
+                  // profile read-only so friend-only actions stay hidden.
+                  const readOnly = n.type === "friendRequest";
                   const openDetail = () => {
-                    if (friend) setDetailFriend(friend);
+                    if (!friend) return;
+                    // Close the inbox BEFORE opening the dialog: the inbox
+                    // panel is z-[9999] and the dialog is z-50, so leaving it
+                    // mounted lets the dropdown cover/intercept the dialog.
+                    setOpen(false);
+                    setDetailReadOnly(readOnly);
+                    setDetailFriend(friend);
                   };
                   return (
                   <li
@@ -503,7 +516,11 @@ export function NotificationsInbox() {
         </div>
       ) : null}
 
-      <FriendDetailDialog friend={detailFriend} onClose={() => setDetailFriend(null)} />
+      <FriendDetailDialog
+        friend={detailFriend}
+        readOnly={detailReadOnly}
+        onClose={() => setDetailFriend(null)}
+      />
     </div>
   );
 }

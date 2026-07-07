@@ -1493,6 +1493,8 @@
     "pageLabel": "{{page}}ページ",
     "range": "{{start}}〜{{end}}件",
     "rangeOfTotal": "{{start}}〜{{end}} / {{total}}件",
+    "emptyPageRange": "項目なし",
+    "emptyPageOfTotal": "項目なし / {{total}}件",
     "searchScopePage": "（検索対象はこのページのみ）",
     "noMatchesOnPage": "このページに一致する項目はありません。別のページを試すか、検索をクリアしてください。",
     "emptyPage": "このページに項目はありません。"

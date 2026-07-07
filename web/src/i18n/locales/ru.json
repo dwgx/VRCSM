@@ -1493,6 +1493,8 @@
     "pageLabel": "Страница {{page}}",
     "range": "элементы {{start}}–{{end}}",
     "rangeOfTotal": "{{start}}–{{end}} из {{total}}",
+    "emptyPageRange": "нет элементов",
+    "emptyPageOfTotal": "нет элементов из {{total}}",
     "searchScopePage": "(поиск только на этой странице)",
     "noMatchesOnPage": "На этой странице совпадений нет. Перейдите на другую страницу или очистите поиск.",
     "emptyPage": "На этой странице нет элементов."

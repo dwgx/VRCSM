@@ -1656,6 +1656,8 @@
     "pageLabel": "Page {{page}}",
     "range": "items {{start}}–{{end}}",
     "rangeOfTotal": "{{start}}–{{end}} of {{total}}",
+    "emptyPageRange": "no items",
+    "emptyPageOfTotal": "no items of {{total}}",
     "searchScopePage": "(search filters this page only)",
     "noMatchesOnPage": "No matches on this page. Try another page or clear the search.",
     "emptyPage": "No items on this page."

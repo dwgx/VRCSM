@@ -163,9 +163,16 @@ function eventDescription(e: FriendLogItem): string {
 interface FriendDetailDialogProps {
   friend: Friend | null;
   onClose: () => void;
+  /**
+   * Profile-only mode: the subject is not (yet) a confirmed friend — e.g. a
+   * friendRequest sender opened from the notifications inbox. Friend-only
+   * actions (Unfriend, Boop/requestInvite) are suppressed since they'd 400
+   * or misrepresent the relationship until the request is accepted.
+   */
+  readOnly?: boolean;
 }
 
-export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps) {
+export function FriendDetailDialog({ friend, onClose, readOnly = false }: FriendDetailDialogProps) {
   const { t, i18n } = useTranslation();
 
   // --- Profile query (richer than the list-row Friend object) -----------------
@@ -722,10 +729,12 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
                 <Ban className="size-3.5" />
                 {t("friendDetail.block", { defaultValue: "Block" })}
               </Button>
-              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 text-orange-400 border-orange-400/40 hover:bg-orange-400/10" onClick={() => setUnfriendStep(1)}>
-                <UserMinus className="size-3.5" />
-                {t("friendDetail.unfriend", { defaultValue: "Unfriend" })}
-              </Button>
+              {!readOnly && (
+                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 text-orange-400 border-orange-400/40 hover:bg-orange-400/10" onClick={() => setUnfriendStep(1)}>
+                  <UserMinus className="size-3.5" />
+                  {t("friendDetail.unfriend", { defaultValue: "Unfriend" })}
+                </Button>
+              )}
 
               <Button
                 variant="outline"
@@ -953,7 +962,9 @@ export function FriendDetailDialog({ friend, onClose }: FriendDetailDialogProps)
           })()}
 
           {/* ========== 5b. Boop / Quick Action — pick which saved request-invite slot to send ========== */}
-          <BoopCard friend={friend} inWorld={inWorld} />
+          {/* Boop/requestInvite are friend-only; hidden in profile-only mode
+              (e.g. a friendRequest sender who isn't a friend yet). */}
+          {!readOnly && <BoopCard friend={friend} inWorld={inWorld} />}
 
           {/* ========== 6. Friend Note ========== */}
           <div className="px-5 py-4">

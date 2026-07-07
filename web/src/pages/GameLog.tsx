@@ -96,9 +96,50 @@ export function GameLogPanel({ embedded = false }: GameLogPanelProps) {
     void ipc
       .call<undefined, LogStreamStartResult>("logs.stream.start")
       .then((res) => {
-        if (!cancelled) setStreamStatus(res);
+        if (cancelled) return;
+        setStreamStatus(res);
+        // Seed the buffer from the reply's tail snapshot. The shared tailer
+        // only broadcasts its one-shot backfill to whoever was listening at
+        // first attach, so a Game Log tab opened after the default dock
+        // already started the tailer would otherwise be blank. We seed here
+        // and ignore backfill-flagged live lines (below) so nothing double
+        // counts regardless of whether we were the first subscriber.
+        if (Array.isArray(res.snapshot) && res.snapshot.length > 0) {
+          const seeded: GameLogLine[] = res.snapshot.map((c) => ({
+            id: idRef.current++,
+            line: chunkText(c),
+            level: (c.level as Level) ?? "info",
+            timestamp: c.timestamp,
+            source: c.source,
+          }));
+          setLines((prev) => {
+            const merged = seeded.concat(prev);
+            return merged.length > MAX_LINES
+              ? merged.slice(merged.length - MAX_LINES)
+              : merged;
+          });
+        }
       })
-      .catch(() => undefined);
+      .catch((err) => {
+        if (cancelled) return;
+        // The host used to throw when %LocalLow%\VRChat\VRChat didn't exist,
+        // which left streamStatus null and the first-run "no log folder"
+        // empty state unreachable. The host now resolves with
+        // baseDirExists:false for that case, but we still degrade defensively:
+        // a "not found" / "log directory" rejection is treated as a missing
+        // base dir so first-run users see the actionable empty state instead
+        // of the generic "waiting for output" copy.
+        const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+        if (msg.includes("not found") || msg.includes("log directory") || msg.includes("no vrchat")) {
+          setStreamStatus({
+            running: false,
+            subscribers: 0,
+            baseDirExists: false,
+            logFound: false,
+            vrcRunning: false,
+          });
+        }
+      });
 
     const scheduleFlush = () => {
       if (flushTimerRef.current !== null) return;
@@ -114,6 +155,10 @@ export function GameLogPanel({ embedded = false }: GameLogPanelProps) {
       if (typeof payload === "string") {
         text = payload;
       } else if (isLogStreamChunk(payload)) {
+        // We already seeded history from the start reply's snapshot, so
+        // ignore the tailer's one-shot backfill replay to avoid duplicating
+        // those lines when we happen to be the first subscriber.
+        if (payload.backfill) return;
         text = chunkText(payload);
         lvl = (payload.level as Level) ?? "info";
         timestamp = payload.timestamp;

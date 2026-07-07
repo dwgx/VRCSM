@@ -1656,6 +1656,8 @@
     "pageLabel": "หน้า {{page}}",
     "range": "รายการ {{start}}–{{end}}",
     "rangeOfTotal": "{{start}}–{{end}} จาก {{total}}",
+    "emptyPageRange": "ไม่มีรายการ",
+    "emptyPageOfTotal": "ไม่มีรายการ จาก {{total}}",
     "searchScopePage": "(ค้นหาเฉพาะหน้านี้)",
     "noMatchesOnPage": "ไม่พบผลลัพธ์ในหน้านี้ ลองหน้าอื่นหรือล้างการค้นหา",
     "emptyPage": "ไม่มีรายการในหน้านี้"

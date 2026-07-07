@@ -1505,6 +1505,8 @@
     "pageLabel": "第 {{page}} 页",
     "range": "第 {{start}}–{{end}} 条",
     "rangeOfTotal": "第 {{start}}–{{end}} 条，共 {{total}} 条",
+    "emptyPageRange": "本页无内容",
+    "emptyPageOfTotal": "本页无内容，共 {{total}} 条",
     "searchScopePage": "（搜索仅筛选当前页）",
     "noMatchesOnPage": "本页没有匹配项。请翻页或清除搜索。",
     "emptyPage": "本页没有内容。"

@@ -373,6 +373,15 @@ export interface LogStreamStartResult {
   logFound?: boolean;
   /** VRChat.exe is currently running. */
   vrcRunning?: boolean;
+  /**
+   * Trailing lines of the current log so a subscriber can seed its buffer
+   * immediately, without waiting for the tailer's next poll. The tailer only
+   * broadcasts its one-shot backfill to whoever was listening at first
+   * attach, so a later subscriber (a Game Log tab opened after the default
+   * dock already started the shared tailer) needs this to avoid a blank
+   * panel. Oldest first.
+   */
+  snapshot?: LogStreamChunk[];
 }
 
 export type VrcSettingType = "int" | "float" | "string" | "bool" | "raw";
