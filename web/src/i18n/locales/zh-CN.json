@@ -463,13 +463,19 @@
       "presetProgress": "进度",
       "presetMarquee": "滚动",
       "presetCompact": "紧凑",
+      "presetLyrics": "歌词",
       "applyToSelected": "点击可将所选消息的模板设置为此项。",
       "addAsCard": "点击添加一条新的 chatbox 消息。",
       "preview": "聊天框预览",
       "previewEmpty": "（无播放）",
       "barWidth": "进度条宽度",
       "asciiFold": "ASCII 转换",
-      "asciiFoldHint": "去除非 ASCII 字符，适配无法正确显示 CJK 的字体"
+      "asciiFoldHint": "去除非 ASCII 字符，适配无法正确显示 CJK 的字体",
+      "lyrics": "歌词",
+      "lyricsFound": "已找到",
+      "lyricsInstrumental": "纯音乐",
+      "lyricsNone": "无",
+      "lyricsWaiting": "…"
     },
     "auto": {
       "badge": "AUTO",

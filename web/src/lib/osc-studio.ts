@@ -156,6 +156,12 @@ export interface OscTemplateContext {
   musicProgressWidth?: number;
   /** Character width for the {music.marquee} scrolling window (default 20). */
   musicMarqueeWidth?: number;
+  /**
+   * Already-resolved current synced-lyric line for {music.lyrics}. The caller
+   * computes it (via `currentLyricLine` on the live playback position) so this
+   * module stays free of the async fetch/parse path. Empty/undefined → "".
+   */
+  musicLyricLine?: string;
   /** When true, fold the rendered line to ASCII (strip/transliterate). */
   asciiFold?: boolean;
 }
@@ -253,7 +259,7 @@ export const OSC_VARIABLE_GROUPS = [
   {
     id: "music",
     label: "Music",
-    tokens: ["{music.title}", "{music.artist}", "{music.album}", "{music.status}", "{music.position}", "{music.duration}", "{music.progressBar}", "{music.percent}", "{music.appName}", "{music.marquee}"],
+    tokens: ["{music.title}", "{music.artist}", "{music.album}", "{music.status}", "{music.position}", "{music.duration}", "{music.progressBar}", "{music.percent}", "{music.appName}", "{music.marquee}", "{music.lyrics}"],
   },
 ] as const;
 
@@ -292,6 +298,12 @@ export const MUSIC_PRESETS: MusicPreset[] = [
     labelKey: "osc.music.presetCompact",
     label: "Compact",
     template: "♪ {music.title}",
+  },
+  {
+    id: "music-lyrics",
+    labelKey: "osc.music.presetLyrics",
+    label: "Lyrics",
+    template: "♪ {music.lyrics}",
   },
 ];
 
@@ -921,6 +933,7 @@ function musicReplacements(
   now: Date,
   progressWidth: number,
   marqueeWidth: number,
+  lyricLine: string,
 ): Record<string, string> {
   const empties: Record<string, string> = {
     "{music.title}": "",
@@ -933,6 +946,7 @@ function musicReplacements(
     "{music.percent}": "",
     "{music.appName}": "",
     "{music.marquee}": "",
+    "{music.lyrics}": "",
   };
   if (!music || !music.active) return empties;
   const nowMs = now.getTime();
@@ -950,6 +964,7 @@ function musicReplacements(
     "{music.percent}": percent,
     "{music.appName}": music.app_name ?? "",
     "{music.marquee}": oscMarquee(music.title ?? "", marqueeWidth, Math.floor(nowMs / 1000)),
+    "{music.lyrics}": lyricLine ?? "",
   };
 }
 
@@ -1024,6 +1039,7 @@ export function renderOscTemplate(
       now,
       context.musicProgressWidth ?? 10,
       context.musicMarqueeWidth ?? 20,
+      context.musicLyricLine ?? "",
     ),
   };
 

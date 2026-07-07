@@ -426,13 +426,19 @@
       "presetProgress": "แถบความคืบหน้า",
       "presetMarquee": "ข้อความวิ่ง",
       "presetCompact": "กะทัดรัด",
+      "presetLyrics": "เนื้อเพลง",
       "applyToSelected": "คลิกเพื่อตั้งเป็นเทมเพลตของข้อความที่เลือก",
       "addAsCard": "คลิกเพื่อเพิ่มข้อความแชตบ็อกซ์ใหม่",
       "preview": "ตัวอย่างแชตบ็อกซ์",
       "previewEmpty": "(ไม่มีเพลงที่เล่นอยู่)",
       "barWidth": "ความกว้างแถบความคืบหน้า",
       "asciiFold": "แปลงเป็น ASCII",
-      "asciiFoldHint": "ตัดอักขระที่ไม่ใช่ ASCII สำหรับฟอนต์ที่แสดง CJK เพี้ยน"
+      "asciiFoldHint": "ตัดอักขระที่ไม่ใช่ ASCII สำหรับฟอนต์ที่แสดง CJK เพี้ยน",
+      "lyrics": "เนื้อเพลง",
+      "lyricsFound": "พบแล้ว",
+      "lyricsInstrumental": "บรรเลง",
+      "lyricsNone": "ไม่มี",
+      "lyricsWaiting": "…"
     },
     "auto": {
       "badge": "AUTO",

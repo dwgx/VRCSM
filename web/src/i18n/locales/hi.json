@@ -463,13 +463,19 @@
       "presetProgress": "प्रगति",
       "presetMarquee": "मार्की",
       "presetCompact": "कॉम्पैक्ट",
+      "presetLyrics": "लिरिक्स",
       "applyToSelected": "चुने गए संदेश का टेम्प्लेट सेट करने के लिए क्लिक करें।",
       "addAsCard": "नया चैटबॉक्स संदेश जोड़ने के लिए क्लिक करें।",
       "preview": "चैटबॉक्स प्रीव्यू",
       "previewEmpty": "(कुछ नहीं चल रहा)",
       "barWidth": "प्रगति बार की चौड़ाई",
       "asciiFold": "ASCII फ़ोल्ड",
-      "asciiFoldHint": "CJK अक्षरों को बिगाड़ने वाले फ़ॉन्ट के लिए non-ASCII हटाएँ"
+      "asciiFoldHint": "CJK अक्षरों को बिगाड़ने वाले फ़ॉन्ट के लिए non-ASCII हटाएँ",
+      "lyrics": "लिरिक्स",
+      "lyricsFound": "मिला",
+      "lyricsInstrumental": "वाद्य",
+      "lyricsNone": "नहीं",
+      "lyricsWaiting": "…"
     },
     "auto": {
       "badge": "AUTO",

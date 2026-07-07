@@ -14,6 +14,7 @@ import {
   type MusicPreset,
   type OscStudioCard,
 } from "@/lib/osc-studio";
+import { currentLyricLine } from "@/lib/lyrics";
 import type { NowPlayingApi } from "@/lib/useNowPlaying";
 
 interface NowPlayingPanelProps {
@@ -41,13 +42,16 @@ export function NowPlayingPanel({
   canSetTemplate,
 }: NowPlayingPanelProps) {
   const { t } = useTranslation();
-  const { music, progressWidth, setProgressWidth, asciiFold, setAsciiFold } = nowPlaying;
+  const { music, progressWidth, setProgressWidth, asciiFold, setAsciiFold, lyrics, lyricsStatus } =
+    nowPlaying;
 
   const active = !!music?.active;
   const nowMs = now.getTime();
   const pos = music ? extrapolatePosition(music, nowMs) : 0;
   const dur = music && music.duration_ms > 0 ? music.duration_ms : 0;
   const statusGlyph = music ? MUSIC_STATUS_GLYPHS[music.status] ?? music.status : "";
+  // Live current lyric line for the preview, matching the extrapolated position.
+  const lyricLine = active ? currentLyricLine(lyrics, pos) : "";
 
   function applyPreset(preset: MusicPreset) {
     if (canSetTemplate) {
@@ -93,6 +97,30 @@ export function NowPlayingPanel({
                 <span>{dur > 0 ? mmss(dur) : "--:--"}</span>
               </div>
             </div>
+            {/* Synced lyrics: current line + resolution status */}
+            <div className="mt-1 grid gap-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                  {t("osc.music.lyrics", { defaultValue: "Lyrics" })}
+                </span>
+                <Badge
+                  variant={lyricsStatus === "found" ? "success" : "muted"}
+                  className="h-4 px-1.5 text-[9px]"
+                >
+                  {lyricsStatus === "found"
+                    ? t("osc.music.lyricsFound", { defaultValue: "found" })
+                    : lyricsStatus === "instrumental"
+                      ? t("osc.music.lyricsInstrumental", { defaultValue: "instrumental" })
+                      : t("osc.music.lyricsNone", { defaultValue: "none" })}
+                </Badge>
+              </div>
+              <div className="min-h-[16px] truncate text-[12px] italic text-[hsl(var(--foreground))]" title={lyricLine}>
+                {lyricLine ||
+                  (lyricsStatus === "found"
+                    ? t("osc.music.lyricsWaiting", { defaultValue: "..." })
+                    : "")}
+              </div>
+            </div>
           </div>
         ) : (
           <p className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-2 py-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
@@ -113,6 +141,7 @@ export function NowPlayingPanel({
                 music,
                 now,
                 musicProgressWidth: progressWidth,
+                musicLyricLine: lyricLine,
                 asciiFold,
               });
               const presetLabel = t(preset.labelKey, { defaultValue: preset.label });
@@ -152,6 +181,7 @@ export function NowPlayingPanel({
               music,
               now,
               musicProgressWidth: progressWidth,
+              musicLyricLine: lyricLine,
               asciiFold,
             }) || t("osc.music.previewEmpty", { defaultValue: "(nothing playing)" })}
           </div>

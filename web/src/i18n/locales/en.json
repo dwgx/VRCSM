@@ -426,13 +426,19 @@
       "presetProgress": "Progress",
       "presetMarquee": "Marquee",
       "presetCompact": "Compact",
+      "presetLyrics": "Lyrics",
       "applyToSelected": "Click to set the selected message's template.",
       "addAsCard": "Click to add a new chatbox message.",
       "preview": "Chatbox preview",
       "previewEmpty": "(nothing playing)",
       "barWidth": "Progress bar width",
       "asciiFold": "ASCII fold",
-      "asciiFoldHint": "Strip non-ASCII for fonts that mangle CJK"
+      "asciiFoldHint": "Strip non-ASCII for fonts that mangle CJK",
+      "lyrics": "Lyrics",
+      "lyricsFound": "found",
+      "lyricsInstrumental": "instrumental",
+      "lyricsNone": "none",
+      "lyricsWaiting": "..."
     },
     "auto": {
       "badge": "AUTO",

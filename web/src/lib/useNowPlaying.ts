@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "@/lib/ipc";
 import type { NowPlayingSnapshot } from "@/lib/osc-studio";
+import { fetchLyrics, type LyricLine } from "@/lib/lyrics";
 
 export const NOW_PLAYING_POLL_MS = 2000;
 export const DEFAULT_MUSIC_PROGRESS_WIDTH = 10;
@@ -22,11 +23,17 @@ export function useNowPlaying() {
   const [progressWidth, setProgressWidth] = useState(DEFAULT_MUSIC_PROGRESS_WIDTH);
   const [marqueeWidth, setMarqueeWidth] = useState(DEFAULT_MUSIC_MARQUEE_WIDTH);
   const [asciiFold, setAsciiFold] = useState(false);
+  const [lyrics, setLyrics] = useState<LyricLine[]>([]);
+  const [lyricsStatus, setLyricsStatus] = useState<"none" | "found" | "instrumental">("none");
 
   const musicRef = useRef<NowPlayingSnapshot | null>(null);
   const progressWidthRef = useRef(progressWidth);
   const marqueeWidthRef = useRef(marqueeWidth);
   const asciiFoldRef = useRef(asciiFold);
+  const lyricsRef = useRef<LyricLine[]>([]);
+  // Identity of the track we last fetched lyrics for, so a 2s poll of the same
+  // song doesn't re-fetch. Cleared to "" when nothing is playing.
+  const lyricsTrackKeyRef = useRef<string>("");
 
   useEffect(() => {
     progressWidthRef.current = progressWidth;
@@ -38,9 +45,47 @@ export function useNowPlaying() {
     asciiFoldRef.current = asciiFold;
   }, [asciiFold]);
 
+  function setLyricLines(lines: LyricLine[], status: "none" | "found" | "instrumental") {
+    lyricsRef.current = lines;
+    setLyrics(lines);
+    setLyricsStatus(status);
+  }
+
+  // Fetch synced lyrics once per track identity (title+artist+album). Runs off
+  // the poll path so a 2s re-poll of the same song never re-hits the network.
+  function syncLyrics(snapshot: NowPlayingSnapshot | null) {
+    if (!snapshot || !snapshot.active || (!snapshot.title && !snapshot.artist)) {
+      if (lyricsTrackKeyRef.current !== "") {
+        lyricsTrackKeyRef.current = "";
+        setLyricLines([], "none");
+      }
+      return;
+    }
+    const key = `${snapshot.title}|${snapshot.artist}|${snapshot.album}`;
+    if (key === lyricsTrackKeyRef.current) return;
+    lyricsTrackKeyRef.current = key;
+    setLyricLines([], "none");
+    void fetchLyrics(snapshot.title, snapshot.artist, snapshot.album, snapshot.duration_ms)
+      .then((res) => {
+        // A newer track may have arrived while we were awaiting; ignore stale.
+        if (lyricsTrackKeyRef.current !== key) return;
+        if (!res.found) {
+          setLyricLines([], "none");
+        } else if (res.instrumental) {
+          setLyricLines([], "instrumental");
+        } else {
+          setLyricLines(res.synced, "found");
+        }
+      })
+      .catch(() => {
+        if (lyricsTrackKeyRef.current === key) setLyricLines([], "none");
+      });
+  }
+
   function apply(snapshot: NowPlayingSnapshot | null) {
     musicRef.current = snapshot;
     setMusic(snapshot);
+    syncLyrics(snapshot);
   }
 
   useEffect(() => {
@@ -91,6 +136,9 @@ export function useNowPlaying() {
     asciiFold,
     setAsciiFold,
     asciiFoldRef,
+    lyrics,
+    lyricsRef,
+    lyricsStatus,
   };
 }
 

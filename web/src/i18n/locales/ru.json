@@ -463,13 +463,19 @@
       "presetProgress": "Прогресс",
       "presetMarquee": "Бегущая строка",
       "presetCompact": "Компактный",
+      "presetLyrics": "Текст",
       "applyToSelected": "Применить шаблон к выбранному сообщению.",
       "addAsCard": "Добавить новое сообщение Chatbox.",
       "preview": "Предпросмотр Chatbox",
       "previewEmpty": "(ничего не играет)",
       "barWidth": "Ширина прогресс-бара",
       "asciiFold": "ASCII-упрощение",
-      "asciiFoldHint": "Убирать символы вне ASCII для шрифтов, которые некорректно отображают CJK"
+      "asciiFoldHint": "Убирать символы вне ASCII для шрифтов, которые некорректно отображают CJK",
+      "lyrics": "Текст",
+      "lyricsFound": "найден",
+      "lyricsInstrumental": "инструментал",
+      "lyricsNone": "нет",
+      "lyricsWaiting": "…"
     },
     "auto": {
       "badge": "AUTO",

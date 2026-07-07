@@ -10,6 +10,7 @@ import {
 } from "@/lib/osc-api";
 import {
   cardPreview,
+  extrapolatePosition,
   coerceOscValue,
   createOscProfile,
   defaultOscStudioCards,
@@ -33,6 +34,7 @@ import {
   type OscValueType,
 } from "@/lib/osc-studio";
 import { useNowPlaying } from "@/lib/useNowPlaying";
+import { currentLyricLine } from "@/lib/lyrics";
 
 export const MAX_LOG_ENTRIES = 200;
 export const AUTO_TELEMETRY_REFRESH_MS = 5000;
@@ -398,12 +400,22 @@ export function useOscStudio() {
   // music snapshot and the NowPlayingPanel's width/ASCII-fold controls, with
   // {music.position} extrapolated at each send via `now`.
   function liveTemplateContext(): OscTemplateContext {
+    const now = new Date();
+    const music = nowPlaying.musicRef.current;
+    // Resolve {music.lyrics} to the line matching the live playback position so
+    // it advances as the song plays (the lyrics were fetched once on track
+    // change; here we just pick the current line from the parsed ref).
+    const lyricLine =
+      music && music.active
+        ? currentLyricLine(nowPlaying.lyricsRef.current, extrapolatePosition(music, now.getTime()))
+        : "";
     return {
       hardware: hardwareRef.current,
-      now: new Date(),
-      music: nowPlaying.musicRef.current,
+      now,
+      music,
       musicProgressWidth: nowPlaying.progressWidthRef.current,
       musicMarqueeWidth: nowPlaying.marqueeWidthRef.current,
+      musicLyricLine: lyricLine,
       asciiFold: nowPlaying.asciiFoldRef.current,
     };
   }
