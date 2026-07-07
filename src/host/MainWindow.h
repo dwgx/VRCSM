@@ -29,10 +29,19 @@ private:
     RECT GetInitialWindowRect() const;
     void ApplyWindowChrome();
 
-    void AddTrayIcon();
+    // Adds or re-asserts the tray icon. Idempotent and self-healing: it
+    // NIM_MODIFYs first (which verifies the icon is actually present) and
+    // falls back to NIM_ADD when the shell has dropped it (e.g. after an
+    // Explorer/taskbar restart). Returns true when the icon is present
+    // afterwards. Callers that gate window-hiding on the tray must check
+    // this so a failed add never orphans the window.
+    bool AddTrayIcon();
     void RemoveTrayIcon();
     void RestoreFromTray();
-    void HideToTray();
+    // Returns true when the window was hidden to the tray. Returns false
+    // when no tray icon could be established, so the caller can fall back
+    // to an ordinary minimize instead of hiding into nowhere.
+    bool HideToTray();
     void ShowTrayMenu();
     void QuitFromTray();
 
@@ -41,5 +50,13 @@ private:
     HICON m_appIcon{};
     bool m_trayIconAdded{false};
     bool m_quitting{false};
+    // Tracks whether the window was maximized when it was hidden to the
+    // tray, so RestoreFromTray can bring it back maximized instead of
+    // collapsing it to a normal-sized window.
+    bool m_wasMaximized{false};
+    // "TaskbarCreated" broadcast message id (RegisterWindowMessage). The
+    // shell broadcasts this when Explorer/the taskbar restarts, at which
+    // point every app must re-add its notification icon. 0 until registered.
+    UINT m_taskbarCreatedMsg{0};
     std::unique_ptr<WebViewHost> m_webViewHost;
 };

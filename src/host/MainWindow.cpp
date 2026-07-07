@@ -109,11 +109,11 @@ void MainWindow::ApplyWindowChrome()
         sizeof(backdropType));
 }
 
-void MainWindow::AddTrayIcon()
+bool MainWindow::AddTrayIcon()
 {
-    if (m_trayIconAdded || m_hwnd == nullptr)
+    if (m_hwnd == nullptr)
     {
-        return;
+        return false;
     }
 
     NOTIFYICONDATAW nid{};
@@ -126,10 +126,23 @@ void MainWindow::AddTrayIcon()
     // Tooltip. NOTIFYICONDATAW.szTip is a fixed wchar_t buffer.
     wcscpy_s(nid.szTip, L"VRCSM");
 
+    // If we believe the icon is already added, verify it's actually still
+    // there with NIM_MODIFY — this succeeds only when the shell still has
+    // our icon registered. It fails after a taskbar restart dropped it (or
+    // if our m_trayIconAdded bookkeeping is stale), in which case we fall
+    // through to a fresh NIM_ADD. This makes the tray self-healing rather
+    // than trusting a single past NIM_ADD success forever.
+    if (m_trayIconAdded && Shell_NotifyIconW(NIM_MODIFY, &nid))
+    {
+        return true;
+    }
+
+    m_trayIconAdded = false;
     if (Shell_NotifyIconW(NIM_ADD, &nid))
     {
         m_trayIconAdded = true;
     }
+    return m_trayIconAdded;
 }
 
 void MainWindow::RemoveTrayIcon()
@@ -154,27 +167,49 @@ void MainWindow::RestoreFromTray()
         return;
     }
 
-    ShowWindow(m_hwnd, SW_SHOW);
-    // If the window was minimized, SW_RESTORE brings it back to its prior
-    // (non-minimized) size; harmless when already normal.
-    ShowWindow(m_hwnd, SW_RESTORE);
+    // Bring the (possibly hidden) window back on-screen. Choosing the right
+    // show command matters: an unconditional SW_RESTORE un-maximizes a
+    // window that was maximized when it was hidden to the tray. Use the
+    // state we captured in HideToTray so a maximized window returns
+    // maximized. If we somehow have no captured state (e.g. restored from a
+    // plain minimize), fall back to SW_RESTORE which is correct for the
+    // minimized/normal cases.
+    if (m_wasMaximized)
+    {
+        ShowWindow(m_hwnd, SW_MAXIMIZE);
+    }
+    else
+    {
+        ShowWindow(m_hwnd, SW_SHOW);
+        ShowWindow(m_hwnd, SW_RESTORE);
+    }
+    m_wasMaximized = false;
     SetForegroundWindow(m_hwnd);
 }
 
-void MainWindow::HideToTray()
+bool MainWindow::HideToTray()
 {
     if (m_hwnd == nullptr)
     {
-        return;
+        return false;
     }
 
-    // Ensure a tray icon exists to restore from before hiding, so the
-    // window can never become unreachable.
-    if (!m_trayIconAdded)
+    // A window hidden with SW_HIDE has no taskbar button and no visible
+    // surface — the ONLY way back is the tray icon. Confirm a working tray
+    // icon is actually present BEFORE hiding (AddTrayIcon verifies via
+    // NIM_MODIFY and re-adds if the shell dropped it). If it can't be
+    // established, refuse to hide so the window is never orphaned; the
+    // caller falls back to an ordinary minimize.
+    if (!AddTrayIcon())
     {
-        AddTrayIcon();
+        return false;
     }
+
+    // Remember whether we're maximized so RestoreFromTray can bring the
+    // window back in the same state instead of collapsing it to normal.
+    m_wasMaximized = IsZoomed(m_hwnd) != FALSE;
     ShowWindow(m_hwnd, SW_HIDE);
+    return true;
 }
 
 void MainWindow::ShowTrayMenu()
@@ -256,6 +291,17 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 
 LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
 {
+    // "TaskbarCreated" is a runtime-registered broadcast id, so it can't be a
+    // switch label. When the shell restarts it drops our notification icon;
+    // re-add it (forcing a fresh NIM_ADD by clearing the stale added flag)
+    // so a hidden window stays reachable from the tray.
+    if (message == m_taskbarCreatedMsg && m_taskbarCreatedMsg != 0)
+    {
+        m_trayIconAdded = false;
+        AddTrayIcon();
+        return 0;
+    }
+
     switch (message)
     {
     case WM_CREATE:
@@ -263,6 +309,11 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         ApplyWindowChrome();
         m_webViewHost = std::make_unique<WebViewHost>();
         THROW_IF_FAILED(m_webViewHost->Initialize(m_hwnd));
+        // The shell broadcasts "TaskbarCreated" whenever Explorer/the
+        // taskbar (re)starts. When that happens our notification icon is
+        // silently dropped, so we must re-add it or the app becomes
+        // unreachable while hidden. Register the message id once here.
+        m_taskbarCreatedMsg = RegisterWindowMessageW(L"TaskbarCreated");
         AddTrayIcon();
         return 0;
     }
@@ -272,8 +323,15 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         // quittable via its title bar; the tray menu also offers Quit.
         if ((wParam & 0xFFF0) == SC_MINIMIZE)
         {
-            HideToTray();
-            return 0;
+            // Hide to the tray only if a tray icon is confirmed present.
+            // If HideToTray couldn't establish one it returns false and we
+            // fall through to the default handler, which performs an
+            // ordinary minimize — so the window is never left with neither
+            // a taskbar button nor a tray icon.
+            if (HideToTray())
+            {
+                return 0;
+            }
         }
         return DefWindowProcW(m_hwnd, message, wParam, lParam);
     case WM_APP_TRAY_CALLBACK:

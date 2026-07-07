@@ -1,6 +1,7 @@
 #include "../../pch.h"
 #include "BridgeCommon.h"
 
+#include "../../core/LogAtoms.h"
 #include "../../core/LogEventClassifier.h"
 #include "../../core/LogParser.h"
 #include "../../core/LogTailer.h"
@@ -71,6 +72,128 @@ std::filesystem::path FindLatestLogFile(const std::filesystem::path& logDir)
     return best;
 }
 
+// How many trailing lines to seed a freshly-subscribed panel with, and how
+// far back from EOF to scan to gather them. Mirrors LogTailer's backfill
+// window so a NEW subscriber (e.g. a Game Log tab opened after the default
+// dock already started the shared tailer) gets the same immediate history
+// instead of a blank panel — the tailer only broadcasts its one-shot
+// backfill to whoever was listening at first-attach time.
+constexpr std::size_t kSnapshotLines = 400;
+constexpr std::uint64_t kSnapshotScanBytes = 512u * 1024u;
+
+// Read the last kSnapshotLines complete lines of `logFile`, parse each with
+// the same prefix/severity logic the live tailer uses, and return them as a
+// JSON array of {line, level, timestamp?, source} objects (oldest first).
+// Returns an empty array on any error so the caller can always seed a buffer.
+nlohmann::json BuildTailSnapshot(const std::filesystem::path& logFile)
+{
+    nlohmann::json out = nlohmann::json::array();
+    if (logFile.empty())
+    {
+        return out;
+    }
+
+    // FILE_SHARE_WRITE is required — VRChat holds the log open for writing the
+    // whole session; FILE_SHARE_DELETE mirrors the tailer so a concurrent
+    // rotation can't fail the open.
+    HANDLE handle = CreateFileW(
+        logFile.c_str(),
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        return out;
+    }
+
+    LARGE_INTEGER sizeLi{};
+    if (!GetFileSizeEx(handle, &sizeLi) || sizeLi.QuadPart <= 0)
+    {
+        CloseHandle(handle);
+        return out;
+    }
+
+    const std::uint64_t eof = static_cast<std::uint64_t>(sizeLi.QuadPart);
+    const std::uint64_t start = eof > kSnapshotScanBytes ? eof - kSnapshotScanBytes : 0;
+    const std::uint64_t span = eof - start;
+
+    LARGE_INTEGER pos{};
+    pos.QuadPart = static_cast<LONGLONG>(start);
+    if (!SetFilePointerEx(handle, pos, nullptr, FILE_BEGIN))
+    {
+        CloseHandle(handle);
+        return out;
+    }
+
+    std::string window;
+    window.reserve(static_cast<std::size_t>(span));
+    std::vector<char> buffer(65536);
+    std::uint64_t remaining = span;
+    while (remaining > 0)
+    {
+        const DWORD toRead = static_cast<DWORD>(
+            std::min<std::uint64_t>(buffer.size(), remaining));
+        DWORD bytesRead = 0;
+        if (!ReadFile(handle, buffer.data(), toRead, &bytesRead, nullptr) || bytesRead == 0)
+        {
+            break;
+        }
+        window.append(buffer.data(), bytesRead);
+        remaining -= bytesRead;
+    }
+    CloseHandle(handle);
+
+    // Split into complete lines. If we started mid-file, drop the leading
+    // partial line so we never emit a fragment.
+    std::vector<std::string_view> lines;
+    std::size_t lineStart = 0;
+    if (start > 0)
+    {
+        const std::size_t firstNl = window.find('\n');
+        if (firstNl == std::string::npos)
+        {
+            return out;
+        }
+        lineStart = firstNl + 1;
+    }
+    std::size_t nl = 0;
+    while ((nl = window.find('\n', lineStart)) != std::string::npos)
+    {
+        std::string_view piece(window.data() + lineStart, nl - lineStart);
+        if (!piece.empty() && piece.back() == '\r')
+        {
+            piece.remove_suffix(1);
+        }
+        if (!piece.empty())
+        {
+            lines.push_back(piece);
+        }
+        lineStart = nl + 1;
+    }
+
+    const std::string source = logFile.filename().string();
+    const std::size_t begin = lines.size() > kSnapshotLines ? lines.size() - kSnapshotLines : 0;
+    for (std::size_t i = begin; i < lines.size(); ++i)
+    {
+        const auto parsed = vrcsm::core::ParseVrchatLogLine(lines[i]);
+        nlohmann::json entry{
+            {"line", parsed.body},
+            {"level", parsed.level},
+            {"source", source},
+        };
+        if (parsed.iso_time)
+        {
+            entry["timestamp"] = *parsed.iso_time;
+        }
+        out.push_back(std::move(entry));
+    }
+
+    return out;
+}
+
 } // namespace
 
 nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std::optional<std::string>&)
@@ -89,26 +212,47 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
     {
         m_logTailerRefCount += 1;
         const auto probe = vrcsm::core::PathProbe::Probe();
-        const bool logFound = probe.baseDirExists && !FindLatestLogFile(probe.baseDir).empty();
+        const auto latestLog = probe.baseDirExists ? FindLatestLogFile(probe.baseDir)
+                                                    : std::filesystem::path{};
+        const bool logFound = !latestLog.empty();
+        // The tailer broadcasts its one-shot backfill only to whoever was
+        // listening at first-attach. A LATER subscriber (Game Log/Radar tab
+        // opened after the default dock already started the tailer) would
+        // otherwise get a blank panel. Seed it from a tail snapshot in the
+        // reply so it can hydrate its own buffer without a second request.
         return nlohmann::json{
             {"running", true},
             {"subscribers", m_logTailerRefCount},
             {"baseDirExists", probe.baseDirExists},
             {"logFound", logFound},
             {"vrcRunning", vrcsm::core::ProcessGuard::IsVRChatRunning().running},
+            {"snapshot", BuildTailSnapshot(latestLog)},
         };
     }
 
     const auto probe = vrcsm::core::PathProbe::Probe();
     if (!probe.baseDirExists)
     {
-        throw std::runtime_error("logs.stream.start: VRChat log directory not found");
+        // First-run: %LocalLow%\VRChat\VRChat doesn't exist yet. This is an
+        // EXPECTED state, not an error — resolve with the same shape the
+        // success path returns (baseDirExists:false) so the frontend's
+        // "no log folder" empty-state is reachable instead of a rejected
+        // promise the UI has to sniff for "not found" text.
+        return nlohmann::json{
+            {"running", false},
+            {"subscribers", m_logTailerRefCount},
+            {"baseDirExists", false},
+            {"logFound", false},
+            {"vrcRunning", vrcsm::core::ProcessGuard::IsVRChatRunning().running},
+            {"snapshot", nlohmann::json::array()},
+        };
     }
 
     // Surface whether a log file actually exists + whether VRChat is live so
     // the UI can render a specific empty-state ("no log / not running")
     // instead of a silent blank when there's nothing to tail yet.
-    const bool logFound = !FindLatestLogFile(probe.baseDir).empty();
+    const auto latestLog = FindLatestLogFile(probe.baseDir);
+    const bool logFound = !latestLog.empty();
     const bool vrcRunning = vrcsm::core::ProcessGuard::IsVRChatRunning().running;
 
     // Backfill historical log data into DB, then seed current-world
@@ -510,12 +654,18 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
     // states stay coherent for any other caller that acquires the lock.
     m_logTailerRefCount += 1;
     int refs = m_logTailerRefCount;
+    // Seed the first subscriber too. The tailer will also replay backfill
+    // lines on its first tick, but those are flagged backfill=true and the
+    // frontend can dedupe/ignore them; returning the snapshot here means the
+    // panel is populated the instant the reply lands rather than after the
+    // first poll interval.
     return nlohmann::json{
         {"running", true},
         {"subscribers", refs},
         {"baseDirExists", true},
         {"logFound", logFound},
         {"vrcRunning", vrcRunning},
+        {"snapshot", BuildTailSnapshot(latestLog)},
     };
 }
 
