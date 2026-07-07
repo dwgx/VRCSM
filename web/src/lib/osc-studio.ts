@@ -895,7 +895,15 @@ export function extrapolatePosition(music: NowPlayingSnapshot, nowMs: number): n
   let pos = Number.isFinite(music.position_ms) ? music.position_ms : 0;
   if (music.status === "playing") {
     const rate = Number.isFinite(music.playback_rate) ? music.playback_rate : 1;
-    const at = Number.isFinite(music.position_at_ms) ? music.position_at_ms : nowMs;
+    // position_at_ms must be a real Unix-epoch sample time. When the host
+    // couldn't read timeline properties it stays 0 (epoch); extrapolating from
+    // that would add ~1.75e12 ms and render an absurd position. Treat any
+    // non-positive/non-finite anchor as "no fresh sample" and freeze at
+    // position_ms (anchor = nowMs → zero elapsed).
+    const at =
+      Number.isFinite(music.position_at_ms) && music.position_at_ms > 0
+        ? music.position_at_ms
+        : nowMs;
     pos += (nowMs - at) * rate;
   }
   if (pos < 0) pos = 0;

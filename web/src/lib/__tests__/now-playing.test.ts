@@ -130,6 +130,13 @@ describe("extrapolatePosition", () => {
     const m = makeSnapshot({ position_ms: 60_000, duration_ms: 0, position_at_ms: 1_000_000 });
     expect(extrapolatePosition(m, now)).toBe(90_000);
   });
+  it("freezes at position_ms when position_at_ms is 0 (host couldn't read timeline)", () => {
+    // Regression: a playing source that omits timeline data leaves
+    // position_at_ms at its default 0 (epoch). Extrapolating from epoch would
+    // add ~now ms and render an absurd position — must freeze instead.
+    const m = makeSnapshot({ position_ms: 45_000, position_at_ms: 0, status: "playing" });
+    expect(extrapolatePosition(m, now)).toBe(45_000);
+  });
 });
 
 describe("renderOscTemplate music tokens", () => {
