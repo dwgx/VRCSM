@@ -194,11 +194,23 @@ export async function cacheImageUrls(
   }
 
   if (need.length > 0) {
-    const sharedPromise = ipc
-      .call<{ items: Array<{ id: string; url: string }> }, IpcResponse>("images.cache", {
-        items: need.map(({ id, url }) => ({ id, url })),
-      })
-      .then((resp) => resp.results);
+    // The host caps each images.cache call at 64 items (ApiBridge). Chunk here
+    // so items 65+ are actually processed instead of being dropped with no
+    // result row and negative-cached until NEG_TTL expires.
+    const CHUNK = 64;
+    const chunks: Array<Array<{ id: string; url: string }>> = [];
+    for (let i = 0; i < need.length; i += CHUNK) {
+      chunks.push(need.slice(i, i + CHUNK).map(({ id, url }) => ({ id, url })));
+    }
+    const sharedPromise = Promise.all(
+      chunks.map((items) =>
+        ipc
+          .call<{ items: Array<{ id: string; url: string }> }, IpcResponse>("images.cache", {
+            items,
+          })
+          .then((resp) => resp.results),
+      ),
+    ).then((chunkResults) => chunkResults.flat());
     // Track the exact pending entries we insert so the shared catch only
     // removes keys still owned by *this* batch — never a key a concurrent
     // batch has since overwritten with its own pending/resolved entry.

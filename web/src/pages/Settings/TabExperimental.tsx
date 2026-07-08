@@ -106,10 +106,26 @@ function VisualSearchPanel() {
           count: avatar_ids.length,
         }),
       );
-      const thumbs = await ipc.call<
-        { ids: string[]; downloadImages?: boolean },
-        { results: { id: string; url: string | null; localUrl?: string | null; error: string | null }[] }
-      >("thumbnails.fetch", { ids: avatar_ids, downloadImages: true });
+      // Chunk the id list so each thumbnails.fetch stays well under the 60s
+      // default IPC timeout (the method is deliberately NOT on the long-running
+      // tier). A large library fetched in one call at 8-wide concurrency can
+      // exceed 60s and abort the whole embed run.
+      const THUMB_CHUNK = 50;
+      const thumbResults: {
+        id: string;
+        url: string | null;
+        localUrl?: string | null;
+        error: string | null;
+      }[] = [];
+      for (let i = 0; i < avatar_ids.length; i += THUMB_CHUNK) {
+        const chunkIds = avatar_ids.slice(i, i + THUMB_CHUNK);
+        const chunk = await ipc.call<
+          { ids: string[]; downloadImages?: boolean },
+          { results: { id: string; url: string | null; localUrl?: string | null; error: string | null }[] }
+        >("thumbnails.fetch", { ids: chunkIds, downloadImages: true });
+        thumbResults.push(...chunk.results);
+      }
+      const thumbs = { results: thumbResults };
 
       let done = 0;
       let failed = 0;
