@@ -4,7 +4,7 @@ Last updated: 2026-07-08
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
-> Note: `main` is currently 41 commits ahead of the `v0.14.6` cut (unpushed), so several docs below labeled "plan" now describe work that has already shipped (OSC Studio, the now-playing music module). Current test baseline: ctest 128/128, ~347 vitest, Playwright UI smoke 54/54. i18n is at full parity across all 7 locales.
+> Note: `main` is currently 44 commits ahead of the `v0.14.6` cut (unpushed), so several docs below labeled "plan" now describe work that has already shipped (OSC Studio, the now-playing music module). Current test baseline: ctest 135/135 (3 opt-in live network probes DISABLED), 354 vitest (run `--no-file-parallelism`), Playwright UI smoke 54/54. i18n is at full parity across all 7 locales.
 
 ## Required Startup Order
 

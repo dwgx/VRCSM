@@ -7,6 +7,14 @@ per-domain bridges. Goal: find latent white-screens like the historical Hardware
 
 ## 1. Summary
 
+> **Status update (2026-07-08): the `plugin.marketFeed` `permissions` drift
+> below is FIXED** in commit `133c3af`. `MarketEntry` now carries a
+> `permissions` vector, `ParseFeed` reads the entry's optional `permissions`
+> array, `MarketEntryToJson` emits it, and `docs/gh-pages/plugins.json` carries
+> per-entry permissions matching each plugin manifest. The consent dialog now
+> shows the real scopes instead of "none". Locked by `PluginFeedTests` (3 cases).
+> The `hw.recommend` provenance items in §4 remain optional/forward-compat.
+
 | Metric | Count |
 | --- | --- |
 | Contract surfaces swept (methods + events) | ~101 |

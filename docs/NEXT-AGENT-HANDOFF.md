@@ -27,6 +27,69 @@ Last updated: 2026-07-08
 ---
 
 
+## Latest Session (2026-07-08 session 2) — READ FIRST
+
+The three parked/open items from the earlier 2026-07-08 block are all **DONE**
+and committed on `main` (still unpushed). Nothing is left open from that list.
+
+**Commits (this session, on top of `2741c5a`):**
+- `133c3af` fix(plugin): emit permissions in plugin.marketFeed pre-install consent
+- `45978e5` test(lyrics): add opt-in live NetEase reachability probes
+- `7112f56` refactor(core): extract WinHTTP transport from VrcApi into HttpClient
+
+**1. plugin.marketFeed permissions (security) — FIXED (`133c3af`).**
+`MarketEntry` (`PluginFeed.h`) now has a `permissions` vector; `ParseFeed`
+reads the entry's optional `permissions` array (mirrors `PluginManifest`);
+`MarketEntryToJson` (`PluginBridge.cpp`) emits it. The shipped feed
+`docs/gh-pages/plugins.json` now carries per-entry permissions matching each
+plugin's manifest, so the pre-install consent dialog shows the real scopes
+instead of "none". No TS change (both views already read `entry.permissions`).
+Locked by 3 new `PluginFeedTests`. `PluginFeed::ParseFeed` was promoted to a
+public static so it is testable without a WinHTTP round-trip.
+
+**2. NetEase Chinese-lyrics end-to-end — VERIFIED (`45978e5`).** No production
+code changed — the shipped path already worked. Added opt-in live gtest probes
+(`LyricsProxyLive.*`, DISABLED, gated on `VRCSM_LIVE_LYRICS_TEST`) that exercise
+the exact WinHTTP transport `lyrics.fetch` uses against `music.163.com`.
+Confirmed live: search returns a songs array; the lyric endpoint returns 200
+with **raw UTF-8** (not `\u`-escaped) Chinese LRC + timestamps
+(`[00:00.000] 作词 : 周杰伦`). Combined with the green frontend `lyrics.test.ts`
+(39/39) this proves every automatable hop. The only thing left is the GUI
+render itself, which needs a human with a music player + VRChat running.
+
+**3. VrcApi transport extraction — DONE (`7112f56`).** The WinHTTP transport is
+now `src/core/HttpClient.{h,cpp}` (`vrcsm::core::http`): `crackUrl`,
+`requestOnce`/`request`/`get`, `HttpResponse`, rate-limit token + 429
+retry/backoff, Set-Cookie capture. Moved verbatim (timeouts, UA, byte flow
+unchanged). `VrcApi.cpp` keeps all VRChat semantics (API key, cookie header,
+percent/base64 encode, error interpretation, the file-download path) and
+delegates through thin wrappers, so the ~50 call sites and **byte-frozen
+`VrcApi.h`** are untouched. VrcApi.cpp shrank ~430 lines. Locked by 4 new
+`HttpClientCrackUrl` tests (crackUrl had no coverage before) + an opt-in live
+probe (`HttpClientLive`, gated on `VRCSM_LIVE_VRCAPI_TEST`) that GETs
+`/api/1/config` → 200 + valid JSON.
+
+**Verification baseline (current, re-confirm before claiming done):**
+- C++ debug + release build clean (`/W4`; only the pre-existing
+  `PluginBridge.cpp:172` `u8path` C4996 warning).
+- ctest **135/135** (was 128; +3 PluginFeed, +4 crackUrl). 3 opt-in live
+  probes are DISABLED and correctly not-run in normal ctest; the pre-existing
+  `RealLogClassificationTally` skip is unchanged.
+- Live probes (opt-in, ran green this session): NetEase lyrics (200 + UTF-8
+  Chinese LRC) and VRChat `/api/1/config` (200 + 26KB valid JSON).
+- web: `pnpm build` (tsc+vite) clean; Playwright UI smoke **54/54**.
+- web vitest: **354/354** — but only with `--no-file-parallelism`. The default
+  parallel runner flakes ~25 fails in the two heavy render suites
+  (`pages-smoke` + `interaction-smoke`) from CPU/timer contention, NOT a
+  regression; each suite passes in isolation (27/27, 30/30). Run
+  `node_modules\.bin\vitest.CMD run --testTimeout 30000 --no-file-parallelism`
+  for the true count.
+
+**Version still `0.14.6` / un-bumped; nothing pushed.** Same as the block below.
+
+---
+
+
 ## Latest Session (2026-07-08) — READ FIRST
 
 This block is current truth and supersedes every older block below on branch
@@ -93,6 +156,11 @@ paused" framing is likewise stale and should be corrected when scope allows.
   `docs/review-2026-07/` (IPC contract-drift sweep `378b9c4`, etc.).
 
 ### Open / Parked Items
+
+> **Update (2026-07-08 session 2): all three items below are DONE.** See the
+> "Latest Session (2026-07-08 session 2)" block immediately above for the
+> commits and verification. Kept here for context; the three sub-items are
+> now historical.
 
 1. **VrcApi transport extraction — PARKED.** Started, not finished; `src/core` still
    has only `VrcApi.{cpp,h}` (no transport/http TU). Gateway-flaky; when resumed do

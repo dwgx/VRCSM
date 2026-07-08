@@ -19,7 +19,7 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 - Development is **ACTIVE** (not paused). This session shipped a now-playing music module, synced lyrics with a host proxy, a system tray, a Database god-object split, and full 7-locale i18n parity. See "Shipped this session" below.
 - Current version: still `0.14.6` in `VERSION` and `web/package.json` — **un-bumped** despite the 41 new commits. A version bump + release cut is pending; keep `VERSION`, `web/package.json`, README artifact names, and release asset filenames in sync when bumped.
 - Last release artifact `build\release\VRCSM_v0.14.6_x64_Installer.msi` **predates the current head** (music/lyrics/tray/i18n/Database-split all landed after it) and is NOT representative of current code. No new artifact has been cut.
-- Current test baseline (re-confirm by running builds before claiming done): **C++ ctest 128/128, web ~347 vitest, Playwright UI smoke 54/54, tsc + build clean.** This supersedes the older 100/104-test and 238/280 vitest / 27-smoke figures elsewhere in the docs.
+- Current test baseline (re-confirm by running builds before claiming done): **C++ ctest 135/135, web 354/354 vitest (see below), Playwright UI smoke 54/54, tsc + build clean.** ctest rose from 128 → 135 in the 2026-07-08 session 2 (+3 PluginFeed, +4 crackUrl). The web vitest full run flakes ~25 fails under the default parallel runner (two heavy render suites contending); run `--no-file-parallelism` for the true 354/354 — see [[vitest-parallel-flakiness]]. This supersedes the older 100/104-test and 238/280 vitest / 27-smoke figures elsewhere in the docs.
 - Reliability lesson: background workflows/subagents repeatedly hung on the inference gateway this session; **prefer foreground single-threaded execution for heavy C++ work.**
 
 ### Shipped this session
@@ -32,6 +32,15 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 - **Database god-object split** into a thin `Database.cpp` + 9 domain translation units (`Database_Analytics/AssetCache/Avatars/Embeddings/Favorites/Friends/History/Recordings/Rules.cpp`) sharing `Database_internal.h`; friend analytics extracted into a pure, testable `src/core/FriendAnalytics.{cpp,h}`.
 
 ### Open / parked work
+
+> **Update (2026-07-08 session 2): all three items below are DONE + committed**
+> on `main` (unpushed): `133c3af` (plugin.marketFeed permissions),
+> `45978e5` (opt-in live NetEase lyrics probes — path already worked),
+> `7112f56` (VrcApi WinHTTP transport → `src/core/HttpClient.{h,cpp}`,
+> VrcApi.h byte-frozen). ctest now **135/135** (+3 PluginFeed, +4 crackUrl).
+> web vitest **354/354** but only under `--no-file-parallelism` (see
+> [[vitest-parallel-flakiness]]). See docs/NEXT-AGENT-HANDOFF.md
+> "Latest Session (2026-07-08 session 2)" for details.
 
 - **VrcApi transport extraction — PARKED.** Started but not finished; `src/core` still has only `VrcApi.{cpp,h}` (no separate transport/http TU). It is gateway-flaky; when resumed, do it single-threaded/foreground, NOT via a background workflow.
 - **`plugin.marketFeed` omits `permissions` (security-relevant).** `MarketEntryToJson` in `src/host/bridges/PluginBridge.cpp:63` emits id/name/version/hostMin/shape/description/homepage/authorName/authorUrl/iconUrl/download/sha256 but NOT permissions, so the pre-install consent dialog shows "none". Fix `MarketEntry` (PluginFeed.h) + `ParseFeed` + `MarketEntryToJson`. See `docs/review-2026-07/IPC-CONTRACT-DRIFT-2026-07.md`.
