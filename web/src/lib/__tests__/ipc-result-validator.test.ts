@@ -54,6 +54,12 @@ describe("ipcResponseTimeoutMs", () => {
     expect(ipcResponseTimeoutMs("scan")).toBe(15 * 60_000);
     expect(ipcResponseTimeoutMs("auth.status")).toBe(60_000);
   });
+
+  it("puts the streaming MSI download on the long-running tier, not the 60s default", () => {
+    // update.download streams a multi-MB installer to completion before
+    // responding; the 60s default would spuriously time it out on slow links.
+    expect(ipcResponseTimeoutMs("update.download")).toBe(15 * 60_000);
+  });
 });
 
 describe("checkResultShape — opt-in / backward compatibility", () => {

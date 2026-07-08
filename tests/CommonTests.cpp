@@ -34,6 +34,7 @@
 #include "core/hw/HwTelemetry.h"
 #include "core/plugins/PluginRegistry.h"
 #include "core/updater/UpdateApplier.h"
+#include "core/updater/UpdateDownloader.h"
 #include "core/updater/UpdatePackage.h"
 
 namespace
@@ -1477,6 +1478,22 @@ TEST(CommonTests, UpdateInstallCommandLineOmitsRelaunchWhenExeUnknown)
     EXPECT_NE(cmd.find(L"msiexec.exe\" /i"), std::wstring::npos);
     EXPECT_NE(cmd.find(L"/passive"), std::wstring::npos);
     EXPECT_EQ(cmd.find(L"start \"\""), std::wstring::npos);
+}
+
+TEST(CommonTests, UpdateDownloadRejectsNonHttpsUrl)
+{
+    // Defense-in-depth: an installer must not be fetched over plaintext http.
+    // The scheme check runs after arg validation + CrackUrl but before any
+    // network I/O, so a valid-shaped http URL fails synchronously.
+    vrcsm::core::updater::DownloadOptions options;
+    options.url = "http://example.com/VRCSM-9.9.9.msi";
+    options.expectedSize = 1234;
+    options.targetFileName = "VRCSM-9.9.9.msi";
+
+    const auto result = vrcsm::core::updater::UpdateDownloader::Download(options);
+    ASSERT_FALSE(vrcsm::core::isOk(result));
+    EXPECT_EQ(vrcsm::core::error(result).code, "update_invalid");
+    EXPECT_NE(vrcsm::core::error(result).message.find("https"), std::string::npos);
 }
 
 TEST(CommonTests, SteamLinkRestoreTargetAllowsOnlySteamVrRepairRoots)

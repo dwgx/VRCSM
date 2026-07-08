@@ -409,6 +409,9 @@ const LONG_RUNNING_METHODS = new Set<string>([
   // a slow connection can exceed the 60s default, so exempt them.
   "prints.upload",
   "files.uploadImage",
+  // The updater streams a multi-MB MSI to completion before responding; on a
+  // slow connection that exceeds the 60s default and spuriously times out.
+  "update.download",
   // thumbnails.fetch removed: a batch of ~50 ids parallel-fetches in ~6s,
   // a stuck call should not pin the pending map forever — let the default
   // 60s timeout reject it so memo entries can clear and retry.

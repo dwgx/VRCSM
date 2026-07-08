@@ -326,6 +326,13 @@ Result<std::filesystem::path> UpdateDownloader::Download(const DownloadOptions& 
     {
         return Error{"update_invalid", fmt::format("invalid download URL: {}", options.url), 0};
     }
+    // Defense-in-depth: an installer must come over https. The install-time
+    // SHA256 gate is the primary defense, but refusing a plaintext transport
+    // here stops a MITM from even feeding us bytes to hash.
+    if (!cracked->https)
+    {
+        return Error{"update_invalid", "download URL must use https", 0};
+    }
 
     if (const auto verified = VerifyExistingFile(targetPath, options); isOk(verified))
     {
