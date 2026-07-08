@@ -12,12 +12,12 @@ namespace
 {
 
 // Method tokens every plugin may call without declaring a permission.
-// These are pure-read endpoints that never mutate user state.
+// These are pure-read endpoints that never mutate user state and reveal
+// nothing about the user's filesystem layout.
 const std::unordered_set<std::string>& FreeMethods()
 {
     static const std::unordered_set<std::string> s = {
         "app.version",
-        "path.probe",
         "process.vrcRunning",
     };
     return s;
@@ -32,7 +32,7 @@ const std::unordered_map<std::string, std::unordered_set<std::string>>& Permissi
 {
     static const std::unordered_map<std::string, std::unordered_set<std::string>> s = {
         {"ipc:vrc:scan", {"scan", "bundle.preview"}},
-        {"ipc:vrc:cache", {"scan", "bundle.preview", "delete.dryRun"}},
+        {"ipc:vrc:cache", {"scan", "bundle.preview", "delete.dryRun", "path.probe"}},
         {"ipc:vrc:auth", {"auth.status", "auth.user", "user.me"}},
         {"ipc:vrc:api", {"avatar.details", "world.details", "friends.list",
                           "groups.list", "user.me", "user.getProfile"}},

@@ -1,6 +1,7 @@
 #include "../../pch.h"
 #include "BridgeCommon.h"
 
+#include "../VrchatPaths.h"
 #include "../../core/AuthStore.h"
 #include "../../core/DiscordRpc.h"
 #include "../../core/OscBridge.h"
@@ -497,8 +498,20 @@ nlohmann::json IpcBridge::HandleScreenshotsInjectMetadata(const nlohmann::json& 
         throw IpcException(vrcsm::core::Error{"missing_field", "screenshots.injectMetadata: missing 'metadata' object", 400});
     }
 
+    // Contain the write to the VRChat screenshots root (mirrors screenshots.
+    // open/delete). Without this the handler is an arbitrary-PNG-tEXt-write
+    // primitive reachable by a compromised renderer.
     const std::filesystem::path pngPath(vrcsm::core::toWide(*rawPath));
-    const bool ok = vrcsm::core::InjectPngTextFromJson(pngPath, params["metadata"]);
+    const auto root = DetectPrimaryVrchatScreenshotRoot();
+    std::error_code ec;
+    const auto absPng = std::filesystem::weakly_canonical(pngPath, ec);
+    if (root.empty() || ec || !vrcsm::core::ensureWithinBase(root, absPng))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument", "screenshots.injectMetadata: path escapes screenshots root", 400});
+    }
+
+    const bool ok = vrcsm::core::InjectPngTextFromJson(absPng, params["metadata"]);
     return nlohmann::json{{"ok", ok}};
 }
 
@@ -510,7 +523,19 @@ nlohmann::json IpcBridge::HandleScreenshotsReadMetadata(const nlohmann::json& pa
         throw IpcException(vrcsm::core::Error{"missing_field", "screenshots.readMetadata: missing 'path'", 400});
     }
 
-    const auto chunks = vrcsm::core::ReadPngTextChunks(std::filesystem::path(vrcsm::core::toWide(*rawPath)));
+    // Contain the read to the VRChat screenshots root (mirrors the sibling
+    // handlers) so this cannot be used as an arbitrary-file read primitive.
+    const std::filesystem::path pngPath(vrcsm::core::toWide(*rawPath));
+    const auto root = DetectPrimaryVrchatScreenshotRoot();
+    std::error_code ec;
+    const auto absPng = std::filesystem::weakly_canonical(pngPath, ec);
+    if (root.empty() || ec || !vrcsm::core::ensureWithinBase(root, absPng))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_argument", "screenshots.readMetadata: path escapes screenshots root", 400});
+    }
+
+    const auto chunks = vrcsm::core::ReadPngTextChunks(absPng);
     nlohmann::json out = nlohmann::json::object();
     // Duplicate keys get the last-wins treatment so the UI sees the
     // most recent injection when VRCSM has been stamping the same

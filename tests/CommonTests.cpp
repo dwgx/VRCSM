@@ -1652,6 +1652,20 @@ TEST(CommonTests, PluginPermissionSplitDoesNotLetIpcShellTouchFilesystem)
     EXPECT_FALSE(PluginRegistry::CanPermissionsInvoke({"ipc:fs:writePlan"}, "fs.listDir").allowed);
 }
 
+TEST(CommonTests, PathProbeRequiresPermissionAndIsNotFree)
+{
+    using vrcsm::core::plugins::PluginRegistry;
+
+    // path.probe leaks the VRChat/cache filesystem layout, so a plugin with no
+    // declared permission must NOT be able to call it (it was previously a
+    // free method). It is now gated behind ipc:vrc:cache.
+    EXPECT_FALSE(PluginRegistry::CanPermissionsInvoke({}, "path.probe").allowed);
+    EXPECT_TRUE(PluginRegistry::CanPermissionsInvoke({"ipc:vrc:cache"}, "path.probe").allowed);
+    // Genuinely-free, layout-agnostic methods stay free.
+    EXPECT_TRUE(PluginRegistry::CanPermissionsInvoke({}, "app.version").allowed);
+    EXPECT_TRUE(PluginRegistry::CanPermissionsInvoke({}, "process.vrcRunning").allowed);
+}
+
 TEST(CommonTests, TruncatedUnityFsMagicOnlyBundleIsNotTrusted)
 {
     const auto dir = MakeTempTestDir(L"vrcsm-truncated-unityfs");
