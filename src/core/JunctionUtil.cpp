@@ -2,6 +2,7 @@
 
 #include "CacheScanner.h"
 #include "PathProbe.h"
+#include "ProcessGuard.h"
 
 #include <cstddef>
 #include <cstring>
@@ -214,6 +215,18 @@ Result<std::monostate> JunctionUtil::removeJunction(const std::filesystem::path&
 
 nlohmann::json JunctionUtil::Repair(const nlohmann::json& params)
 {
+    // Destructive: this removes the reparse point / empty source dir and
+    // recreates the junction on a live Cache-WindowsPlayer root. Tearing that
+    // down while VRChat holds the cache open can corrupt it or leave the root
+    // neither junction nor real dir. Its siblings SafeDelete::ExecutePlan and
+    // Migrator both re-check here — junction.repair must too.
+    const auto vrc = ProcessGuard::IsVRChatRunning();
+    if (vrc.running)
+    {
+        throw std::runtime_error(
+            "junction.repair cannot run while VRChat is running — close VRChat first");
+    }
+
     const auto sourceKey = params.contains("source") ? "source" : "path";
     if (!params.contains(sourceKey) || !params[sourceKey].is_string())
     {

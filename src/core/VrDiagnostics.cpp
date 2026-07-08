@@ -2213,12 +2213,32 @@ Result<nlohmann::json> VrDiagnostics::SwitchAudioDevice(
     }
 
     std::wstring wideId(deviceId.begin(), deviceId.end());
-    // 0=eConsole, 1=eMultimedia, 2=eCommunications
+    // Setting a Windows default device applies across all three ERoles
+    // (0=eConsole, 1=eMultimedia, 2=eCommunications) — that is what "Set as
+    // Default Device" does, so the loop is intended. But the HRESULTs were
+    // previously discarded, so a failed switch still returned ok:true. Track
+    // them and fail if the device could not be set for any role.
+    HRESULT firstFailure = S_OK;
     for (int r = 0; r < 3; ++r)
-        pConfig->SetDefaultEndpoint(wideId.c_str(), r);
+    {
+        const HRESULT rhr = pConfig->SetDefaultEndpoint(wideId.c_str(), r);
+        if (FAILED(rhr) && SUCCEEDED(firstFailure))
+        {
+            firstFailure = rhr;
+        }
+    }
 
     pConfig->Release();
     CoUninitialize();
+
+    if (FAILED(firstFailure))
+    {
+        return Error{
+            "audio_switch_failed",
+            fmt::format("SetDefaultEndpoint failed (hr=0x{:08x}) for device {}",
+                        static_cast<unsigned>(firstFailure), deviceId),
+            500};
+    }
 
     return nlohmann::json{{"ok", true}, {"deviceId", deviceId}, {"role", role}};
 }
