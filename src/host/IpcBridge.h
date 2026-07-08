@@ -128,6 +128,11 @@ private:
     // (src/core/NowPlaying.cpp) and surface it as a snake_case snapshot.
     // Implementation in bridges/MusicBridge.cpp.
     nlohmann::json HandleMusicNowPlaying(const nlohmann::json& params, const std::optional<std::string>& id);
+
+    // lyrics.fetch — standalone WinHTTP GET proxy so the web lyrics chain can
+    // reach NetEase / LRCLIB without WebView2's CORS/Referer limits. Async
+    // (network I/O). Implementation in bridges/LyricsBridge.cpp.
+    nlohmann::json HandleLyricsFetch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleModerationsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarDiscover(const nlohmann::json& params, const std::optional<std::string>& id);

@@ -9,6 +9,8 @@
  * `musicLyricTranslated`. The fetch/async lives here and in `useNowPlaying`.
  */
 
+import { ipc } from "@/lib/ipc";
+
 export interface LyricLine {
   timeMs: number;
   text: string;
@@ -268,6 +270,35 @@ async function fetchJson(url: string, headers?: Record<string, string>): Promise
   }
 }
 
+/**
+ * IPC-backed JSON GET routed through the C++ host proxy (`lyrics.fetch`). Lets
+ * both providers bypass WebView2's CORS/Referer restrictions and reach NetEase
+ * (which is otherwise blocked in the WebView). Returns the parsed JSON, or
+ * `null` on a non-2xx status / parse error / IPC rejection (e.g. the SSRF rail
+ * or running in the browser-dev mock without a host). Never throws.
+ */
+export async function hostFetchJson(url: string, referer?: string): Promise<unknown | null> {
+  try {
+    const res = await ipc.call<{ url: string; referer?: string }, { status: number; body: string }>(
+      "lyrics.fetch",
+      { url, referer },
+    );
+    if (!res || typeof res.status !== "number" || res.status < 200 || res.status >= 300) {
+      return null;
+    }
+    if (typeof res.body !== "string" || !res.body) return null;
+    return JSON.parse(res.body);
+  } catch {
+    return null;
+  }
+}
+
+/** Per-provider enable flags. Both default on; a false flag skips that provider. */
+export interface LyricsSources {
+  lrclib: boolean;
+  netease: boolean;
+}
+
 interface LrclibRecord {
   syncedLyrics?: string | null;
   plainLyrics?: string | null;
@@ -290,6 +321,18 @@ function lrclibToResult(record: LrclibRecord | null): LyricsResult | null {
   return null;
 }
 
+/**
+ * Fetch an LRCLIB endpoint through the host proxy, falling back to a direct
+ * browser fetch when the host proxy isn't available (ipc rejects → null, e.g.
+ * running in browser-dev without a mock). LRCLIB serves permissive CORS so the
+ * direct fetch works outside WebView2. NetEase has no such fallback.
+ */
+async function lrclibFetch(url: string): Promise<unknown | null> {
+  const viaHost = await hostFetchJson(url);
+  if (viaHost !== null) return viaHost;
+  return fetchJson(url);
+}
+
 /** LRCLIB provider: exact /api/get, then fuzzy /api/search with scoring. */
 async function fromLrclib(
   q: NormalizedQuery,
@@ -301,14 +344,14 @@ async function fromLrclib(
   const getParams = new URLSearchParams({ track_name: q.title, artist_name: q.artist });
   if (album) getParams.set("album_name", album);
   if (durSec > 0) getParams.set("duration", String(durSec));
-  const exact = (await fetchJson(`${LRCLIB_BASE}/get?${getParams.toString()}`)) as LrclibRecord | null;
+  const exact = (await lrclibFetch(`${LRCLIB_BASE}/get?${getParams.toString()}`)) as LrclibRecord | null;
   const fromExact = lrclibToResult(exact);
   if (fromExact) return fromExact;
 
   // 2) Fuzzy /api/search, ranked by title+artist similarity and duration.
   const term = [q.title, q.artist].filter(Boolean).join(" ").trim();
   if (!term) return null;
-  const candidates = (await fetchJson(
+  const candidates = (await lrclibFetch(
     `${LRCLIB_BASE}/search?${new URLSearchParams({ q: term }).toString()}`,
   )) as LrclibRecord[] | null;
   if (!Array.isArray(candidates) || candidates.length === 0) return null;
@@ -340,15 +383,18 @@ interface NeteaseSong {
 
 /**
  * NetEase provider: search then fetch lyric + translation. Finds Chinese songs
- * LRCLIB misses. Sends a Referer header (browsers may strip it — see fetch
- * note); if CORS-blocked at runtime the fetch rejects and we return null so the
- * chain falls through gracefully.
+ * LRCLIB misses. Routed exclusively through the host proxy (`lyrics.fetch`)
+ * with a `music.163.com` Referer — NetEase can't be reached directly from the
+ * WebView (CORS + Referer gating), so there is no browser-fetch fallback. When
+ * the host proxy is unavailable (browser-dev), hostFetchJson returns null and
+ * the chain falls through gracefully.
  */
+const NETEASE_REFERER = "https://music.163.com";
+
 async function fromNetease(
   q: NormalizedQuery,
   durationMs: number,
 ): Promise<LyricsResult | null> {
-  const headers = { Referer: "https://music.163.com" };
   const term = [q.title, q.artist].filter(Boolean).join(" ").trim();
   if (!term) return null;
   const searchUrl = `${NETEASE_BASE}/search/get?${new URLSearchParams({
@@ -356,7 +402,7 @@ async function fromNetease(
     type: "1",
     limit: "5",
   }).toString()}`;
-  const search = (await fetchJson(searchUrl, headers)) as
+  const search = (await hostFetchJson(searchUrl, NETEASE_REFERER)) as
     | { result?: { songs?: NeteaseSong[] } }
     | null;
   const songs = search?.result?.songs;
@@ -384,7 +430,7 @@ async function fromNetease(
     kv: "1",
     tv: "-1",
   }).toString()}`;
-  const lyric = (await fetchJson(lyricUrl, headers)) as
+  const lyric = (await hostFetchJson(lyricUrl, NETEASE_REFERER)) as
     | { lrc?: { lyric?: string }; tlyric?: { lyric?: string } }
     | null;
   const mainRaw = lyric?.lrc?.lyric;
@@ -410,11 +456,18 @@ export async function fetchLyrics(
   artist: string,
   album: string,
   durationMs: number,
+  options?: { sources?: Partial<LyricsSources> },
 ): Promise<LyricsResult> {
+  // Default both providers on; a caller-supplied `false` skips that provider.
+  const lrclibEnabled = options?.sources?.lrclib !== false;
+  const neteaseEnabled = options?.sources?.netease !== false;
+
   const durMs = Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 0;
   const durSec = durMs > 0 ? Math.round(durMs / 1000) : 0;
   const q = normalizeQuery(track, artist);
-  const key = cacheKey(q, durSec);
+  // Key the cache on the enabled providers too, so toggling a source on/off
+  // doesn't serve a stale result resolved under the old provider set.
+  const key = `${cacheKey(q, durSec)}|${lrclibEnabled ? 1 : 0}${neteaseEnabled ? 1 : 0}`;
   const cached = lyricsCache.get(key);
   if (cached) return cached;
 
@@ -425,12 +478,12 @@ export async function fetchLyrics(
 
   let result = MISS;
   try {
-    const fromLrc = await fromLrclib(q, album ?? "", durMs, durSec);
+    const fromLrc = lrclibEnabled ? await fromLrclib(q, album ?? "", durMs, durSec) : null;
     if (fromLrc) {
       result = fromLrc;
-    } else {
-      // NetEase may be CORS-blocked in WebView2; fromNetease swallows the
-      // rejection and returns null, leaving `result` as the MISS above.
+    } else if (neteaseEnabled) {
+      // NetEase is reached through the host proxy; fromNetease swallows any
+      // failure and returns null, leaving `result` as the MISS above.
       const fromNet = await fromNetease(q, durMs);
       if (fromNet) result = fromNet;
     }

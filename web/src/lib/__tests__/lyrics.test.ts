@@ -1,7 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock the IPC client so the host-proxy path (lyrics.fetch) never hits the
+// network. Each test drives ipcCallMock's return value / rejection.
+const ipcCallMock = vi.fn();
+vi.mock("@/lib/ipc", () => ({
+  ipc: {
+    call: (...args: unknown[]) => ipcCallMock(...args),
+  },
+}));
+
 import {
   currentLyricLine,
   currentLyricTrans,
+  fetchLyrics,
+  hostFetchJson,
   mergeTranslation,
   normalizeQuery,
   parseLrc,
@@ -265,5 +277,106 @@ describe("currentLyricTrans", () => {
   it("returns empty before the first line and for no lines", () => {
     expect(currentLyricTrans(lines, 5_000)).toBe("");
     expect(currentLyricTrans([], 12_000)).toBe("");
+  });
+});
+
+describe("hostFetchJson", () => {
+  beforeEach(() => {
+    ipcCallMock.mockReset();
+  });
+
+  it("parses the returned body on a 2xx status", async () => {
+    ipcCallMock.mockResolvedValue({ status: 200, body: JSON.stringify({ ok: 1 }) });
+    const out = await hostFetchJson("https://lrclib.net/api/get");
+    expect(out).toEqual({ ok: 1 });
+  });
+
+  it("returns null on a non-2xx status", async () => {
+    ipcCallMock.mockResolvedValue({ status: 404, body: "" });
+    expect(await hostFetchJson("https://lrclib.net/api/get")).toBeNull();
+  });
+
+  it("returns null when the ipc call rejects (no host / SSRF rail)", async () => {
+    ipcCallMock.mockRejectedValue(new Error("lyrics_fetch_failed"));
+    expect(await hostFetchJson("https://music.163.com/api")).toBeNull();
+  });
+
+  it("returns null on an unparseable body", async () => {
+    ipcCallMock.mockResolvedValue({ status: 200, body: "not json {" });
+    expect(await hostFetchJson("https://lrclib.net/api/get")).toBeNull();
+  });
+});
+
+describe("fetchLyrics source selection", () => {
+  const origFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    ipcCallMock.mockReset();
+    // Fail any direct browser fetch fallback so a leaked network call is
+    // visible as a miss rather than a real request.
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("no network in test")) as never;
+  });
+  afterEach(() => {
+    globalThis.fetch = origFetch;
+  });
+
+  // A synced LRCLIB record the host proxy returns for the exact /get lookup.
+  const lrclibBody = JSON.stringify({
+    instrumental: false,
+    syncedLyrics: "[00:00.00] lrclib line",
+  });
+  // A NetEase search + lyric pair.
+  const neteaseSearchBody = JSON.stringify({
+    result: { songs: [{ id: 42, name: "NetEase Song", artists: [{ name: "NetEase Artist" }], duration: 200_000 }] },
+  });
+  const neteaseLyricBody = JSON.stringify({ lrc: { lyric: "[00:00.00] netease line" } });
+
+  it("skips NetEase when sources.netease is false", async () => {
+    // LRCLIB miss (empty record) so the chain would normally fall to NetEase.
+    ipcCallMock.mockResolvedValue({ status: 200, body: JSON.stringify({}) });
+
+    const res = await fetchLyrics("SkipNetEaseTrack", "Artist A", "", 200_000, {
+      sources: { lrclib: true, netease: false },
+    });
+
+    expect(res.found).toBe(false);
+    // Every ipc.call must have targeted LRCLIB — NetEase was skipped entirely.
+    for (const call of ipcCallMock.mock.calls) {
+      const url = (call[1] as { url: string }).url;
+      expect(url).toContain("lrclib.net");
+      expect(url).not.toContain("music.163.com");
+    }
+  });
+
+  it("skips LRCLIB when sources.lrclib is false and uses NetEase", async () => {
+    ipcCallMock.mockImplementation((_method: string, params: { url: string }) => {
+      if (params.url.includes("/search/get")) return Promise.resolve({ status: 200, body: neteaseSearchBody });
+      if (params.url.includes("/song/lyric")) return Promise.resolve({ status: 200, body: neteaseLyricBody });
+      return Promise.resolve({ status: 200, body: lrclibBody });
+    });
+
+    const res = await fetchLyrics("NetEase Song", "NetEase Artist", "", 200_000, {
+      sources: { lrclib: false, netease: true },
+    });
+
+    expect(res.source).toBe("netease");
+    expect(res.found).toBe(true);
+    // No LRCLIB request should have been issued.
+    for (const call of ipcCallMock.mock.calls) {
+      const url = (call[1] as { url: string }).url;
+      expect(url).toContain("music.163.com");
+      expect(url).not.toContain("lrclib.net");
+    }
+  });
+
+  it("uses LRCLIB when both sources are enabled (default)", async () => {
+    ipcCallMock.mockResolvedValue({ status: 200, body: lrclibBody });
+
+    const res = await fetchLyrics("BothOnTrack", "Artist B", "", 200_000, {
+      sources: { lrclib: true, netease: true },
+    });
+
+    expect(res.source).toBe("lrclib");
+    expect(res.found).toBe(true);
   });
 });

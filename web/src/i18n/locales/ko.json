@@ -479,7 +479,11 @@
       "lyricsWaiting": "…",
       "lyricsSource": "가사 출처",
       "sourceLrclib": "LRCLIB",
-      "sourceNetease": "NetEase"
+      "sourceNetease": "NetEase",
+      "sourceLrclibToggle": "LRCLIB",
+      "sourceLrclibToggleHint": "글로벌 동기화 가사 데이터베이스",
+      "sourceNeteaseToggle": "网易云 / NetEase",
+      "sourceNeteaseToggleHint": "중국어 트랙 및 번역 지원 강화"
     },
     "auto": {
       "badge": "AUTO",

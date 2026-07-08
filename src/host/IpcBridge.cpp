@@ -266,6 +266,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "hw.recommend",
         "hw.telemetry",
         "music.nowPlaying",
+        "lyrics.fetch",
         "update.check",
         "update.download",
         "update.install",
@@ -729,6 +730,7 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("hw.recommend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwRecommend(p, id); });
     m_handlers.emplace("hw.telemetry", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwTelemetry(p, id); });
     m_handlers.emplace("music.nowPlaying", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleMusicNowPlaying(p, id); });
+    m_handlers.emplace("lyrics.fetch", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLyricsFetch(p, id); });
     m_handlers.emplace("moderations.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleModerationsList(p, id); });
     m_handlers.emplace("calendar.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarList(p, id); });
     m_handlers.emplace("calendar.discover", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarDiscover(p, id); });

@@ -479,7 +479,11 @@
       "lyricsWaiting": "…",
       "lyricsSource": "लिरिक्स स्रोत",
       "sourceLrclib": "LRCLIB",
-      "sourceNetease": "NetEase"
+      "sourceNetease": "NetEase",
+      "sourceLrclibToggle": "LRCLIB",
+      "sourceLrclibToggleHint": "वैश्विक सिंक्ड-लिरिक्स डेटाबेस",
+      "sourceNeteaseToggle": "网易云 / NetEase",
+      "sourceNeteaseToggleHint": "चीनी ट्रैक और अनुवाद के लिए बेहतर कवरेज"
     },
     "auto": {
       "badge": "AUTO",

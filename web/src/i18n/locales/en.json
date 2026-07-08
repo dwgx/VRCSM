@@ -442,7 +442,11 @@
       "lyricsWaiting": "...",
       "lyricsSource": "Lyrics source",
       "sourceLrclib": "LRCLIB",
-      "sourceNetease": "NetEase"
+      "sourceNetease": "NetEase",
+      "sourceLrclibToggle": "LRCLIB",
+      "sourceLrclibToggleHint": "Global synced-lyrics database",
+      "sourceNeteaseToggle": "网易云 / NetEase",
+      "sourceNeteaseToggleHint": "Better coverage for Chinese tracks + translations"
     },
     "auto": {
       "badge": "AUTO",

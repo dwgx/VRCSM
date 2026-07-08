@@ -479,7 +479,11 @@
       "lyricsWaiting": "…",
       "lyricsSource": "歌詞ソース",
       "sourceLrclib": "LRCLIB",
-      "sourceNetease": "NetEase"
+      "sourceNetease": "NetEase",
+      "sourceLrclibToggle": "LRCLIB",
+      "sourceLrclibToggleHint": "グローバル同期歌詞データベース",
+      "sourceNeteaseToggle": "网易云 / NetEase",
+      "sourceNeteaseToggleHint": "中国語楽曲と翻訳のカバー率が高い"
     },
     "auto": {
       "badge": "AUTO",

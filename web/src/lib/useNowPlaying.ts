@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { ipc } from "@/lib/ipc";
 import type { NowPlayingSnapshot } from "@/lib/osc-studio";
 import { fetchLyrics, type LyricLine, type LyricsSource } from "@/lib/lyrics";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
+
+// Per-source lyrics toggles, both default on. Persisted as UI prefs so the
+// NowPlayingPanel switches and the fetch path read the same state.
+export const LYRICS_LRCLIB_PREF_KEY = "vrcsm.osc.lyrics.lrclib";
+export const LYRICS_NETEASE_PREF_KEY = "vrcsm.osc.lyrics.netease";
 
 export const NOW_PLAYING_POLL_MS = 2000;
 export const DEFAULT_MUSIC_PROGRESS_WIDTH = 10;
@@ -27,11 +33,17 @@ export function useNowPlaying() {
   const [lyricsStatus, setLyricsStatus] = useState<"none" | "found" | "instrumental">("none");
   const [lyricsSource, setLyricsSource] = useState<LyricsSource>("none");
 
+  // Per-source toggles (both default on). Read here so the fetch path honours
+  // them; the NowPlayingPanel switches bind to the same UI-pref keys.
+  const [lyricsLrclib] = useUiPrefBoolean(LYRICS_LRCLIB_PREF_KEY, true);
+  const [lyricsNetease] = useUiPrefBoolean(LYRICS_NETEASE_PREF_KEY, true);
+
   const musicRef = useRef<NowPlayingSnapshot | null>(null);
   const progressWidthRef = useRef(progressWidth);
   const marqueeWidthRef = useRef(marqueeWidth);
   const asciiFoldRef = useRef(asciiFold);
   const lyricsRef = useRef<LyricLine[]>([]);
+  const lyricsSourcesRef = useRef({ lrclib: lyricsLrclib, netease: lyricsNetease });
   // Identity of the track we last fetched lyrics for, so a 2s poll of the same
   // song doesn't re-fetch. Cleared to "" when nothing is playing.
   const lyricsTrackKeyRef = useRef<string>("");
@@ -45,6 +57,15 @@ export function useNowPlaying() {
   useEffect(() => {
     asciiFoldRef.current = asciiFold;
   }, [asciiFold]);
+  // Keep the source-flags ref current and re-resolve lyrics for the live track
+  // when a toggle changes (clearing the track key forces the next sync to
+  // re-fetch under the new provider set).
+  useEffect(() => {
+    lyricsSourcesRef.current = { lrclib: lyricsLrclib, netease: lyricsNetease };
+    lyricsTrackKeyRef.current = "";
+    syncLyrics(musicRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lyricsLrclib, lyricsNetease]);
 
   function setLyricLines(
     lines: LyricLine[],
@@ -71,7 +92,9 @@ export function useNowPlaying() {
     if (key === lyricsTrackKeyRef.current) return;
     lyricsTrackKeyRef.current = key;
     setLyricLines([], "none");
-    void fetchLyrics(snapshot.title, snapshot.artist, snapshot.album, snapshot.duration_ms)
+    void fetchLyrics(snapshot.title, snapshot.artist, snapshot.album, snapshot.duration_ms, {
+      sources: lyricsSourcesRef.current,
+    })
       .then((res) => {
         // A newer track may have arrived while we were awaiting; ignore stale.
         if (lyricsTrackKeyRef.current !== key) return;

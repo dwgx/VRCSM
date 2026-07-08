@@ -442,7 +442,11 @@
       "lyricsWaiting": "…",
       "lyricsSource": "แหล่งเนื้อเพลง",
       "sourceLrclib": "LRCLIB",
-      "sourceNetease": "NetEase"
+      "sourceNetease": "NetEase",
+      "sourceLrclibToggle": "LRCLIB",
+      "sourceLrclibToggleHint": "ฐานข้อมูลเนื้อเพลงซิงก์ทั่วโลก",
+      "sourceNeteaseToggle": "网易云 / NetEase",
+      "sourceNeteaseToggleHint": "ครอบคลุมเพลงจีนและคำแปลได้ดีกว่า"
     },
     "auto": {
       "badge": "AUTO",

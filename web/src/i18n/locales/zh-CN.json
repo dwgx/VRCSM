@@ -479,7 +479,11 @@
       "lyricsWaiting": "…",
       "lyricsSource": "歌词来源",
       "sourceLrclib": "LRCLIB",
-      "sourceNetease": "网易云"
+      "sourceNetease": "网易云",
+      "sourceLrclibToggle": "LRCLIB",
+      "sourceLrclibToggleHint": "全球同步歌词数据库",
+      "sourceNeteaseToggle": "网易云 / NetEase",
+      "sourceNeteaseToggleHint": "更好地覆盖中文曲目及翻译"
     },
     "auto": {
       "badge": "AUTO",

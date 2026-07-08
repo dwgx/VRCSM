@@ -40,6 +40,7 @@ add_library(vrcsm_core STATIC
     DiscordRpc.cpp
     ToastNotifier.cpp
     NowPlaying.cpp
+    LyricsProxy.cpp
     VrOverlayNotifier.cpp
     OscBridge.cpp
     PngMetadata.cpp

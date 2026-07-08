@@ -1064,6 +1064,28 @@ class IpcClient {
           has_thumbnail: true,
         } as unknown as TResult;
       }
+      case "lyrics.fetch": {
+        // Browser-dev / smoke mode has no host proxy. Return a small canned
+        // LRCLIB-shaped body so the lyrics chain resolves without hitting the
+        // network. NetEase URLs get a benign empty result (no host to reach).
+        const p = (params ?? {}) as { url?: string; referer?: string };
+        const url = p.url ?? "";
+        if (url.includes("lrclib.net")) {
+          const record = {
+            id: 1,
+            trackName: "Mock Song Title",
+            artistName: "Mock Artist",
+            duration: 214,
+            instrumental: false,
+            plainLyrics: "Mock line one\nMock line two",
+            syncedLyrics: "[00:00.00] Mock line one\n[00:05.00] Mock line two",
+          };
+          // /search returns an array; /get returns a single record.
+          const body = url.includes("/search") ? JSON.stringify([record]) : JSON.stringify(record);
+          return { status: 200, body } as unknown as TResult;
+        }
+        return { status: 200, body: JSON.stringify({ result: { songs: [] } }) } as unknown as TResult;
+      }
       case "junction.repair":
         return { ok: true } as unknown as TResult;
       case "thumbnails.fetch": {

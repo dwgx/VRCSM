@@ -15,7 +15,12 @@ import {
   type OscStudioCard,
 } from "@/lib/osc-studio";
 import { currentLyricLine, currentLyricTrans } from "@/lib/lyrics";
-import type { NowPlayingApi } from "@/lib/useNowPlaying";
+import {
+  LYRICS_LRCLIB_PREF_KEY,
+  LYRICS_NETEASE_PREF_KEY,
+  type NowPlayingApi,
+} from "@/lib/useNowPlaying";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 
 interface NowPlayingPanelProps {
   nowPlaying: NowPlayingApi;
@@ -44,6 +49,10 @@ export function NowPlayingPanel({
   const { t } = useTranslation();
   const { music, progressWidth, setProgressWidth, asciiFold, setAsciiFold, lyrics, lyricsStatus, lyricsSource } =
     nowPlaying;
+  // Per-source lyrics toggles (both default on). Bound to the same UI-pref keys
+  // useNowPlaying reads, so flipping one re-resolves lyrics for the live track.
+  const [lyricsLrclib, setLyricsLrclib] = useUiPrefBoolean(LYRICS_LRCLIB_PREF_KEY, true);
+  const [lyricsNetease, setLyricsNetease] = useUiPrefBoolean(LYRICS_NETEASE_PREF_KEY, true);
 
   const active = !!music?.active;
   const nowMs = now.getTime();
@@ -235,6 +244,43 @@ export function NowPlayingPanel({
               checked={asciiFold}
               onChange={(e) => setAsciiFold(e.target.checked)}
               aria-label={t("osc.music.asciiFold", { defaultValue: "ASCII fold" })}
+              className="size-4 cursor-pointer accent-[hsl(var(--primary))]"
+            />
+          </label>
+          {/* Lyrics source toggles — pick which providers the fetch chain uses. */}
+          <label className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 py-1.5">
+            <span className="grid gap-0.5">
+              <span className="text-[11px] font-medium">
+                {t("osc.music.sourceLrclibToggle", { defaultValue: "LRCLIB" })}
+              </span>
+              <span className="text-[9px] text-[hsl(var(--muted-foreground))]">
+                {t("osc.music.sourceLrclibToggleHint", { defaultValue: "Global synced-lyrics database" })}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={lyricsLrclib}
+              onChange={(e) => setLyricsLrclib(e.target.checked)}
+              aria-label={t("osc.music.sourceLrclibToggle", { defaultValue: "LRCLIB" })}
+              className="size-4 cursor-pointer accent-[hsl(var(--primary))]"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 py-1.5">
+            <span className="grid gap-0.5">
+              <span className="text-[11px] font-medium">
+                {t("osc.music.sourceNeteaseToggle", { defaultValue: "网易云 / NetEase" })}
+              </span>
+              <span className="text-[9px] text-[hsl(var(--muted-foreground))]">
+                {t("osc.music.sourceNeteaseToggleHint", { defaultValue: "Better coverage for Chinese tracks + translations" })}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={lyricsNetease}
+              onChange={(e) => setLyricsNetease(e.target.checked)}
+              aria-label={t("osc.music.sourceNeteaseToggle", { defaultValue: "网易云 / NetEase" })}
               className="size-4 cursor-pointer accent-[hsl(var(--primary))]"
             />
           </label>

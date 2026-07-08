@@ -15,6 +15,7 @@ add_executable(VRCSM_Tests
   CommonTests.cpp
   PluginManifestTests.cpp
   FriendAnalyticsTests.cpp
+  LyricsProxyTests.cpp
 )
 
 target_link_libraries(VRCSM_Tests PRIVATE

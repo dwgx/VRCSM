@@ -18,6 +18,7 @@ add_executable(vrcsm WIN32
     bridges/CacheBridge.cpp
     bridges/HwBridge.cpp
     bridges/MusicBridge.cpp
+    bridges/LyricsBridge.cpp
     bridges/SettingsBridge.cpp
     bridges/MigrateBridge.cpp
     bridges/ScreenshotBridge.cpp

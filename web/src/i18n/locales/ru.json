@@ -479,7 +479,11 @@
       "lyricsWaiting": "…",
       "lyricsSource": "Источник текста",
       "sourceLrclib": "LRCLIB",
-      "sourceNetease": "NetEase"
+      "sourceNetease": "NetEase",
+      "sourceLrclibToggle": "LRCLIB",
+      "sourceLrclibToggleHint": "Глобальная база синхронизированных текстов",
+      "sourceNeteaseToggle": "网易云 / NetEase",
+      "sourceNeteaseToggleHint": "Лучший охват китайских треков и переводов"
     },
     "auto": {
       "badge": "AUTO",
