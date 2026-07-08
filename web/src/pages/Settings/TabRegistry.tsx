@@ -169,8 +169,8 @@ export function TabRegistry({ vrcRunning }: { vrcRunning: boolean }) {
   const runExport = async () => {
     setExporting(true);
     try {
-      const exportedPath = await ipc.exportVrcSettings();
-      toast.success(t("settings.vrc.exportSuccess", { file: exportedPath }));
+      const exported = await ipc.exportVrcSettings();
+      toast.success(t("settings.vrc.exportSuccess", { file: exported.path }));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(t("settings.vrc.exportFailed", { error: msg }));
@@ -182,7 +182,7 @@ export function TabRegistry({ vrcRunning }: { vrcRunning: boolean }) {
   // ─── Filter & paginate exactly as before ───
 
   const filteredIndices: number[] = useMemo(() => {
-    if (!report) return [];
+    if (!report || !Array.isArray(report.entries)) return [];
     const q = filter.trim().toLowerCase();
     const arr: number[] = [];
     for (let i = 0; i < report.entries.length; i++) {

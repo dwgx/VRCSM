@@ -39,6 +39,25 @@ inline nlohmann::json unwrapResult(vrcsm::core::Result<nlohmann::json>&& r)
     throw IpcException(std::move(std::get<vrcsm::core::Error>(r)));
 }
 
+// Some core layers report failure by RETURNING a {"error":{code,message}}
+// envelope as a normal JSON result (rather than a Result<T> Error). When such
+// a value is handed straight back to the frontend it resolves as a SUCCESS,
+// so the UI cannot branch on it — leading to white-screens (a truthy report
+// with no .entries) or "written successfully" toasts on a failed write. Call
+// this on such a value to convert the envelope into a proper IpcException the
+// frontend receives as an error; on any non-error value it returns unchanged.
+inline nlohmann::json rethrowIfErrorEnvelope(nlohmann::json value)
+{
+    if (value.is_object() && value.contains("error") && value["error"].is_object())
+    {
+        const auto& err = value["error"];
+        const std::string code = err.value("code", "handler_error");
+        const std::string message = err.value("message", "operation failed");
+        throw IpcException(vrcsm::core::Error{code, message, 0});
+    }
+    return value;
+}
+
 // Pull an optional integer from a JSON params object with a default.
 inline int ParamInt(const nlohmann::json& p, const char* key, int def)
 {

@@ -8,22 +8,30 @@
 
 nlohmann::json IpcBridge::HandleSettingsReadAll(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    return vrcsm::core::VrcSettings::ReadAllJson(params);
+    // ReadAllJson returns a {"error":{...}} envelope on failure (e.g. VRChat
+    // never launched → no registry key). Convert it to a real IPC error so the
+    // Registry tab shows the error state instead of white-screening on an
+    // undefined .entries.
+    return rethrowIfErrorEnvelope(vrcsm::core::VrcSettings::ReadAllJson(params));
 }
 
 nlohmann::json IpcBridge::HandleSettingsWriteOne(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    return vrcsm::core::VrcSettings::WriteOneJson(params);
+    // Convert a failed-write {"error"} envelope into a real error so the UI
+    // does not toast "written successfully" on a failure.
+    return rethrowIfErrorEnvelope(vrcsm::core::VrcSettings::WriteOneJson(params));
 }
 
 nlohmann::json IpcBridge::HandleSettingsExportReg(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    return vrcsm::core::VrcSettings::ExportRegJson(params);
+    return rethrowIfErrorEnvelope(vrcsm::core::VrcSettings::ExportRegJson(params));
 }
 
 nlohmann::json IpcBridge::HandleConfigRead(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    return vrcsm::core::VrcConfig::ReadJson(params);
+    // A failed read must not resolve as success — otherwise the error blob can
+    // later be serialized back into config.json by a subsequent Save.
+    return rethrowIfErrorEnvelope(vrcsm::core::VrcConfig::ReadJson(params));
 }
 
 nlohmann::json IpcBridge::HandleConfigWrite(const nlohmann::json& params, const std::optional<std::string>&)
