@@ -1,6 +1,6 @@
 # VRCSM Agent Memory
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
 
 This is the repo-local handoff entrypoint. It exists because future agents should not have to rediscover the project state, document map, or the avatar/SteamVR decisions from chat history.
 
@@ -14,12 +14,28 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 
 ## Current Continuity Snapshot
 
-- Current branch: `main`.
-- Release status: `v0.14.6` shipped on 2026-06-24. A large uncommitted **Wave-2** change set is in the working tree (new atoms/harvest/OSC/telemetry/social features + a whole-project security review). The "development paused / clean tree" wording from the v0.14.6 checkpoint is stale — the tree is NOT clean.
-- Current user priority: repository hygiene, release stability, and critical fixes over speculative feature growth.
-- Last verified release artifact: `build\release\VRCSM_v0.14.6_x64_Installer.msi`.
-- Last verified runtime: `build\x64-release\src\host\VRCSM.exe`.
-- Current version: `0.14.6`.
+- Current branch: `main`, **diverged from `origin/main` — 41 commits AHEAD, 12 BEHIND, and NOT yet pushed** (`git rev-list --left-right --count origin/main...main` = `12  41`; local HEAD `e6f8221`, origin HEAD `22a50d8`). The 12 behind are all Dependabot dependency/action bumps plus a "disable Dependabot" commit — inspect before any `git pull`; no source conflict expected but 41 local feature commits are unpushed.
+- Working tree is **clean** apart from one intentionally-untracked scratch file at repo root (`2026-07-04-111708-...txt`, a local command transcript). Do NOT commit it. The old "Wave-2 change set uncommitted / tree NOT clean" wording is stale — Wave-2 was committed, and 41 further commits landed on top.
+- Development is **ACTIVE** (not paused). This session shipped a now-playing music module, synced lyrics with a host proxy, a system tray, a Database god-object split, and full 7-locale i18n parity. See "Shipped this session" below.
+- Current version: still `0.14.6` in `VERSION` and `web/package.json` — **un-bumped** despite the 41 new commits. A version bump + release cut is pending; keep `VERSION`, `web/package.json`, README artifact names, and release asset filenames in sync when bumped.
+- Last release artifact `build\release\VRCSM_v0.14.6_x64_Installer.msi` **predates the current head** (music/lyrics/tray/i18n/Database-split all landed after it) and is NOT representative of current code. No new artifact has been cut.
+- Current test baseline (re-confirm by running builds before claiming done): **C++ ctest 128/128, web ~347 vitest, Playwright UI smoke 54/54, tsc + build clean.** This supersedes the older 100/104-test and 238/280 vitest / 27-smoke figures elsewhere in the docs.
+- Reliability lesson: background workflows/subagents repeatedly hung on the inference gateway this session; **prefer foreground single-threaded execution for heavy C++ work.**
+
+### Shipped this session
+
+- **Now-playing music module.** `src/core/NowPlaying.{cpp,h}` reads the currently-playing system media via Windows GSMTC (C++/WinRT `GlobalSystemMediaTransportControls`), exposed over the `music.nowPlaying` IPC method (`src/host/bridges/MusicBridge.cpp`). Web consumes it via `web/src/lib/useNowPlaying.ts`; `{music.*}` OSC tokens (title/artist/album/status/position/duration/progressBar/percent/appName/marquee/lyrics/lyricsTranslated) render through `web/src/pages/osc/NowPlayingPanel.tsx` + presets. GSMTC async waits are bounded and progress is anchored to sample time.
+- **Synced lyrics.** `{music.lyrics}` + `{music.lyricsTranslated}` tokens driven by `web/src/lib/lyrics.ts` with a multi-provider chain (LRCLIB exact → LRCLIB search → NetEase) and user-selectable source toggles. Requests route through a NEW C++ host proxy `src/core/LyricsProxy.{cpp,h}` via the `lyrics.fetch` IPC method (`src/host/bridges/LyricsBridge.cpp`) to bypass WebView2 CORS. The proxy has an SSRF rail (https-only; `IsBlockedProxyHost` refuses loopback/link-local/private-range literal hosts — 127/8, 10/8, 192.168/16, 172.16–31, IPv4-mapped IPv6, verified `LyricsProxy.cpp:108-197`).
+- **System tray.** `src/host/MainWindow.cpp` adds a tray icon via `Shell_NotifyIconW` with minimize-to-tray and a self-healing NIM_MODIFY→NIM_ADD fallback; maximized-restore fixed.
+- **Robustness/UX.** Game Log live-tail backfill of the existing log + precise empty states; FriendLog pagination; clickable notifications; per-subscriber gamelog seed; OSC text-wrap of unbroken strings.
+- **i18n full parity** across all 7 locales (`en`, `zh-CN`, `ja`, `ko`, `ru`, `th`, `hi`), 0 placeholder mismatch; non-default locales lazy-loaded.
+- **Database god-object split** into a thin `Database.cpp` + 9 domain translation units (`Database_Analytics/AssetCache/Avatars/Embeddings/Favorites/Friends/History/Recordings/Rules.cpp`) sharing `Database_internal.h`; friend analytics extracted into a pure, testable `src/core/FriendAnalytics.{cpp,h}`.
+
+### Open / parked work
+
+- **VrcApi transport extraction — PARKED.** Started but not finished; `src/core` still has only `VrcApi.{cpp,h}` (no separate transport/http TU). It is gateway-flaky; when resumed, do it single-threaded/foreground, NOT via a background workflow.
+- **`plugin.marketFeed` omits `permissions` (security-relevant).** `MarketEntryToJson` in `src/host/bridges/PluginBridge.cpp:63` emits id/name/version/hostMin/shape/description/homepage/authorName/authorUrl/iconUrl/download/sha256 but NOT permissions, so the pre-install consent dialog shows "none". Fix `MarketEntry` (PluginFeed.h) + `ParseFeed` + `MarketEntryToJson`. See `docs/review-2026-07/IPC-CONTRACT-DRIFT-2026-07.md`.
+- **NetEase Chinese-lyrics end-to-end** works per commit `e6f8221` but still needs live in-app confirmation.
 
 ## Memories
 
@@ -29,7 +45,7 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 
 - A prior session ran a 6-area multi-agent review; reports are in `docs/review-2026-07/` (`REVIEW-SUMMARY.md` is the master). It was cut off at 100% context mid-fix.
 - This session verified/finished all HIGH + security-MEDIUM fixes. Most had already landed; the remaining gaps closed here were **lib H2** (LRU `memoSet` cap added to `thumbnails.ts` + `assets-cache.ts`, matching `image-cache.ts`) and **build-docs H1** (`.gitignore` now covers `_build_*.bat`, `_tmp_*.bat`, `*-review.png`).
-- Verified 2026-07-03: `pnpm build` clean, `pnpm test` 238/238, `test:smoke` 27/27, C++ release build up-to-date, `ctest` 100/100 (1 skipped: `RealLogClassificationTally`).
+- Verified 2026-07-03: `pnpm build` clean, `pnpm test` 238/238, `test:smoke` 27/27, C++ release build up-to-date, `ctest` 100/100 (1 skipped: `RealLogClassificationTally`). (Superseded by the current baseline in the snapshot above: ctest 128/128, ~347 vitest, UI smoke 54/54.)
 - See `docs/review-2026-07/REVIEW-SUMMARY.md` → "Remediation Status" for the per-finding evidence table and remaining non-security carry-overs.
 
 ### 2026-07-07 review-remediation session
@@ -45,7 +61,7 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 - Verified targeted IPC vitest 9/9, `corepack pnpm --dir web build`, release
   host build target `vrcsm`, release `ctest` 0 failures out of 104 tests with
   5 skipped, `package_release.ps1`, and MSI decompile showing the
-  `ort-wasm-simd-threaded.asyncify-*.wasm` file present.
+  `ort-wasm-simd-threaded.asyncify-*.wasm` file present. (Superseded by the current baseline in the snapshot above: ctest 128/128, ~347 vitest, UI smoke 54/54.)
 
 ## Release Workflow
 

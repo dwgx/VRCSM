@@ -38,9 +38,11 @@ scripts/build-msi.bat
 
 The CMake post-build step (`cmake/sync-web-dist.cmake`) copies `web/dist/` into the build output's `web/` folder so the WebView2 host can serve it. Rebuild the frontend with `pnpm build` in `web/` before rebuilding the C++ host if you changed frontend code.
 
+Tests: C++ `ctest --test-dir build\x64-release`, web `pnpm test` (vitest) and `pnpm test:smoke` (Playwright UI smoke). Current green baseline: ctest 128/128, ~347 vitest, Playwright UI smoke 54/54, `tsc` + build clean. See `MEMORY.md` for the full verification sequence.
+
 ## Architecture
 
-VRCSM is a two-layer desktop app: a **C++ Win32 host** embedding **WebView2** that renders a **React SPA**.
+VRCSM is a three-layer desktop app: a **C++ Win32 host** embedding **WebView2** that renders a **React SPA**, backed by a platform-agnostic **C++ core** library.
 
 ### Layers
 
@@ -54,9 +56,9 @@ VRCSM is a two-layer desktop app: a **C++ Win32 host** embedding **WebView2** th
 └──────────────────────────────────────────────┘
 ```
 
-- **`src/core/`** — Static library (`vrcsm_core`). Contains all VRChat-specific logic: cache scanning (`CacheScanner`), log parsing (`LogParser`, `LogTailer`), bundle metadata (`BundleSniff`), path resolution (`PathProbe`), NTFS junction migration (`Migrator`, `JunctionUtil`), safe deletion (`SafeDelete`), VRChat API calls (`VrcApi`), auth/session (`AuthStore`), settings (`VrcSettings`, `VrcConfig`), avatar preview (`AvatarPreview`). Has **zero Win32 deps** except junction/process modules.
-- **`src/host/`** — Win32 executable. `main.cpp` → `App` → `MainWindow` → `WebViewHost` → `IpcBridge`. The host creates a borderless window with Mica backdrop, initializes WebView2, maps `https://app.vrcsm/` to the local `web/` folder, and routes all IPC through `IpcBridge::Dispatch()`.
-- **`web/`** — React SPA with 33 lazy-loaded pages, TanStack React Query for server state, `AuthContext`/`ReportContext` for shared state, i18next for localization.
+- **`src/core/`** — Static library (`vrcsm_core`, ~60 modules). Contains all VRChat-specific logic: cache scanning (`CacheScanner`, `CacheIndex`), log parsing (`LogParser`, `LogTailer`, `LogAtoms`, `LogEventClassifier`), bundle/mesh work (`BundleSniff`, `UnityBundle`, `UnityMesh`, `UnityPreview`), path resolution (`PathProbe`), NTFS junction migration (`Migrator`, `JunctionUtil`), safe deletion (`SafeDelete`), VRChat API calls (`VrcApi`), auth/session (`AuthStore`), settings (`VrcSettings`, `VrcConfig`), avatar preview (`AvatarPreview`, `AvatarData`, `AvatarIdHarvest`, `PngMetadata`). It also now holds: now-playing media (`NowPlaying`, via C++/WinRT GSMTC), the HTTPS lyrics proxy with SSRF rail (`LyricsProxy`), OSC send/listen (`OscBridge`), Discord rich presence (`DiscordRpc`), radar (`VrcRadarEngine`), process/screenshot/toast/VR-overlay integration (`ProcessMemoryReader`, `ScreenshotWatcher`, `ToastNotifier`, `VrOverlayNotifier`), friend-graph analytics (`FriendAnalytics`), infra (`RateLimiter`, `TaskQueue`, `Pipeline`, `Report`), and the split SQLite layer (`Database.cpp` + 9 domain TUs `Database_Analytics/AssetCache/Avatars/Embeddings/Favorites/Friends/History/Recordings/Rules.cpp` + `Database_internal.h`). Mostly Win32-free, but several modules (`NowPlaying` via WinRT, `ProcessMemoryReader`, `ScreenshotWatcher`, `ToastNotifier`, `VrOverlayNotifier`, `DiscordRpc`, junction/process) do use platform APIs.
+- **`src/host/`** — Win32 executable. `main.cpp` → `App` → `MainWindow` → `WebViewHost` → `IpcBridge`. The host creates a borderless window with Mica backdrop, adds a `Shell_NotifyIconW` system tray icon (minimize-to-tray, self-healing add/modify), initializes WebView2, maps `https://app.vrcsm/` to the local `web/` folder, and routes all IPC through `IpcBridge::DispatchFromOrigin()` (which threads the origin URI through for the plugin sandbox). Method handlers are split across 21 per-domain bridge translation units under `src/host/bridges/` (ApiBridge, AuthBridge, CacheBridge, DatabaseBridge, EventBridge, HwBridge, LogsBridge, LyricsBridge, MigrateBridge, MusicBridge, PipelineBridge, PluginBridge, RadarBridge, RuleBridge, ScreenshotBridge, SearchBridge, SettingsBridge, ShellBridge, UpdateBridge, VectorBridge, VrDiagBridge) sharing `BridgeCommon.h`.
+- **`web/`** — React SPA (~30 page components in `web/src/pages`, 27 mounted as `lazy()` routes in `App.tsx`; some page-like files live in `Settings/`, `osc/`, `radar/`, `workspace/` subdirs), TanStack React Query for server state, `AuthContext`/`ReportContext` for shared state, i18next for localization across 7 locales (`en`, `zh-CN`, `ja`, `ko`, `ru`, `th`, `hi`), all at full parity with non-default locales lazy-loaded.
 
 ### IPC Protocol
 
@@ -69,7 +71,7 @@ Event:    { event: "migrate.progress", data: {...} }   // unsolicited push
 ```
 
 Frontend side: `web/src/lib/ipc.ts` — `IpcClient` class handles pending promises, `IpcError` carries structured error codes.
-Host side: `IpcBridge::Dispatch()` matches method strings to handler functions. Methods listed in `AsyncMethodSet()` spawn a detached worker thread; the result is marshaled back to the UI thread via `WM_APP_POST_WEB_MESSAGE`.
+Host side: `IpcBridge::DispatchFromOrigin()` is the entry point (the `Dispatch()` inline defaults the origin to `https://app.vrcsm/`); it matches method strings to handler functions registered from the per-domain bridge files in `src/host/bridges/`. Methods listed in `AsyncMethodSet()` spawn a detached worker thread; the result is marshaled back to the UI thread via `WM_APP_POST_WEB_MESSAGE`. Recent methods include `music.nowPlaying` (GSMTC now-playing media) and `lyrics.fetch` (HTTPS lyrics proxy).
 
 ### Error Handling
 

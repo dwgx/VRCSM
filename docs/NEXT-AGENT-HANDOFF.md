@@ -1,8 +1,119 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
 
-## Latest Session (2026-07-07) - READ FIRST
+## 承上启下 — 给接手 AI 的话（READ THIS FIRST）
+
+你接手 VRCSM。**唯一硬要求：质量只能提高、不能降低。** 老板不在乎烧 token —
+要质量：该开 ultracode workflow 大规模并行验证/审查就开，该前台单线程稳做就稳做，
+**按可靠性选，不按省 token 选**。
+
+开工前按序读：本文件 → `MEMORY.md` → `docs/MD-INDEX.md` → `CLAUDE.md` →
+`docs/reference/ARCHITECTURE-COMPREHENSION-2026-07.md`。这些刚被逐条对代码核实刷新过，
+但仍要自己 `git log` + 读代码确认，别盲信文档或任何 subagent 自报结果。
+
+工作纪律（血泪教训）：
+- 提交消息**绝不加** `Co-Authored-By: Claude` / Anthropic / "Generated with" 署名。
+- 每次改动**亲验后再提交**：C++ = VsDevCmd + `cmake --build --preset x64-debug` + `ctest`；
+  web = `corepack pnpm exec tsc -b && corepack pnpm build && corepack pnpm run test:ui-smoke`。
+  绿了才提交，分组干净提交。**不盲信 subagent/workflow 汇报——自己重跑。**
+- **C++ 重活优先前台/单线程**：本会话后台 workflow/subagent 反复卡死在推理网关
+  (`192.168.11.4:8990`)；前台单线程稳定。别把重 C++ 丢后台干等。
+- 改前读周边代码匹配风格；i18n 改动保持全 7 语言键+占位符对齐；C++ 单一 ninja build dir
+  不并发改，web 可与 C++ 并行。
+
+把下面「Open / parked work」三项做到完美，并始终保持文档对下一位可完美接手。
+
+---
+
+
+## Latest Session (2026-07-08) — READ FIRST
+
+This block is current truth and supersedes every older block below on branch
+state, version status, and test baseline.
+
+**Branch reality.** `main` is **41 commits AHEAD / 12 BEHIND `origin/main` and is
+NOT pushed** (`git rev-list --left-right --count origin/main...main` = `12  41`;
+local HEAD `e6f8221`, origin HEAD `22a50d8`). The 12 behind are all Dependabot
+dependency/action bumps + a "disable Dependabot" commit — inspect before any
+`git pull`; they touch `web` deps and `.github` actions, no source conflict
+expected, but the 41 local commits are unpushed. This replaces the stale
+"10 ahead / 1 behind / 05b4d1e" claim in the 2026-07-04 block below.
+
+**Version.** `VERSION` and `web/package.json` are both still `0.14.6` — **un-bumped**
+despite 41 new commits. No release artifact has been cut for the current head;
+`VRCSM_v0.14.6_x64_Installer.msi` predates all the work below. A version bump +
+release cut is pending; keep `VERSION` / `web/package.json` / README artifact
+names / release asset filenames in sync when bumped.
+
+**Verification baseline (current):** C++ ctest **128/128**, web **~347 vitest**,
+Playwright UI smoke **54/54**, `tsc` + build clean. This supersedes the older
+104/280 numbers below. (Re-run builds to confirm before claiming a change done.)
+
+**Project status: development is ACTIVE.** Not "paused / critical-fixes-only" —
+a whole new feature area shipped. The CHANGELOG `[Unreleased]` "development is
+paused" framing is likewise stale and should be corrected when scope allows.
+
+### New Features This Session
+
+- **Now-playing music module.** `src/core/NowPlaying.{cpp,h}` reads current media
+  via Windows GSMTC (C++/WinRT `GlobalSystemMediaTransportControls`), exposed over
+  the `music.nowPlaying` IPC method (`src/host/bridges/MusicBridge.cpp`). Frontend:
+  `web/src/lib/useNowPlaying.ts`; `{music.*}` OSC tokens (title/artist/album/status/
+  position/duration/progressBar/percent/appName/marquee/lyrics/lyricsTranslated)
+  render through `web/src/pages/osc/NowPlayingPanel.tsx` + presets. GSMTC async
+  waits bounded; progress anchored to sample time (commits `660805f`, `82a1842`,
+  `8d16c62`, `bb06385`).
+- **Synced lyrics.** `{music.lyrics}` + `{music.lyricsTranslated}` tokens in
+  `web/src/lib/lyrics.ts`, multi-provider chain (LRCLIB exact → LRCLIB search →
+  NetEase) with user-selectable source toggles. Routed through a NEW C++ host proxy
+  `src/core/LyricsProxy.{cpp,h}` via the `lyrics.fetch` IPC method
+  (`src/host/bridges/LyricsBridge.cpp`) to bypass WebView2 CORS. SSRF rail:
+  https-only, `IsBlockedProxyHost` refuses loopback/link-local/private-range
+  literal hosts (127/8, 10/8, 192.168/16, 172.16–31, IPv4-mapped IPv6) —
+  verified `LyricsProxy.cpp:108-197` (commits `ac08627`, `797dbc5`, `e6f8221`).
+- **System tray.** `src/host/MainWindow.cpp` adds a `Shell_NotifyIconW` tray icon
+  with minimize-to-tray + self-healing NIM_MODIFY→NIM_ADD fallback; maximized
+  restore fixed (commits `19a3070`, `9ccfaca`).
+- **Robustness/UX.** Game Log live-tail backfill of the existing log + precise
+  empty states (`a23b34e`); FriendLog pagination + clickable notifications
+  (`e4b00c1`, `d6435bf`); per-subscriber gamelog seed (`9ccfaca`); OSC unbroken-
+  string wrapping in editor/card preview (`fc98f56`); Quest HMD generation inferred
+  from serial (`15915bf`); Hardware page crash + world search-select fixes
+  (`e12f4e8`); UnityMesh parsing hardening (`b31471d`).
+- **i18n full parity** across all 7 locales (`en`, `zh-CN`, `ja`, `ko`, `ru`, `th`,
+  `hi`), 0 placeholder mismatch; non-default locales lazy-loaded (commits `49254a2`,
+  `23df2cf`, `72dc447`).
+- **Database god-object split** into a thin `Database.cpp` + 9 domain TUs
+  (`Database_Analytics/AssetCache/Avatars/Embeddings/Favorites/Friends/History/
+  Recordings/Rules.cpp`) + `Database_internal.h` (`28b65c7`); friend analytics
+  extracted into pure testable `src/core/FriendAnalytics.{cpp,h}` (`7ff66e3`);
+  `IpcBridge.h` decoupled from heavy core headers (`f7728ea`).
+- New/updated docs: `docs/NOW-PLAYING-OSC-PLAN.md` (design, `5ede7ca`),
+  `docs/review-2026-07/` (IPC contract-drift sweep `378b9c4`, etc.).
+
+### Open / Parked Items
+
+1. **VrcApi transport extraction — PARKED.** Started, not finished; `src/core` still
+   has only `VrcApi.{cpp,h}` (no transport/http TU). Gateway-flaky; when resumed do
+   it single-threaded/foreground, NOT a background workflow.
+2. **`plugin.marketFeed` omits `permissions` (security-relevant).**
+   `MarketEntryToJson` in `src/host/bridges/PluginBridge.cpp:63` emits 12 keys, none
+   of them `permissions`, so the pre-install consent dialog shows "none". `MarketEntry`
+   (PluginFeed.h) has no permissions member and `ParseFeed` never reads it. Full
+   write-up: `docs/review-2026-07/IPC-CONTRACT-DRIFT-2026-07.md`.
+3. **NetEase Chinese-lyrics end-to-end** works per commit `e6f8221` but still needs
+   live in-app confirmation.
+
+### Reliability Lesson
+
+Background workflows/subagents repeatedly hung on the inference gateway this
+session; foreground single-threaded execution was reliable. **Prefer foreground
+single-threaded execution for heavy C++ work.**
+
+---
+
+## Latest Session (2026-07-07)
 
 Review-remediation patch for async IPC shutdown, cache migration timeout, and
 MSI visual-search packaging:
@@ -26,22 +137,23 @@ MSI visual-search packaging:
   confirmed the `ort-wasm-simd-threaded.asyncify-*.wasm` file is present in the
   installer.
 
-## Latest Session (2026-07-04) — READ FIRST
+## Latest Session (2026-07-04)
 
-A Wave-2 hardening + optimization + architecture-refactor effort landed. Current
-truth (supersedes the older "Current State" section below where they disagree):
+A Wave-2 hardening + optimization + architecture-refactor effort landed. (Branch
+state and test numbers in this block are STALE — see the 2026-07-08 block at the
+top for current truth: 41 ahead / 12 behind, ctest 128/128, ~347 vitest, UI smoke
+54/54.)
 
-- **Branch `main` is 10 ahead / 1 behind `origin/main`.** The 1 behind is
-  `05b4d1e ci: add dependabot` (CI-only, no source conflict). Inspect the remote
-  before any `git pull`.
+- **[STALE — now 41 ahead / 12 behind]** Branch `main` was 10 ahead / 1 behind
+  `origin/main` at the time. Inspect the remote before any `git pull`.
 - **Working tree is clean** except one intentionally-untracked file at repo root:
   `2026-07-04-111708-...txt` (a large local command transcript). Do NOT commit it.
 - **Database god-object was split** into 9 domain translation units
   (`Database_*.cpp`) + `Database_internal.h`, public `Database.h` frozen. Commit
   `1fe701f`. `IpcBridge.h` was decoupled from heavy core headers, commit `ecec96d`.
-- **Verified green:** `cmake --build --preset x64-debug` rc=0, `ctest` **104/104**
+- **Verified green (at the time):** `cmake --build --preset x64-debug` rc=0, `ctest` **104/104**
   pass (baseline was 100; +4 SafeDelete/Migrator/UdonVM tests). Web: `tsc` clean,
-  **280** vitest pass.
+  **280** vitest pass. (STALE — current baseline is ctest 128/128 / ~347 vitest / UI smoke 54/54.)
 - **Full architecture map:** `docs/reference/ARCHITECTURE-COMPREHENSION-2026-07.md`
   (adversarially verified, HIGH confidence). Start there for a system model.
 - Optimization commits `e5bfd8f..48c2015` (percent-encode API params, IPC
@@ -61,7 +173,12 @@ truth (supersedes the older "Current State" section below where they disagree):
 - Remote: `origin https://github.com/dwgx/VRCSM.git`
 - Current app version: `0.14.6`
 - VS2026 path: `D:\Software\Microsoft Visual Studio\18` (current machine path).
-- Project status: release checkpoint shipped and active development paused after `v0.14.6`. Only critical bugfixes, packaging fixes, or security repairs should be assumed in-scope unless the user explicitly resumes feature work.
+- Project status: **active development.** Feature work resumed and shipped after
+  the `v0.14.6` checkpoint (now-playing music + lyrics, system tray, FriendLog
+  pagination, clickable notifications, Database split, i18n full parity — see the
+  2026-07-08 block at the top). The old "release checkpoint shipped and active
+  development paused / only critical bugfixes in-scope" wording, and the matching
+  CHANGELOG `[Unreleased]` framing, are STALE.
 
 ## Fixes Included In v0.14.6
 

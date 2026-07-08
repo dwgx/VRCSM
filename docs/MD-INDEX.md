@@ -1,8 +1,10 @@
 # VRCSM Markdown Index
 
-Last updated: 2026-06-25
+Last updated: 2026-07-08
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
+
+> Note: `main` is currently 41 commits ahead of the `v0.14.6` cut (unpushed), so several docs below labeled "plan" now describe work that has already shipped (OSC Studio, the now-playing music module). Current test baseline: ctest 128/128, ~347 vitest, Playwright UI smoke 54/54. i18n is at full parity across all 7 locales.
 
 ## Required Startup Order
 
@@ -32,7 +34,7 @@ This file maps the repo's Markdown documents so the next agent can start from th
 
 - `CHANGELOG.md`
   - Release history.
-  - The `[Unreleased]` section currently carries avatar thumbnail semantics, Steam Link / Quest repair, plugin fixes, and preview/cache notes.
+  - The `[Unreleased]` section currently records the three release-blocking regression fixes (shutdown async-IPC drain, unbounded `migrate.execute` timeout, MSI ONNX wasm inclusion) and still carries a "development is paused after v0.14.6" line that is now STALE — a major feature area (now-playing music + lyrics + tray) has since shipped on `main`.
 
 - `docs/release-v0.14.6.md`
   - Shipped release summary for the paused `v0.14.6` checkpoint.
@@ -73,8 +75,18 @@ This file maps the repo's Markdown documents so the next agent can start from th
   - Defines the target Friends workspace layout, state/data-flow cleanup, virtualized list strategy, smart groups, inspector extraction, VRCX-inspired view modes, phased implementation order, and acceptance tests.
 
 - `docs/OSC-STUDIO-PLAN.md`
-  - Current 2026-06-23 execution plan for turning the raw OSC sender/listener into a modular OSC Studio.
-  - Defines draggable card composition, template variables, hardware/system telemetry cards, Chatbox safety rules, existing OSC bridge boundaries, first-slice implementation and future sensor backends.
+  - 2026-06-23 execution plan for turning the raw OSC sender/listener into a modular OSC Studio. **Largely shipped:** draggable card composition, template variables, hardware/system telemetry cards, and Chatbox safety rules are implemented. Since extended by the now-playing music module (see `docs/NOW-PLAYING-OSC-PLAN.md`).
+  - Read as historical design context; the live surface is `web/src/pages/OscTools.tsx` + `web/src/pages/osc/`.
+
+- `docs/NOW-PLAYING-OSC-PLAN.md`
+  - Design doc for the shipped now-playing music → VRChat OSC chatbox module.
+  - Data source is GSMTC via `src/core/NowPlaying.{h,cpp}` + `music.nowPlaying` IPC (`src/host/bridges/MusicBridge.cpp`); web `{music.*}` tokens + OSC Studio `NowPlayingPanel.tsx` + presets. Covers synced lyrics (`{music.lyrics}` / `{music.lyricsTranslated}`) via `web/src/lib/lyrics.ts` (LRCLIB + NetEase) routed through the `src/core/LyricsProxy` + `lyrics.fetch` host proxy with its SSRF rail.
+
+- `docs/SURPASS-VRCX-MASTER-PLAN.md`
+  - 2026-06-29 research-synthesis roadmap consolidating four research streams into a plan to surpass (not just match) VRCX. Strategic context.
+
+- `docs/SURPASS-VRCX-WAVE2-SPEC.md`
+  - Implementation-ready Wave-2 spec. Source of truth is the four verified reports in `docs/wave2-research/`. Read before starting Wave-2 feature slices.
 
 - `docs/v0.2.0-auth-findings.md`
   - Auth sprint decision log.
@@ -109,6 +121,27 @@ This file maps the repo's Markdown documents so the next agent can start from th
   - Evidence-backed internal technical reference for the whole codebase, in Chinese with `path:line` citations.
   - Index + nav tree, architecture/layer model, per-subsystem C++ core docs, host + IPC bridge method catalog, web frontend, three cross-cutting flow chapters (IPC round-trip / data & cache lifecycle / plugin security model), and build & release.
   - Aligned with (does not contradict) `CLAUDE.md` and `docs/CACHE-ARCHITECTURE.md`. Read the relevant subsystem page before changing cache, avatar preview, SteamVR repair, plugin IPC, or packaging behavior.
+- `docs/reference/ARCHITECTURE-COMPREHENSION-2026-07.md`
+  - Adversarially-verified full architecture-comprehension reference (commit `a4350d2`). Best single-doc system model — start here.
+- `docs/reference/UI-SMOKE-FINDINGS-2026-07-04.md`
+  - Playwright UI-smoke findings (54/54 baseline): real-browser screenshot + DOM-offset checks over all routes on mock IPC.
+- `docs/reference/MAINTENANCE.md`
+  - Reference maintenance guide: linkage-update map, known code/doc contradiction tracking table, and the refresh procedure for keeping `docs/reference/` accurate.
+
+## Code Review & Audit
+
+- `docs/review-2026-07/` — 2026-07 multi-area review + audit set.
+  - `REVIEW-SUMMARY.md` — master summary with the per-finding remediation status table. Start here.
+  - `IPC-CONTRACT-DRIFT-2026-07.md` — IPC contract-drift sweep (99/101 clean). Flags that `plugin.marketFeed` omits `permissions`, so the pre-install consent dialog shows "none" (security-relevant, still open).
+  - `ROBUSTNESS-MODULARITY-AUDIT-2026-07-04.md` — full-stack robustness + modularity audit.
+  - `area-build-docs.md`, `area-cpp-core.md`, `area-cpp-host-ipc.md`, `area-diff.md`, `area-web-lib.md`, `area-web-pages.md` — the six per-area review shards.
+  - `deep/AUDIT-VERDICT.md` — 9-axis quality audit, overall C+.
+
+## Research Reports
+
+- `docs/wave2-research/` — verified research reports backing the SURPASS specs.
+  - Wave-2 sources: `vrchat-api.md`, `vrcx-features.md`, `vrcsm-gaps.md`, `log-max-coverage.md`, `own-overlap-algorithm-design.md`, `vrcx-quickwins.md`, `vrcx-smallfeatures-verified.md`.
+  - Wave-3 set: `wave3-discord-ipc.md`, `wave3-file-upload.md`, `wave3-impl-facts.md`, `wave3-log-signatures.md`, `wave3-win-toast.md`.
 
 ## Plugin Docs
 
