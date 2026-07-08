@@ -1,6 +1,6 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 ## 承上启下 — 给接手 AI 的话（READ THIS FIRST）
 
@@ -27,7 +27,81 @@ Last updated: 2026-07-08
 ---
 
 
-## Latest Session (2026-07-08 session 2) — READ FIRST
+## Latest Session (2026-07-09) — READ FIRST
+
+A full read-only **GUI↔API (IPC) contract audit** followed by a **9-batch
+foreground remediation sweep**. The audit report is
+`docs/review-2026-07/GUI-API-CONTRACT-AUDIT-2026-07-09.md` (185 handlers × 128
+call sites, fanned out per bridge domain + adversarially verified, grade B-).
+Every fix was built + tested + committed independently; each behavior change is
+locked by a new test.
+
+**Branch reality.** `main` is now **60 ahead / 12 behind `origin/main`, NOT
+pushed** (local HEAD `c488d66`). The 12 behind are all Dependabot bumps +
+"disable Dependabot" — inspect before any `git pull`; no source conflict
+expected. Version still `0.14.6` / un-bumped.
+
+**Verification baseline (re-confirmed 2026-07-09 by a full re-run — the numbers
+below are real, not copied from per-batch runs):**
+- C++ release build clean (only 2 pre-existing warnings: `PluginBridge.cpp:172`
+  u8path C4996, `CommonTests.cpp` getenv C4996).
+- **ctest 150/150** (was 135; +behavior tests across the batches). 3 opt-in
+  live probes DISABLED + `RealLogClassificationTally` skipped, as designed.
+- **web vitest 359/359** under `--no-file-parallelism` (was 354; +coerceOscValue,
+  image-cache chunking, update.download timeout tier). tsc + vite clean.
+- **Playwright UI smoke 54/54.**
+
+**Commits this session (oldest→newest), all on top of `4f5390f`:**
+- `1e59f52` updater self-replace race → detached cmd bootstrap (wait-for-exit →
+  msiexec in-place → relaunch). Real-machine hot-update 0.14.6→0.14.7 verified.
+- `b3c01d5` **CRITICAL** LyricsProxy SSRF — per-hop redirect refusal
+  (`REDIRECT_POLICY_NEVER`, 3xx=error), DNS-resolution guard, referer CRLF
+  reject. Live NetEase probe still 200 + UTF-8 LRC (no regression).
+- `72b2bcf` the audit report itself.
+- `ca665fb` `{error}`-as-success → `IpcException` for settings.readAll/writeOne/
+  exportReg + config.read (fixes Registry-tab white-screen).
+- `835ce0a` auth transient-error — only `auth_expired` collapses to logged-out/
+  empty; transient (429/500/network) throws. FE preserves prior authed state
+  (kills the logout-flap + cache-wipe loop); dropped the N+1 currentUser probe.
+- `2fafd7d` OSC float wire fidelity — tagged-arg `{t,v}` keeps whole-number
+  floats on the `,f` tag (VRChat drops `,i` floats).
+- `0ff7ed4` `junction.repair` ProcessGuard; `vr.audio.switch` HRESULT check.
+- `3fd3f9c` `update.download` → LONG_RUNNING tier + https-required.
+- `d8c5b0c` `images.cache` / `thumbnails.fetch` FE chunking to the host cap.
+- `6ddef8f` **analytics DOT-timestamp parse** (HIGH, audit-underrated) —
+  co-presence graph + activity heatmap were empty/NULL for ALL real data.
+- `760bbeb` error-code consistency — 19 `runtime_error`→`IpcException`,
+  `ParamInt64` (rowid truncation), `sqlite3_changes` no-op-write checks,
+  addAttendee UNIQUE/FK branch.
+- `30e2dcf` plugin sandbox — `path.probe` behind a permission; screenshots
+  metadata path containment.
+- `c488d66` plugin sandbox — `auth.user`/`user.me` self-PII redacted for plugin
+  callers (SPA still gets the full doc).
+
+**Deliberately NOT changed (documented judgment calls):**
+- `fs.listDir`/`fs.writePlan` stay unrestricted for plugin callers — the bundled
+  auto-uploader's core feature needs arbitrary-folder access under an
+  explicitly-granted permission.
+- The audit's "vr.audio.switch ignores role / hijacks 3 ERoles" claim was WRONG
+  (the 3-ERole loop is correct Windows "set default device"); only the
+  HRESULT-swallow was real and was fixed.
+
+**Open follow-ups (not blockers):**
+1. **world_visits mixed-format dwell time** — `joined_at` is DOT-local, some
+   `left_at` rows are ISO `+09:00` (7/119); `total_hours_in_world` julianday
+   over both yields NEGATIVE, so it was left on the prior 0.0 rather than
+   shipping a negative. Needs offset-aware normalization (likely at the
+   log-parse/ingest layer — find out why left_at differs from joined_at).
+2. **Audit batches B10 (smoke-coverage holes) + B11 (dead-code cleanup)** not
+   yet done — lower severity; full list in the audit report.
+3. **Version bump + push + release** — still `0.14.6`, 60 commits unpushed.
+   This is the outstanding outward-facing step (confirm with the owner first).
+
+---
+
+
+## Latest Session (2026-07-08 session 2) — SUPERSEDED by 2026-07-09 above
+
 
 The three parked/open items from the earlier 2026-07-08 block are all **DONE**
 and committed on `main` (still unpushed). Nothing is left open from that list.
