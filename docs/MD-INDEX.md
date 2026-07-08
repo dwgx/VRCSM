@@ -4,7 +4,7 @@ Last updated: 2026-07-08
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
-> Note: `main` is currently 44 commits ahead of the `v0.14.6` cut (unpushed), so several docs below labeled "plan" now describe work that has already shipped (OSC Studio, the now-playing music module). Current test baseline: ctest 135/135 (3 opt-in live network probes DISABLED), 354 vitest (run `--no-file-parallelism`), Playwright UI smoke 54/54. i18n is at full parity across all 7 locales.
+> Note: `main` is currently 46 commits ahead of `origin/main` (48 since the `v0.14.6` tag, unpushed), so several docs below labeled "plan" now describe work that has already shipped (OSC Studio, the now-playing music module). Current test baseline: ctest 135/135 (3 opt-in live network probes DISABLED), 354 vitest (run `--no-file-parallelism`), Playwright UI smoke 54/54. i18n is at full parity across all 7 locales.
 
 ## Required Startup Order
 
@@ -132,7 +132,7 @@ This file maps the repo's Markdown documents so the next agent can start from th
 
 - `docs/review-2026-07/` — 2026-07 multi-area review + audit set.
   - `REVIEW-SUMMARY.md` — master summary with the per-finding remediation status table. Start here.
-  - `IPC-CONTRACT-DRIFT-2026-07.md` — IPC contract-drift sweep (99/101 clean). Flags that `plugin.marketFeed` omits `permissions`, so the pre-install consent dialog shows "none" (security-relevant, still open).
+  - `IPC-CONTRACT-DRIFT-2026-07.md` — IPC contract-drift sweep (99/101 clean). The `plugin.marketFeed` `permissions` omission it flagged is now FIXED (commit `133c3af`: `MarketEntry` carries permissions, `ParseFeed` reads them, `MarketEntryToJson` emits them).
   - `ROBUSTNESS-MODULARITY-AUDIT-2026-07-04.md` — full-stack robustness + modularity audit.
   - `area-build-docs.md`, `area-cpp-core.md`, `area-cpp-host-ipc.md`, `area-diff.md`, `area-web-lib.md`, `area-web-pages.md` — the six per-area review shards.
   - `deep/AUDIT-VERDICT.md` — 9-axis quality audit, overall C+.

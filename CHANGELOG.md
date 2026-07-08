@@ -8,7 +8,14 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
-- Development is paused after `v0.14.6`. Only critical bugfixes, packaging repairs, or security updates should land here unless work is explicitly resumed.
+- Active development resumed after the `v0.14.6` checkpoint; a full feature area shipped on `main` (unreleased, un-bumped).
+- **Now-playing music → VRChat OSC.** New `NowPlaying` core module reads the currently-playing system media via Windows GSMTC (C++/WinRT), exposed over the `music.nowPlaying` IPC method; the OSC Studio gained a now-playing panel with `{music.*}` chatbox tokens (title/artist/album/status/position/duration/progress/lyrics/...).
+- **Synced lyrics.** `{music.lyrics}` + `{music.lyricsTranslated}` tokens driven by a multi-provider chain (LRCLIB exact → LRCLIB search → NetEase) with user-selectable sources, routed through a new C++ host proxy (`LyricsProxy` + `lyrics.fetch`) that bypasses WebView2 CORS and carries an SSRF rail (https-only; refuses loopback/link-local/private-range literal hosts). NetEase Chinese lyrics verified end-to-end.
+- **System tray.** `Shell_NotifyIconW` tray icon with minimize-to-tray and a self-healing add/modify fallback; maximized-restore fixed.
+- **WinHTTP transport extracted from VrcApi.** The raw request/retry/cookie transport moved into `src/core/HttpClient` (`vrcsm::core::http`); `VrcApi` now delegates to it while keeping all VRChat semantics. `VrcApi.h` is unchanged (no public API change).
+- **`plugin.marketFeed` now emits `permissions`.** The pre-install consent dialog previously showed "none" for market plugins because the feed entry carried no permissions; the host now parses and emits per-entry permissions so the dialog shows the real requested scopes.
+- **i18n full parity** across all 7 locales (`en`, `zh-CN`, `ja`, `ko`, `ru`, `th`, `hi`); non-default locales lazy-loaded.
+- **Database god-object split** into a thin `Database.cpp` + 9 domain translation units + `Database_internal.h`; friend analytics extracted into a pure, testable `FriendAnalytics`.
 - Fixed three release-blocking regressions: shutdown now waits for active async IPC workers before destroying bridge-owned state, `migrate.execute` no longer hits a fixed renderer timeout while a large cache migration is still running, and MSI installs again include the ONNX wasm runtime used by experimental avatar visual search.
 
 ## [0.14.6] — 2026-06-24

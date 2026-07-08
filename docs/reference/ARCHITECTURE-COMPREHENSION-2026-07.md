@@ -8,8 +8,9 @@
 
 ## 1. System overview
 
-VRCSM is a two-layer Windows desktop app: a **C++20 Win32 host** that embeds a
-**WebView2** control and renders a **React 19 SPA**. The host is a thin shell —
+VRCSM is a three-layer Windows desktop app: a **C++20 Win32 host** that embeds a
+**WebView2** control and renders a **React 19 SPA**, backed by a platform-agnostic
+**C++ core** static library. The host is a thin shell —
 it owns the window, the WebView2 environment, virtual-host folder mappings, and a
 single JSON-RPC-style IPC bridge — while all VRChat-specific logic (cache
 scanning, log parsing, SQLite persistence, the VRChat REST API, NTFS-junction
@@ -27,7 +28,7 @@ in core), which the bridge converts to `{id, result}` or `{id, error:{code,...}}
 │  ~27 lazy pages over ~18 routes · TanStack Query · i18next     │  lib/ipc.ts is the ONLY boundary
 ├───────────────────────────────────────────────────────────────┤
 │  src/host/  (Win32 window + WebView2 + IpcBridge)              │  thin shell; marshals JSON, threads work
-│  main → App → MainWindow → WebViewHost → IpcBridge → 19 bridges│  origin-gated dispatch, thread pool
+│  main → App → MainWindow → WebViewHost → IpcBridge → 21 bridges│  origin-gated dispatch, thread pool
 ├───────────────────────────────────────────────────────────────┤
 │  src/core/  (vrcsm_core static lib — all VRChat logic)         │  Result<T>, no exceptions, UTF-8 everywhere
 │  DB · cache/log/API · realtime · avatar-preview · migration   │  trust boundary to user's live VRChat data
@@ -44,66 +45,51 @@ Event:    { event: "migrate.progress", data: {...} }    // unsolicited host→UI
 
 ---
 
-## 2. Current working-tree state (CRITICAL — read first)
+## 2. Current working-tree state (read first)
 
-There are TWO distinct bodies of work in play; do not conflate them.
+**Anchor: HEAD `78e03d6` on `main`; verified baseline `ctest` 135/135.**
+The Database god-object decomposition that this doc originally tracked as
+in-flight is now committed HISTORY — it was verified green and landed as
+`1fe701f` (Database domain split) and `ecec96d` (IpcBridge decouple). Do not
+treat it as active/uncommitted work; the tree state described in earlier drafts
+(an unbuilt split, "ctest 104/104", "10 ahead, 1 behind") is obsolete.
 
-**Committed (safe to build on): the optimization pass `e5bfd8f..48c2015`.**
-Recent HEAD commits include the i18n backfill (`48c2015` — 770 missing `en`
-keys + a locale-coverage guard test), graph a11y (`cb8446b`), IPC response-shape
-validation + monotonic stale-guard + batched `world.details` (`9df8857`), test
-coverage for SafeDelete/Migrator (`1223c7a`), and the `tinygltf` dep drop
-(`da5d444`). These are landed.
+**Most recent work (committed, safe to build on).** Since the Database split, the
+newest bodies of work are:
 
-**RESOLVED (2026-07-04): the architecture refactor is now VERIFIED and COMMITTED.**
-When this doc was first synthesized the god-object decomposition was uncommitted
-and unverified (the prior session crashed on a context-full error before it could
-build/test the split). It has since been verified green and committed:
+- **Now-playing music** (`src/core/NowPlaying.{h,cpp}`) — reads the system's
+  currently-playing media via GSMTC (C++/WinRT), surfaced through the
+  `music.nowPlaying` IPC method (`src/host/bridges/MusicBridge.cpp`).
+- **Lyrics proxy** (`src/core/LyricsProxy.{h,cpp}`) — an HTTPS lyrics fetch
+  proxied through the host with an SSRF rail (`IsBlockedProxyHost`,
+  `LyricsProxy.cpp:108-162`), surfaced through the `lyrics.fetch` IPC method
+  (`src/host/bridges/LyricsBridge.cpp`).
+- **VrcApi → HttpClient transport extraction** (`78e03d6`) — the WinHTTP
+  transport was pulled out of `VrcApi.cpp` (now ~3380 lines, down from ~3609)
+  into new `src/core/HttpClient.{h,cpp}` (namespace `vrcsm::core::http`); see
+  §3.2 / §6.
 
-- Build: `cmake --build --preset x64-debug` → rc=0, zero compile/link errors.
-- Tests: `ctest` → **104/104 passed, 0 failed** (the invariant the split was
-  designed around).
-- Adversarial check: `Database.h` byte-frozen vs its pre-split state
-  (`git diff` empty); 79 method definitions preserved across the 10 TUs with no
-  duplicates or omissions.
-- Commits: `1fe701f` (Database domain split) and `ecec96d` (IpcBridge decouple).
+Older landed work still in the baseline includes the i18n backfill (`48c2015` —
+770 missing `en` keys + a locale-coverage guard test), graph a11y (`cb8446b`),
+IPC response-shape validation + monotonic stale-guard + batched `world.details`
+(`9df8857`), test coverage for SafeDelete/Migrator (`1223c7a`), and the
+`tinygltf` dep drop (`da5d444`).
 
-The original uncommitted state is described below for historical context.
+> **Verification baseline (as of HEAD `78e03d6`).** `ctest` **135/135** pass
+> (3 opt-in live-network probes DISABLED by default), 354 vitest, Playwright UI
+> smoke 54/54, `tsc` + build clean. `Database.h` API remains frozen across the
+> committed domain split (0 duplicate/missing public methods; all TUs include
+> `Database_internal.h`).
 
-**(historical) The refactor as it sat uncommitted:** the working tree carried a
-god-object decomposition that had NOT been built or tested before the prior
-session crashed:
+> **Remote divergence (check before syncing):** `git rev-list --left-right
+> --count origin/main...main` = **12 behind, 46 ahead**. The 12 behind are all
+> Dependabot dependency-bump commits with no source conflict against this work.
+> A fresh agent should `git status`/inspect the remote before any `git pull` so
+> the divergence is not a surprise.
 
-- `src/core/Database.cpp` (was ~6059 lines) split by domain into **9 new
-  `Database_*.cpp` translation units + `Database_internal.h`**
-  (History / Avatars / Friends / Favorites / Analytics / AssetCache /
-  Recordings / Rules / Embeddings). All 10 TUs are wired into
-  `src/core/CMakeLists.txt:8-17`.
-- `IpcBridge` decouple: modified `src/host/IpcBridge.{cpp,h}`,
-  `src/host/bridges/LogsBridge.cpp`, `src/host/bridges/ShellBridge.cpp`,
-  `src/core/Database.cpp`, `src/core/CMakeLists.txt`.
-- Untracked at repo root: `2026-07-04-111708-...txt` (a large local command
-  transcript, ~8000+ lines) that is NOT covered by `.gitignore` — do not
-  accidentally commit it.
-
-> **Status of this refactor: VERIFIED GREEN and COMMITTED (2026-07-04).**
-> Build rc=0, `ctest` 104/104 pass, `Database.h` frozen (git-diff empty), 79
-> method defs preserved with no duplicates. Committed as `1fe701f` + `ecec96d`.
-> The static readers had already found the split *structurally* clean and
-> complete (0 duplicate/missing public methods; all TUs include
-> `Database_internal.h`; public `Database.h` API unchanged); the build+test run
-> confirmed it.
-
-> **Remote divergence (check before syncing):** local `main` is **10 ahead, 1
-> behind** `origin/main`. The 1 behind is `05b4d1e ci: add dependabot for
-> automated dependency updates` — a CI-only change with no source conflict against
-> this work. A fresh agent should `git status`/inspect the remote before any
-> `git pull` so the divergence is not a surprise.
-
-The continuity docs disagree about this tree and are stale (see §7):
-`docs/NEXT-AGENT-HANDOFF.md:8,13` claims "clean / paused", while
-`MEMORY.md` (Wave-2 note, 2026-07-03) correctly says the tree is NOT clean.
-Trust `git status`, not the handoff doc.
+The stale local command transcript `2026-07-04-111708-...txt` may still sit
+untracked at the repo root and is NOT covered by `.gitignore` — do not
+accidentally commit it.
 
 ---
 
@@ -203,7 +189,8 @@ VRChat data.
 | `LogTailer.cpp` | 311 | Live tailer thread: latest `output_log_*`, seeks EOF on attach, shared read, 1MiB carryover cap (`:65,75`). |
 | `LogEventClassifier.cpp` | 328 | One live `LogTailLine` → JSON event via `ParseVrchatLogAtom` (`:206`). |
 | `Pipeline.cpp` | 486 | WinHTTP WebSocket to pipeline.vrchat.cloud; fetches short-lived `/auth` token per (re)connect; flat 5s reconnect; force-close on Stop (`:106,120,191`). |
-| `VrcApi.cpp` | 3609 | HTTP client: percentEncode/base64, `buildBasicAuthHeader`, `httpRequest` (429 retry+backoff), Set-Cookie capture, login/2FA, **~60 endpoint methods**, trusted-host+magic download validation. |
+| `VrcApi.cpp` | 3380 | Endpoints + auth + trust logic: percentEncode/base64, `buildBasicAuthHeader`, login/2FA, **~60 endpoint methods**, trusted-host+magic download validation. The WinHTTP transport was EXTRACTED to `HttpClient` — `VrcApi`'s `httpRequest`/`httpGet`/url-crack are now thin wrappers over `http::request()`/`http::get()`/`http::crackUrl()`. |
+| `HttpClient.{h,cpp}` | — | Extracted WinHTTP transport (`vrcsm::core::http`): `crackUrl`, `requestOnce`, `request` (rate-limiter token + 429 retry/backoff + Set-Cookie capture), `get`, and the `HttpResponse` struct. The only place the raw WinHTTP calls live now; `VrcApi.cpp` includes `HttpClient.h` and delegates. |
 | `AuthStore.cpp` | 276 | Singleton session store: DPAPI protect/unprotect of `{auth,twoFactorAuth}` to `session.dat`, secure-wipe, `BuildCookieHeader`. |
 | `VrcConfig.cpp` | 197 | config.json read/write, .bak fallback, atomic tmp+rename, ProcessGuard gate on write. |
 | `VrcSettings.cpp` | 1093 | `HKCU\Software\VRChat\VRChat` read/write/export; ProcessGuard gate on WriteOne. |
@@ -283,6 +270,8 @@ hard errors.
 | `RateLimiter.cpp` | 72 | Process-wide token bucket (15 req/60s) singleton; sleeps with lock released. |
 | `Report.cpp` | 158 | `BuildFullReport` fans out CacheScanner/BundleSniff/AvatarData via `std::async`. |
 | `AvatarIdHarvest.cpp` | 68 | Regex-scans `amplitude.cache` JSON-lines for `avtr_*` ids. |
+| `NowPlaying.{h,cpp}` | — | GSMTC now-playing media reader (C++/WinRT `GlobalSystemMediaTransportControlsSessionManager`); backs `music.nowPlaying`. Best-effort, empty on no session. |
+| `LyricsProxy.{h,cpp}` | — | HTTPS lyrics fetch proxied through the host with an SSRF rail (`IsBlockedProxyHost` `:108-162` blocks loopback/private/link-local hosts); backs `lyrics.fetch`. |
 
 **Data flow.** *OSC out:* `osc.send` → `HandleOscSend` (PipelineBridge.cpp:314)
 validates address starts `/`, coerces args, `OscBridge::Send` opens a fresh UDP
@@ -311,6 +300,9 @@ SteamLink restore/backup gated by `IsSteamLinkRestoreTargetAllowed` /
 `IsSteamLinkBackupSourceAllowed`; OSC/XSOverlay only ever SEND to loopback, OSC
 listener binds 127.0.0.1 only; VR overlay + desktop toast MUST notify on
 identical events (both through `FormatPipelineToast` — do not fork gating);
+`NowPlaying` is best-effort read-only (never mutates media state); `LyricsProxy`
+MUST reject non-HTTPS and any host that fails `IsBlockedProxyHost` (loopback /
+private / link-local) so the host cannot be used as an SSRF pivot;
 `~IpcBridge` shutdown order is deliberate (stop log tailer before locked members
 are destroyed).
 
@@ -330,7 +322,7 @@ window; WndProc: WM_CREATE, WM_SIZE, 3 custom WM_APP messages) →
 `WebViewHost.cpp` (682 — virtual-host mappings, top-frame + plugin-iframe
 `WebMessageReceived` handlers, origin extraction, `PostMessageToWeb` UI-thread
 marshaling, navigation/popup containment, plugin frame tracking) →
-`IpcBridge.cpp` (965 — the dispatch hub: `DispatchFromOrigin` origin-gate,
+`IpcBridge.cpp` (966 — the dispatch hub: `DispatchFromOrigin` origin-gate,
 `RegisterHandlers` ~160 methods, `AsyncMethodSet`, `IpcThreadPool` 2-8 workers,
 `PostResult/PostError/PostEventToUi`, EnqueueAsync drain, ctor opens
 DB/AuthStore/CacheIndex/ProcessGuard). `IpcBridge.h` (393) owns all core members
@@ -340,14 +332,16 @@ VrcRadarEngine) + concurrency state. `bridges/BridgeCommon.h` (51 —
 (399 — 2-worker WIC JPEG pool, MTA COM per worker), `VrchatPaths.cpp` (219),
 `UrlProtocol.cpp` (165), `StringUtil.cpp` (78 — strict Utf8↔Wide).
 
-**The 19 bridges** (all in `src/host/bridges/`, wired in
+**The 21 bridges** (all in `src/host/bridges/`, wired in
 `src/host/CMakeLists.txt`): `AuthBridge` (191), `ApiBridge` (1320 — ~50 VRChat
 REST handlers, largest), `CacheBridge` (191), `HwBridge` (224),
 `SettingsBridge` (113), `MigrateBridge`, `ScreenshotBridge` (307),
 `SearchBridge`, `ShellBridge` (650), `LogsBridge` (563), `RadarBridge`,
 `DatabaseBridge` (1090 — the DB fan-in), `PluginBridge` (353),
 `UpdateBridge` (405), `PipelineBridge` (540), `VectorBridge`, `VrDiagBridge`,
-`RuleBridge`, `EventBridge`. Bridges are NOT self-registering — `IpcBridge::
+`RuleBridge`, `EventBridge`, `LyricsBridge` (`lyrics.fetch`),
+`MusicBridge` (`music.nowPlaying`). Bridges are NOT self-registering —
+`IpcBridge::
 RegisterHandlers()` (`:623-869`) emplaces lambdas forwarding to member `Handle*`
 functions compiled in the separate bridge TUs. The decouple is purely a
 header/compile-time split: heavy core types are forward-declared/`unique_ptr`'d
@@ -359,7 +353,7 @@ in `IpcBridge.h` so the bridge TUs don't recompile against Pipeline/LogTailer.
 `add_WebMessageReceived` (main frame) or `ICoreWebView2Frame2` handler (plugin
 iframes, via `add_FrameCreated`) fires on the UI thread → reads
 `args->get_Source()` for `originUri` → `IpcBridge::DispatchFromOrigin(originUri,
-json)` (`:458`). Dispatch parses `{id, method, params}`, classifies origin
+json)` (`:457`). Dispatch parses `{id, method, params}`, classifies origin
 (`PluginRegistry::PluginIdFromOrigin` → `callerPluginId`; else
 `HostFromOrigin` must equal `app.vrcsm` or reject with `forbidden_origin`).
 Plugin origins may only reach `PluginReachableMethods` (just `plugin.rpc`).
@@ -528,7 +522,7 @@ Ninja+vcpkg+x64-windows; **no testPresets** — ctest is run by explicit
 `--test-dir`). `src/core/CMakeLists.txt` (139 — `vrcsm_core` STATIC; now lists 9
 `Database_*.cpp` + `Database.cpp` at lines 8-17; vendored `sqlite-vec.c`
 `SQLITE_CORE=1`; links sqlite3/lz4/LibLZMA + updater + hw + WinRT). `src/host/
-CMakeLists.txt` (123 — `vrcsm` WIN32 exe; 19 bridge .cpp; three POST_BUILD:
+CMakeLists.txt` (123 — `vrcsm` WIN32 exe; 21 bridge .cpp; three POST_BUILD:
 sync-web-dist, icon, sync-plugins; install RUNTIME DESTINATION .).
 `cmake/sync-web-dist.cmake` (28 — POST_BUILD, no-op if `web/dist` missing else
 REMOVE_RECURSE dest + `file(COPY)`; web/dist is NOT a CMake output).
@@ -576,7 +570,7 @@ Qt/Electron/Tauri/WPF/etc forbidden); MSVC runtime is MultiThreadedDLL,
 unsolicited host→UI push).
 
 **Dispatch** (`IpcBridge::DispatchFromOrigin(originUri, jsonText)`,
-IpcBridge.cpp:458 — the single entry every WebView2 message hits;
+IpcBridge.cpp:457 — the single entry every WebView2 message hits;
 `IpcBridge::Dispatch(json)` at IpcBridge.h:59 is a legacy/test shim that assumes
 the `https://app.vrcsm/` origin):
 
@@ -614,7 +608,7 @@ frame. ~14 pushed event names: `process.vrcStatusChanged`, `logs.stream(.event)`
 `migrate.progress`, `migrate.done`, `avatar.preview.progress`, `update.progress`,
 `auth.loginCompleted`.
 
-**Bridge inventory (19 + BridgeCommon.h).** Method groups (all found, grouped):
+**Bridge inventory (21 + BridgeCommon.h).** Method groups (all found, grouped):
 
 - **app/shell** — `app.version`, `app.factoryReset`, `path.probe`,
   `process.vrcRunning`, `autoStart.get/set`, `shell.pickFolder`, `shell.openUrl`,
@@ -651,6 +645,8 @@ frame. ~14 pushed event names: `process.vrcStatusChanged`, `logs.stream(.event)`
   `notify.setPrefs`.
 - **discord** — `discord.setActivity/clearActivity/status`.
 - **osc** — `osc.send/listen.start/listen.stop`.
+- **music/lyrics** — `music.nowPlaying` (GSMTC now-playing, MusicBridge),
+  `lyrics.fetch` (HTTPS lyrics proxy w/ SSRF rail, LyricsBridge).
 - **update** — `update.check/download/install/skipVersion/unskipVersion/
   getState`.
 - **db** — `db.worldVisits.list`, `db.playerEvents.list`, `db.playerEncounters`,
@@ -743,13 +739,15 @@ frame. ~14 pushed event names: `process.vrcStatusChanged`, `logs.stream(.event)`
    junction on an OS kill (manually recoverable, no per-file hash — only
    count/byte verify). Per MEMORY deep-audit, irreversible paths are historically
    under-tested.
-2. **God-objects (HIGH, being addressed).** `VrcApi.cpp` (3609 lines — HTTP core
-   + ~60 endpoints + login/2FA + uploads + trust validation in one TU),
+2. **God-objects (HIGH, being addressed).** `VrcApi.cpp` (~3380 lines — the
+   WinHTTP transport has since been EXTRACTED to `HttpClient`, so this is now
+   ~60 endpoints + login/2FA + uploads + trust validation, down from ~3609),
    `VrDiagnostics.cpp` (2226 — diagnostics + irreversible SteamVR moves),
    `LogParser.cpp` (1320 — large stateful `ParseState`), `IpcBridge` (~160
    handlers + all realtime members + 8 mutexes/atomics — the single coupling
-   point). `Database.cpp` decomposition is the in-flight fix but even post-split
-   `Database_Friends.cpp` (1162) and `Database_Analytics.cpp` (1232) retain
+   point). The `Database.cpp` decomposition (committed, `1fe701f`) already
+   applied here, but even post-split `Database_Friends.cpp` (1162) and
+   `Database_Analytics.cpp` (1232) retain
    god-functions (`CoPresenceEgoNetwork` ~300 lines, `PredictFriendOnlineWindows`
    ~255 lines) that resisted the split and remain hardest to test.
    `Friends.tsx` (~1060) and `App.tsx AppContent` (~600) are the web analogues.
@@ -792,16 +790,18 @@ frame. ~14 pushed event names: `process.vrcStatusChanged`, `logs.stream(.event)`
 The readers found the following stale claims. None are fixed by this document —
 they need edits in the cited docs (respecting the main-agent-commits rule).
 
-- **CLAUDE.md:59 (and AGENTS.md:59, identical text): "React SPA with 10
-  lazy-loaded pages".** Actual: `web/src/App.tsx:48-74` declares ~27 top-level
-  `lazy()` page imports across ~18 routable screens (~2.7× understated). Fix to
-  "~27 lazy-loaded pages" or drop the count. The stale string is duplicated
-  across both primary agent-facing docs.
-- **CLAUDE.md "Error Handling" / architecture describes `Database.cpp`
-  monolithically** and documents `IpcBridge::Dispatch()` as the router. Reality:
-  `Database.cpp` is now split into 10 TUs + `Database_internal.h` (uncommitted),
-  and production dispatch is `DispatchFromOrigin(originUri, json)` — `Dispatch()`
-  is a legacy/test shim (IpcBridge.h:59).
+- **RESOLVED in CLAUDE.md: the "React SPA with 10 lazy-loaded pages" string is
+  no longer present** in the current `CLAUDE.md` (it now says ~30 page components
+  / 27 lazy routes). If a stale copy of that string survives anywhere
+  (e.g. an old `AGENTS.md`), fix to "~27 lazy-loaded pages" or drop the count;
+  actual is `web/src/App.tsx` declaring ~27 top-level `lazy()` page imports
+  across ~18 routable screens.
+- **RESOLVED in CLAUDE.md: the `Database.cpp` monolith / `IpcBridge::Dispatch()`
+  router drift.** The current `CLAUDE.md` already describes the committed
+  Database domain split (`Database.cpp` + 9 domain TUs + `Database_internal.h`)
+  and documents `DispatchFromOrigin()` as the production entry point with
+  `Dispatch()` as the legacy/test shim (IpcBridge.h:59). This item applies only
+  to any lingering stale copy of the doc.
 - **CLAUDE.md async-dispatch note: "spawn a detached worker thread".** Actual: a
   fixed shared `IpcThreadPool` clamped 2..8 (IpcBridge.cpp:39-99).
 - **CLAUDE.md IPC event example lists only `migrate.progress`** — there are ~14

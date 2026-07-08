@@ -14,10 +14,10 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 
 ## Current Continuity Snapshot
 
-- Current branch: `main`, **diverged from `origin/main` — 41 commits AHEAD, 12 BEHIND, and NOT yet pushed** (`git rev-list --left-right --count origin/main...main` = `12  41`; local HEAD `e6f8221`, origin HEAD `22a50d8`). The 12 behind are all Dependabot dependency/action bumps plus a "disable Dependabot" commit — inspect before any `git pull`; no source conflict expected but 41 local feature commits are unpushed.
-- Working tree is **clean** apart from one intentionally-untracked scratch file at repo root (`2026-07-04-111708-...txt`, a local command transcript). Do NOT commit it. The old "Wave-2 change set uncommitted / tree NOT clean" wording is stale — Wave-2 was committed, and 41 further commits landed on top.
-- Development is **ACTIVE** (not paused). This session shipped a now-playing music module, synced lyrics with a host proxy, a system tray, a Database god-object split, and full 7-locale i18n parity. See "Shipped this session" below.
-- Current version: still `0.14.6` in `VERSION` and `web/package.json` — **un-bumped** despite the 41 new commits. A version bump + release cut is pending; keep `VERSION`, `web/package.json`, README artifact names, and release asset filenames in sync when bumped.
+- Current branch: `main`, **diverged from `origin/main` — 46 commits AHEAD, 12 BEHIND, and NOT yet pushed** (`git rev-list --left-right --count origin/main...main` = `12  46`; local HEAD `78e03d6`). The 12 behind are all Dependabot dependency/action bumps plus a "disable Dependabot" commit — inspect before any `git pull`; no source conflict expected but 46 local feature commits are unpushed.
+- Working tree is **clean** apart from one intentionally-untracked scratch file at repo root (`2026-07-04-111708-...txt`, a local command transcript). Do NOT commit it.
+- Development is **ACTIVE** (not paused). Recent sessions shipped a now-playing music module, synced lyrics with a host proxy, a system tray, a Database god-object split, full 7-locale i18n parity, the plugin.marketFeed permissions fix, and the VrcApi→HttpClient transport extraction. See "Recently completed" below.
+- Current version: still `0.14.6` in `VERSION` and `web/package.json` — **un-bumped** despite the 46 new commits. A version bump + release cut is pending; keep `VERSION`, `web/package.json`, README artifact names, and release asset filenames in sync when bumped.
 - Last release artifact `build\release\VRCSM_v0.14.6_x64_Installer.msi` **predates the current head** (music/lyrics/tray/i18n/Database-split all landed after it) and is NOT representative of current code. No new artifact has been cut.
 - Current test baseline (re-confirm by running builds before claiming done): **C++ ctest 135/135, web 354/354 vitest (see below), Playwright UI smoke 54/54, tsc + build clean.** ctest rose from 128 → 135 in the 2026-07-08 session 2 (+3 PluginFeed, +4 crackUrl). The web vitest full run flakes ~25 fails under the default parallel runner (two heavy render suites contending); run `--no-file-parallelism` for the true 354/354 — see [[vitest-parallel-flakiness]]. This supersedes the older 100/104-test and 238/280 vitest / 27-smoke figures elsewhere in the docs.
 - Reliability lesson: background workflows/subagents repeatedly hung on the inference gateway this session; **prefer foreground single-threaded execution for heavy C++ work.**
@@ -25,26 +25,21 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 ### Shipped this session
 
 - **Now-playing music module.** `src/core/NowPlaying.{cpp,h}` reads the currently-playing system media via Windows GSMTC (C++/WinRT `GlobalSystemMediaTransportControls`), exposed over the `music.nowPlaying` IPC method (`src/host/bridges/MusicBridge.cpp`). Web consumes it via `web/src/lib/useNowPlaying.ts`; `{music.*}` OSC tokens (title/artist/album/status/position/duration/progressBar/percent/appName/marquee/lyrics/lyricsTranslated) render through `web/src/pages/osc/NowPlayingPanel.tsx` + presets. GSMTC async waits are bounded and progress is anchored to sample time.
-- **Synced lyrics.** `{music.lyrics}` + `{music.lyricsTranslated}` tokens driven by `web/src/lib/lyrics.ts` with a multi-provider chain (LRCLIB exact → LRCLIB search → NetEase) and user-selectable source toggles. Requests route through a NEW C++ host proxy `src/core/LyricsProxy.{cpp,h}` via the `lyrics.fetch` IPC method (`src/host/bridges/LyricsBridge.cpp`) to bypass WebView2 CORS. The proxy has an SSRF rail (https-only; `IsBlockedProxyHost` refuses loopback/link-local/private-range literal hosts — 127/8, 10/8, 192.168/16, 172.16–31, IPv4-mapped IPv6, verified `LyricsProxy.cpp:108-197`).
+- **Synced lyrics.** `{music.lyrics}` + `{music.lyricsTranslated}` tokens driven by `web/src/lib/lyrics.ts` with a multi-provider chain (LRCLIB exact → LRCLIB search → NetEase) and user-selectable source toggles. Requests route through a NEW C++ host proxy `src/core/LyricsProxy.{cpp,h}` via the `lyrics.fetch` IPC method (`src/host/bridges/LyricsBridge.cpp`) to bypass WebView2 CORS. The proxy has an SSRF rail (https-only; `IsBlockedProxyHost` refuses loopback/link-local/private-range literal hosts — 127/8, 10/8, 192.168/16, 172.16–31, IPv4-mapped IPv6, verified `LyricsProxy.cpp:108-162`).
 - **System tray.** `src/host/MainWindow.cpp` adds a tray icon via `Shell_NotifyIconW` with minimize-to-tray and a self-healing NIM_MODIFY→NIM_ADD fallback; maximized-restore fixed.
 - **Robustness/UX.** Game Log live-tail backfill of the existing log + precise empty states; FriendLog pagination; clickable notifications; per-subscriber gamelog seed; OSC text-wrap of unbroken strings.
 - **i18n full parity** across all 7 locales (`en`, `zh-CN`, `ja`, `ko`, `ru`, `th`, `hi`), 0 placeholder mismatch; non-default locales lazy-loaded.
 - **Database god-object split** into a thin `Database.cpp` + 9 domain translation units (`Database_Analytics/AssetCache/Avatars/Embeddings/Favorites/Friends/History/Recordings/Rules.cpp`) sharing `Database_internal.h`; friend analytics extracted into a pure, testable `src/core/FriendAnalytics.{cpp,h}`.
 
-### Open / parked work
+### Recently completed (2026-07-08 session 2) — all DONE + committed
 
-> **Update (2026-07-08 session 2): all three items below are DONE + committed**
-> on `main` (unpushed): `133c3af` (plugin.marketFeed permissions),
-> `45978e5` (opt-in live NetEase lyrics probes — path already worked),
-> `7112f56` (VrcApi WinHTTP transport → `src/core/HttpClient.{h,cpp}`,
-> VrcApi.h byte-frozen). ctest now **135/135** (+3 PluginFeed, +4 crackUrl).
-> web vitest **354/354** but only under `--no-file-parallelism` (see
-> [[vitest-parallel-flakiness]]). See docs/NEXT-AGENT-HANDOFF.md
-> "Latest Session (2026-07-08 session 2)" for details.
+All three formerly-parked items are done and committed on `main` (unpushed).
+No open work remains from this list. Next agent: version-bump + push + release
+is the outstanding non-code step (still `0.14.6`, `main` 46 ahead of origin).
 
-- **VrcApi transport extraction — PARKED.** Started but not finished; `src/core` still has only `VrcApi.{cpp,h}` (no separate transport/http TU). It is gateway-flaky; when resumed, do it single-threaded/foreground, NOT via a background workflow.
-- **`plugin.marketFeed` omits `permissions` (security-relevant).** `MarketEntryToJson` in `src/host/bridges/PluginBridge.cpp:63` emits id/name/version/hostMin/shape/description/homepage/authorName/authorUrl/iconUrl/download/sha256 but NOT permissions, so the pre-install consent dialog shows "none". Fix `MarketEntry` (PluginFeed.h) + `ParseFeed` + `MarketEntryToJson`. See `docs/review-2026-07/IPC-CONTRACT-DRIFT-2026-07.md`.
-- **NetEase Chinese-lyrics end-to-end** works per commit `e6f8221` but still needs live in-app confirmation.
+- **VrcApi transport extraction — DONE (`7112f56`).** The WinHTTP transport is now `src/core/HttpClient.{h,cpp}` (`vrcsm::core::http`): `crackUrl`, `requestOnce`/`request`/`get`, `HttpResponse`, rate-limit + 429 retry/backoff, Set-Cookie capture — moved verbatim. `VrcApi.cpp` (now 3380 lines) keeps all VRChat semantics and delegates through thin wrappers; **`VrcApi.h` is byte-frozen** (no public API change). Locked by 4 `HttpClientCrackUrl` tests + an opt-in live `/api/1/config` probe (`HttpClientLive`, gated on `VRCSM_LIVE_VRCAPI_TEST`).
+- **`plugin.marketFeed` permissions — FIXED (`133c3af`).** `MarketEntry` (`PluginFeed.h:59`) now has a `permissions` vector, `ParseFeed` reads the entry's optional `permissions` array, and `MarketEntryToJson` (`PluginBridge.cpp:78`) emits it; `docs/gh-pages/plugins.json` carries per-entry permissions matching each manifest. The pre-install consent dialog now shows real scopes instead of "none". No TS change. Locked by 3 `PluginFeedTests`.
+- **NetEase Chinese-lyrics — VERIFIED (`45978e5`).** No production code changed; the shipped path already worked. Added opt-in live gtest probes (`LyricsProxyLive.*`, DISABLED, gated on `VRCSM_LIVE_LYRICS_TEST`) that hit `music.163.com` through the exact `lyrics.fetch` transport — confirmed 200 + raw-UTF-8 Chinese LRC with timestamps. Only the GUI render itself is left (needs a human with a music player + VRChat running).
 
 ## Memories
 

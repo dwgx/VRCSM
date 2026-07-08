@@ -90,10 +90,16 @@ probe (`HttpClientLive`, gated on `VRCSM_LIVE_VRCAPI_TEST`) that GETs
 ---
 
 
-## Latest Session (2026-07-08) — READ FIRST
+## Latest Session (2026-07-08) — SUPERSEDED by session 2 above
 
-This block is current truth and supersedes every older block below on branch
-state, version status, and test baseline.
+> **SUPERSEDED.** The "session 2" block above is current truth. At that point
+> `main` is **46 ahead / 12 behind** `origin/main` (local HEAD `78e03d6`),
+> ctest **135/135**, web vitest **354/354** (under `--no-file-parallelism`).
+> The "41 ahead / e6f8221 / 128 / ~347" numbers in this block are stale — read
+> them as history, not current state.
+
+This block was current truth for its session and supersedes every older block
+below on branch state, version status, and test baseline.
 
 **Branch reality.** `main` is **41 commits AHEAD / 12 BEHIND `origin/main` and is
 NOT pushed** (`git rev-list --left-right --count origin/main...main` = `12  41`;
@@ -134,7 +140,7 @@ paused" framing is likewise stale and should be corrected when scope allows.
   (`src/host/bridges/LyricsBridge.cpp`) to bypass WebView2 CORS. SSRF rail:
   https-only, `IsBlockedProxyHost` refuses loopback/link-local/private-range
   literal hosts (127/8, 10/8, 192.168/16, 172.16–31, IPv4-mapped IPv6) —
-  verified `LyricsProxy.cpp:108-197` (commits `ac08627`, `797dbc5`, `e6f8221`).
+  verified `LyricsProxy.cpp:108-162` (commits `ac08627`, `797dbc5`, `e6f8221`).
 - **System tray.** `src/host/MainWindow.cpp` adds a `Shell_NotifyIconW` tray icon
   with minimize-to-tray + self-healing NIM_MODIFY→NIM_ADD fallback; maximized
   restore fixed (commits `19a3070`, `9ccfaca`).
