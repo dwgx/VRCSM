@@ -464,6 +464,7 @@
       "presetMarquee": "マーキー",
       "presetCompact": "コンパクト",
       "presetLyrics": "歌詞",
+      "presetBilingual": "バイリンガル",
       "applyToSelected": "選択中のメッセージのテンプレートに設定します。",
       "addAsCard": "新しい Chatbox メッセージとして追加します。",
       "preview": "Chatbox プレビュー",
@@ -475,7 +476,10 @@
       "lyricsFound": "あり",
       "lyricsInstrumental": "インスト",
       "lyricsNone": "なし",
-      "lyricsWaiting": "…"
+      "lyricsWaiting": "…",
+      "lyricsSource": "歌詞ソース",
+      "sourceLrclib": "LRCLIB",
+      "sourceNetease": "NetEase"
     },
     "auto": {
       "badge": "AUTO",

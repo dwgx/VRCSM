@@ -464,6 +464,7 @@
       "presetMarquee": "मार्की",
       "presetCompact": "कॉम्पैक्ट",
       "presetLyrics": "लिरिक्स",
+      "presetBilingual": "द्विभाषी",
       "applyToSelected": "चुने गए संदेश का टेम्प्लेट सेट करने के लिए क्लिक करें।",
       "addAsCard": "नया चैटबॉक्स संदेश जोड़ने के लिए क्लिक करें।",
       "preview": "चैटबॉक्स प्रीव्यू",
@@ -475,7 +476,10 @@
       "lyricsFound": "मिला",
       "lyricsInstrumental": "वाद्य",
       "lyricsNone": "नहीं",
-      "lyricsWaiting": "…"
+      "lyricsWaiting": "…",
+      "lyricsSource": "लिरिक्स स्रोत",
+      "sourceLrclib": "LRCLIB",
+      "sourceNetease": "NetEase"
     },
     "auto": {
       "badge": "AUTO",

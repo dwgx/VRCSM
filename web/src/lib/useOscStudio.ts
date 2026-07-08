@@ -34,7 +34,7 @@ import {
   type OscValueType,
 } from "@/lib/osc-studio";
 import { useNowPlaying } from "@/lib/useNowPlaying";
-import { currentLyricLine } from "@/lib/lyrics";
+import { currentLyricLine, currentLyricTrans } from "@/lib/lyrics";
 
 export const MAX_LOG_ENTRIES = 200;
 export const AUTO_TELEMETRY_REFRESH_MS = 5000;
@@ -405,10 +405,10 @@ export function useOscStudio() {
     // Resolve {music.lyrics} to the line matching the live playback position so
     // it advances as the song plays (the lyrics were fetched once on track
     // change; here we just pick the current line from the parsed ref).
-    const lyricLine =
-      music && music.active
-        ? currentLyricLine(nowPlaying.lyricsRef.current, extrapolatePosition(music, now.getTime()))
-        : "";
+    const posMs = music && music.active ? extrapolatePosition(music, now.getTime()) : 0;
+    const lines = nowPlaying.lyricsRef.current;
+    const lyricLine = music && music.active ? currentLyricLine(lines, posMs) : "";
+    const lyricTranslated = music && music.active ? currentLyricTrans(lines, posMs) : "";
     return {
       hardware: hardwareRef.current,
       now,
@@ -416,6 +416,7 @@ export function useOscStudio() {
       musicProgressWidth: nowPlaying.progressWidthRef.current,
       musicMarqueeWidth: nowPlaying.marqueeWidthRef.current,
       musicLyricLine: lyricLine,
+      musicLyricTranslated: lyricTranslated,
       asciiFold: nowPlaying.asciiFoldRef.current,
     };
   }

@@ -464,6 +464,7 @@
       "presetMarquee": "滚动",
       "presetCompact": "紧凑",
       "presetLyrics": "歌词",
+      "presetBilingual": "双语",
       "applyToSelected": "点击可将所选消息的模板设置为此项。",
       "addAsCard": "点击添加一条新的 chatbox 消息。",
       "preview": "聊天框预览",
@@ -475,7 +476,10 @@
       "lyricsFound": "已找到",
       "lyricsInstrumental": "纯音乐",
       "lyricsNone": "无",
-      "lyricsWaiting": "…"
+      "lyricsWaiting": "…",
+      "lyricsSource": "歌词来源",
+      "sourceLrclib": "LRCLIB",
+      "sourceNetease": "网易云"
     },
     "auto": {
       "badge": "AUTO",

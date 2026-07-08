@@ -464,6 +464,7 @@
       "presetMarquee": "흐르는 텍스트",
       "presetCompact": "컴팩트",
       "presetLyrics": "가사",
+      "presetBilingual": "이중 언어",
       "applyToSelected": "클릭하면 선택한 메시지의 템플릿으로 설정합니다.",
       "addAsCard": "클릭하면 새 채팅창 메시지를 추가합니다.",
       "preview": "채팅창 미리보기",
@@ -475,7 +476,10 @@
       "lyricsFound": "찾음",
       "lyricsInstrumental": "연주곡",
       "lyricsNone": "없음",
-      "lyricsWaiting": "…"
+      "lyricsWaiting": "…",
+      "lyricsSource": "가사 출처",
+      "sourceLrclib": "LRCLIB",
+      "sourceNetease": "NetEase"
     },
     "auto": {
       "badge": "AUTO",

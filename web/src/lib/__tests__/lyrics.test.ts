@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { currentLyricLine, parseLrc, type LyricLine } from "../lyrics";
+import {
+  currentLyricLine,
+  currentLyricTrans,
+  mergeTranslation,
+  normalizeQuery,
+  parseLrc,
+  type LyricLine,
+} from "../lyrics";
 import { renderOscTemplate, type NowPlayingSnapshot } from "../osc-studio";
 
 function makeSnapshot(overrides: Partial<NowPlayingSnapshot> = {}): NowPlayingSnapshot {
@@ -135,5 +142,128 @@ describe("{music.lyrics} rendering", () => {
         musicLyricLine: "should be ignored",
       }),
     ).toBe("");
+  });
+
+  it("renders the translated line for {music.lyricsTranslated}", () => {
+    const m = makeSnapshot();
+    // The template cleaner tightens spaces around "/", so the bilingual preset
+    // renders as "lyric/translation".
+    const out = renderOscTemplate("{music.lyrics} / {music.lyricsTranslated}", {
+      music: m,
+      now: fixedNow,
+      musicLyricLine: "こんにちは",
+      musicLyricTranslated: "Hello",
+    });
+    expect(out).toBe("こんにちは/Hello");
+  });
+
+  it("leaves {music.lyricsTranslated} empty when none is passed", () => {
+    const m = makeSnapshot();
+    const out = renderOscTemplate("{music.lyrics}{music.lyricsTranslated}", {
+      music: m,
+      now: fixedNow,
+      musicLyricLine: "solo",
+    });
+    expect(out).toBe("solo");
+  });
+});
+
+describe("normalizeQuery", () => {
+  it("strips a parenthetical year", () => {
+    expect(normalizeQuery("Yesterday (2006)", "The Beatles")).toEqual({
+      title: "Yesterday",
+      artist: "The Beatles",
+    });
+  });
+
+  it("strips noise tags like Official / MV / Lyrics / HD", () => {
+    expect(normalizeQuery("Shape of You (Official Video) [HD]", "Ed Sheeran")).toEqual({
+      title: "Shape of You",
+      artist: "Ed Sheeran",
+    });
+    expect(normalizeQuery("Song Name - Lyrics", "Artist").title).toBe("Song Name");
+  });
+
+  it("drops feat./ft. credits", () => {
+    expect(normalizeQuery("Stay feat. Justin Bieber", "The Kid LAROI").title).toBe("Stay");
+    expect(normalizeQuery("Track ft. Someone", "Main").title).toBe("Track");
+  });
+
+  it("strips CJK noise words and full-width brackets", () => {
+    expect(normalizeQuery("告白气球（官方MV）【高清】", "周杰伦").title).toBe("告白气球");
+  });
+
+  it("splits 'Artist - Title' when artist is empty", () => {
+    expect(normalizeQuery("Daft Punk - Get Lucky", "")).toEqual({
+      title: "Get Lucky",
+      artist: "Daft Punk",
+    });
+  });
+
+  it("splits 'Artist - Title' when artist looks like an uploader channel", () => {
+    expect(normalizeQuery("Adele - Hello", "AdeleVEVO")).toEqual({
+      title: "Hello",
+      artist: "Adele",
+    });
+  });
+
+  it("keeps a real artist and does not split the title", () => {
+    expect(normalizeQuery("Hello - Goodbye", "The Band")).toEqual({
+      title: "Hello - Goodbye",
+      artist: "The Band",
+    });
+  });
+});
+
+describe("mergeTranslation", () => {
+  const main: LyricLine[] = [
+    { timeMs: 1_000, text: "line one" },
+    { timeMs: 5_000, text: "line two" },
+    { timeMs: 9_000, text: "line three" },
+  ];
+
+  it("aligns translations to the nearest timestamp within tolerance", () => {
+    const tr: LyricLine[] = [
+      { timeMs: 1_050, text: "第一行" },
+      { timeMs: 5_200, text: "第二行" },
+      { timeMs: 9_000, text: "第三行" },
+    ];
+    const merged = mergeTranslation(main, tr);
+    expect(merged.map((l) => l.trText)).toEqual(["第一行", "第二行", "第三行"]);
+    // Original array is not mutated.
+    expect(main[0].trText).toBeUndefined();
+  });
+
+  it("leaves trText empty when no translation is within ~1s", () => {
+    const tr: LyricLine[] = [{ timeMs: 3_000, text: "far away" }];
+    const merged = mergeTranslation(main, tr);
+    // 3000 is >1s from every main line (nearest is line two at 5000, delta 2000).
+    expect(merged.map((l) => l.trText)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("returns main unchanged when there is no translation track", () => {
+    expect(mergeTranslation(main, [])).toBe(main);
+  });
+});
+
+describe("currentLyricTrans", () => {
+  const lines: LyricLine[] = [
+    { timeMs: 10_000, text: "first", trText: "一" },
+    { timeMs: 20_000, text: "second" },
+    { timeMs: 30_000, text: "third", trText: "三" },
+  ];
+
+  it("returns the translation of the current line", () => {
+    expect(currentLyricTrans(lines, 12_000)).toBe("一");
+    expect(currentLyricTrans(lines, 35_000)).toBe("三");
+  });
+
+  it("returns empty when the current line has no translation", () => {
+    expect(currentLyricTrans(lines, 22_000)).toBe("");
+  });
+
+  it("returns empty before the first line and for no lines", () => {
+    expect(currentLyricTrans(lines, 5_000)).toBe("");
+    expect(currentLyricTrans([], 12_000)).toBe("");
   });
 });

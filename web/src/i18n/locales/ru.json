@@ -464,6 +464,7 @@
       "presetMarquee": "Бегущая строка",
       "presetCompact": "Компактный",
       "presetLyrics": "Текст",
+      "presetBilingual": "Двуязычный",
       "applyToSelected": "Применить шаблон к выбранному сообщению.",
       "addAsCard": "Добавить новое сообщение Chatbox.",
       "preview": "Предпросмотр Chatbox",
@@ -475,7 +476,10 @@
       "lyricsFound": "найден",
       "lyricsInstrumental": "инструментал",
       "lyricsNone": "нет",
-      "lyricsWaiting": "…"
+      "lyricsWaiting": "…",
+      "lyricsSource": "Источник текста",
+      "sourceLrclib": "LRCLIB",
+      "sourceNetease": "NetEase"
     },
     "auto": {
       "badge": "AUTO",

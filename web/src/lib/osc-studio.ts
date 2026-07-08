@@ -162,6 +162,11 @@ export interface OscTemplateContext {
    * module stays free of the async fetch/parse path. Empty/undefined → "".
    */
   musicLyricLine?: string;
+  /**
+   * Already-resolved translated current lyric line for {music.lyricsTranslated}
+   * (e.g. NetEase Chinese translation aligned by timestamp). Empty/undefined → "".
+   */
+  musicLyricTranslated?: string;
   /** When true, fold the rendered line to ASCII (strip/transliterate). */
   asciiFold?: boolean;
 }
@@ -259,7 +264,7 @@ export const OSC_VARIABLE_GROUPS = [
   {
     id: "music",
     label: "Music",
-    tokens: ["{music.title}", "{music.artist}", "{music.album}", "{music.status}", "{music.position}", "{music.duration}", "{music.progressBar}", "{music.percent}", "{music.appName}", "{music.marquee}", "{music.lyrics}"],
+    tokens: ["{music.title}", "{music.artist}", "{music.album}", "{music.status}", "{music.position}", "{music.duration}", "{music.progressBar}", "{music.percent}", "{music.appName}", "{music.marquee}", "{music.lyrics}", "{music.lyricsTranslated}"],
   },
 ] as const;
 
@@ -304,6 +309,12 @@ export const MUSIC_PRESETS: MusicPreset[] = [
     labelKey: "osc.music.presetLyrics",
     label: "Lyrics",
     template: "♪ {music.lyrics}",
+  },
+  {
+    id: "music-bilingual",
+    labelKey: "osc.music.presetBilingual",
+    label: "Bilingual",
+    template: "{music.lyrics} / {music.lyricsTranslated}",
   },
 ];
 
@@ -934,6 +945,7 @@ function musicReplacements(
   progressWidth: number,
   marqueeWidth: number,
   lyricLine: string,
+  lyricTranslated: string,
 ): Record<string, string> {
   const empties: Record<string, string> = {
     "{music.title}": "",
@@ -947,6 +959,7 @@ function musicReplacements(
     "{music.appName}": "",
     "{music.marquee}": "",
     "{music.lyrics}": "",
+    "{music.lyricsTranslated}": "",
   };
   if (!music || !music.active) return empties;
   const nowMs = now.getTime();
@@ -965,6 +978,7 @@ function musicReplacements(
     "{music.appName}": music.app_name ?? "",
     "{music.marquee}": oscMarquee(music.title ?? "", marqueeWidth, Math.floor(nowMs / 1000)),
     "{music.lyrics}": lyricLine ?? "",
+    "{music.lyricsTranslated}": lyricTranslated ?? "",
   };
 }
 
@@ -1040,6 +1054,7 @@ export function renderOscTemplate(
       context.musicProgressWidth ?? 10,
       context.musicMarqueeWidth ?? 20,
       context.musicLyricLine ?? "",
+      context.musicLyricTranslated ?? "",
     ),
   };
 

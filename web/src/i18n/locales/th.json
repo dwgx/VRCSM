@@ -427,6 +427,7 @@
       "presetMarquee": "ข้อความวิ่ง",
       "presetCompact": "กะทัดรัด",
       "presetLyrics": "เนื้อเพลง",
+      "presetBilingual": "สองภาษา",
       "applyToSelected": "คลิกเพื่อตั้งเป็นเทมเพลตของข้อความที่เลือก",
       "addAsCard": "คลิกเพื่อเพิ่มข้อความแชตบ็อกซ์ใหม่",
       "preview": "ตัวอย่างแชตบ็อกซ์",
@@ -438,7 +439,10 @@
       "lyricsFound": "พบแล้ว",
       "lyricsInstrumental": "บรรเลง",
       "lyricsNone": "ไม่มี",
-      "lyricsWaiting": "…"
+      "lyricsWaiting": "…",
+      "lyricsSource": "แหล่งเนื้อเพลง",
+      "sourceLrclib": "LRCLIB",
+      "sourceNetease": "NetEase"
     },
     "auto": {
       "badge": "AUTO",

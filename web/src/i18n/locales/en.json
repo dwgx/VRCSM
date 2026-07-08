@@ -427,6 +427,7 @@
       "presetMarquee": "Marquee",
       "presetCompact": "Compact",
       "presetLyrics": "Lyrics",
+      "presetBilingual": "Bilingual",
       "applyToSelected": "Click to set the selected message's template.",
       "addAsCard": "Click to add a new chatbox message.",
       "preview": "Chatbox preview",
@@ -438,7 +439,10 @@
       "lyricsFound": "found",
       "lyricsInstrumental": "instrumental",
       "lyricsNone": "none",
-      "lyricsWaiting": "..."
+      "lyricsWaiting": "...",
+      "lyricsSource": "Lyrics source",
+      "sourceLrclib": "LRCLIB",
+      "sourceNetease": "NetEase"
     },
     "auto": {
       "badge": "AUTO",

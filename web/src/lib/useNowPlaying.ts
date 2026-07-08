@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "@/lib/ipc";
 import type { NowPlayingSnapshot } from "@/lib/osc-studio";
-import { fetchLyrics, type LyricLine } from "@/lib/lyrics";
+import { fetchLyrics, type LyricLine, type LyricsSource } from "@/lib/lyrics";
 
 export const NOW_PLAYING_POLL_MS = 2000;
 export const DEFAULT_MUSIC_PROGRESS_WIDTH = 10;
@@ -25,6 +25,7 @@ export function useNowPlaying() {
   const [asciiFold, setAsciiFold] = useState(false);
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
   const [lyricsStatus, setLyricsStatus] = useState<"none" | "found" | "instrumental">("none");
+  const [lyricsSource, setLyricsSource] = useState<LyricsSource>("none");
 
   const musicRef = useRef<NowPlayingSnapshot | null>(null);
   const progressWidthRef = useRef(progressWidth);
@@ -45,10 +46,15 @@ export function useNowPlaying() {
     asciiFoldRef.current = asciiFold;
   }, [asciiFold]);
 
-  function setLyricLines(lines: LyricLine[], status: "none" | "found" | "instrumental") {
+  function setLyricLines(
+    lines: LyricLine[],
+    status: "none" | "found" | "instrumental",
+    source: LyricsSource = "none",
+  ) {
     lyricsRef.current = lines;
     setLyrics(lines);
     setLyricsStatus(status);
+    setLyricsSource(source);
   }
 
   // Fetch synced lyrics once per track identity (title+artist+album). Runs off
@@ -72,9 +78,9 @@ export function useNowPlaying() {
         if (!res.found) {
           setLyricLines([], "none");
         } else if (res.instrumental) {
-          setLyricLines([], "instrumental");
+          setLyricLines([], "instrumental", res.source);
         } else {
-          setLyricLines(res.synced, "found");
+          setLyricLines(res.synced, "found", res.source);
         }
       })
       .catch(() => {
@@ -139,6 +145,7 @@ export function useNowPlaying() {
     lyrics,
     lyricsRef,
     lyricsStatus,
+    lyricsSource,
   };
 }
 
