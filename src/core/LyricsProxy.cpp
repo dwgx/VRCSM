@@ -7,12 +7,15 @@
 #include <vector>
 
 #include <Windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <winhttp.h>
 
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 #pragma comment(lib, "Winhttp.lib")
+#pragma comment(lib, "Ws2_32.lib")
 
 // ─────────────────────────────────────────────────────────────────────────
 // LyricsProxy — a small standalone WinHTTP GET used by the web lyrics chain
@@ -103,6 +106,14 @@ bool ParseIPv4(const std::string& host, std::array<int, 4>& octets)
     return i == host.size();
 }
 
+// Reject a Referer that carries CR/LF — otherwise a caller-supplied value
+// could inject/split additional WinHTTP request headers (header-injection).
+bool HasHeaderCrlf(const std::string& value)
+{
+    return value.find('\r') != std::string::npos
+        || value.find('\n') != std::string::npos;
+}
+
 } // namespace
 
 bool IsBlockedProxyHost(const std::string& hostRaw)
@@ -161,6 +172,60 @@ bool IsBlockedProxyHost(const std::string& hostRaw)
     return false;
 }
 
+namespace
+{
+
+// Resolve `host` and return true if ANY resolved address is a loopback /
+// private / link-local target the proxy must refuse. This closes the DNS
+// bypass where a public name (e.g. "localtest.me") resolves to 127.0.0.1 and
+// slips past the literal-host filter. On resolution FAILURE we return false
+// (allow): a corporate/proxied setup where direct getaddrinfo fails but the
+// WinHTTP proxy can still reach the public host must not be broken, and the
+// SSRF attack itself requires a successful resolution to an internal address.
+bool ResolvesToBlockedAddress(const std::string& host)
+{
+    // A bare IP literal was already handled by IsBlockedProxyHost; only names
+    // reach a meaningful resolution here, but running getaddrinfo on a literal
+    // is harmless and still re-checks it.
+    addrinfo hints{};
+    hints.ai_family = AF_UNSPEC;    // both A and AAAA
+    hints.ai_socktype = SOCK_STREAM;
+
+    addrinfo* results = nullptr;
+    const int rc = getaddrinfo(host.c_str(), nullptr, &hints, &results);
+    if (rc != 0 || results == nullptr)
+    {
+        return false; // resolution failed — allow (see note above)
+    }
+
+    bool blocked = false;
+    for (addrinfo* ai = results; ai != nullptr && !blocked; ai = ai->ai_next)
+    {
+        char buf[INET6_ADDRSTRLEN]{};
+        if (ai->ai_family == AF_INET)
+        {
+            auto* sa = reinterpret_cast<sockaddr_in*>(ai->ai_addr);
+            if (inet_ntop(AF_INET, &sa->sin_addr, buf, sizeof(buf)) != nullptr)
+            {
+                blocked = IsBlockedProxyHost(buf);
+            }
+        }
+        else if (ai->ai_family == AF_INET6)
+        {
+            auto* sa = reinterpret_cast<sockaddr_in6*>(ai->ai_addr);
+            if (inet_ntop(AF_INET6, &sa->sin6_addr, buf, sizeof(buf)) != nullptr)
+            {
+                blocked = IsBlockedProxyHost(buf);
+            }
+        }
+    }
+
+    freeaddrinfo(results);
+    return blocked;
+}
+
+} // namespace
+
 LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer)
 {
     LyricsFetchResult result;
@@ -168,6 +233,14 @@ LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer
     if (url.empty())
     {
         result.error = "empty url";
+        return result;
+    }
+
+    // SSRF/header-injection rail: a Referer with embedded CR/LF could split or
+    // inject additional request headers on the off-box HTTPS request.
+    if (HasHeaderCrlf(referer))
+    {
+        result.error = "blocked: referer contains control characters";
         return result;
     }
 
@@ -205,6 +278,15 @@ LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer
     if (IsBlockedProxyHost(hostUtf8))
     {
         result.error = fmt::format("blocked: host '{}' is not allowed", hostUtf8);
+        return result;
+    }
+
+    // SSRF rail (DNS bypass): a public NAME that resolves to a private/loopback
+    // address (DNS-rebind style) passes the literal-host filter above but must
+    // still be refused. Resolution failure is allowed (proxied setups).
+    if (ResolvesToBlockedAddress(hostUtf8))
+    {
+        result.error = fmt::format("blocked: host '{}' resolves to a private address", hostUtf8);
         return result;
     }
 
@@ -255,8 +337,11 @@ LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer
         return result;
     }
 
-    // Follow redirects (WinHTTP default is MEDIUM already; make it explicit).
-    DWORD redirectPolicy = WINHTTP_OPTION_REDIRECT_POLICY_ALWAYS;
+    // SSRF rail: do NOT auto-follow redirects. WinHTTP's ALWAYS policy would
+    // follow a 302 to an intranet host (incl. an https→http downgrade) without
+    // re-checking it. We disable following and treat any 3xx as a hard error;
+    // the legit lyric providers (NetEase / LRCLIB) answer 200 directly.
+    DWORD redirectPolicy = WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
     WinHttpSetOption(request.get(), WINHTTP_OPTION_REDIRECT_POLICY,
                      &redirectPolicy, sizeof(redirectPolicy));
 
@@ -301,6 +386,15 @@ LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer
         &statusSize,
         WINHTTP_NO_HEADER_INDEX);
     result.status = static_cast<long>(status);
+
+    // With redirect-following disabled, a 3xx means the server tried to send us
+    // elsewhere (potentially an internal host). Refuse rather than expose the
+    // Location target or silently return an empty body.
+    if (status >= 300 && status < 400)
+    {
+        result.error = fmt::format("blocked: server returned redirect {} (not followed)", status);
+        return result;
+    }
 
     // Drain the full response body.
     std::string body;

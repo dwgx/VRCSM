@@ -17,15 +17,18 @@ struct LyricsFetchResult
 };
 
 // Perform a plain HTTPS GET against `url`, optionally sending a `Referer`
-// request header (skipped when empty). Follows redirects, sends a normal
-// User-Agent, and bounds itself with ~8s WinHTTP timeouts so a slow host can
-// never hang the calling worker thread. Never throws — every failure is
-// reported through `LyricsFetchResult::error` with status 0.
+// request header (skipped when empty). Does NOT auto-follow redirects (a 3xx
+// is reported as an error), sends a normal User-Agent, and bounds itself with
+// ~8s WinHTTP timeouts so a slow host can never hang the calling worker thread.
+// Never throws — every failure is reported through `LyricsFetchResult::error`
+// with status 0.
 //
 // SSRF safety rail (NOT a domain allowlist): the request is refused with an
-// error when the scheme is not https, or the host is a loopback / link-local /
+// error when the scheme is not https; the host is a loopback / link-local /
 // private-range literal (localhost, 127.*, ::1, 10.*, 192.168.*, 172.16-31.*,
-// 169.254.*). Every other https host is allowed.
+// 169.254.*); the host NAME resolves to such an address (DNS-rebind bypass);
+// the server answers with a 3xx redirect; or the `referer` contains CR/LF
+// (header injection). Every other https host is allowed.
 LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer);
 
 // Exposed for unit testing the SSRF rail without touching the network.

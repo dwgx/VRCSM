@@ -59,6 +59,44 @@ TEST(LyricsProxySsrf, BlocksEmptyHostAndMappedLoopback)
     EXPECT_TRUE(IsBlockedProxyHost("fe80::1"));
 }
 
+// ── Transport-level SSRF/header rails that short-circuit before any network
+// I/O, so they are safe to assert in normal (offline) ctest runs.
+
+TEST(LyricsProxyRails, RejectsNonHttpsScheme)
+{
+    const auto res = LyricsFetch("http://music.163.com/api/song/lyric?id=1", "");
+    EXPECT_EQ(res.status, 0);
+    EXPECT_NE(res.error.find("https"), std::string::npos) << "error was: " << res.error;
+}
+
+TEST(LyricsProxyRails, RejectsLiteralLoopbackHost)
+{
+    // https + loopback literal → refused by IsBlockedProxyHost before connect.
+    const auto res = LyricsFetch("https://127.0.0.1/api/song/lyric?id=1", "");
+    EXPECT_EQ(res.status, 0);
+    EXPECT_NE(res.error.find("not allowed"), std::string::npos) << "error was: " << res.error;
+}
+
+TEST(LyricsProxyRails, RejectsRefererWithCrlf)
+{
+    // A Referer carrying CR/LF must be refused before the request is built, so
+    // it cannot inject/split additional WinHTTP request headers.
+    const auto res = LyricsFetch(
+        "https://music.163.com/api/song/lyric?id=1",
+        "https://evil\r\nX-Injected: 1");
+    EXPECT_EQ(res.status, 0);
+    EXPECT_NE(res.error.find("control characters"), std::string::npos) << "error was: " << res.error;
+}
+
+TEST(LyricsProxyRails, RejectsBareNewlineReferer)
+{
+    const auto res = LyricsFetch(
+        "https://music.163.com/api/song/lyric?id=1",
+        "foo\nbar");
+    EXPECT_EQ(res.status, 0);
+    EXPECT_NE(res.error.find("control characters"), std::string::npos) << "error was: " << res.error;
+}
+
 // ── Live network probe (opt-in) ─────────────────────────────────────────
 //
 // These exercise the real WinHTTP transport against the public NetEase
