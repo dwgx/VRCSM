@@ -1,6 +1,9 @@
-import { ipc } from "@/lib/ipc";
+import { ipc, type OscTaggedArg } from "@/lib/ipc";
 
+// A plain OSC value, or a type-tagged value (see OscTaggedArg) for cases where
+// the bare JS type would lose fidelity — a whole-number float, most importantly.
 export type OscPrimitive = number | string | boolean;
+export type OscArg = OscPrimitive | OscTaggedArg;
 
 export interface OscSendOptions {
   host?: string;
@@ -13,7 +16,7 @@ export interface OscSendResult {
 
 export function sendOscMessage(
   address: string,
-  args: OscPrimitive[] = [],
+  args: OscArg[] = [],
   options: OscSendOptions = {},
 ): Promise<OscSendResult> {
   return ipc.oscSend(address, args, options);

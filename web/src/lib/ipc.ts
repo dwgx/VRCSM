@@ -134,6 +134,14 @@ function marketEntryToInstalled(
   };
 }
 
+// An OSC argument that carries an explicit type tag across the IPC wire, so a
+// frontend-declared type survives when a bare JSON value cannot express it —
+// notably a FLOAT whose value is whole-numbered (1.0), which would otherwise
+// serialize as a JSON integer and be sent with the ',i' tag VRChat drops.
+// Tags mirror the OSC type tags the host honors: f=float, i=int32, s=string,
+// b=bool.
+export type OscTaggedArg = { t: "f" | "i" | "s" | "b"; v: number | string | boolean };
+
 export interface CalendarEvent {
   id?: string;
   name?: string;
@@ -3012,11 +3020,11 @@ class IpcClient {
 
   async oscSend(
     address: string,
-    args: (number | string | boolean)[] = [],
+    args: (number | string | boolean | OscTaggedArg)[] = [],
     opts: { host?: string; port?: number } = {},
   ) {
     return this.call<
-      { address: string; args: (number | string | boolean)[]; host?: string; port?: number },
+      { address: string; args: (number | string | boolean | OscTaggedArg)[]; host?: string; port?: number },
       { ok: boolean }
     >("osc.send", { address, args, ...opts });
   }

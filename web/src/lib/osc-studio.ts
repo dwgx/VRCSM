@@ -1,3 +1,5 @@
+import type { OscTaggedArg } from "@/lib/ipc";
+
 export type OscCardKind =
   | "chatbox-template"
   | "hardware-summary"
@@ -827,7 +829,7 @@ export function resetOscStudioCards(): OscStudioCard[] {
 export function coerceOscValue(
   valueType: OscValueType,
   valueText: string,
-): number | string | boolean | null {
+): number | string | boolean | OscTaggedArg | null {
   switch (valueType) {
     case "int": {
       const n = parseInt(valueText, 10);
@@ -835,7 +837,10 @@ export function coerceOscValue(
     }
     case "float": {
       const n = parseFloat(valueText);
-      return Number.isFinite(n) ? n : null;
+      // Tag as float so a whole-numbered value (e.g. "1") is still sent with
+      // the OSC ',f' tag. A bare JS number would serialize to a JSON integer
+      // and be sent as ',i', which VRChat's float params silently drop.
+      return Number.isFinite(n) ? { t: "f", v: n } : null;
     }
     case "bool":
       return valueText.toLowerCase() === "true" || valueText === "1";

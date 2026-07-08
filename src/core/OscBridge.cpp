@@ -249,6 +249,38 @@ std::vector<OscArgument> OscArgumentsFromJson(const nlohmann::json& arr)
     if (!arr.is_array()) return out;
     for (const auto& v : arr)
     {
+        // Tagged form { "t": <tag>, "v": <value> } lets the frontend preserve a
+        // type that a bare JSON value cannot carry — notably a FLOAT whose value
+        // is whole-numbered (1.0), which would otherwise serialize as a JSON
+        // integer and be sent with the ',i' tag that VRChat's float params drop.
+        if (v.is_object() && v.contains("t") && v.contains("v") && v["t"].is_string())
+        {
+            const std::string tag = v["t"].get<std::string>();
+            const auto& val = v["v"];
+            if (tag == "f" && val.is_number())
+            {
+                out.push_back(OscArgument::fromFloat(val.get<float>()));
+                continue;
+            }
+            if (tag == "i" && val.is_number())
+            {
+                out.push_back(OscArgument::fromInt(val.get<std::int32_t>()));
+                continue;
+            }
+            if (tag == "s")
+            {
+                out.push_back(OscArgument::fromString(
+                    val.is_string() ? val.get<std::string>() : val.dump()));
+                continue;
+            }
+            if (tag == "b" && val.is_boolean())
+            {
+                out.push_back(OscArgument::fromBool(val.get<bool>()));
+                continue;
+            }
+            // Unknown tag — fall through to structural inference on the value.
+        }
+
         if (v.is_boolean()) out.push_back(OscArgument::fromBool(v.get<bool>()));
         else if (v.is_number_integer()) out.push_back(OscArgument::fromInt(v.get<std::int32_t>()));
         else if (v.is_number_float()) out.push_back(OscArgument::fromFloat(v.get<float>()));

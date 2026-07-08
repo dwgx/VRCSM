@@ -207,6 +207,35 @@ TEST(CommonTests, OscBridgeRejectsInvalidIpv4Host)
     EXPECT_NE(result.error->message.find("valid IPv4 address"), std::string::npos);
 }
 
+TEST(CommonTests, OscArgumentsFromJsonPreservesTaggedFloatForWholeNumbers)
+{
+    // The tagged form {"t":"f","v":1} must map to a FLOAT argument even though
+    // the value is whole-numbered — otherwise VRChat's float params drop the
+    // ',i'-tagged value it would get from a bare JSON integer.
+    const auto args = vrcsm::core::OscArgumentsFromJson(
+        nlohmann::json::parse(R"([{"t":"f","v":1}])"));
+    ASSERT_EQ(args.size(), 1u);
+    EXPECT_TRUE(std::holds_alternative<float>(args[0].value));
+    EXPECT_FLOAT_EQ(std::get<float>(args[0].value), 1.0f);
+}
+
+TEST(CommonTests, OscArgumentsFromJsonHonorsAllTagsAndFallsBackStructurally)
+{
+    const auto args = vrcsm::core::OscArgumentsFromJson(nlohmann::json::parse(
+        R"([{"t":"f","v":0.5},{"t":"i","v":7},{"t":"s","v":"hi"},{"t":"b","v":true},3,2.5,"x",false])"));
+    ASSERT_EQ(args.size(), 8u);
+    // Tagged
+    EXPECT_TRUE(std::holds_alternative<float>(args[0].value));
+    EXPECT_TRUE(std::holds_alternative<std::int32_t>(args[1].value));
+    EXPECT_TRUE(std::holds_alternative<std::string>(args[2].value));
+    EXPECT_TRUE(std::holds_alternative<bool>(args[3].value));
+    // Bare values keep their prior structural inference (unchanged contract).
+    EXPECT_TRUE(std::holds_alternative<std::int32_t>(args[4].value));
+    EXPECT_TRUE(std::holds_alternative<float>(args[5].value));
+    EXPECT_TRUE(std::holds_alternative<std::string>(args[6].value));
+    EXPECT_TRUE(std::holds_alternative<bool>(args[7].value));
+}
+
 TEST(CommonTests, AcpiThermalZoneConvertsTenthsKelvinToCelsius)
 {
     const auto value = vrcsm::core::hw::AcpiTenthsKelvinToCelsiusForTest(3002.0);

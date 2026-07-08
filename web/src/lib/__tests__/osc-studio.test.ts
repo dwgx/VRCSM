@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   cardPreview,
+  coerceOscValue,
   createOscProfile,
   deleteOscProfile,
   getActiveOscProfile,
@@ -16,6 +17,27 @@ import {
 } from "../osc-studio";
 
 const fixedNow = new Date("2026-06-24T12:34:56.000Z");
+
+describe("coerceOscValue", () => {
+  it("tags float values so a whole number keeps the OSC ',f' type", () => {
+    // The bug this locks: parseFloat("1") === 1 serializes to a JSON integer
+    // and the host would send it with ',i', which VRChat's float params drop.
+    expect(coerceOscValue("float", "1")).toEqual({ t: "f", v: 1 });
+    expect(coerceOscValue("float", "0.5")).toEqual({ t: "f", v: 0.5 });
+  });
+
+  it("leaves int/bool/string as bare primitives", () => {
+    expect(coerceOscValue("int", "3")).toBe(3);
+    expect(coerceOscValue("bool", "true")).toBe(true);
+    expect(coerceOscValue("bool", "0")).toBe(false);
+    expect(coerceOscValue("string", "hello")).toBe("hello");
+  });
+
+  it("returns null for unparseable numbers", () => {
+    expect(coerceOscValue("float", "abc")).toBeNull();
+    expect(coerceOscValue("int", "xyz")).toBeNull();
+  });
+});
 
 describe("osc-studio templates", () => {
   it("renders clock tokens from the provided send-time date", () => {
