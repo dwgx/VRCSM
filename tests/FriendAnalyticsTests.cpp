@@ -16,6 +16,22 @@ TEST(FriendAnalytics, ParsePresenceInstantUtcZIsTimezoneStable)
     EXPECT_EQ(*b - *a, 3600);
 }
 
+TEST(FriendAnalytics, ParsePresenceInstantAcceptsVrchatDotFormat)
+{
+    // The majority of rows (player_events/log_events/world_visits) are stored
+    // in VRChat's DOT format "YYYY.MM.DD HH:MM:SS", NOT ISO. The parser must
+    // accept it — previously it only accepted ISO, so every real row failed and
+    // co-presence analytics dropped all data.
+    const auto dot = parsePresenceInstant("2026.07.05 21:01:10");
+    ASSERT_TRUE(dot.has_value());
+    // One hour later in the same format is exactly 3600s apart.
+    const auto dotLater = parsePresenceInstant("2026.07.05 22:01:10");
+    ASSERT_TRUE(dotLater.has_value());
+    EXPECT_EQ(*dotLater - *dot, 3600);
+    // Garbage still rejected.
+    EXPECT_FALSE(parsePresenceInstant("not-a-timestamp").has_value());
+}
+
 TEST(FriendAnalytics, IntervalOverlapDisjointIsZero)
 {
     EXPECT_EQ(intervalOverlap(PresenceInterval{0, 100}, PresenceInterval{200, 300}), 0);
@@ -69,6 +85,26 @@ TEST(FriendAnalytics, CoPresenceBuildsConfirmedEdgeForCenter)
         }
     }
     EXPECT_TRUE(sawCenter);
+}
+
+TEST(FriendAnalytics, CoPresenceWorksWithVrchatDotTimestamps)
+{
+    // Regression: with real DOT-format timestamps the graph used to come back
+    // empty because parsePresenceInstant failed on every row. Same scenario as
+    // CoPresenceBuildsConfirmedEdgeForCenter but in the stored DOT format.
+    std::vector<PresenceEventRow> rows{
+        {"usr_a", "Alice", "wrld_1", "i1", "joined", "2026.07.05 10:00:00"},
+        {"usr_b", "Bob",   "wrld_1", "i1", "joined", "2026.07.05 10:30:00"},
+        {"usr_a", "Alice", "wrld_1", "i1", "left",   "2026.07.05 11:00:00"},
+        {"usr_b", "Bob",   "wrld_1", "i1", "left",   "2026.07.05 11:30:00"},
+    };
+
+    const std::time_t now = parsePresenceInstant("2026.07.06 00:00:00").value();
+    const auto out = coPresenceEgoNetwork(rows, "usr_a", 90, 60, now);
+
+    ASSERT_EQ(out["nodes"].size(), 2u);
+    ASSERT_EQ(out["edges"].size(), 1u);
+    EXPECT_EQ(out["edges"][0]["overlap_seconds"], 1800);
 }
 
 TEST(FriendAnalytics, CoPresenceDropsBelowMinOverlap)

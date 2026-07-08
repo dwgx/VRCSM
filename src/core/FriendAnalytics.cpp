@@ -25,9 +25,24 @@ std::optional<std::time_t> parsePresenceInstant(const std::string& s)
         return std::nullopt;
     }
     int year = 0, mon = 0, day = 0, hour = 0, minute = 0, sec = 0;
-    if (sscanf_s(s.c_str(), "%d-%d-%dT%d:%d:%d", &year, &mon, &day, &hour, &minute, &sec) != 6)
+    // Two timestamp shapes reach this function:
+    //   ISO  "YYYY-MM-DDTHH:MM:SS" (friend_log, and any RFC3339 source), and
+    //   DOT  "YYYY.MM.DD HH:MM:SS" (VRChat log-derived player_events/log_events/
+    //        world_visits — the majority of rows).
+    // The old parser only accepted the ISO shape, so every DOT row failed and
+    // co-presence analytics silently dropped all real data. Accept both: the
+    // digits sit at identical offsets, only the separators differ.
+    const bool parsedIso =
+        sscanf_s(s.c_str(), "%d-%d-%dT%d:%d:%d", &year, &mon, &day, &hour, &minute, &sec) == 6;
+    if (!parsedIso)
     {
-        return std::nullopt;
+        year = mon = day = hour = minute = sec = 0;
+        const bool parsedDot =
+            sscanf_s(s.c_str(), "%d.%d.%d %d:%d:%d", &year, &mon, &day, &hour, &minute, &sec) == 6;
+        if (!parsedDot)
+        {
+            return std::nullopt;
+        }
     }
 
     std::tm tm{};

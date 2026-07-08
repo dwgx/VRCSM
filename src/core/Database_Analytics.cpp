@@ -325,12 +325,17 @@ Result<nlohmann::json> Database::ActivityHeatmap(int days)
         return MakeError("db_not_open");
     }
 
+    // world_visits.joined_at is stored in VRChat's DOT format
+    // "YYYY.MM.DD HH:MM:SS", which SQLite's date functions do NOT understand
+    // (strftime/datetime return NULL). Normalize the date dots to dashes inline
+    // so strftime/datetime work; there are no dots in the HH:MM:SS part, so a
+    // blanket replace('.','-') is safe. An already-ISO value is unaffected.
     const char* sql =
-        "SELECT strftime('%w', joined_at) AS dow, "
-        "strftime('%H', joined_at) AS hr, "
+        "SELECT strftime('%w', replace(joined_at, '.', '-')) AS dow, "
+        "strftime('%H', replace(joined_at, '.', '-')) AS hr, "
         "COUNT(*) "
         "FROM world_visits "
-        "WHERE joined_at >= datetime('now', '-' || ? || ' days') "
+        "WHERE replace(joined_at, '.', '-') >= datetime('now', '-' || ? || ' days') "
         "GROUP BY dow, hr;";
 
     sqlite3_stmt* rawStmt = nullptr;
@@ -412,6 +417,14 @@ Result<nlohmann::json> Database::StatsOverview()
         "(SELECT COUNT(DISTINCT user_id) FROM player_encounters) AS total_players_encountered, "
         "(SELECT COUNT(*) FROM avatar_history) AS total_avatars_seen, "
         "("
+        // NOTE: total dwell hours is intentionally left on the raw columns for
+        // now. world_visits stores MIXED timestamp formats in the same column
+        // (joined_at is DOT-local "YYYY.MM.DD HH:MM:SS" while some left_at rows
+        // are ISO with a +09:00-style offset). A naive julianday() over both
+        // mismatches naive-vs-UTC and yields negative intervals, which is worse
+        // than the prior 0. A correct fix must normalize offset-aware values to
+        // a common zone first — tracked as a separate follow-up so this batch
+        // ships only the verified heatmap + parser fixes.
         "    SELECT COALESCE(SUM(julianday(left_at) - julianday(joined_at)) * 24, 0.0) "
         "    FROM world_visits "
         "    WHERE left_at IS NOT NULL"
