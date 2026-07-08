@@ -33,6 +33,7 @@
 #include "core/VrDiagnostics.h"
 #include "core/hw/HwTelemetry.h"
 #include "core/plugins/PluginRegistry.h"
+#include "core/updater/UpdateApplier.h"
 #include "core/updater/UpdatePackage.h"
 
 namespace
@@ -1394,6 +1395,59 @@ TEST(CommonTests, UpdatePackageValidationRejectsWrongReleaseAssetFileName)
     EXPECT_EQ(vrcsm::core::error(result).code, "update_invalid");
 
     std::filesystem::remove(installer, ec);
+}
+
+TEST(CommonTests, UpdateInstallCommandLineWaitsBeforeApplyingThenRelaunches)
+{
+    // The bootstrap must: (1) wait for our process to exit BEFORE msiexec
+    // touches the locked files, (2) quote all three paths, (3) request an
+    // in-place passive/norestart install, (4) relaunch AFTER the install.
+    const std::wstring cmd = vrcsm::core::updater::BuildInstallCommandLine(
+        L"C:\\Windows\\System32\\msiexec.exe",
+        L"C:\\Users\\me\\AppData\\Local\\VRCSM\\updates\\VRCSM_v9.9.9_x64_Installer.msi",
+        L"C:\\Users\\me\\AppData\\Local\\VRCSM\\VRCSM.exe");
+
+    const auto waitPos = cmd.find(L"ping");
+    const auto msiexecPos = cmd.find(L"msiexec.exe\" /i");
+    const auto startPos = cmd.find(L"start \"\"");
+
+    ASSERT_NE(waitPos, std::wstring::npos);
+    ASSERT_NE(msiexecPos, std::wstring::npos);
+    ASSERT_NE(startPos, std::wstring::npos);
+
+    // Ordering: wait -> apply -> relaunch.
+    EXPECT_LT(waitPos, msiexecPos);
+    EXPECT_LT(msiexecPos, startPos);
+
+    // In-place passive install, no auto-restart by msiexec (we relaunch).
+    EXPECT_NE(cmd.find(L"/passive"), std::wstring::npos);
+    EXPECT_NE(cmd.find(L"/norestart"), std::wstring::npos);
+
+    // Every path is double-quoted.
+    EXPECT_NE(cmd.find(L"\"C:\\Windows\\System32\\msiexec.exe\""), std::wstring::npos);
+    EXPECT_NE(
+        cmd.find(L"\"C:\\Users\\me\\AppData\\Local\\VRCSM\\updates\\VRCSM_v9.9.9_x64_Installer.msi\""),
+        std::wstring::npos);
+    EXPECT_NE(
+        cmd.find(L"\"C:\\Users\\me\\AppData\\Local\\VRCSM\\VRCSM.exe\""),
+        std::wstring::npos);
+
+    // Must not begin with a quote — cmd /c would strip it and mangle the chain.
+    ASSERT_FALSE(cmd.empty());
+    EXPECT_NE(cmd.front(), L'"');
+}
+
+TEST(CommonTests, UpdateInstallCommandLineOmitsRelaunchWhenExeUnknown)
+{
+    const std::wstring cmd = vrcsm::core::updater::BuildInstallCommandLine(
+        L"C:\\Windows\\System32\\msiexec.exe",
+        L"C:\\Users\\me\\AppData\\Local\\VRCSM\\updates\\VRCSM_v9.9.9_x64_Installer.msi",
+        L"");
+
+    // Still installs, but no relaunch clause when the exe path is unknown.
+    EXPECT_NE(cmd.find(L"msiexec.exe\" /i"), std::wstring::npos);
+    EXPECT_NE(cmd.find(L"/passive"), std::wstring::npos);
+    EXPECT_EQ(cmd.find(L"start \"\""), std::wstring::npos);
 }
 
 TEST(CommonTests, SteamLinkRestoreTargetAllowsOnlySteamVrRepairRoots)
