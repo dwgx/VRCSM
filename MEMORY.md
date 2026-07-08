@@ -14,15 +14,15 @@ This is the repo-local handoff entrypoint. It exists because future agents shoul
 
 ## Current Continuity Snapshot
 
-- Current branch: `main`, **diverged from `origin/main` — 60 commits AHEAD, 12 BEHIND, and NOT yet pushed** (`git rev-list --left-right --count origin/main...main` = `12  60`; local HEAD `c488d66`). The 12 behind are all Dependabot dependency/action bumps plus a "disable Dependabot" commit — inspect before any `git pull`; no source conflict expected but 60 local feature/fix commits are unpushed.
+- Current branch: `main`, **fully synced with `origin/main` (0 ahead / 0 behind)** — HEAD `5a3e661`, pushed. Tag `v0.15.0` pushed; GitHub release `v0.15.0` published with the MSI + ZIP.
 - Working tree is **clean** apart from one intentionally-untracked scratch file at repo root (`2026-07-04-111708-...txt`, a local command transcript). Do NOT commit it.
-- Development is **ACTIVE**. The most recent work (2026-07-09) was a GUI↔API contract audit + a 9-batch remediation sweep — see "GUI↔API remediation (2026-07-09)" below. Earlier sessions shipped a now-playing music module, synced lyrics, a system tray, a Database god-object split, full 7-locale i18n parity, and the VrcApi→HttpClient transport extraction.
-- Current version: still `0.14.6` in `VERSION` and `web/package.json` — **un-bumped** despite the 60 new commits. A version bump + release cut is pending; keep `VERSION`, `web/package.json`, README artifact names, and release asset filenames in sync when bumped.
-- Last release artifact `build\release\VRCSM_v0.14.6_x64_Installer.msi` **predates the current head** and is NOT representative of current code. No new artifact has been cut.
-- **Current test baseline (re-confirmed 2026-07-09 by a full re-run): C++ ctest 150/150, web vitest 359/359, Playwright UI smoke 54/54, tsc + release build clean.** ctest rose 135 → 150 over the 2026-07-09 batches (+ analytics/OSC/updater/DB/plugin behavior tests); vitest rose 354 → 359 (+ coerceOscValue, image-cache chunking, update.download timeout tier). The web vitest full run flakes ~25 fails under the default parallel runner (two heavy render suites contending); run `--no-file-parallelism` for the true 359/359 — see [[vitest-parallel-flakiness]]. Only 2 pre-existing compiler warnings remain (`PluginBridge.cpp:172` u8path C4996, `CommonTests.cpp` getenv C4996).
+- Development is **ACTIVE**. **v0.15.0 was released 2026-07-09** — it cut the now-playing music/lyrics/tray feature area, the Database split + HttpClient extraction, full 7-locale i18n parity, the pending Dependabot integration, and the 2026-07-09 GUI↔API audit remediation sweep. See "GUI↔API remediation (2026-07-09)" below.
+- Current version: **`0.15.0`** in `VERSION` and `web/package.json` (bumped + released). README badge + artifact filenames updated. Next release: bump all of `VERSION`, `web/package.json`, README artifact names, and keep the release asset filenames in sync; reconfigure the CMake preset after editing `VERSION` (it is read at configure time — a plain rebuild says "ninja: no work to do").
+- Released artifacts (`build\release\VRCSM_v0.15.0_x64_Installer.msi` + `.zip`) match the published GitHub release. MSI SHA256 `7280f357bc63d127394817145d583599b13c2d2ad4bc258b2384f8c2c6f70a47`; the release notes carry the `SHA256:` line the updater's fail-closed hash gate requires.
+- **Current test baseline (re-confirmed 2026-07-09 at 0.15.0 by a full re-run): C++ ctest 150/150, web vitest 359/359, Playwright UI smoke 54/54, tsc + release build clean.** The web vitest full run flakes ~25 fails under the default parallel runner (two heavy render suites contending); run `--no-file-parallelism` for the true 359/359 — see [[vitest-parallel-flakiness]]. Only 2 pre-existing compiler warnings remain (`PluginBridge.cpp:172` u8path C4996, `CommonTests.cpp` getenv C4996).
 - Reliability lesson: background workflows/subagents can hang on the inference gateway; **prefer foreground single-threaded execution for heavy C++ work.** Read-only recon/audit workflows (no heavy compute) ARE reliable and were used effectively this session.
 
-### GUI↔API remediation (2026-07-09) — DONE + committed (unpushed)
+### GUI↔API remediation (2026-07-09) — DONE + released in v0.15.0
 
 A full read-only GUI↔API (IPC) contract audit (`docs/review-2026-07/GUI-API-CONTRACT-AUDIT-2026-07-09.md`, 185 handlers × 128 call sites, fanned out per bridge domain + adversarially verified, grade B-) was followed by a 9-batch foreground remediation sweep. Each batch was built + tested + committed independently; every behavior change is locked by a new test. Commits (oldest→newest):
 
@@ -56,9 +56,9 @@ A full read-only GUI↔API (IPC) contract audit (`docs/review-2026-07/GUI-API-CO
 
 ### Recently completed (2026-07-08 session 2) — all DONE + committed
 
-All three formerly-parked items are done and committed on `main` (unpushed).
-No open work remains from this list. Next agent: version-bump + push + release
-is the outstanding non-code step (still `0.14.6`, `main` 46 ahead of origin).
+All three formerly-parked items are done and committed. These shipped as part
+of **v0.15.0** (released 2026-07-09) — the version bump + push + release that
+was pending at the time is now complete.
 
 - **VrcApi transport extraction — DONE (`7112f56`).** The WinHTTP transport is now `src/core/HttpClient.{h,cpp}` (`vrcsm::core::http`): `crackUrl`, `requestOnce`/`request`/`get`, `HttpResponse`, rate-limit + 429 retry/backoff, Set-Cookie capture — moved verbatim. `VrcApi.cpp` (now 3380 lines) keeps all VRChat semantics and delegates through thin wrappers; **`VrcApi.h` is byte-frozen** (no public API change). Locked by 4 `HttpClientCrackUrl` tests + an opt-in live `/api/1/config` probe (`HttpClientLive`, gated on `VRCSM_LIVE_VRCAPI_TEST`).
 - **`plugin.marketFeed` permissions — FIXED (`133c3af`).** `MarketEntry` (`PluginFeed.h:59`) now has a `permissions` vector, `ParseFeed` reads the entry's optional `permissions` array, and `MarketEntryToJson` (`PluginBridge.cpp:78`) emits it; `docs/gh-pages/plugins.json` carries per-entry permissions matching each manifest. The pre-install consent dialog now shows real scopes instead of "none". No TS change. Locked by 3 `PluginFeedTests`.

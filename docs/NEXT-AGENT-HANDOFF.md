@@ -36,20 +36,20 @@ call sites, fanned out per bridge domain + adversarially verified, grade B-).
 Every fix was built + tested + committed independently; each behavior change is
 locked by a new test.
 
-**Branch reality.** `main` is now **60 ahead / 12 behind `origin/main`, NOT
-pushed** (local HEAD `c488d66`). The 12 behind are all Dependabot bumps +
-"disable Dependabot" — inspect before any `git pull`; no source conflict
-expected. Version still `0.14.6` / un-bumped.
+**Branch reality.** `main` is **fully synced with `origin/main` (0 ahead / 0
+behind)** — HEAD `5a3e661`, pushed. **v0.15.0 is RELEASED** (tag `v0.15.0` +
+GitHub release with the MSI + ZIP, published 2026-07-09). The Dependabot bumps
+that were behind origin are merged into this release.
 
-**Verification baseline (re-confirmed 2026-07-09 by a full re-run — the numbers
-below are real, not copied from per-batch runs):**
+**Verification baseline (re-confirmed 2026-07-09 at 0.15.0 by a full re-run —
+the numbers below are real, not copied from per-batch runs):**
 - C++ release build clean (only 2 pre-existing warnings: `PluginBridge.cpp:172`
   u8path C4996, `CommonTests.cpp` getenv C4996).
 - **ctest 150/150** (was 135; +behavior tests across the batches). 3 opt-in
   live probes DISABLED + `RealLogClassificationTally` skipped, as designed.
-- **web vitest 359/359** under `--no-file-parallelism` (was 354; +coerceOscValue,
-  image-cache chunking, update.download timeout tier). tsc + vite clean.
-- **Playwright UI smoke 54/54.**
+- **web vitest 359/359** under `--no-file-parallelism` (was 354). tsc + vite clean.
+- **Playwright UI smoke 54/54.** Packaged-exe startup smoke passed (FileVersion
+  0.15.0.0, window responsive).
 
 **Commits this session (oldest→newest), all on top of `4f5390f`:**
 - `1e59f52` updater self-replace race → detached cmd bootstrap (wait-for-exit →
@@ -94,8 +94,9 @@ below are real, not copied from per-batch runs):**
    log-parse/ingest layer — find out why left_at differs from joined_at).
 2. **Audit batches B10 (smoke-coverage holes) + B11 (dead-code cleanup)** not
    yet done — lower severity; full list in the audit report.
-3. **Version bump + push + release** — still `0.14.6`, 60 commits unpushed.
-   This is the outstanding outward-facing step (confirm with the owner first).
+3. **Version bump + push + release — DONE.** v0.15.0 was bumped
+   (`VERSION`/`web/package.json`/README), pushed, tagged, and released to
+   GitHub with the MSI + ZIP on 2026-07-09. Nothing outstanding here.
 
 ---
 
