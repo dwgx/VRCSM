@@ -8,7 +8,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
-import { ipc } from "./ipc";
+import { ipc, IpcError } from "./ipc";
 import { resetAccountScopedCaches } from "./cache-ownership";
 import { subscribePipelineEvent } from "./pipeline-events";
 import type { AuthStatus } from "./types";
@@ -162,7 +162,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch (e) {
       if (mountedRef.current) {
         setError(e instanceof Error ? e.message : String(e));
-        commitStatus(fallbackStatus);
+        // Only an authoritative auth-expired error means "you are logged out"
+        // — commit the logged-out fallback (which wipes account caches). A
+        // transient error (429/500/network) must NOT flip us to logged-out:
+        // that would drop the pipeline + wipe caches and the refetch storm
+        // feeds more 429s. Preserve the prior status on transient failures.
+        if (e instanceof IpcError && e.isAuthExpired) {
+          commitStatus(fallbackStatus);
+        }
       }
     } finally {
       if (mountedRef.current) setLoading(false);

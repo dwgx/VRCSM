@@ -34,10 +34,15 @@ nlohmann::json IpcBridge::HandleAuthStatus(const nlohmann::json&, const std::opt
     if (!vrcsm::core::isOk(result))
     {
         const auto& err = vrcsm::core::error(result);
-        if (err.code == "auth_expired")
+        // Only auth_expired is authoritative "you are logged out". Transient
+        // errors (429/500/network) must NOT collapse to {authed:false} — that
+        // makes the frontend drop the pipeline + wipe account caches and the
+        // refetch storm feeds more 429s. Throw so the FE keeps its prior state.
+        if (err.code != "auth_expired")
         {
-            vrcsm::core::AuthStore::Instance().Clear("AuthStatus/auth_expired");
+            throw IpcException{err};
         }
+        vrcsm::core::AuthStore::Instance().Clear("AuthStatus/auth_expired");
         return nlohmann::json{
             {"authed", false},
             {"displayName", nullptr},
@@ -173,10 +178,13 @@ nlohmann::json IpcBridge::HandleAuthUser(const nlohmann::json&, const std::optio
     if (!vrcsm::core::isOk(result))
     {
         const auto& err = vrcsm::core::error(result);
-        if (err.code == "auth_expired")
+        // Same rule as auth.status: only auth_expired is authoritative. A
+        // transient 429 must not false-negative the VRC+ supporter gate.
+        if (err.code != "auth_expired")
         {
-            vrcsm::core::AuthStore::Instance().Clear("AuthUser/auth_expired");
+            throw IpcException{err};
         }
+        vrcsm::core::AuthStore::Instance().Clear("AuthUser/auth_expired");
         return nlohmann::json{
             {"authed", false},
             {"user", nullptr},

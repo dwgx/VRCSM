@@ -385,21 +385,21 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
         ? params["offline"].get<bool>()
         : false;
 
-    auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
-    if (!vrcsm::core::isOk(currentUser))
-    {
-        const auto& err = vrcsm::core::error(currentUser);
-        if (err.code == "auth_expired")
-        {
-            vrcsm::core::AuthStore::Instance().Clear("FriendsList/auth_expired");
-        }
-        return nlohmann::json{{"friends", nlohmann::json::array()}};
-    }
-
-    const auto result = vrcsm::core::VrcApi::fetchFriends(offline);
+    auto result = vrcsm::core::VrcApi::fetchFriends(offline);
     if (!vrcsm::core::isOk(result))
     {
-        throw IpcException{vrcsm::core::error(result)};
+        // fetchFriends already returns auth_expired on an empty cookie, so the
+        // old currentUser probe was a redundant round-trip (N+1). Only the
+        // authoritative auth_expired collapses to an empty list; every other
+        // error (429/500/network) throws so the UI shows an error/retry state
+        // instead of silently rendering "0 friends".
+        const auto& err = vrcsm::core::error(result);
+        if (err.code != "auth_expired")
+        {
+            throw IpcException{err};
+        }
+        vrcsm::core::AuthStore::Instance().Clear("FriendsList/auth_expired");
+        return nlohmann::json{{"friends", nlohmann::json::array()}};
     }
     const auto& friends = vrcsm::core::value(result);
 
@@ -477,21 +477,19 @@ nlohmann::json IpcBridge::HandleCalendarList(const nlohmann::json&, const std::o
 
 nlohmann::json IpcBridge::HandleModerationsList(const nlohmann::json&, const std::optional<std::string>&)
 {
-    auto currentUser = vrcsm::core::VrcApi::fetchCurrentUser();
-    if (!vrcsm::core::isOk(currentUser))
-    {
-        const auto& err = vrcsm::core::error(currentUser);
-        if (err.code == "auth_expired")
-        {
-            vrcsm::core::AuthStore::Instance().Clear("ModerationsList/auth_expired");
-        }
-        return nlohmann::json{{"items", nlohmann::json::array()}};
-    }
-
-    const auto result = vrcsm::core::VrcApi::fetchPlayerModerations();
+    auto result = vrcsm::core::VrcApi::fetchPlayerModerations();
     if (!vrcsm::core::isOk(result))
     {
-        throw IpcException{vrcsm::core::error(result)};
+        // Drop the redundant currentUser probe (fetchPlayerModerations already
+        // returns auth_expired on an empty cookie). Only auth_expired collapses
+        // to an empty list; transient errors throw instead of masking as "none".
+        const auto& err = vrcsm::core::error(result);
+        if (err.code != "auth_expired")
+        {
+            throw IpcException{err};
+        }
+        vrcsm::core::AuthStore::Instance().Clear("ModerationsList/auth_expired");
+        return nlohmann::json{{"items", nlohmann::json::array()}};
     }
 
     nlohmann::json out = nlohmann::json::array();
