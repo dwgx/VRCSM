@@ -35,6 +35,7 @@ add_library(vrcsm_core STATIC
     VrcSettings.cpp
     TaskQueue.cpp
     RateLimiter.cpp
+    HttpClient.cpp
     VrcApi.cpp
     Pipeline.cpp
     DiscordRpc.cpp
