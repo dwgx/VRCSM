@@ -67,3 +67,16 @@ inline int ParamInt(const nlohmann::json& p, const char* key, int def)
     }
     return def;
 }
+
+// 64-bit variant for rowid/PK params. The DB uses INTEGER PRIMARY KEY
+// (int64) and binds via sqlite3_bind_int64, so reading a rowid through the
+// 32-bit ParamInt above would truncate/wrap a value > INT_MAX before it is
+// widened — a silent wrong-row match. Use this for any id bound as a rowid.
+inline std::int64_t ParamInt64(const nlohmann::json& p, const char* key, std::int64_t def)
+{
+    if (p.is_object() && p.contains(key) && p[key].is_number_integer())
+    {
+        return p[key].get<std::int64_t>();
+    }
+    return def;
+}

@@ -636,7 +636,7 @@ nlohmann::json IpcBridge::HandleAvatarSelect(const nlohmann::json& params, const
     const auto avatarId = JsonStringField(params, "avatarId");
     if (!avatarId.has_value() || avatarId->empty())
     {
-        throw std::runtime_error("avatar.select: missing 'avatarId'");
+        throw IpcException({"missing_field", "avatar.select: missing 'avatarId'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::selectAvatar(*avatarId));
 }
@@ -662,7 +662,7 @@ nlohmann::json IpcBridge::HandleUserInvite(const nlohmann::json& params, const s
     const auto location = JsonStringField(params, "location");
     if (!location.has_value() || location->empty())
     {
-        throw std::runtime_error("user.invite: missing 'location'");
+        throw IpcException({"missing_field", "user.invite: missing 'location'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::inviteSelf(*location));
 }
@@ -672,7 +672,7 @@ nlohmann::json IpcBridge::HandleUserRequestInvite(const nlohmann::json& params, 
     const auto userId = JsonStringField(params, "userId");
     if (!userId.has_value() || userId->empty())
     {
-        throw std::runtime_error("user.requestInvite: missing 'userId'");
+        throw IpcException({"missing_field", "user.requestInvite: missing 'userId'", 400});
     }
     int slot = 0;
     if (params.contains("slot") && params["slot"].is_number_integer())
@@ -703,7 +703,7 @@ nlohmann::json IpcBridge::HandleUserMute(const nlohmann::json& params, const std
     const auto userId = JsonStringField(params, "userId");
     if (!userId.has_value() || userId->empty())
     {
-        throw std::runtime_error("user.mute: missing 'userId'");
+        throw IpcException({"missing_field", "user.mute: missing 'userId'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::addPlayerModeration("mute", *userId));
 }
@@ -713,7 +713,7 @@ nlohmann::json IpcBridge::HandleUserUnmute(const nlohmann::json& params, const s
     const auto id = JsonStringField(params, "moderationId");
     if (!id.has_value() || id->empty())
     {
-        throw std::runtime_error("user.unmute: missing 'moderationId'");
+        throw IpcException({"missing_field", "user.unmute: missing 'moderationId'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::removePlayerModeration(*id));
 }
@@ -723,7 +723,7 @@ nlohmann::json IpcBridge::HandleUserBlock(const nlohmann::json& params, const st
     const auto userId = JsonStringField(params, "userId");
     if (!userId.has_value() || userId->empty())
     {
-        throw std::runtime_error("user.block: missing 'userId'");
+        throw IpcException({"missing_field", "user.block: missing 'userId'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::addPlayerModeration("block", *userId));
 }
@@ -733,7 +733,7 @@ nlohmann::json IpcBridge::HandleUserUnblock(const nlohmann::json& params, const 
     const auto id = JsonStringField(params, "moderationId");
     if (!id.has_value() || id->empty())
     {
-        throw std::runtime_error("user.unblock: missing 'moderationId'");
+        throw IpcException({"missing_field", "user.unblock: missing 'moderationId'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::removePlayerModeration(*id));
 }

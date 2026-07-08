@@ -10,7 +10,7 @@ nlohmann::json IpcBridge::HandleRulesList(const nlohmann::json&, const std::opti
 
 nlohmann::json IpcBridge::HandleRulesGet(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t id = ParamInt(params, "id", 0);
+    const int64_t id = ParamInt64(params, "id", 0);
     if (id <= 0) throw IpcException({"missing_field", "rules.get: missing 'id'", 400});
     return unwrapResult(vrcsm::core::Database::Instance().GetRule(id));
 }
@@ -36,14 +36,14 @@ nlohmann::json IpcBridge::HandleRulesCreate(const nlohmann::json& params, const 
 
 nlohmann::json IpcBridge::HandleRulesUpdate(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t id = ParamInt(params, "id", 0);
+    const int64_t id = ParamInt64(params, "id", 0);
     if (id <= 0) throw IpcException({"missing_field", "rules.update: missing 'id'", 400});
     return unwrapResult(vrcsm::core::Database::Instance().UpdateRule(id, params));
 }
 
 nlohmann::json IpcBridge::HandleRulesDelete(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t id = ParamInt(params, "id", 0);
+    const int64_t id = ParamInt64(params, "id", 0);
     if (id <= 0) throw IpcException({"missing_field", "rules.delete: missing 'id'", 400});
     const auto r = vrcsm::core::Database::Instance().DeleteRule(id);
     if (std::holds_alternative<vrcsm::core::Error>(r))
@@ -53,7 +53,7 @@ nlohmann::json IpcBridge::HandleRulesDelete(const nlohmann::json& params, const 
 
 nlohmann::json IpcBridge::HandleRulesSetEnabled(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t id = ParamInt(params, "id", 0);
+    const int64_t id = ParamInt64(params, "id", 0);
     if (id <= 0) throw IpcException({"missing_field", "rules.setEnabled: missing 'id'", 400});
     const bool enabled = params.contains("enabled") && params["enabled"].is_boolean()
         ? params["enabled"].get<bool>() : true;
@@ -65,7 +65,7 @@ nlohmann::json IpcBridge::HandleRulesSetEnabled(const nlohmann::json& params, co
 
 nlohmann::json IpcBridge::HandleRulesHistory(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t ruleId = ParamInt(params, "rule_id", 0);
+    const int64_t ruleId = ParamInt64(params, "rule_id", 0);
     if (ruleId <= 0) throw IpcException({"missing_field", "rules.history: missing 'rule_id'", 400});
     return unwrapResult(vrcsm::core::Database::Instance().RuleFiringHistory(ruleId));
 }

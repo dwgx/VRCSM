@@ -63,21 +63,29 @@ Result<nlohmann::json> Database::UpdateRule(int64_t id, const nlohmann::json& pa
 
         if (patch.contains("name"))
         {
+            if (!patch["name"].is_string())
+                return MakeError("invalid_argument", "rules.update: 'name' must be a string");
             sets.push_back("name = ?");
             textValues.push_back(patch["name"].get<std::string>());
         }
         if (patch.contains("description"))
         {
+            if (!patch["description"].is_string())
+                return MakeError("invalid_argument", "rules.update: 'description' must be a string");
             sets.push_back("description = ?");
             textValues.push_back(patch["description"].get<std::string>());
         }
         if (patch.contains("dsl_yaml"))
         {
+            if (!patch["dsl_yaml"].is_string())
+                return MakeError("invalid_argument", "rules.update: 'dsl_yaml' must be a string");
             sets.push_back("dsl_yaml = ?");
             textValues.push_back(patch["dsl_yaml"].get<std::string>());
         }
         if (patch.contains("cooldown_seconds"))
         {
+            if (!patch["cooldown_seconds"].is_number_integer())
+                return MakeError("invalid_argument", "rules.update: 'cooldown_seconds' must be an integer");
             sets.push_back("cooldown_seconds = ?");
             hasCooldown = true;
             cooldownValue = patch["cooldown_seconds"].get<int>();
@@ -117,7 +125,13 @@ Result<std::monostate> Database::DeleteRule(int64_t id)
 {
     std::lock_guard lock(m_mutex);
     std::string sql = "DELETE FROM rules WHERE id = " + std::to_string(id) + ";";
-    return ExecSimple(sql.c_str());
+    const auto r = ExecSimple(sql.c_str());
+    if (std::holds_alternative<Error>(r)) return r;
+    // A DELETE that matched no row means the id does not exist; report it as
+    // not_found instead of a false success toast.
+    if (sqlite3_changes(m_db) == 0)
+        return MakeError("not_found", "rules.delete: no rule with that id");
+    return std::monostate{};
 }
 
 
@@ -182,7 +196,11 @@ Result<std::monostate> Database::SetRuleEnabled(int64_t id, bool enabled)
 {
     std::lock_guard lock(m_mutex);
     std::string sql = "UPDATE rules SET enabled = " + std::to_string(enabled ? 1 : 0) + ", updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = " + std::to_string(id) + ";";
-    return ExecSimple(sql.c_str());
+    const auto r = ExecSimple(sql.c_str());
+    if (std::holds_alternative<Error>(r)) return r;
+    if (sqlite3_changes(m_db) == 0)
+        return MakeError("not_found", "rules.setEnabled: no rule with that id");
+    return std::monostate{};
 }
 
 

@@ -171,7 +171,7 @@ nlohmann::json IpcBridge::HandleNotificationsAccept(const nlohmann::json& params
     const auto id = JsonStringField(params, "notificationId");
     if (!id.has_value() || id->empty())
     {
-        throw std::runtime_error("notifications.accept: missing 'notificationId'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "notifications.accept: missing 'notificationId'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::acceptFriendRequest(*id));
 }
@@ -181,7 +181,7 @@ nlohmann::json IpcBridge::HandleNotificationsRespond(const nlohmann::json& param
     const auto id = JsonStringField(params, "notificationId");
     if (!id.has_value() || id->empty())
     {
-        throw std::runtime_error("notifications.respond: missing 'notificationId'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "notifications.respond: missing 'notificationId'", 400});
     }
     const int slot = ParamInt(params, "slot", 0);
     const auto message = JsonStringField(params, "message").value_or("");
@@ -193,7 +193,7 @@ nlohmann::json IpcBridge::HandleNotificationsSee(const nlohmann::json& params, c
     const auto id = JsonStringField(params, "notificationId");
     if (!id.has_value() || id->empty())
     {
-        throw std::runtime_error("notifications.see: missing 'notificationId'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "notifications.see: missing 'notificationId'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::seeNotification(*id));
 }
@@ -203,7 +203,7 @@ nlohmann::json IpcBridge::HandleNotificationsHide(const nlohmann::json& params, 
     const auto id = JsonStringField(params, "notificationId");
     if (!id.has_value() || id->empty())
     {
-        throw std::runtime_error("notifications.hide: missing 'notificationId'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "notifications.hide: missing 'notificationId'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::hideNotification(*id));
 }
@@ -219,11 +219,11 @@ nlohmann::json IpcBridge::HandleMessageSend(const nlohmann::json& params, const 
     const auto message = JsonStringField(params, "message");
     if (!userId.has_value() || userId->empty())
     {
-        throw std::runtime_error("message.send: missing 'userId'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "message.send: missing 'userId'", 400});
     }
     if (!message.has_value() || message->empty())
     {
-        throw std::runtime_error("message.send: missing 'message'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "message.send: missing 'message'", 400});
     }
     return unwrapResult(vrcsm::core::VrcApi::sendUserMessage(*userId, *message));
 }
@@ -396,7 +396,7 @@ nlohmann::json IpcBridge::HandleScreenshotsWatcherStart(const nlohmann::json& pa
 
     if (folder.empty())
     {
-        throw std::runtime_error("screenshots.watcher.start: unable to resolve VRChat screenshots folder");
+        throw IpcException(vrcsm::core::Error{"not_found", "screenshots.watcher.start: unable to resolve VRChat screenshots folder", 0});
     }
 
     // Auto-inject can be disabled per call — useful if a plugin wants
@@ -490,11 +490,11 @@ nlohmann::json IpcBridge::HandleScreenshotsInjectMetadata(const nlohmann::json& 
     const auto rawPath = JsonStringField(params, "path");
     if (!rawPath.has_value() || rawPath->empty())
     {
-        throw std::runtime_error("screenshots.injectMetadata: missing 'path'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "screenshots.injectMetadata: missing 'path'", 400});
     }
     if (!params.contains("metadata") || !params["metadata"].is_object())
     {
-        throw std::runtime_error("screenshots.injectMetadata: missing 'metadata' object");
+        throw IpcException(vrcsm::core::Error{"missing_field", "screenshots.injectMetadata: missing 'metadata' object", 400});
     }
 
     const std::filesystem::path pngPath(vrcsm::core::toWide(*rawPath));
@@ -507,7 +507,7 @@ nlohmann::json IpcBridge::HandleScreenshotsReadMetadata(const nlohmann::json& pa
     const auto rawPath = JsonStringField(params, "path");
     if (!rawPath.has_value() || rawPath->empty())
     {
-        throw std::runtime_error("screenshots.readMetadata: missing 'path'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "screenshots.readMetadata: missing 'path'", 400});
     }
 
     const auto chunks = vrcsm::core::ReadPngTextChunks(std::filesystem::path(vrcsm::core::toWide(*rawPath)));
@@ -528,11 +528,11 @@ nlohmann::json IpcBridge::HandleUserInviteTo(const nlohmann::json& params, const
     const auto location = JsonStringField(params, "location");
     if (!userId.has_value() || userId->empty())
     {
-        throw std::runtime_error("user.inviteTo: missing 'userId'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "user.inviteTo: missing 'userId'", 400});
     }
     if (!location.has_value() || location->empty())
     {
-        throw std::runtime_error("user.inviteTo: missing 'location'");
+        throw IpcException(vrcsm::core::Error{"missing_field", "user.inviteTo: missing 'location'", 400});
     }
     const int slot = ParamInt(params, "slot", 0);
     return unwrapResult(vrcsm::core::VrcApi::inviteUser(*userId, *location, slot));

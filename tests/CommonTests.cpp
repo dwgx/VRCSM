@@ -1025,6 +1025,57 @@ TEST(CommonTests, FavoritesClearBySourceKeepsLocalListsAndExposesSource)
     std::filesystem::remove_all(dir, ec);
 }
 
+TEST(CommonTests, DeleteRuleOnMissingIdReturnsNotFound)
+{
+    // B8/C1: a DELETE that matched no row used to return ok (false success in
+    // the UI). It must now surface not_found.
+    const auto dir = MakeTempTestDir(L"vrcsm-rule-delete-notfound");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+
+    const auto r = db.DeleteRule(999999);
+    ASSERT_FALSE(vrcsm::core::isOk(r));
+    EXPECT_EQ(vrcsm::core::error(r).code, "not_found");
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, AddAttendeeDistinguishesDuplicateFromMissingRecording)
+{
+    // B8/C2: plain INSERT + extended-errcode branch. A repeat attendee is the
+    // intended UNIQUE dedupe (stays ok); an attendee for a nonexistent
+    // recording is an FK violation and must surface not_found instead of the
+    // old INSERT OR IGNORE silent success.
+    const auto dir = MakeTempTestDir(L"vrcsm-add-attendee");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+
+    vrcsm::core::Database::EventRecordingInsert rec;
+    rec.name = "Test Event";
+    const auto started = db.StartRecording(rec);
+    ASSERT_TRUE(vrcsm::core::isOk(started));
+    const auto recId = vrcsm::core::value(started).value("id", static_cast<std::int64_t>(0));
+    ASSERT_GT(recId, 0);
+
+    // First add succeeds.
+    ASSERT_TRUE(vrcsm::core::isOk(db.AddAttendee(recId, "usr_a", "Alice")));
+    // Duplicate is a no-op success (dedupe), NOT an error.
+    EXPECT_TRUE(vrcsm::core::isOk(db.AddAttendee(recId, "usr_a", "Alice")));
+    // Attendee for a nonexistent recording → not_found (FK).
+    const auto fk = db.AddAttendee(888888, "usr_b", "Bob");
+    ASSERT_FALSE(vrcsm::core::isOk(fk));
+    EXPECT_EQ(vrcsm::core::error(fk).code, "not_found");
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+
 TEST(CommonTests, GlobalSearchKeepsHistoricalAvatarReferenceThumbnailUnverified)
 {
     const auto dir = MakeTempTestDir(L"vrcsm-global-search-avatar-reference");

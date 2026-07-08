@@ -48,7 +48,11 @@ Result<std::monostate> Database::StopRecording(int64_t id)
 {
     std::lock_guard lock(m_mutex);
     std::string sql = "UPDATE event_recordings SET ended_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = " + std::to_string(id) + ";";
-    return ExecSimple(sql.c_str());
+    const auto r = ExecSimple(sql.c_str());
+    if (std::holds_alternative<Error>(r)) return r;
+    if (sqlite3_changes(m_db) == 0)
+        return MakeError("not_found", "event.stop: no recording with that id");
+    return std::monostate{};
 }
 
 
@@ -106,7 +110,11 @@ Result<std::monostate> Database::DeleteRecording(int64_t id)
     // single statement removes the recording row plus all its attendees.
     const std::string sql =
         "DELETE FROM event_recordings WHERE id = " + std::to_string(id) + ";";
-    return ExecSimple(sql.c_str());
+    const auto r = ExecSimple(sql.c_str());
+    if (std::holds_alternative<Error>(r)) return r;
+    if (sqlite3_changes(m_db) == 0)
+        return MakeError("not_found", "event.delete: no recording with that id");
+    return std::monostate{};
 }
 
 
@@ -114,7 +122,11 @@ Result<std::monostate> Database::AddAttendee(int64_t recording_id,
     const std::string& user_id, const std::string& display_name)
 {
     std::lock_guard lock(m_mutex);
-    const char* sql = "INSERT OR IGNORE INTO event_attendees (recording_id, user_id, display_name) VALUES (?, ?, ?);";
+    // Plain INSERT (not OR IGNORE) so we can tell the two constraint outcomes
+    // apart: a repeat attendee (UNIQUE) is the intended dedupe and stays a
+    // success no-op, but an attendee for a nonexistent recording (FK) must
+    // surface as not_found instead of being silently swallowed as {ok:true}.
+    const char* sql = "INSERT INTO event_attendees (recording_id, user_id, display_name) VALUES (?, ?, ?);";
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) != SQLITE_OK)
         return MakeError("db_prepare");
@@ -123,7 +135,21 @@ Result<std::monostate> Database::AddAttendee(int64_t recording_id,
     sqlite3_bind_text(stmt, 3, display_name.c_str(), -1, SQLITE_TRANSIENT);
     int rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-    if (rc != SQLITE_DONE) return MakeError("db_insert");
+
+    if (rc != SQLITE_DONE)
+    {
+        const int ext = sqlite3_extended_errcode(m_db);
+        if (ext == SQLITE_CONSTRAINT_UNIQUE || ext == SQLITE_CONSTRAINT_PRIMARYKEY)
+        {
+            // Attendee already recorded — intended dedupe, report success.
+            return std::monostate{};
+        }
+        if (ext == SQLITE_CONSTRAINT_FOREIGNKEY)
+        {
+            return MakeError("not_found", "event.addAttendee: no recording with that id");
+        }
+        return MakeError("db_insert");
+    }
 
     std::string updateSql = "UPDATE event_recordings SET attendee_count = (SELECT COUNT(*) FROM event_attendees WHERE recording_id = " + std::to_string(recording_id) + ") WHERE id = " + std::to_string(recording_id) + ";";
     return ExecSimple(updateSql.c_str());

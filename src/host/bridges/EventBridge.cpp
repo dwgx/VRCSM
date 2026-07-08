@@ -20,7 +20,7 @@ nlohmann::json IpcBridge::HandleEventStart(const nlohmann::json& params, const s
 
 nlohmann::json IpcBridge::HandleEventStop(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t id = ParamInt(params, "id", 0);
+    const int64_t id = ParamInt64(params, "id", 0);
     if (id <= 0) throw IpcException({"missing_field", "event.stop: missing 'id'", 400});
     const auto r = vrcsm::core::Database::Instance().StopRecording(id);
     if (std::holds_alternative<vrcsm::core::Error>(r))
@@ -30,7 +30,7 @@ nlohmann::json IpcBridge::HandleEventStop(const nlohmann::json& params, const st
 
 nlohmann::json IpcBridge::HandleEventDelete(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t id = ParamInt(params, "id", 0);
+    const int64_t id = ParamInt64(params, "id", 0);
     if (id <= 0) throw IpcException({"missing_field", "event.delete: missing 'id'", 400});
     const auto r = vrcsm::core::Database::Instance().DeleteRecording(id);
     if (std::holds_alternative<vrcsm::core::Error>(r))
@@ -45,14 +45,14 @@ nlohmann::json IpcBridge::HandleEventList(const nlohmann::json&, const std::opti
 
 nlohmann::json IpcBridge::HandleEventAttendees(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t id = ParamInt(params, "recording_id", 0);
+    const int64_t id = ParamInt64(params, "recording_id", 0);
     if (id <= 0) throw IpcException({"missing_field", "event.attendees: missing 'recording_id'", 400});
     return unwrapResult(vrcsm::core::Database::Instance().RecordingAttendees(id));
 }
 
 nlohmann::json IpcBridge::HandleEventAddAttendee(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    const int64_t recId = ParamInt(params, "recording_id", 0);
+    const int64_t recId = ParamInt64(params, "recording_id", 0);
     const auto userId = JsonStringField(params, "user_id");
     const auto displayName = JsonStringField(params, "display_name");
     if (recId <= 0 || !userId.has_value() || !displayName.has_value())
