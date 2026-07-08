@@ -208,6 +208,16 @@ Result<MarketFeed> PluginFeed::ParseFeed(const std::string& text)
         if (j.contains("icon") && j["icon"].is_string()) e.iconUrl = j["icon"].get<std::string>();
         if (j.contains("download") && j["download"].is_string()) e.download = j["download"].get<std::string>();
         if (j.contains("sha256") && j["sha256"].is_string()) e.sha256 = j["sha256"].get<std::string>();
+        // permissions (optional) — mirror PluginManifest::parse so the
+        // pre-install consent dialog can show the real requested scopes
+        // instead of "none".
+        if (j.contains("permissions") && j["permissions"].is_array())
+        {
+            for (const auto& p : j["permissions"])
+            {
+                if (p.is_string()) e.permissions.push_back(p.get<std::string>());
+            }
+        }
         if (j.contains("author"))
         {
             const auto& a = j["author"];

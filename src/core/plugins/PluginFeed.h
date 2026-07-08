@@ -52,6 +52,11 @@ struct MarketEntry
     std::string iconUrl;  // absolute URL to icon PNG
     std::string download; // absolute URL to .vrcsmplugin
     std::string sha256;   // lowercase hex
+    // Declared permission tokens for the pre-install consent dialog.
+    // Sourced from the feed entry's optional `permissions` array; must
+    // mirror the plugin manifest's own `permissions` so the UI does not
+    // understate what a plugin will request. See PluginManifest permissions.
+    std::vector<std::string> permissions;
 };
 
 struct MarketFeed
@@ -75,13 +80,17 @@ public:
     void SetFeedUrl(std::string url);
     std::string FeedUrl() const;
 
+    // Parse a raw feed JSON document into a MarketFeed. Stateless (does
+    // not touch the on-disk cache or network), so tests can exercise the
+    // entry/permission parsing directly without a WinHttp round-trip.
+    static Result<MarketFeed> ParseFeed(const std::string& text);
+
 private:
     PluginFeed();
 
     Result<std::string> DownloadText(const std::string& url);
     Result<std::vector<std::byte>> DownloadBinary(const std::string& url);
 
-    Result<MarketFeed> ParseFeed(const std::string& text);
     std::filesystem::path CacheFilePath() const;
 
     mutable std::mutex m_mutex;

@@ -75,6 +75,7 @@ nlohmann::json MarketEntryToJson(const MarketEntry& e)
         {"iconUrl", e.iconUrl},
         {"download", e.download},
         {"sha256", e.sha256},
+        {"permissions", e.permissions},
     };
     return j;
 }

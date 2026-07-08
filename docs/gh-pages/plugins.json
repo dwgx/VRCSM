@@ -13,6 +13,13 @@
       "homepage": "https://github.com/dwgx/VRCSM/tree/main/plugins/vrc-auto-uploader",
       "download": "https://dwgx.github.io/VRCSM/plugins/vrc-auto-uploader-0.9.7.vrcsmplugin",
       "sha256": "6788ff4f0ca6199609206e5d96f92989ba74cf99a1fbc63975787db506615334",
+      "permissions": [
+        "ipc:shell:pickFolder",
+        "ipc:shell:openUrl",
+        "ipc:fs:listDir",
+        "ipc:fs:writePlan",
+        "ipc:fs:appDataDir"
+      ],
       "author": {
         "name": "dwgx",
         "url": "https://github.com/dwgx"
@@ -28,6 +35,7 @@
       "homepage": "https://github.com/dwgx/VRCSM",
       "download": "https://dwgx.github.io/VRCSM/plugins/hello-1.0.0.vrcsmplugin",
       "sha256": "b526fe18ceab7fbe02b6bd33598a08ff587c6fc603c7ed4f7e15587e2a627f35",
+      "permissions": ["ipc:vrc:cache"],
       "author": {
         "name": "VRCSM",
         "url": "https://github.com/dwgx/VRCSM"

@@ -1,9 +1,12 @@
 #include <gtest/gtest.h>
 
+#include "core/plugins/PluginFeed.h"
 #include "core/plugins/PluginManifest.h"
 
 using vrcsm::core::plugins::ParsePluginManifest;
+using vrcsm::core::plugins::PluginFeed;
 using vrcsm::core::plugins::PluginShape;
+using vrcsm::core::plugins::MarketFeed;
 using vrcsm::core::plugins::SanitizePluginId;
 using vrcsm::core::plugins::SemVer;
 using vrcsm::core::isOk;
@@ -153,4 +156,76 @@ TEST(SanitizeTests, LowercasesAsciiAndDropsIllegalChars)
 TEST(SanitizeTests, KeepsDotsDashesUnderscores)
 {
     EXPECT_EQ(SanitizePluginId("a.b-c_d"), "a.b-c_d");
+}
+
+// ── Market feed permission surfacing ───────────────────────────────────
+//
+// Regression guard for the IPC contract-drift finding: the pre-install
+// consent dialog was showing "none" because the feed entry carried no
+// permissions. The feed parser must read the optional per-entry
+// `permissions` array so the host can emit it to the market UI.
+
+TEST(PluginFeedTests, ParsesEntryPermissions)
+{
+    const std::string text = R"({
+        "version": 1,
+        "generated": "2026-04-20T12:00:00Z",
+        "plugins": [{
+            "id": "dev.vrcsm.example",
+            "name": "Example",
+            "version": "1.0.0",
+            "hostMin": "0.8.0",
+            "shape": "panel",
+            "download": "https://example.test/example.vrcsmplugin",
+            "permissions": ["ipc:shell:openUrl", "ipc:fs:listDir"]
+        }]
+    })";
+    auto r = PluginFeed::ParseFeed(text);
+    ASSERT_TRUE(isOk(r));
+    const auto& feed = std::get<MarketFeed>(r);
+    ASSERT_EQ(feed.plugins.size(), 1u);
+    ASSERT_EQ(feed.plugins[0].permissions.size(), 2u);
+    EXPECT_EQ(feed.plugins[0].permissions[0], "ipc:shell:openUrl");
+    EXPECT_EQ(feed.plugins[0].permissions[1], "ipc:fs:listDir");
+}
+
+TEST(PluginFeedTests, MissingPermissionsIsEmptyNotError)
+{
+    const std::string text = R"({
+        "version": 1,
+        "plugins": [{
+            "id": "dev.vrcsm.example",
+            "name": "Example",
+            "version": "1.0.0",
+            "hostMin": "0.8.0",
+            "shape": "panel",
+            "download": "https://example.test/example.vrcsmplugin"
+        }]
+    })";
+    auto r = PluginFeed::ParseFeed(text);
+    ASSERT_TRUE(isOk(r));
+    const auto& feed = std::get<MarketFeed>(r);
+    ASSERT_EQ(feed.plugins.size(), 1u);
+    EXPECT_TRUE(feed.plugins[0].permissions.empty());
+}
+
+TEST(PluginFeedTests, IgnoresNonStringPermissionEntries)
+{
+    const std::string text = R"({
+        "version": 1,
+        "plugins": [{
+            "id": "dev.vrcsm.example",
+            "name": "Example",
+            "version": "1.0.0",
+            "hostMin": "0.8.0",
+            "shape": "panel",
+            "permissions": ["ipc:vrc:cache", 42, null, {"x": 1}]
+        }]
+    })";
+    auto r = PluginFeed::ParseFeed(text);
+    ASSERT_TRUE(isOk(r));
+    const auto& feed = std::get<MarketFeed>(r);
+    ASSERT_EQ(feed.plugins.size(), 1u);
+    ASSERT_EQ(feed.plugins[0].permissions.size(), 1u);
+    EXPECT_EQ(feed.plugins[0].permissions[0], "ipc:vrc:cache");
 }
