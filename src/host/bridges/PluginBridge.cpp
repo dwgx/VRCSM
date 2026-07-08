@@ -349,5 +349,6 @@ nlohmann::json IpcBridge::HandlePluginRpc(const nlohmann::json& params,
     }
 
     spdlog::debug("[plugin.rpc] '{}' → {}", callerPluginId, method);
-    return InvokeHostHandler(*this, m_handlers, method, innerParams, id);
+    return PluginRegistry::RedactUserForPlugin(
+        method, InvokeHostHandler(*this, m_handlers, method, innerParams, id));
 }

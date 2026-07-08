@@ -174,4 +174,41 @@ PermissionDecision PluginRegistry::CanPermissionsInvoke(
     return {false, {}};
 }
 
+nlohmann::json PluginRegistry::RedactUserForPlugin(const std::string& method,
+                                                   nlohmann::json result)
+{
+    if (method != "auth.user" && method != "user.me")
+    {
+        return result;
+    }
+    if (!result.is_object())
+    {
+        return result;
+    }
+
+    // auth.user shape is { authed, user{...} }; user.me returns the bare user.
+    const nlohmann::json& user =
+        (result.contains("user") && result["user"].is_object()) ? result["user"] : result;
+
+    const auto pick = [&user](const char* key) -> nlohmann::json {
+        if (user.contains(key) && user[key].is_string()) return user[key];
+        return nullptr;
+    };
+
+    nlohmann::json safeUser{
+        {"id", pick("id")},
+        {"displayName", pick("displayName")},
+        {"userIcon", pick("userIcon")},
+        {"currentAvatarThumbnailImageUrl", pick("currentAvatarThumbnailImageUrl")},
+        {"status", pick("status")},
+    };
+
+    if (result.contains("user"))
+    {
+        result["user"] = std::move(safeUser);
+        return result;
+    }
+    return safeUser;
+}
+
 } // namespace vrcsm::core::plugins

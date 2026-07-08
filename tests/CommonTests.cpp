@@ -1666,6 +1666,53 @@ TEST(CommonTests, PathProbeRequiresPermissionAndIsNotFree)
     EXPECT_TRUE(PluginRegistry::CanPermissionsInvoke({}, "process.vrcRunning").allowed);
 }
 
+TEST(CommonTests, RedactUserForPluginStripsSelfPii)
+{
+    using vrcsm::core::plugins::PluginRegistry;
+
+    // A full /auth/user document as auth.user would return it to the SPA.
+    nlohmann::json full{
+        {"authed", true},
+        {"user", {
+            {"id", "usr_me"},
+            {"displayName", "Me"},
+            {"userIcon", "https://icon"},
+            {"status", "active"},
+            {"currentAvatarThumbnailImageUrl", "https://thumb"},
+            // Sensitive fields a plugin must NOT receive:
+            {"emailVerified", true},
+            {"steamId", "STEAM_0:1:123"},
+            {"oculusId", "oc_123"},
+            {"friends", {"usr_a", "usr_b"}},
+            {"currentAvatar", "avtr_secret"},
+        }},
+    };
+
+    const auto safe = PluginRegistry::RedactUserForPlugin("auth.user", full);
+    ASSERT_TRUE(safe.contains("user"));
+    const auto& u = safe["user"];
+    // Display-safe fields survive.
+    EXPECT_EQ(u.value("id", ""), "usr_me");
+    EXPECT_EQ(u.value("displayName", ""), "Me");
+    EXPECT_EQ(u.value("status", ""), "active");
+    // PII stripped.
+    EXPECT_FALSE(u.contains("emailVerified"));
+    EXPECT_FALSE(u.contains("steamId"));
+    EXPECT_FALSE(u.contains("oculusId"));
+    EXPECT_FALSE(u.contains("friends"));
+    EXPECT_FALSE(u.contains("currentAvatar"));
+
+    // user.me returns the bare user object; still redacted.
+    nlohmann::json bare = full["user"];
+    const auto safeBare = PluginRegistry::RedactUserForPlugin("user.me", bare);
+    EXPECT_FALSE(safeBare.contains("steamId"));
+    EXPECT_EQ(safeBare.value("displayName", ""), "Me");
+
+    // A non-auth method is passed through untouched.
+    nlohmann::json other{{"foo", "bar"}};
+    EXPECT_EQ(PluginRegistry::RedactUserForPlugin("world.details", other), other);
+}
+
 TEST(CommonTests, TruncatedUnityFsMagicOnlyBundleIsNotTrusted)
 {
     const auto dir = MakeTempTestDir(L"vrcsm-truncated-unityfs");

@@ -17,6 +17,7 @@
 #include "PluginManifest.h"
 #include "PluginStore.h"
 
+#include <nlohmann/json.hpp>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -73,6 +74,17 @@ public:
     static PermissionDecision CanPermissionsInvoke(
         const std::vector<std::string>& permissions,
         std::string_view method);
+
+    // Reduce an auth.user / user.me result to a display-safe subset for a
+    // PLUGIN caller. The full /auth/user document (email state, steamId/
+    // oculusId, friend ids, presence, feature flags) is broader than the
+    // ipc:vrc:auth token implies and inconsistent with auth.status; the
+    // trusted SPA calls the host handler directly and still gets the full
+    // document. `method` selects the shape: auth.user returns {authed,user},
+    // user.me returns the bare user object. A non-auth method is returned
+    // unchanged. Pure/static so it can be unit-tested without dispatch.
+    static nlohmann::json RedactUserForPlugin(const std::string& method,
+                                              nlohmann::json result);
 
     // Parse a plugin virtual host origin into the underlying plugin
     // id, returning nullopt if the origin is not a plugin iframe. The
