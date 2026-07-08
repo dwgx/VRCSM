@@ -43,7 +43,7 @@ const loaded = new Set<SupportedLanguage>(["en"]);
 // Dedupe concurrent loads of the same locale (rapid switches).
 const inflight = new Map<LazyLanguage, Promise<void>>();
 
-void i18n
+const initPromise = i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
@@ -111,13 +111,33 @@ export function changeLanguage(lng: SupportedLanguage): Promise<unknown> {
 
 /**
  * Resolves once the initially detected/stored locale is ready to render.
- * en resolves synchronously-fast (no fetch); a non-en stored language awaits
- * its single chunk so the first paint has real strings, not a flash of
- * English. init() itself is synchronous, so i18n.language is already populated
- * here (LanguageDetector reads localStorage in the same tick).
+ * en resolves fast (no fetch); a non-en stored language awaits its single
+ * chunk so the first paint has real strings, not a flash of English.
+ *
+ * IMPORTANT: we must AWAIT the init() promise before reading
+ * `i18n.resolvedLanguage`. init() is not synchronous — reading the resolved
+ * language in the same tick can still see the "en" fallback before the
+ * LanguageDetector has applied the stored `vrcsm.language` value, which made
+ * a saved non-en locale (e.g. zh-CN) silently reset to English on every
+ * launch until the user re-picked it by hand.
  */
 export const i18nReady: Promise<void> = (async () => {
-  const target = resolveSupportedLanguage(i18n.resolvedLanguage ?? i18n.language);
+  await initPromise;
+
+  // The persisted choice is the source of truth. Read vrcsm.language directly
+  // rather than trusting i18n.resolvedLanguage, which can still report the "en"
+  // fallback right after init() (detector timing / caching) — that mismatch is
+  // what silently reset a saved locale to English on every launch.
+  let stored: string | null = null;
+  try {
+    stored = window.localStorage.getItem(LS_KEY);
+  } catch {
+    // localStorage may be unavailable (tests / constrained WebView); fall
+    // through to whatever the detector resolved.
+  }
+
+  const detected = i18n.resolvedLanguage ?? i18n.language;
+  const target = resolveSupportedLanguage(stored ?? detected);
   if (target === "en") return;
   await changeLanguage(target);
 })();
