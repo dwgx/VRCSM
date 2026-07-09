@@ -183,7 +183,7 @@
     'sudo':    () => toast('Permission denied', '不是真的 sudo 啊…', '🔒'),
     'help':    () => { openPalette(); $('#cmdInput').value='help'; doSearch('help'); },
     'rm -rf':  () => toast('NICE TRY', 'Safe Delete: 检测到删根命令，已阻断 :)', '🛡️'),
-    'vrcsm':   () => toast('That\'s us!', 'v0.7.1 · 你已经在它的网页上了', '✨'),
+    'vrcsm':   () => toast('That\'s us!', 'v0.15.1 · 你已经在它的网页上了', '✨'),
     'matrix':  () => toggleMatrix(),
   };
   document.addEventListener('keydown', e => {
@@ -467,7 +467,7 @@
 
   // ─── Console banner for the curious ────────────────────────────────
   console.log('%c VRCSM ', 'background:#3b8fd6;color:#fff;padding:4px 12px;border-radius:3px;font-weight:bold;font-size:14px');
-  console.log('%cv0.7.1 · github.com/dwgx/VRCSM', 'color:#949494;font-family:monospace');
+  console.log('%cv0.15.1 · github.com/dwgx/VRCSM', 'color:#949494;font-family:monospace');
   console.log('%c彩蛋提示：', 'color:#5da6e8;font-weight:bold');
   console.log('%c · Ctrl+K 打开命令面板', 'color:#dbdbdb');
   console.log('%c · 输入 "matrix" / "sudo" / "help" / "rm -rf" / "vrcsm"', 'color:#dbdbdb');
