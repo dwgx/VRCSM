@@ -8,6 +8,7 @@ import { useUiPrefBoolean } from "@/lib/ui-prefs";
 // NowPlayingPanel switches and the fetch path read the same state.
 export const LYRICS_LRCLIB_PREF_KEY = "vrcsm.osc.lyrics.lrclib";
 export const LYRICS_NETEASE_PREF_KEY = "vrcsm.osc.lyrics.netease";
+export const LYRICS_QQ_PREF_KEY = "vrcsm.osc.lyrics.qq";
 
 export const NOW_PLAYING_POLL_MS = 2000;
 export const DEFAULT_MUSIC_PROGRESS_WIDTH = 10;
@@ -37,13 +38,14 @@ export function useNowPlaying() {
   // them; the NowPlayingPanel switches bind to the same UI-pref keys.
   const [lyricsLrclib] = useUiPrefBoolean(LYRICS_LRCLIB_PREF_KEY, true);
   const [lyricsNetease] = useUiPrefBoolean(LYRICS_NETEASE_PREF_KEY, true);
+  const [lyricsQq] = useUiPrefBoolean(LYRICS_QQ_PREF_KEY, true);
 
   const musicRef = useRef<NowPlayingSnapshot | null>(null);
   const progressWidthRef = useRef(progressWidth);
   const marqueeWidthRef = useRef(marqueeWidth);
   const asciiFoldRef = useRef(asciiFold);
   const lyricsRef = useRef<LyricLine[]>([]);
-  const lyricsSourcesRef = useRef({ lrclib: lyricsLrclib, netease: lyricsNetease });
+  const lyricsSourcesRef = useRef({ lrclib: lyricsLrclib, netease: lyricsNetease, qq: lyricsQq });
   // Identity of the track we last fetched lyrics for, so a 2s poll of the same
   // song doesn't re-fetch. Cleared to "" when nothing is playing.
   const lyricsTrackKeyRef = useRef<string>("");
@@ -61,11 +63,11 @@ export function useNowPlaying() {
   // when a toggle changes (clearing the track key forces the next sync to
   // re-fetch under the new provider set).
   useEffect(() => {
-    lyricsSourcesRef.current = { lrclib: lyricsLrclib, netease: lyricsNetease };
+    lyricsSourcesRef.current = { lrclib: lyricsLrclib, netease: lyricsNetease, qq: lyricsQq };
     lyricsTrackKeyRef.current = "";
     syncLyrics(musicRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lyricsLrclib, lyricsNetease]);
+  }, [lyricsLrclib, lyricsNetease, lyricsQq]);
 
   function setLyricLines(
     lines: LyricLine[],

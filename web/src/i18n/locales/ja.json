@@ -483,7 +483,10 @@
       "sourceLrclibToggle": "LRCLIB",
       "sourceLrclibToggleHint": "グローバル同期歌詞データベース",
       "sourceNeteaseToggle": "网易云 / NetEase",
-      "sourceNeteaseToggleHint": "中国語楽曲と翻訳のカバー率が高い"
+      "sourceNeteaseToggleHint": "中国語楽曲と翻訳のカバー率が高い",
+      "sourceQq": "QQ 音楽",
+      "sourceQqToggle": "QQ 音楽 / QQ Music",
+      "sourceQqToggleHint": "NetEase にない中国語楽曲を補完"
     },
     "auto": {
       "badge": "AUTO",

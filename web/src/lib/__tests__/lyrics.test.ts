@@ -330,21 +330,27 @@ describe("fetchLyrics source selection", () => {
     result: { songs: [{ id: 42, name: "NetEase Song", artists: [{ name: "NetEase Artist" }], duration: 200_000 }] },
   });
   const neteaseLyricBody = JSON.stringify({ lrc: { lyric: "[00:00.00] netease line" } });
+  // A QQ smartbox search + lyric pair.
+  const qqSearchBody = JSON.stringify({
+    data: { song: { itemlist: [{ mid: "000abc", name: "QQ Song", singer: "QQ Artist" }] } },
+  });
+  const qqLyricBody = JSON.stringify({ lyric: "[00:00.00] qq line" });
 
-  it("skips NetEase when sources.netease is false", async () => {
-    // LRCLIB miss (empty record) so the chain would normally fall to NetEase.
+  it("uses only LRCLIB when netease and qq are disabled", async () => {
+    // LRCLIB miss (empty record); with the other two providers off the chain
+    // must NOT fall through to NetEase or QQ.
     ipcCallMock.mockResolvedValue({ status: 200, body: JSON.stringify({}) });
 
-    const res = await fetchLyrics("SkipNetEaseTrack", "Artist A", "", 200_000, {
-      sources: { lrclib: true, netease: false },
+    const res = await fetchLyrics("SkipTrack", "Artist A", "", 200_000, {
+      sources: { lrclib: true, netease: false, qq: false },
     });
 
     expect(res.found).toBe(false);
-    // Every ipc.call must have targeted LRCLIB — NetEase was skipped entirely.
     for (const call of ipcCallMock.mock.calls) {
       const url = (call[1] as { url: string }).url;
       expect(url).toContain("lrclib.net");
       expect(url).not.toContain("music.163.com");
+      expect(url).not.toContain("c.y.qq.com");
     }
   });
 
@@ -356,7 +362,7 @@ describe("fetchLyrics source selection", () => {
     });
 
     const res = await fetchLyrics("NetEase Song", "NetEase Artist", "", 200_000, {
-      sources: { lrclib: false, netease: true },
+      sources: { lrclib: false, netease: true, qq: false },
     });
 
     expect(res.source).toBe("netease");
@@ -369,11 +375,30 @@ describe("fetchLyrics source selection", () => {
     }
   });
 
-  it("uses LRCLIB when both sources are enabled (default)", async () => {
+  it("falls through to QQ Music when LRCLIB and NetEase miss", async () => {
+    ipcCallMock.mockImplementation((_method: string, params: { url: string }) => {
+      // LRCLIB miss, NetEase miss (empty songs), QQ hit.
+      if (params.url.includes("lrclib.net")) return Promise.resolve({ status: 200, body: JSON.stringify({}) });
+      if (params.url.includes("music.163.com")) return Promise.resolve({ status: 200, body: JSON.stringify({ result: { songs: [] } }) });
+      if (params.url.includes("smartbox_new.fcg")) return Promise.resolve({ status: 200, body: qqSearchBody });
+      if (params.url.includes("fcg_query_lyric_new.fcg")) return Promise.resolve({ status: 200, body: qqLyricBody });
+      return Promise.resolve({ status: 200, body: JSON.stringify({}) });
+    });
+
+    const res = await fetchLyrics("QQ Song", "QQ Artist", "", 200_000, {
+      sources: { lrclib: true, netease: true, qq: true },
+    });
+
+    expect(res.source).toBe("qq");
+    expect(res.found).toBe(true);
+    expect(res.synced.length).toBeGreaterThan(0);
+  });
+
+  it("uses LRCLIB when all sources are enabled (default)", async () => {
     ipcCallMock.mockResolvedValue({ status: 200, body: lrclibBody });
 
     const res = await fetchLyrics("BothOnTrack", "Artist B", "", 200_000, {
-      sources: { lrclib: true, netease: true },
+      sources: { lrclib: true, netease: true, qq: true },
     });
 
     expect(res.source).toBe("lrclib");

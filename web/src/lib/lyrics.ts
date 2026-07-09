@@ -21,7 +21,7 @@ export interface LyricLine {
   trText?: string;
 }
 
-export type LyricsSource = "lrclib" | "netease" | "none";
+export type LyricsSource = "lrclib" | "netease" | "qq" | "none";
 
 export interface LyricsResult {
   synced: LyricLine[];
@@ -32,6 +32,7 @@ export interface LyricsResult {
 
 const LRCLIB_BASE = "https://lrclib.net/api";
 const NETEASE_BASE = "https://music.163.com/api";
+const QQ_BASE = "https://c.y.qq.com";
 
 // Candidate ranking: duration must land within this window to count as a match.
 const DURATION_WINDOW_MS = 3000;
@@ -293,10 +294,11 @@ export async function hostFetchJson(url: string, referer?: string): Promise<unkn
   }
 }
 
-/** Per-provider enable flags. Both default on; a false flag skips that provider. */
+/** Per-provider enable flags. All default on; a false flag skips that provider. */
 export interface LyricsSources {
   lrclib: boolean;
   netease: boolean;
+  qq: boolean;
 }
 
 interface LrclibRecord {
@@ -443,6 +445,72 @@ async function fromNetease(
   return { synced: merged, found: true, instrumental: false, source: "netease" };
 }
 
+/**
+ * QQ Music provider: smartbox search → fcg_query_lyric_new for the LRC (+ optional
+ * translation). Finds Chinese/CPOP songs LRCLIB and sometimes NetEase miss.
+ * Routed through the host proxy with a `y.qq.com` Referer (QQ gates on it and
+ * can't be reached directly from the WebView). `nobase64=1&format=json` returns
+ * plain LRC (no base64 decode needed) plus a `trans` LRC when available.
+ * Verified live: smartbox returns data.song.itemlist[] with mid/name/singer, and
+ * fcg_query_lyric_new returns timestamped LRC in `lyric` (+ `trans`).
+ */
+const QQ_REFERER = "https://y.qq.com/";
+
+interface QqSong {
+  mid?: string;
+  name?: string;
+  singer?: string;
+}
+
+async function fromQQ(
+  q: NormalizedQuery,
+  durationMs: number,
+): Promise<LyricsResult | null> {
+  const term = [q.title, q.artist].filter(Boolean).join(" ").trim();
+  if (!term) return null;
+
+  const searchUrl = `${QQ_BASE}/splcloud/fcgi-bin/smartbox_new.fcg?${new URLSearchParams(
+    { key: term, format: "json" },
+  ).toString()}`;
+  const search = (await hostFetchJson(searchUrl, QQ_REFERER)) as
+    | { data?: { song?: { itemlist?: QqSong[] } } }
+    | null;
+  const songs = search?.data?.song?.itemlist;
+  if (!Array.isArray(songs) || songs.length === 0) return null;
+
+  let best: QqSong | null = null;
+  let bestScore = -1;
+  for (const song of songs) {
+    if (!song || typeof song.mid !== "string" || !song.mid) continue;
+    const { score } = scoreCandidate(q, durationMs, {
+      title: song.name ?? "",
+      artist: song.singer ?? "",
+      // smartbox has no duration; scoreCandidate tolerates undefined.
+      durationMs: undefined,
+    });
+    if (score > bestScore) {
+      best = song;
+      bestScore = score;
+    }
+  }
+  if (!best || typeof best.mid !== "string" || bestScore < MATCH_THRESHOLD) return null;
+
+  const lyricUrl = `${QQ_BASE}/lyric/fcgi-bin/fcg_query_lyric_new.fcg?${new URLSearchParams(
+    { songmid: best.mid, format: "json", nobase64: "1", g_tk: "5381" },
+  ).toString()}`;
+  const lyric = (await hostFetchJson(lyricUrl, QQ_REFERER)) as
+    | { lyric?: string; trans?: string }
+    | null;
+  const mainRaw = lyric?.lyric;
+  if (typeof mainRaw !== "string" || !mainRaw.trim()) return null;
+  const main = parseLrc(mainRaw);
+  if (!main.length) return null;
+  const trRaw = lyric?.trans;
+  const tr = typeof trRaw === "string" && trRaw.trim() ? parseLrc(trRaw) : [];
+  const merged = tr.length ? mergeTranslation(main, tr) : main;
+  return { synced: merged, found: true, instrumental: false, source: "qq" };
+}
+
 const MISS: LyricsResult = { synced: [], found: false, instrumental: false, source: "none" };
 
 /**
@@ -458,16 +526,17 @@ export async function fetchLyrics(
   durationMs: number,
   options?: { sources?: Partial<LyricsSources> },
 ): Promise<LyricsResult> {
-  // Default both providers on; a caller-supplied `false` skips that provider.
+  // Default all providers on; a caller-supplied `false` skips that provider.
   const lrclibEnabled = options?.sources?.lrclib !== false;
   const neteaseEnabled = options?.sources?.netease !== false;
+  const qqEnabled = options?.sources?.qq !== false;
 
   const durMs = Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 0;
   const durSec = durMs > 0 ? Math.round(durMs / 1000) : 0;
   const q = normalizeQuery(track, artist);
   // Key the cache on the enabled providers too, so toggling a source on/off
   // doesn't serve a stale result resolved under the old provider set.
-  const key = `${cacheKey(q, durSec)}|${lrclibEnabled ? 1 : 0}${neteaseEnabled ? 1 : 0}`;
+  const key = `${cacheKey(q, durSec)}|${lrclibEnabled ? 1 : 0}${neteaseEnabled ? 1 : 0}${qqEnabled ? 1 : 0}`;
   const cached = lyricsCache.get(key);
   if (cached) return cached;
 
@@ -481,11 +550,16 @@ export async function fetchLyrics(
     const fromLrc = lrclibEnabled ? await fromLrclib(q, album ?? "", durMs, durSec) : null;
     if (fromLrc) {
       result = fromLrc;
-    } else if (neteaseEnabled) {
-      // NetEase is reached through the host proxy; fromNetease swallows any
-      // failure and returns null, leaving `result` as the MISS above.
-      const fromNet = await fromNetease(q, durMs);
-      if (fromNet) result = fromNet;
+    } else {
+      // NetEase then QQ Music, both through the host proxy; each swallows its
+      // own failure and returns null, so the chain falls through gracefully.
+      const fromNet = neteaseEnabled ? await fromNetease(q, durMs) : null;
+      if (fromNet) {
+        result = fromNet;
+      } else if (qqEnabled) {
+        const fromQq = await fromQQ(q, durMs);
+        if (fromQq) result = fromQq;
+      }
     }
   } catch {
     result = MISS;

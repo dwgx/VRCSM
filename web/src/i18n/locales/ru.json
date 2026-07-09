@@ -483,7 +483,10 @@
       "sourceLrclibToggle": "LRCLIB",
       "sourceLrclibToggleHint": "Глобальная база синхронизированных текстов",
       "sourceNeteaseToggle": "网易云 / NetEase",
-      "sourceNeteaseToggleHint": "Лучший охват китайских треков и переводов"
+      "sourceNeteaseToggleHint": "Лучший охват китайских треков и переводов",
+      "sourceQq": "QQ Music",
+      "sourceQqToggle": "QQ 音乐 / QQ Music",
+      "sourceQqToggleHint": "Доп. охват треков CPOP, которых нет в NetEase"
     },
     "auto": {
       "badge": "AUTO",

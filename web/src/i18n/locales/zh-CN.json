@@ -483,7 +483,10 @@
       "sourceLrclibToggle": "LRCLIB",
       "sourceLrclibToggleHint": "全球同步歌词数据库",
       "sourceNeteaseToggle": "网易云 / NetEase",
-      "sourceNeteaseToggleHint": "更好地覆盖中文曲目及翻译"
+      "sourceNeteaseToggleHint": "更好地覆盖中文曲目及翻译",
+      "sourceQq": "QQ 音乐",
+      "sourceQqToggle": "QQ 音乐 / QQ Music",
+      "sourceQqToggleHint": "补充网易云找不到的华语/CPOP 歌曲"
     },
     "auto": {
       "badge": "AUTO",

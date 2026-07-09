@@ -483,7 +483,10 @@
       "sourceLrclibToggle": "LRCLIB",
       "sourceLrclibToggleHint": "वैश्विक सिंक्ड-लिरिक्स डेटाबेस",
       "sourceNeteaseToggle": "网易云 / NetEase",
-      "sourceNeteaseToggleHint": "चीनी ट्रैक और अनुवाद के लिए बेहतर कवरेज"
+      "sourceNeteaseToggleHint": "चीनी ट्रैक और अनुवाद के लिए बेहतर कवरेज",
+      "sourceQq": "QQ Music",
+      "sourceQqToggle": "QQ 音乐 / QQ Music",
+      "sourceQqToggleHint": "NetEase में न मिलने वाले CPOP गानों के लिए अतिरिक्त कवरेज"
     },
     "auto": {
       "badge": "AUTO",

@@ -446,7 +446,10 @@
       "sourceLrclibToggle": "LRCLIB",
       "sourceLrclibToggleHint": "Global synced-lyrics database",
       "sourceNeteaseToggle": "网易云 / NetEase",
-      "sourceNeteaseToggleHint": "Better coverage for Chinese tracks + translations"
+      "sourceNeteaseToggleHint": "Better coverage for Chinese tracks + translations",
+      "sourceQq": "QQ 音乐",
+      "sourceQqToggle": "QQ 音乐 / QQ Music",
+      "sourceQqToggleHint": "Extra coverage for CPOP tracks NetEase misses"
     },
     "auto": {
       "badge": "AUTO",

@@ -483,7 +483,10 @@
       "sourceLrclibToggle": "LRCLIB",
       "sourceLrclibToggleHint": "글로벌 동기화 가사 데이터베이스",
       "sourceNeteaseToggle": "网易云 / NetEase",
-      "sourceNeteaseToggleHint": "중국어 트랙 및 번역 지원 강화"
+      "sourceNeteaseToggleHint": "중국어 트랙 및 번역 지원 강화",
+      "sourceQq": "QQ 뮤직",
+      "sourceQqToggle": "QQ 뮤직 / QQ Music",
+      "sourceQqToggleHint": "NetEase에 없는 중화권 곡 보완"
     },
     "auto": {
       "badge": "AUTO",

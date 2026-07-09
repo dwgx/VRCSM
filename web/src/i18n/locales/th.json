@@ -446,7 +446,10 @@
       "sourceLrclibToggle": "LRCLIB",
       "sourceLrclibToggleHint": "ฐานข้อมูลเนื้อเพลงซิงก์ทั่วโลก",
       "sourceNeteaseToggle": "网易云 / NetEase",
-      "sourceNeteaseToggleHint": "ครอบคลุมเพลงจีนและคำแปลได้ดีกว่า"
+      "sourceNeteaseToggleHint": "ครอบคลุมเพลงจีนและคำแปลได้ดีกว่า",
+      "sourceQq": "QQ Music",
+      "sourceQqToggle": "QQ 音乐 / QQ Music",
+      "sourceQqToggleHint": "ครอบคลุมเพลงจีนที่ NetEase ไม่มีเพิ่มเติม"
     },
     "auto": {
       "badge": "AUTO",

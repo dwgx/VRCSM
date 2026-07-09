@@ -1,10 +1,14 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <chrono>
+#include <condition_variable>
 #include <fstream>
 #include <iostream>
+#include <mutex>
+#include <thread>
 #include <map>
 
 #include <Windows.h>
@@ -235,6 +239,64 @@ TEST(CommonTests, OscArgumentsFromJsonHonorsAllTagsAndFallsBackStructurally)
     EXPECT_TRUE(std::holds_alternative<float>(args[5].value));
     EXPECT_TRUE(std::holds_alternative<std::string>(args[6].value));
     EXPECT_TRUE(std::holds_alternative<bool>(args[7].value));
+}
+
+TEST(CommonTests, OscSendListenRoundTripPreservesTypesOverUdp)
+{
+    // Drive the full OSC pipeline end-to-end over a real loopback UDP socket:
+    // encode -> sendto -> recv -> decode. Uses a high test port to avoid
+    // clashing with VRChat's 9000/9001. Locks the B4 float fix: a
+    // whole-numbered float must arrive as ',f' (float), NOT truncated to int.
+    constexpr std::uint16_t kTestPort = 39007;
+
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool got = false;
+    std::string gotAddress;
+    std::vector<vrcsm::core::OscArgument> gotArgs;
+
+    vrcsm::core::OscBridge bridge;
+    const bool listening = bridge.StartListen(
+        [&](const std::string& address, const std::vector<vrcsm::core::OscArgument>& args) {
+            std::lock_guard<std::mutex> lk(mtx);
+            gotAddress = address;
+            gotArgs = args;
+            got = true;
+            cv.notify_one();
+        },
+        kTestPort);
+    ASSERT_TRUE(listening);
+
+    // Give the listen thread a moment to bind before firing.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    std::vector<vrcsm::core::OscArgument> args{
+        vrcsm::core::OscArgument::fromFloat(1.0f),   // whole-number float
+        vrcsm::core::OscArgument::fromInt(7),
+        vrcsm::core::OscArgument::fromString("hi"),
+        vrcsm::core::OscArgument::fromBool(true),
+    };
+    const auto sent = bridge.Send("/avatar/parameters/Test", args, "127.0.0.1", kTestPort);
+    ASSERT_TRUE(sent.ok) << (sent.error ? sent.error->message : "");
+
+    {
+        std::unique_lock<std::mutex> lk(mtx);
+        const bool arrived = cv.wait_for(lk, std::chrono::seconds(3), [&] { return got; });
+        ASSERT_TRUE(arrived) << "OSC packet did not round-trip within 3s";
+    }
+    bridge.StopListen();
+
+    EXPECT_EQ(gotAddress, "/avatar/parameters/Test");
+    ASSERT_EQ(gotArgs.size(), 4u);
+    // The critical assertion: the whole-number float survived as a float.
+    EXPECT_TRUE(std::holds_alternative<float>(gotArgs[0].value));
+    EXPECT_FLOAT_EQ(std::get<float>(gotArgs[0].value), 1.0f);
+    EXPECT_TRUE(std::holds_alternative<std::int32_t>(gotArgs[1].value));
+    EXPECT_EQ(std::get<std::int32_t>(gotArgs[1].value), 7);
+    EXPECT_TRUE(std::holds_alternative<std::string>(gotArgs[2].value));
+    EXPECT_EQ(std::get<std::string>(gotArgs[2].value), "hi");
+    EXPECT_TRUE(std::holds_alternative<bool>(gotArgs[3].value));
+    EXPECT_TRUE(std::get<bool>(gotArgs[3].value));
 }
 
 TEST(CommonTests, AcpiThermalZoneConvertsTenthsKelvinToCelsius)

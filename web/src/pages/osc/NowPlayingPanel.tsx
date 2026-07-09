@@ -18,6 +18,7 @@ import { currentLyricLine, currentLyricTrans } from "@/lib/lyrics";
 import {
   LYRICS_LRCLIB_PREF_KEY,
   LYRICS_NETEASE_PREF_KEY,
+  LYRICS_QQ_PREF_KEY,
   type NowPlayingApi,
 } from "@/lib/useNowPlaying";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
@@ -53,6 +54,7 @@ export function NowPlayingPanel({
   // useNowPlaying reads, so flipping one re-resolves lyrics for the live track.
   const [lyricsLrclib, setLyricsLrclib] = useUiPrefBoolean(LYRICS_LRCLIB_PREF_KEY, true);
   const [lyricsNetease, setLyricsNetease] = useUiPrefBoolean(LYRICS_NETEASE_PREF_KEY, true);
+  const [lyricsQq, setLyricsQq] = useUiPrefBoolean(LYRICS_QQ_PREF_KEY, true);
 
   const active = !!music?.active;
   const nowMs = now.getTime();
@@ -127,7 +129,9 @@ export function NowPlayingPanel({
                   <Badge variant="muted" className="h-4 px-1.5 text-[9px] uppercase" title={t("osc.music.lyricsSource", { defaultValue: "Lyrics source" })}>
                     {lyricsSource === "lrclib"
                       ? t("osc.music.sourceLrclib", { defaultValue: "LRCLIB" })
-                      : t("osc.music.sourceNetease", { defaultValue: "NetEase" })}
+                      : lyricsSource === "netease"
+                        ? t("osc.music.sourceNetease", { defaultValue: "NetEase" })
+                        : t("osc.music.sourceQq", { defaultValue: "QQ 音乐" })}
                   </Badge>
                 ) : null}
               </div>
@@ -281,6 +285,24 @@ export function NowPlayingPanel({
               checked={lyricsNetease}
               onChange={(e) => setLyricsNetease(e.target.checked)}
               aria-label={t("osc.music.sourceNeteaseToggle", { defaultValue: "网易云 / NetEase" })}
+              className="size-4 cursor-pointer accent-[hsl(var(--primary))]"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 py-1.5">
+            <span className="grid gap-0.5">
+              <span className="text-[11px] font-medium">
+                {t("osc.music.sourceQqToggle", { defaultValue: "QQ 音乐 / QQ Music" })}
+              </span>
+              <span className="text-[9px] text-[hsl(var(--muted-foreground))]">
+                {t("osc.music.sourceQqToggleHint", { defaultValue: "Extra coverage for CPOP tracks NetEase misses" })}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={lyricsQq}
+              onChange={(e) => setLyricsQq(e.target.checked)}
+              aria-label={t("osc.music.sourceQqToggle", { defaultValue: "QQ 音乐 / QQ Music" })}
               className="size-4 cursor-pointer accent-[hsl(var(--primary))]"
             />
           </label>
