@@ -38,12 +38,11 @@ landing rewrite**, and fixes for **i18n language reset on launch**, **factory-re
 not clearing thumbnails**, and **`{music.lyrics}` sending empty** from the OSC
 card. Full commit-by-commit detail in `MEMORY.md` → "Post-0.15.0 local work".
 
-**Branch reality.** `main` is **1 commit ahead of `origin/main`, 0 behind** —
-HEAD `600440e` (OSC seek bar), **NOT pushed**; everything through `45668b0` IS
-pushed. v0.15.0 is released on GitHub; **v0.15.1 is LOCAL** (`VERSION`=0.15.1,
-`vcpkg.json` lags at 0.14.6; a local MSI is installed + running). Pushing +
-cutting a 0.15.1 GitHub release is an outstanding outward-facing step — confirm
-with the owner first.
+**Branch reality.** `main` is **in sync with `origin/main`** (HEAD `88ef241`)
+after the v0.15.1 release. **v0.15.1 is RELEASED on GitHub** (tag `v0.15.1` +
+MSI/ZIP, marked Latest, 2026-07-09). All version files are in sync at `0.15.1`
+including `vcpkg.json` (bumped from `0.14.6` at release). Nothing outward-facing
+is outstanding.
 
 **Verification baseline (re-confirmed 2026-07-09 at 0.15.1):** ctest **151/151**
 (3 opt-in live probes DISABLED), vitest **366/366** (`--no-file-parallelism`),
@@ -54,9 +53,10 @@ same version is already installed do `msiexec /x` then `/i` (a same-version
 session; the running WebView2 also locks `web/`).
 
 **Top open follow-ups (see `MEMORY.md` "Open follow-ups" for full detail):**
-1. **Push + cut the 0.15.1 GitHub release** (outward-facing — owner confirms).
-   Bump `vcpkg.json` (still 0.14.6) as part of it; follow the release mechanics
-   in `MEMORY.md` (reconfigure preset after VERSION bump; `SHA256:` line in notes).
+1. **Push + cut the 0.15.1 GitHub release — DONE (2026-07-09).** `vcpkg.json`
+   was bumped 0.14.6→0.15.1, the 0.15.1 changelog was completed, `main` was
+   pushed, and `v0.15.1` was tagged + released with MSI/ZIP (Latest). Baseline
+   re-verified green first (ctest 151/151, vitest 366/366, Playwright 54/54).
 2. **Local QQ `.qrc` cache decrypt — PARKED (hard):** the on-disk cache uses a
    different scheme than the network qrc, and decode is inlined in QQMusic.exe
    (plaintext transient). Online sources (LRCLIB/NetEase/QQ/Kugou + title-only)
