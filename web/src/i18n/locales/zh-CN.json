@@ -470,6 +470,7 @@
       "preview": "聊天框预览",
       "previewEmpty": "（无播放）",
       "barWidth": "进度条宽度",
+      "marqueeWidth": "跑马灯宽度",
       "asciiFold": "ASCII 转换",
       "asciiFoldHint": "去除非 ASCII 字符，适配无法正确显示 CJK 的字体",
       "lyrics": "歌词",

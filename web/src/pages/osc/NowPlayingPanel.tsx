@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Music, Plus, Type } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import {
   MUSIC_PRESETS,
   MUSIC_STATUS_GLYPHS,
@@ -48,8 +48,18 @@ export function NowPlayingPanel({
   canSetTemplate,
 }: NowPlayingPanelProps) {
   const { t } = useTranslation();
-  const { music, progressWidth, setProgressWidth, asciiFold, setAsciiFold, lyrics, lyricsStatus, lyricsSource } =
-    nowPlaying;
+  const {
+    music,
+    progressWidth,
+    setProgressWidth,
+    marqueeWidth,
+    setMarqueeWidth,
+    asciiFold,
+    setAsciiFold,
+    lyrics,
+    lyricsStatus,
+    lyricsSource,
+  } = nowPlaying;
   // Per-source lyrics toggles (both default on). Bound to the same UI-pref keys
   // useNowPlaying reads, so flipping one re-resolves lyrics for the live track.
   const [lyricsLrclib, setLyricsLrclib] = useUiPrefBoolean(LYRICS_LRCLIB_PREF_KEY, true);
@@ -167,6 +177,7 @@ export function NowPlayingPanel({
                 music,
                 now,
                 musicProgressWidth: progressWidth,
+                musicMarqueeWidth: marqueeWidth,
                 musicLyricLine: lyricLine,
                 musicLyricTranslated: lyricTranslated,
                 asciiFold,
@@ -208,6 +219,7 @@ export function NowPlayingPanel({
               music,
               now,
               musicProgressWidth: progressWidth,
+              musicMarqueeWidth: marqueeWidth,
               musicLyricLine: lyricLine,
               musicLyricTranslated: lyricTranslated,
               asciiFold,
@@ -218,19 +230,31 @@ export function NowPlayingPanel({
         {/* Controls */}
         <div className="grid gap-2">
           <label className="grid gap-1">
-            <span className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
               {t("osc.music.barWidth", { defaultValue: "Progress bar width" })}
-              <span className="font-mono text-[10px] normal-case">{progressWidth}</span>
             </span>
-            <Input
-              type="range"
+            <Slider
               min={4}
               max={24}
               step={1}
               value={progressWidth}
-              onChange={(e) => setProgressWidth(Math.max(4, Math.min(24, parseInt(e.target.value, 10) || 10)))}
+              onValueChange={(v) => setProgressWidth(Math.max(4, Math.min(24, v || 10)))}
+              unit=" ch"
               aria-label={t("osc.music.barWidth", { defaultValue: "Progress bar width" })}
-              className="h-6 cursor-pointer p-0"
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+              {t("osc.music.marqueeWidth", { defaultValue: "Marquee width" })}
+            </span>
+            <Slider
+              min={6}
+              max={40}
+              step={1}
+              value={marqueeWidth}
+              onValueChange={(v) => setMarqueeWidth(Math.max(6, Math.min(40, v || 20)))}
+              unit=" ch"
+              aria-label={t("osc.music.marqueeWidth", { defaultValue: "Marquee width" })}
             />
           </label>
           <label className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 py-1.5">

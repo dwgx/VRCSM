@@ -470,6 +470,7 @@
       "preview": "Chatbox プレビュー",
       "previewEmpty": "（再生中の曲はありません）",
       "barWidth": "進行バーの幅",
+      "marqueeWidth": "マーキー幅",
       "asciiFold": "ASCII 化",
       "asciiFoldHint": "CJK が崩れるフォント向けに非 ASCII 文字を除去します",
       "lyrics": "歌詞",

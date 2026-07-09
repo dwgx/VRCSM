@@ -470,6 +470,7 @@
       "preview": "Предпросмотр Chatbox",
       "previewEmpty": "(ничего не играет)",
       "barWidth": "Ширина прогресс-бара",
+      "marqueeWidth": "Ширина бегущей строки",
       "asciiFold": "ASCII-упрощение",
       "asciiFoldHint": "Убирать символы вне ASCII для шрифтов, которые некорректно отображают CJK",
       "lyrics": "Текст",

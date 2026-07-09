@@ -470,6 +470,7 @@
       "preview": "चैटबॉक्स प्रीव्यू",
       "previewEmpty": "(कुछ नहीं चल रहा)",
       "barWidth": "प्रगति बार की चौड़ाई",
+      "marqueeWidth": "मार्की चौड़ाई",
       "asciiFold": "ASCII फ़ोल्ड",
       "asciiFoldHint": "CJK अक्षरों को बिगाड़ने वाले फ़ॉन्ट के लिए non-ASCII हटाएँ",
       "lyrics": "लिरिक्स",

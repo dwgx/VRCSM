@@ -299,6 +299,52 @@ TEST(CommonTests, OscSendListenRoundTripPreservesTypesOverUdp)
     EXPECT_TRUE(std::get<bool>(gotArgs[3].value));
 }
 
+// Opt-in live probe: reads the REAL current GSMTC media session via the exact
+// production ReadNowPlaying() path. DISABLED by default (depends on whatever
+// is playing on the host). Run it to confirm VRCSM captures a given player —
+// e.g. QQ Music — without launching the GUI:
+//
+//   $env:VRCSM_LIVE_NOWPLAYING_TEST=1
+//   VRCSM_Tests.exe --gtest_also_run_disabled_tests \
+//       --gtest_filter=CommonTests.DISABLED_NowPlayingLiveCapturesCurrentSession
+namespace
+{
+bool LiveNowPlayingEnabled()
+{
+    std::array<char, 8> buf{};
+    std::size_t len = 0;
+    if (getenv_s(&len, buf.data(), buf.size(), "VRCSM_LIVE_NOWPLAYING_TEST") != 0)
+    {
+        return false;
+    }
+    return len > 0 && buf[0] != '\0' && buf[0] != '0';
+}
+} // namespace
+
+TEST(CommonTests, DISABLED_NowPlayingLiveCapturesCurrentSession)
+{
+    if (!LiveNowPlayingEnabled())
+    {
+        GTEST_SKIP() << "set VRCSM_LIVE_NOWPLAYING_TEST=1 to run the live now-playing probe";
+    }
+
+    const auto result = vrcsm::core::ReadNowPlaying();
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    const auto& snap = vrcsm::core::value(result);
+
+    std::printf("[live] now-playing: active=%d app='%s' (appId='%s')\n"
+                "        title='%s'\n        artist='%s'\n        album='%s'\n        status='%s'\n",
+                snap.active ? 1 : 0, snap.appName.c_str(), snap.appId.c_str(),
+                snap.title.c_str(), snap.artist.c_str(), snap.album.c_str(), snap.status.c_str());
+
+    // If any media session is present we must have captured a non-empty title.
+    if (snap.active)
+    {
+        EXPECT_FALSE(snap.title.empty()) << "active session but no title captured";
+        EXPECT_FALSE(snap.appName.empty());
+    }
+}
+
 TEST(CommonTests, AcpiThermalZoneConvertsTenthsKelvinToCelsius)
 {
     const auto value = vrcsm::core::hw::AcpiTenthsKelvinToCelsiusForTest(3002.0);

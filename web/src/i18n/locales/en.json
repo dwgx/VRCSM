@@ -433,6 +433,7 @@
       "preview": "Chatbox preview",
       "previewEmpty": "(nothing playing)",
       "barWidth": "Progress bar width",
+      "marqueeWidth": "Marquee width",
       "asciiFold": "ASCII fold",
       "asciiFoldHint": "Strip non-ASCII for fonts that mangle CJK",
       "lyrics": "Lyrics",

@@ -470,6 +470,7 @@
       "preview": "채팅창 미리보기",
       "previewEmpty": "(재생 중인 항목 없음)",
       "barWidth": "진행률 막대 너비",
+      "marqueeWidth": "마퀴 너비",
       "asciiFold": "ASCII 변환",
       "asciiFoldHint": "CJK를 제대로 표시하지 못하는 폰트를 위해 비ASCII 문자를 제거합니다.",
       "lyrics": "가사",
