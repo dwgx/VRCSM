@@ -336,13 +336,13 @@ describe("fetchLyrics source selection", () => {
   });
   const qqLyricBody = JSON.stringify({ lyric: "[00:00.00] qq line" });
 
-  it("uses only LRCLIB when netease and qq are disabled", async () => {
-    // LRCLIB miss (empty record); with the other two providers off the chain
-    // must NOT fall through to NetEase or QQ.
+  it("uses only LRCLIB when netease and qq and kugou are disabled", async () => {
+    // LRCLIB miss (empty record); with the other providers off the chain
+    // must NOT fall through to NetEase, QQ, or Kugou.
     ipcCallMock.mockResolvedValue({ status: 200, body: JSON.stringify({}) });
 
     const res = await fetchLyrics("SkipTrack", "Artist A", "", 200_000, {
-      sources: { lrclib: true, netease: false, qq: false },
+      sources: { lrclib: true, netease: false, qq: false, kugou: false },
     });
 
     expect(res.found).toBe(false);
@@ -351,6 +351,7 @@ describe("fetchLyrics source selection", () => {
       expect(url).toContain("lrclib.net");
       expect(url).not.toContain("music.163.com");
       expect(url).not.toContain("c.y.qq.com");
+      expect(url).not.toContain("kugou.com");
     }
   });
 
@@ -394,6 +395,34 @@ describe("fetchLyrics source selection", () => {
     expect(res.synced.length).toBeGreaterThan(0);
   });
 
+  it("QQ retries with title-only when title+artist search misses", async () => {
+    let searchCount = 0;
+    const qqHitSearch = JSON.stringify({
+      data: { song: { itemlist: [{ mid: "000xyz", name: "恶口 1&2", singer: "undaloop" }] } },
+    });
+    const qqHitLyric = JSON.stringify({ lyric: "[00:00.00] kuchi" });
+
+    ipcCallMock.mockImplementation((_method: string, params: { url: string }) => {
+      if (params.url.includes("lrclib.net")) return Promise.resolve({ status: 200, body: JSON.stringify({}) });
+      if (params.url.includes("music.163.com")) return Promise.resolve({ status: 200, body: JSON.stringify({ result: { songs: [] } }) });
+      if (params.url.includes("smartbox_new.fcg")) {
+        searchCount++;
+        if (searchCount === 1) return Promise.resolve({ status: 200, body: JSON.stringify({ data: { song: { itemlist: [] } } }) });
+        return Promise.resolve({ status: 200, body: qqHitSearch });
+      }
+      if (params.url.includes("fcg_query_lyric_new.fcg")) return Promise.resolve({ status: 200, body: qqHitLyric });
+      return Promise.resolve({ status: 200, body: JSON.stringify({}) });
+    });
+
+    const res = await fetchLyrics("恶口 1&2", "undaloop", "", 200_000, {
+      sources: { lrclib: true, netease: true, qq: true },
+    });
+
+    expect(searchCount).toBe(2);
+    expect(res.source).toBe("qq");
+    expect(res.found).toBe(true);
+  });
+
   it("uses LRCLIB when all sources are enabled (default)", async () => {
     ipcCallMock.mockResolvedValue({ status: 200, body: lrclibBody });
 
@@ -403,5 +432,55 @@ describe("fetchLyrics source selection", () => {
 
     expect(res.source).toBe("lrclib");
     expect(res.found).toBe(true);
+  });
+
+  it("falls through to Kugou when LRCLIB, NetEase, and QQ all miss", async () => {
+    // Kugou requires 3 sequential fetches: song search, lyric search, download.
+    const kugouSongSearch = JSON.stringify({
+      status: 1,
+      data: { info: [{ hash: "abc123hash", songname: "Kugou Song", singername: "Kugou Singer", duration: 200 }] },
+    });
+    const kugouLyricSearch = JSON.stringify({
+      status: 200,
+      candidates: [{ id: "99999", accesskey: "DEADBEEF", song: "Kugou Song", singer: "Kugou Singer", duration: 200000 }],
+    });
+    const kugouLyricDownload = JSON.stringify({
+      status: 200,
+      content: btoa("[00:05.00] kugou line one\n[00:10.00] kugou line two"),
+      fmt: "lrc",
+    });
+
+    ipcCallMock.mockImplementation((_method: string, params: { url: string }) => {
+      if (params.url.includes("lrclib.net")) return Promise.resolve({ status: 200, body: JSON.stringify({}) });
+      if (params.url.includes("music.163.com")) return Promise.resolve({ status: 200, body: JSON.stringify({ result: { songs: [] } }) });
+      if (params.url.includes("smartbox_new.fcg")) return Promise.resolve({ status: 200, body: JSON.stringify({ data: { song: { itemlist: [] } } }) });
+      if (params.url.includes("mobileservice.kugou.com")) return Promise.resolve({ status: 200, body: kugouSongSearch });
+      if (params.url.includes("lyrics.kugou.com/search")) return Promise.resolve({ status: 200, body: kugouLyricSearch });
+      if (params.url.includes("lyrics.kugou.com/download")) return Promise.resolve({ status: 200, body: kugouLyricDownload });
+      return Promise.resolve({ status: 200, body: JSON.stringify({}) });
+    });
+
+    const res = await fetchLyrics("Kugou Song", "Kugou Singer", "", 200_000, {
+      sources: { lrclib: true, netease: true, qq: true, kugou: true },
+    });
+
+    expect(res.source).toBe("kugou");
+    expect(res.found).toBe(true);
+    expect(res.synced.length).toBe(2);
+    expect(res.synced[0].text).toBe("kugou line one");
+  });
+
+  it("skips Kugou when sources.kugou is false", async () => {
+    ipcCallMock.mockResolvedValue({ status: 200, body: JSON.stringify({}) });
+
+    const res = await fetchLyrics("KugouSkip", "Artist", "", 200_000, {
+      sources: { lrclib: true, netease: false, qq: false, kugou: false },
+    });
+
+    expect(res.found).toBe(false);
+    for (const call of ipcCallMock.mock.calls) {
+      const url = (call[1] as { url: string }).url;
+      expect(url).not.toContain("kugou.com");
+    }
   });
 });

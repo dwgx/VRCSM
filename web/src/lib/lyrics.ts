@@ -21,7 +21,7 @@ export interface LyricLine {
   trText?: string;
 }
 
-export type LyricsSource = "lrclib" | "netease" | "qq" | "none";
+export type LyricsSource = "lrclib" | "netease" | "qq" | "kugou" | "none";
 
 export interface LyricsResult {
   synced: LyricLine[];
@@ -33,6 +33,9 @@ export interface LyricsResult {
 const LRCLIB_BASE = "https://lrclib.net/api";
 const NETEASE_BASE = "https://music.163.com/api";
 const QQ_BASE = "https://c.y.qq.com";
+const KUGOU_SEARCH_BASE = "https://mobileservice.kugou.com/api/v3/search/song";
+const KUGOU_LYRIC_SEARCH = "https://lyrics.kugou.com/search";
+const KUGOU_LYRIC_DOWNLOAD = "https://lyrics.kugou.com/download";
 
 // Candidate ranking: duration must land within this window to count as a match.
 const DURATION_WINDOW_MS = 3000;
@@ -299,6 +302,7 @@ export interface LyricsSources {
   lrclib: boolean;
   netease: boolean;
   qq: boolean;
+  kugou: boolean;
 }
 
 interface LrclibRecord {
@@ -462,6 +466,17 @@ interface QqSong {
   singer?: string;
 }
 
+async function qqSearch(key: string): Promise<QqSong[]> {
+  const searchUrl = `${QQ_BASE}/splcloud/fcgi-bin/smartbox_new.fcg?${new URLSearchParams(
+    { key, format: "json" },
+  ).toString()}`;
+  const search = (await hostFetchJson(searchUrl, QQ_REFERER)) as
+    | { data?: { song?: { itemlist?: QqSong[] } } }
+    | null;
+  const songs = search?.data?.song?.itemlist;
+  return Array.isArray(songs) ? songs : [];
+}
+
 async function fromQQ(
   q: NormalizedQuery,
   durationMs: number,
@@ -469,14 +484,13 @@ async function fromQQ(
   const term = [q.title, q.artist].filter(Boolean).join(" ").trim();
   if (!term) return null;
 
-  const searchUrl = `${QQ_BASE}/splcloud/fcgi-bin/smartbox_new.fcg?${new URLSearchParams(
-    { key: term, format: "json" },
-  ).toString()}`;
-  const search = (await hostFetchJson(searchUrl, QQ_REFERER)) as
-    | { data?: { song?: { itemlist?: QqSong[] } } }
-    | null;
-  const songs = search?.data?.song?.itemlist;
-  if (!Array.isArray(songs) || songs.length === 0) return null;
+  let songs = await qqSearch(term);
+  // Fallback: QQ smartbox often misses when artist is included for indie/uploaded
+  // tracks (e.g. "恶口 1&2 / undaloop") but finds them by title alone.
+  if (songs.length === 0 && q.artist && q.title) {
+    songs = await qqSearch(q.title);
+  }
+  if (songs.length === 0) return null;
 
   let best: QqSong | null = null;
   let bestScore = -1;
@@ -485,7 +499,6 @@ async function fromQQ(
     const { score } = scoreCandidate(q, durationMs, {
       title: song.name ?? "",
       artist: song.singer ?? "",
-      // smartbox has no duration; scoreCandidate tolerates undefined.
       durationMs: undefined,
     });
     if (score > bestScore) {
@@ -511,13 +524,129 @@ async function fromQQ(
   return { synced: merged, found: true, instrumental: false, source: "qq" };
 }
 
+/**
+ * Kugou Music provider: song search → lyric search (by hash) → download as LRC.
+ * Kugou has the widest coverage for obscure/indie Chinese tracks. The API serves
+ * plain LRC via `fmt=lrc` (no KRC decryption needed). Three-step flow:
+ *   1. mobileservice search → song hash + duration + songname + singername
+ *   2. lyrics.kugou.com/search → lyric id + accesskey (by hash + duration)
+ *   3. lyrics.kugou.com/download → base64-encoded LRC content
+ * All endpoints are HTTPS, no auth required. No Referer gating observed.
+ */
+interface KugouSong {
+  hash?: string;
+  songname?: string;
+  singername?: string;
+  duration?: number; // seconds
+}
+
+interface KugouLyricCandidate {
+  id?: string | number;
+  accesskey?: string;
+  song?: string;
+  singer?: string;
+  duration?: number; // ms
+  score?: number;
+}
+
+async function fromKugou(
+  q: NormalizedQuery,
+  durationMs: number,
+): Promise<LyricsResult | null> {
+  const term = [q.title, q.artist].filter(Boolean).join(" ").trim();
+  if (!term) return null;
+
+  // Step 1: Search for the song to get its hash.
+  const songSearchUrl = `${KUGOU_SEARCH_BASE}?${new URLSearchParams({
+    keyword: term,
+    page: "1",
+    pagesize: "5",
+  }).toString()}`;
+  const songSearch = (await hostFetchJson(songSearchUrl)) as
+    | { status?: number; data?: { info?: KugouSong[] } }
+    | null;
+  const songs = songSearch?.data?.info;
+  if (!Array.isArray(songs) || songs.length === 0) return null;
+
+  // Score candidates by title + artist + duration similarity.
+  let bestSong: KugouSong | null = null;
+  let bestScore = -1;
+  for (const song of songs) {
+    if (!song || typeof song.hash !== "string" || !song.hash) continue;
+    const { score } = scoreCandidate(q, durationMs, {
+      title: song.songname ?? "",
+      artist: song.singername ?? "",
+      durationMs: typeof song.duration === "number" ? song.duration * 1000 : undefined,
+    });
+    if (score > bestScore) {
+      bestSong = song;
+      bestScore = score;
+    }
+  }
+  if (!bestSong || typeof bestSong.hash !== "string" || bestScore < MATCH_THRESHOLD) return null;
+
+  const durMs = typeof bestSong.duration === "number" ? bestSong.duration * 1000 : durationMs;
+
+  // Step 2: Search for lyrics using the song hash.
+  const lyricSearchUrl = `${KUGOU_LYRIC_SEARCH}?${new URLSearchParams({
+    ver: "1",
+    man: "yes",
+    client: "pc",
+    keyword: bestSong.songname ?? term,
+    duration: String(Math.round(durMs)),
+    hash: bestSong.hash,
+  }).toString()}`;
+  const lyricSearch = (await hostFetchJson(lyricSearchUrl)) as
+    | { candidates?: KugouLyricCandidate[] }
+    | null;
+  const candidates = lyricSearch?.candidates;
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+
+  // Pick the first candidate (highest score from Kugou's own ranking).
+  const pick = candidates[0];
+  if (!pick || !pick.id || !pick.accesskey) return null;
+
+  // Step 3: Download the LRC.
+  const downloadUrl = `${KUGOU_LYRIC_DOWNLOAD}?${new URLSearchParams({
+    ver: "1",
+    client: "pc",
+    id: String(pick.id),
+    accesskey: pick.accesskey,
+    fmt: "lrc",
+    charset: "utf8",
+  }).toString()}`;
+  const download = (await hostFetchJson(downloadUrl)) as
+    | { content?: string; fmt?: string }
+    | null;
+  if (!download || typeof download.content !== "string" || !download.content) return null;
+
+  // Content is base64-encoded LRC.
+  let lrcText: string;
+  try {
+    lrcText = atob(download.content);
+  } catch {
+    return null;
+  }
+  // atob produces latin1 but the payload is UTF-8 — decode via TextDecoder.
+  try {
+    const bytes = Uint8Array.from(lrcText, (c) => c.charCodeAt(0));
+    lrcText = new TextDecoder("utf-8").decode(bytes);
+  } catch {
+    // If decode fails, use the raw atob result (ASCII-safe LRC still works).
+  }
+
+  const main = parseLrc(lrcText);
+  if (!main.length) return null;
+  return { synced: main, found: true, instrumental: false, source: "kugou" };
+}
+
 const MISS: LyricsResult = { synced: [], found: false, instrumental: false, source: "none" };
 
 /**
  * Resolve synced lyrics for a track through a provider chain (first accepted
- * synced result wins): LRCLIB exact → LRCLIB search → NetEase (with Chinese
- * translation merge). Never throws — returns `{ found:false, source:'none' }`
- * on any error or total miss. Cached in-memory per normalized track key.
+ * synced result wins): LRCLIB exact → LRCLIB search → NetEase → QQ → Kugou.
+ * Never throws — returns `{ found:false, source:'none' }` on any error or total
+ * miss. Cached in-memory per normalized track key.
  */
 export async function fetchLyrics(
   track: string,
@@ -530,13 +659,14 @@ export async function fetchLyrics(
   const lrclibEnabled = options?.sources?.lrclib !== false;
   const neteaseEnabled = options?.sources?.netease !== false;
   const qqEnabled = options?.sources?.qq !== false;
+  const kugouEnabled = options?.sources?.kugou !== false;
 
   const durMs = Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 0;
   const durSec = durMs > 0 ? Math.round(durMs / 1000) : 0;
   const q = normalizeQuery(track, artist);
   // Key the cache on the enabled providers too, so toggling a source on/off
   // doesn't serve a stale result resolved under the old provider set.
-  const key = `${cacheKey(q, durSec)}|${lrclibEnabled ? 1 : 0}${neteaseEnabled ? 1 : 0}${qqEnabled ? 1 : 0}`;
+  const key = `${cacheKey(q, durSec)}|${lrclibEnabled ? 1 : 0}${neteaseEnabled ? 1 : 0}${qqEnabled ? 1 : 0}${kugouEnabled ? 1 : 0}`;
   const cached = lyricsCache.get(key);
   if (cached) return cached;
 
@@ -551,14 +681,20 @@ export async function fetchLyrics(
     if (fromLrc) {
       result = fromLrc;
     } else {
-      // NetEase then QQ Music, both through the host proxy; each swallows its
-      // own failure and returns null, so the chain falls through gracefully.
       const fromNet = neteaseEnabled ? await fromNetease(q, durMs) : null;
       if (fromNet) {
         result = fromNet;
       } else if (qqEnabled) {
         const fromQq = await fromQQ(q, durMs);
-        if (fromQq) result = fromQq;
+        if (fromQq) {
+          result = fromQq;
+        } else if (kugouEnabled) {
+          const fromKg = await fromKugou(q, durMs);
+          if (fromKg) result = fromKg;
+        }
+      } else if (kugouEnabled) {
+        const fromKg = await fromKugou(q, durMs);
+        if (fromKg) result = fromKg;
       }
     }
   } catch {

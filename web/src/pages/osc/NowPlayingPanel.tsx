@@ -19,6 +19,7 @@ import {
   LYRICS_LRCLIB_PREF_KEY,
   LYRICS_NETEASE_PREF_KEY,
   LYRICS_QQ_PREF_KEY,
+  LYRICS_KUGOU_PREF_KEY,
   type NowPlayingApi,
 } from "@/lib/useNowPlaying";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
@@ -65,6 +66,7 @@ export function NowPlayingPanel({
   const [lyricsLrclib, setLyricsLrclib] = useUiPrefBoolean(LYRICS_LRCLIB_PREF_KEY, true);
   const [lyricsNetease, setLyricsNetease] = useUiPrefBoolean(LYRICS_NETEASE_PREF_KEY, true);
   const [lyricsQq, setLyricsQq] = useUiPrefBoolean(LYRICS_QQ_PREF_KEY, true);
+  const [lyricsKugou, setLyricsKugou] = useUiPrefBoolean(LYRICS_KUGOU_PREF_KEY, true);
 
   const active = !!music?.active;
   const nowMs = now.getTime();
@@ -141,7 +143,9 @@ export function NowPlayingPanel({
                       ? t("osc.music.sourceLrclib", { defaultValue: "LRCLIB" })
                       : lyricsSource === "netease"
                         ? t("osc.music.sourceNetease", { defaultValue: "NetEase" })
-                        : t("osc.music.sourceQq", { defaultValue: "QQ 音乐" })}
+                        : lyricsSource === "kugou"
+                          ? t("osc.music.sourceKugou", { defaultValue: "酷狗" })
+                          : t("osc.music.sourceQq", { defaultValue: "QQ 音乐" })}
                   </Badge>
                 ) : null}
               </div>
@@ -327,6 +331,24 @@ export function NowPlayingPanel({
               checked={lyricsQq}
               onChange={(e) => setLyricsQq(e.target.checked)}
               aria-label={t("osc.music.sourceQqToggle", { defaultValue: "QQ 音乐 / QQ Music" })}
+              className="size-4 cursor-pointer accent-[hsl(var(--primary))]"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 py-1.5">
+            <span className="grid gap-0.5">
+              <span className="text-[11px] font-medium">
+                {t("osc.music.sourceKugouToggle", { defaultValue: "酷狗 / Kugou" })}
+              </span>
+              <span className="text-[9px] text-[hsl(var(--muted-foreground))]">
+                {t("osc.music.sourceKugouToggleHint", { defaultValue: "Widest coverage for indie and obscure tracks" })}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={lyricsKugou}
+              onChange={(e) => setLyricsKugou(e.target.checked)}
+              aria-label={t("osc.music.sourceKugouToggle", { defaultValue: "酷狗 / Kugou" })}
               className="size-4 cursor-pointer accent-[hsl(var(--primary))]"
             />
           </label>
