@@ -28,20 +28,31 @@ void HandlePendingFactoryReset()
         return;
     }
 
-    const auto wv2 = root / L"WebView2";
-    if (std::filesystem::exists(wv2, ec))
+    // Wipe the dirs the live WebView2 renderer holds open. During the in-app
+    // factory reset (HandleAppFactoryReset) the renderer is still alive and
+    // keeps file handles on WebView2 user data AND on any thumbnail/preview
+    // images it has loaded (thumb.local / images.cache / screenshot thumbs),
+    // so remove_all there hits sharing violations and silently skips them —
+    // that is why the thumbnail cache "won't clear". This next-launch pass runs
+    // BEFORE WebView2 re-initializes, so nothing holds those handles now and
+    // the deletion succeeds.
+    for (const wchar_t* sub : {L"WebView2", L"thumb-cache-files", L"preview-cache", L"screenshot-thumbs"})
     {
+        const auto dir = root / sub;
+        if (!std::filesystem::exists(dir, ec))
+        {
+            continue;
+        }
         std::error_code rmEc;
-        std::filesystem::remove_all(wv2, rmEc);
+        std::filesystem::remove_all(dir, rmEc);
         if (rmEc)
         {
-            spdlog::warn(
-                "factory-reset: failed to wipe WebView2 user data: {}",
-                rmEc.message());
+            spdlog::warn("factory-reset: failed to wipe {}: {}",
+                         vrcsm::core::toUtf8(std::wstring(sub)), rmEc.message());
         }
         else
         {
-            spdlog::info("factory-reset: wiped WebView2 user data folder");
+            spdlog::info("factory-reset: wiped {}", vrcsm::core::toUtf8(std::wstring(sub)));
         }
     }
 
