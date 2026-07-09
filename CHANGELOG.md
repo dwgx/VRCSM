@@ -10,8 +10,13 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [0.15.1] — 2026-07-09
 
+- **Synced-lyrics chain widened to four sources: LRCLIB → NetEase → QQ Music → Kugou.** QQ Music and then Kugou were added on top of LRCLIB/NetEase for far better coverage of Chinese/CPOP and obscure or user-uploaded tracks the first sources miss; QQ also has a title-only fallback for tracks that a title+artist query can't find. All requests route through the host lyrics proxy (SSRF-railed, https-only) with a per-source toggle in the OSC now-playing panel; i18n across all 7 locales. Verified end-to-end against the live QQ and NetEase lyric endpoints.
+- **VRChat-safe OSC seek-bar progress + four rich Now Playing presets.** The now-playing progress indicator is now a box-drawing seek bar (`━━━━━●─────`, U+2501/U+2500 with a U+25CF play-head) that the VRChat chatbox font renders reliably — the previous `▬/▭` blocks showed up as empty circles in-game. The OSC now-playing panel ships four presets (Now Playing Card, Full Card, Boxed, Lyrics Focus), each with a live preview of the exact chatbox line it sends.
+- **OSC progress-bar and marquee width sliders.** The progress-bar width control was a near-invisible bare range input in the dark theme; it's now a styled slider, and a marquee-width slider was added (the value was wired through the render context but had no UI control before).
 - **Fixed: UI language reset to English on every launch.** The saved language (`vrcsm.language`) was persisted correctly but ignored at startup because `i18nReady` read the resolved language before the detector had applied the stored value, so a non-English pick (e.g. 简体中文) silently fell back to English until re-picked by hand. Startup now awaits i18n init and reads the persisted language directly. Regression-tested.
-- **QQ Music lyrics source.** The synced-lyrics chain is now LRCLIB → NetEase → QQ Music, adding coverage for Chinese/CPOP tracks the first two miss. Routed through the host lyrics proxy (SSRF-railed, https-only) with a per-source toggle in the OSC now-playing panel; i18n across all 7 locales. Verified end-to-end against QQ's live lyric endpoint.
+- **Fixed: `{music.lyrics}` sent an empty line from the OSC card.** OscTools' now-playing extras omitted the current lyric line, so a lyrics card rendered blank even when lyrics had been fetched. The current line is now computed each tick and threaded into the render context.
+- **Fixed: factory reset couldn't clear thumbnail/preview caches.** The in-app reset couldn't delete `thumb-cache-files` / `preview-cache` / `screenshot-thumbs` because the WebView2 renderer holds those image handles. The reset is now finished on the next launch, before WebView2 re-initializes, so those caches are wiped.
+- **gh-pages landing page rewritten to v0.15.1** with corrected feature/architecture/download sections and layout.
 
 ## [0.15.0] — 2026-07-09
 
