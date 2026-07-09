@@ -8,7 +8,7 @@
 
 ### 1.1 版本单一真源
 
-`CMakeLists.txt:5-8` 读取仓库根 `VERSION` 文件（当前 `0.14.6`）作为 `project(VRCSM VERSION ...)`，派生 `VRCSM_PRODUCT_VERSION`（`a.b.c.0`）与逗号分隔的 `VRCSM_FILE_VERSION`，供 `resources/app.rc` 用 `@ONLY` 展开。C++20、无扩展、标准强制；MSVC 全局 `/utf-8 /W4 /permissive- /Zc:__cplusplus /MP /EHsc` + `NOMINMAX/WIN32_LEAN_AND_MEAN/UNICODE`。运行时库为动态多线程（`CMAKE_MSVC_RUNTIME_LIBRARY`）—— 对 gtest 一致性重要。
+`CMakeLists.txt:5-8` 读取仓库根 `VERSION` 文件（当前 `0.15.1`；改后须 reconfigure preset，否则 ninja 不重建）作为 `project(VRCSM VERSION ...)`，派生 `VRCSM_PRODUCT_VERSION`（`a.b.c.0`）与逗号分隔的 `VRCSM_FILE_VERSION`，供 `resources/app.rc` 用 `@ONLY` 展开。C++20、无扩展、标准强制；MSVC 全局 `/utf-8 /W4 /permissive- /Zc:__cplusplus /MP /EHsc` + `NOMINMAX/WIN32_LEAN_AND_MEAN/UNICODE`。运行时库为动态多线程（`CMAKE_MSVC_RUNTIME_LIBRARY`）—— 对 gtest 一致性重要。
 
 ### 1.2 目标依赖树
 
@@ -25,7 +25,7 @@ VRCSM_Tests                              tests/CMakeLists.txt:13
 └── gtest_main (FetchContent)
 ```
 
-`vrcsm_core` 静态编入 vendored `third_party/sqlite-vec/sqlite-vec.c`（`SQLITE_CORE=1`，静态链接直连 API），经 `sqlite3_auto_extension` 在 `Database::Open` 注册。PUBLIC 依赖 `sqlite3 / lz4 / LibLZMA`。host 显式 `/MANIFEST:NO`（自带 manifest 走 `resources/app.manifest`）。20 个 bridge 源文件按域拆分。
+`vrcsm_core` 静态编入 vendored `third_party/sqlite-vec/sqlite-vec.c`（`SQLITE_CORE=1`，静态链接直连 API），经 `sqlite3_auto_extension` 在 `Database::Open` 注册。PUBLIC 依赖 `sqlite3 / lz4 / LibLZMA`。host 显式 `/MANIFEST:NO`（自带 manifest 走 `resources/app.manifest`）。21 个 bridge 源文件按域拆分（含 MusicBridge/LyricsBridge）。
 
 ### 1.3 post-build 同步（关键耦合）
 
@@ -76,7 +76,7 @@ Vite：`base:"./"`（适配 `https://app.vrcsm/` 虚拟主机）；注入 `__VRC
 
 `CommonTests.cpp` 覆盖：路径边界 `EnsureWithinBase*`、HW 遥测解析、SafeDelete 保护 CWP 根、Migrator/Junction 越界拒绝、AvatarPreview 缓存键与路径逃逸、AssetCache、avatar 基准 upsert、统一 feed/co-presence/好友预测、全局搜索、DB 世界访问去重、**UpdatePackage 校验（installer 目录约束、SHA256 缺失/错配）**、SteamVR 修复根/备份边界、**插件权限拆分（`ipc:shell` 不得触碰文件系统）**、UnityFS 截断 magic 不可信、LogAtoms/LogParser 全套日志解析、DiscordRpc 帧编解码、Toast/VrOverlay 格式化与门禁。`PluginManifestTests.cpp` 覆盖 SemVer 排序、manifest 形状、`SanitizePluginId` 目录穿越防护。
 
-> [!NOTE] **C++ 测试盲区**：只链 `vrcsm_core`。host/IpcBridge/WebView/20 个 bridge、真实 HTTP（VrcApi）、真实 junction/删除的端到端**完全无 C++ 单测覆盖**（仅测 preflight 拒绝路径）。
+> [!NOTE] **C++ 测试盲区**：只链 `vrcsm_core`。host/IpcBridge/WebView/21 个 bridge、真实 HTTP（VrcApi）、真实 junction/删除的端到端**完全无 C++ 单测覆盖**（仅测 preflight 拒绝路径）。
 
 ### 3.2 前端测试（vitest + jsdom）
 
@@ -100,7 +100,7 @@ Vite：`base:"./"`（适配 `https://app.vrcsm/` 虚拟主机）；注入 `__VRC
 
 > [!IMPORTANT] **`SHA256:` 行是硬约束**：in-app updater（`UpdatePackage.cpp`）要求 GitHub release notes 里有匹配的 `SHA256:` 行，否则拒装（fail-closed）。这条约束由 `CommonTests` 的 `UpdatePackageValidationRejectsMissingSha256/WrongSha256` 守护。粘贴该行是强制发布步骤。见 [更新子系统文档](core/hw-updater-plugins.md#二更新子系统srccoreupdater)。
 
-版本一致性：`VERSION=0.14.6` 与 `web/package.json` 一致，与最近 release commit 吻合。
+版本一致性：`VERSION` 与 `web/package.json` 均为 `0.15.1`（互相一致；但 `vcpkg.json` 落后于 `0.14.6`，需手动 bump）。0.15.1 为本地未发布版本——最后一次 GitHub release 为 0.15.0。
 
 ## 关键交接要点
 

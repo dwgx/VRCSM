@@ -47,7 +47,7 @@ Event:    { event: "migrate.progress", data: {...} }    // unsolicited host→UI
 
 ## 2. Current working-tree state (read first)
 
-**Anchor: HEAD `78e03d6` on `main`; verified baseline `ctest` 135/135.**
+**Anchor: HEAD `b2924e0` on `main` (v0.15.1 local); verified baseline `ctest` 151/151.**
 The Database god-object decomposition that this doc originally tracked as
 in-flight is now committed HISTORY — it was verified green and landed as
 `1fe701f` (Database domain split) and `ecec96d` (IpcBridge decouple). Do not
@@ -75,17 +75,16 @@ IPC response-shape validation + monotonic stale-guard + batched `world.details`
 (`9df8857`), test coverage for SafeDelete/Migrator (`1223c7a`), and the
 `tinygltf` dep drop (`da5d444`).
 
-> **Verification baseline (as of HEAD `78e03d6`).** `ctest` **135/135** pass
-> (3 opt-in live-network probes DISABLED by default), 354 vitest, Playwright UI
-> smoke 54/54, `tsc` + build clean. `Database.h` API remains frozen across the
-> committed domain split (0 duplicate/missing public methods; all TUs include
-> `Database_internal.h`).
+> **Verification baseline (2026-07-09, v0.15.1).** `ctest` **151/151** pass
+> (3 opt-in live-network probes DISABLED by default), **363** vitest (run
+> `--no-file-parallelism`), Playwright UI smoke 54/54, `tsc` + release build
+> clean. `Database.h` API remains frozen across the committed domain split
+> (0 duplicate/missing public methods; all TUs include `Database_internal.h`).
 
 > **Remote divergence (check before syncing):** `git rev-list --left-right
-> --count origin/main...main` = **12 behind, 46 ahead**. The 12 behind are all
-> Dependabot dependency-bump commits with no source conflict against this work.
-> A fresh agent should `git status`/inspect the remote before any `git pull` so
-> the divergence is not a surprise.
+> --count origin/main...main` = **0 behind, 8 ahead** (fully merged — the old
+> Dependabot backlog was resolved in the v0.15.0 release; the 8 ahead are the
+> unpushed 0.15.1 patch commits). No outstanding "behind" divergence.
 
 The stale local command transcript `2026-07-04-111708-...txt` may still sit
 untracked at the repo root and is NOT covered by `.gitignore` — do not
@@ -532,13 +531,14 @@ LocalAppData\VRCSM; groups HostFiles/WebFiles(full `web/**`, including
 AllowSameVersionUpgrades).
 `scripts/build-msi.bat` (60). `package_release.ps1` (end-to-end packager; the
 `SHA256:` release-notes line is a hard updater constraint). `vcpkg.json` (14 —
-v0.14.6; `tinygltf` dropped). `web/package.json` (63 — v0.14.6; build =
+**still `0.14.6`, LAGS behind VERSION**; `tinygltf` dropped). `web/package.json` (63 — v0.15.1; build =
 `tsc -b && vite build`; includes `@huggingface/transformers` →
 onnxruntime-web/ort-wasm). `web/vite.config.ts` (40 — `base './'`,
 `__VRCSM_ASSET_REV__` timestamp, manualChunks, target esnext).
 
-**Data/build flow.** Version flows from root `VERSION` into three consumers
-(`CMakeLists.txt` → app.rc; `vcpkg.json`; `web/package.json` — all `0.14.6`).
+**Data/build flow.** Version flows from root `VERSION` (`0.15.1`) into consumers
+(`CMakeLists.txt` → app.rc; `web/package.json` — both `0.15.1`). **NOTE: `vcpkg.json`
+is NOT auto-synced and still reads `0.14.6` — bump it when cutting a release.**
 Build order: `pnpm build` in `web/` emits `web/dist` → `cmake --build` produces
 `VRCSM.exe` and its POST_BUILD steps copy web/dist, icon, plugins/ next to the
 exe. **web/dist is deliberately NOT a CMake artifact**, so the frontend must be
@@ -550,8 +550,8 @@ to re-run `cmake -P sync-web-dist.cmake` manually). Packaging:
 host+web/**+plugins/**, computes SHA256 into release-notes; the in-app updater
 (`UpdatePackage.cpp`) fails-closed unless a matching `SHA256:` line is present.
 
-**Invariants.** Version single-sourced from `VERSION` (VERSION, vcpkg.json,
-web/package.json all `0.14.6`); `web/dist` must be rebuilt BEFORE the host build;
+**Invariants.** Version from `VERSION`=`0.15.1` (web/package.json matches;
+vcpkg.json lags at `0.14.6` — bump manually); `web/dist` must be rebuilt BEFORE the host build;
 sync-web-dist/sync-plugins purge (REMOVE_RECURSE) the destination first to
 prevent stale-chunk leakage; MSI must include `ort-wasm*.wasm` because
 experimental visual search loads onnxruntime-web assets from the installed
