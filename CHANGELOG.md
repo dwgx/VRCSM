@@ -8,6 +8,11 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
+## [0.15.1] — 2026-07-09
+
+- **Fixed: UI language reset to English on every launch.** The saved language (`vrcsm.language`) was persisted correctly but ignored at startup because `i18nReady` read the resolved language before the detector had applied the stored value, so a non-English pick (e.g. 简体中文) silently fell back to English until re-picked by hand. Startup now awaits i18n init and reads the persisted language directly. Regression-tested.
+- **QQ Music lyrics source.** The synced-lyrics chain is now LRCLIB → NetEase → QQ Music, adding coverage for Chinese/CPOP tracks the first two miss. Routed through the host lyrics proxy (SSRF-railed, https-only) with a per-source toggle in the OSC now-playing panel; i18n across all 7 locales. Verified end-to-end against QQ's live lyric endpoint.
+
 ## [0.15.0] — 2026-07-09
 
 - Cut from `main` after a full feature area plus a large audit-driven hardening pass; supersedes the `v0.14.6` checkpoint. Also integrates the pending Dependabot dependency/action bumps.
