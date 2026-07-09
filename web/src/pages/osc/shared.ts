@@ -14,7 +14,12 @@ import {
  */
 export type TemplateExtras = Pick<
   OscTemplateContext,
-  "music" | "musicProgressWidth" | "musicMarqueeWidth" | "asciiFold"
+  | "music"
+  | "musicProgressWidth"
+  | "musicMarqueeWidth"
+  | "musicLyricLine"
+  | "musicLyricTranslated"
+  | "asciiFold"
 >;
 
 /** Shape returned by the `avatar.parameters.local` IPC method. */

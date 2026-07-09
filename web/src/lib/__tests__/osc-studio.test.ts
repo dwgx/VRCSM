@@ -93,6 +93,37 @@ describe("osc-studio templates", () => {
     expect(renderOscTemplate("Thermal | {fan.0}", { hardware, now: fixedNow })).toBe("Thermal | GPU Fan 1330RPM");
   });
 
+  it("renders {music.lyrics} from the resolved musicLyricLine in context", () => {
+    // Regression: OscTools' musicExtras omitted musicLyricLine, so the lyrics
+    // card rendered "" and the send collapsed to empty even though lyrics were
+    // found. With the resolved line in context it must render.
+    const music = {
+      active: true,
+      title: "天涯",
+      artist: "爱乐团王超",
+      album: "天涯",
+      status: "playing",
+      app_id: "QQMusic.exe",
+      app_name: "QQMusic",
+      position_ms: 130_000,
+      duration_ms: 256_000,
+      position_at_ms: fixedNow.getTime(),
+      playback_rate: 1,
+      has_thumbnail: false,
+    };
+    const withLine = renderOscTemplate("♪ {music.lyrics}", {
+      now: fixedNow,
+      music,
+      musicLyricLine: "我愿陪你走天涯",
+    });
+    expect(withLine).toBe("♪ 我愿陪你走天涯");
+
+    // Without a resolved line (the old broken wiring) it collapses to empty —
+    // documents exactly what the missing context field caused.
+    const withoutLine = renderOscTemplate("♪ {music.lyrics}", { now: fixedNow, music });
+    expect(withoutLine).toBe("");
+  });
+
   it("migrates old GPU fan percent templates to detected fan sensors", () => {
     const cards = importOscStudioProfile(JSON.stringify([
       {

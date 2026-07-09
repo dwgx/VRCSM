@@ -19,8 +19,10 @@ import { useReport } from "@/lib/report-context";
 import {
   appendOscScene,
   cardPreview,
+  extrapolatePosition,
   type OscStudioCard,
 } from "@/lib/osc-studio";
+import { currentLyricLine, currentLyricTrans } from "@/lib/lyrics";
 import { useOscStudio, type OscLogEntry, type SendOutcome } from "@/lib/useOscStudio";
 import { ProfileBar } from "./osc/ProfileBar";
 import { MessageCard } from "./osc/MessageCard";
@@ -88,13 +90,6 @@ export default function OscTools() {
     nowPlaying,
   } = studio;
 
-  const musicExtras: TemplateExtras = {
-    music: nowPlaying.music,
-    musicProgressWidth: nowPlaying.progressWidth,
-    musicMarqueeWidth: nowPlaying.marqueeWidth,
-    asciiFold: nowPlaying.asciiFold,
-  };
-
   const [selectedId, setSelectedId] = useState<string | null>(() => cards[0]?.id ?? null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
@@ -118,6 +113,35 @@ export default function OscTools() {
   }, [cards, selectedId]);
 
   const now = useMemo(() => new Date(clockTick), [clockTick]);
+
+  // Resolve the current synced-lyric line here so {music.lyrics} isn't empty
+  // in OscTools previews/sends. Previously musicExtras omitted it, so the
+  // NowPlayingPanel (which resolves its own line) showed lyrics but the card
+  // editor's "will send" preview and the actual send rendered "" — collapsing
+  // the ♪ {music.lyrics} template to empty. Recomputed each 1s clock tick so
+  // the line advances with playback.
+  const musicExtras: TemplateExtras = useMemo(() => {
+    const music = nowPlaying.music;
+    const posMs = music && music.active ? extrapolatePosition(music, now.getTime()) : 0;
+    const lines = nowPlaying.lyrics;
+    return {
+      music,
+      musicProgressWidth: nowPlaying.progressWidth,
+      musicMarqueeWidth: nowPlaying.marqueeWidth,
+      musicLyricLine: music && music.active ? currentLyricLine(lines, posMs) : "",
+      musicLyricTranslated: music && music.active ? currentLyricTrans(lines, posMs) : "",
+      asciiFold: nowPlaying.asciiFold,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    now,
+    nowPlaying.music,
+    nowPlaying.lyrics,
+    nowPlaying.progressWidth,
+    nowPlaying.marqueeWidth,
+    nowPlaying.asciiFold,
+  ]);
+
   const selectedCard = useMemo(
     () => cards.find((card) => card.id === selectedId) ?? null,
     [cards, selectedId],
