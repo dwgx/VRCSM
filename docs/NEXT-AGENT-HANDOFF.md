@@ -27,7 +27,38 @@ Last updated: 2026-07-09
 ---
 
 
-## Latest Session (2026-07-09) — READ FIRST
+## Latest Session (2026-07-09 session 2) — READ FIRST
+
+**Music/lyrics/OSC polish + local-only v0.15.1.** After v0.15.0 shipped, this
+session added the **QQ Music lyrics source** (chain: LRCLIB → NetEase → QQ),
+**OSC progress/marquee sliders**, and fixed: **i18n language reset on launch**,
+**factory-reset not clearing thumbnails**, and **`{music.lyrics}` sending empty**
+from the OSC card. Full detail + the 7 unpushed commits are in `MEMORY.md`
+→ "Post-0.15.0 local work".
+
+**Branch reality.** `main` is **7 commits ahead of `origin/main`, 0 behind** —
+HEAD `821f3b7`, **NOT pushed**. v0.15.0 is released on GitHub; **v0.15.1 is
+LOCAL-only** (`VERSION`=0.15.1, a local MSI is installed). Pushing/releasing
+0.15.1 is an outstanding outward-facing step — confirm with the owner first.
+
+**Verification baseline (re-confirmed 2026-07-09 at 0.15.1):** ctest **151/151**
+(3 opt-in live probes DISABLED), vitest **363/363** (`--no-file-parallelism`),
+Playwright UI smoke **54/54**, tsc + release build clean (2 pre-existing
+warnings). **Reinstall trap:** stop VRCSM before installing an MSI or the running
+WebView2 locks `web/` and the installer silently keeps the stale bundle.
+
+**Top open follow-ups (see `MEMORY.md` "Open follow-ups" for full detail):**
+1. **Online lyric-source expansion** for obscure/uploaded tracks (Kugou is the
+   widest; + a QQ title-only fallback). Two research workflows already ran —
+   integrate their synthesis. This is the recommended next feature.
+2. **Local QQ `.qrc` cache decrypt — PARKED (hard):** on-disk cache uses a
+   different scheme than the network qrc; decode is inlined in QQMusic.exe.
+   Pursue only if #1 doesn't cover enough. `D:\Tool\debugger` toolkit available.
+3. world_visits mixed-timestamp dwell hours; audit batches B10/B11.
+
+---
+
+## Session 2026-07-09 (session 1) — GUI↔API audit + remediation (shipped in v0.15.0)
 
 A full read-only **GUI↔API (IPC) contract audit** followed by a **9-batch
 foreground remediation sweep**. The audit report is
@@ -36,10 +67,9 @@ call sites, fanned out per bridge domain + adversarially verified, grade B-).
 Every fix was built + tested + committed independently; each behavior change is
 locked by a new test.
 
-**Branch reality.** `main` is **fully synced with `origin/main` (0 ahead / 0
-behind)** — HEAD `5a3e661`, pushed. **v0.15.0 is RELEASED** (tag `v0.15.0` +
-GitHub release with the MSI + ZIP, published 2026-07-09). The Dependabot bumps
-that were behind origin are merged into this release.
+**Branch reality (at that point).** v0.15.0 was cut, tagged, and released to
+GitHub with the MSI + ZIP (Dependabot bumps merged in). Superseded by the
+0.15.1 local state above.
 
 **Verification baseline (re-confirmed 2026-07-09 at 0.15.0 by a full re-run —
 the numbers below are real, not copied from per-batch runs):**

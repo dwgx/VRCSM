@@ -4,7 +4,7 @@ Last updated: 2026-07-09
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
-> Note: **v0.15.0 released 2026-07-09** — `main` is fully synced with `origin/main` (HEAD `5a3e661`, tag `v0.15.0` + GitHub release published). Several docs below labeled "plan" now describe work that has already shipped (OSC Studio, the now-playing music module). Current test baseline: ctest 150/150 (3 opt-in live network probes DISABLED), 359 vitest (run `--no-file-parallelism`), Playwright UI smoke 54/54. i18n is at full parity across all 7 locales. See `docs/review-2026-07/GUI-API-CONTRACT-AUDIT-2026-07-09.md` for the latest GUI↔API audit + remediation.
+> Note: **v0.15.0 released 2026-07-09; v0.15.1 is local-only (7 commits ahead of origin, unpushed)** — 0.15.1 adds QQ Music lyrics, OSC sliders, and the i18n-language / factory-reset-thumbnail / {music.lyrics}-send fixes. Several docs below labeled "plan" now describe work that has already shipped (OSC Studio, the now-playing music module). Current test baseline: ctest 151/151 (3 opt-in live network probes DISABLED), 363 vitest (run `--no-file-parallelism`), Playwright UI smoke 54/54. i18n is at full parity across all 7 locales. See `docs/review-2026-07/GUI-API-CONTRACT-AUDIT-2026-07-09.md` for the latest GUI↔API audit + remediation, and `MEMORY.md` "Post-0.15.0 local work" for the lyrics/OSC/RE follow-ups.
 
 ## Required Startup Order
 
