@@ -50,25 +50,30 @@ describe("mmss", () => {
   });
 });
 
-describe("oscProgressBar", () => {
-  it("renders an empty bar at position 0", () => {
-    expect(oscProgressBar(0, 100, 10)).toBe("▭▭▭▭▭▭▭▭▭▭");
+describe("oscProgressBar (VRChat-safe knob seek bar)", () => {
+  // Default is now a seek bar: ━ played / ● play-head / ─ remaining (the old
+  // ▬/▭ blocks rendered ▭ as a circle in the VRChat chatbox font).
+  it("parks the knob at the start at position 0", () => {
+    expect(oscProgressBar(0, 100, 10)).toBe("●─────────");
   });
-  it("renders a full bar at the end", () => {
-    expect(oscProgressBar(100, 100, 10)).toBe("▬▬▬▬▬▬▬▬▬▬");
+  it("puts the knob at the end when finished", () => {
+    expect(oscProgressBar(100, 100, 10)).toBe("━━━━━━━━━●");
   });
-  it("renders a half bar at the midpoint", () => {
-    expect(oscProgressBar(50, 100, 10)).toBe("▬▬▬▬▬▭▭▭▭▭");
+  it("places the knob near the midpoint", () => {
+    // head = round(0.5 * 9) = 5 → 5 played, knob, 4 remaining
+    expect(oscProgressBar(50, 100, 10)).toBe("━━━━━●────");
   });
-  it("clamps pos > dur to a full bar", () => {
-    expect(oscProgressBar(500, 100, 8)).toBe("▬▬▬▬▬▬▬▬");
+  it("clamps pos > dur to the end", () => {
+    expect(oscProgressBar(500, 100, 8)).toBe("━━━━━━━●");
   });
-  it("returns all-empty when dur <= 0 (unknown length)", () => {
-    expect(oscProgressBar(50, 0, 6)).toBe("▭▭▭▭▭▭");
-    expect(oscProgressBar(50, -1, 6)).toBe("▭▭▭▭▭▭");
+  it("shows an empty track with knob at start when dur <= 0", () => {
+    expect(oscProgressBar(50, 0, 6)).toBe("●─────");
+    expect(oscProgressBar(50, -1, 6)).toBe("●─────");
   });
-  it("respects custom glyphs and width", () => {
-    expect(oscProgressBar(50, 100, 4, "#", "-")).toBe("##--");
+  it("supports a knob-less block style via explicit glyphs", () => {
+    // knob="" → classic fill/empty split (round(0.5*4)=2)
+    expect(oscProgressBar(50, 100, 4, "#", "-", "")).toBe("##--");
+    expect(oscProgressBar(50, 100, 10, "█", "░", "")).toBe("█████░░░░░");
   });
   it("returns empty string for non-positive width", () => {
     expect(oscProgressBar(50, 100, 0)).toBe("");
@@ -177,7 +182,7 @@ describe("renderOscTemplate music tokens", () => {
       now: fixedNow,
       musicProgressWidth: 10,
     });
-    expect(out).toBe("[▬▬▬▬▬▭▭▭▭▭]");
+    expect(out).toBe("[━━━━━●────]");
   });
 });
 

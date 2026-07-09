@@ -318,6 +318,36 @@ export const MUSIC_PRESETS: MusicPreset[] = [
     label: "Bilingual",
     template: "{music.lyrics} / {music.lyricsTranslated}",
   },
+  // ── Rich multi-line "Now Playing" cards (VRChat chatbox supports newlines).
+  // Each line is decorated; empty music.* tokens collapse via cleanRendered.
+  {
+    id: "music-card",
+    labelKey: "osc.music.presetCard",
+    label: "Now Playing Card",
+    template:
+      "♫ Now Playing\n{music.title}\nby {music.artist}\n{music.progressBar} {music.position}/{music.duration}\n♪ {music.lyrics}",
+  },
+  {
+    id: "music-card-full",
+    labelKey: "osc.music.presetCardFull",
+    label: "Full Card",
+    template:
+      "┌ ♫ NOW PLAYING ─\n│ {music.title}\n│ {music.artist} — {music.album}\n│ {music.status} {music.progressBar} {music.position}/{music.duration}\n└ ♪ {music.lyrics}",
+  },
+  {
+    id: "music-card-boxed",
+    labelKey: "osc.music.presetBoxed",
+    label: "Boxed",
+    template:
+      "▛▀▀ ♫ ▀▀▜\n{music.title}\n{music.artist}\n{music.progressBar}\n{music.position} / {music.duration}\n▙▄ ♪ {music.lyrics} ▄▟",
+  },
+  {
+    id: "music-card-lyrics-focus",
+    labelKey: "osc.music.presetLyricsFocus",
+    label: "Lyrics Focus",
+    template:
+      "♫ {music.title} · {music.artist}\n{music.progressBar} {music.percent}\n『 {music.lyrics} 』\n{music.lyricsTranslated}",
+  },
 ];
 
 /** Build a fresh chatbox card from a music preset (unique id, disabled auto). */
@@ -879,19 +909,37 @@ export function mmss(ms: number): string {
  * Render a fixed-width progress bar. `posMs` is clamped to `[0, durMs]`; a
  * non-positive `durMs` yields an all-empty bar (unknown length → no progress).
  */
+// Progress bar for the VRChat chatbox. IMPORTANT: the chatbox font (Noto Sans)
+// does NOT render the geometric-shape glyphs ▬ (U+25AC) / ▭ (U+25AD) as a solid
+// bar — ▭ falls back to an empty circle "○" in-game (reported by users). Use the
+// Box Drawing heavy/light horizontals (━ U+2501 / ─ U+2500) with a ● (U+25CF)
+// play-head, which the chatbox font renders reliably as a seek-bar look:
+//   ━━━━●─────
+// `fill`/`empty`/`knob` stay overridable so callers can pick a style (block
+// █/░, dots ⣿/⣀, etc.) but the defaults are the VRChat-safe seek bar.
 export function oscProgressBar(
   posMs: number,
   durMs: number,
   width = 10,
-  fill = "▬", // ▬
-  empty = "▭", // ▭
+  fill = "━",  // U+2501 heavy horizontal (played)
+  empty = "─", // U+2500 light horizontal (remaining)
+  knob = "●",  // U+25CF play-head; pass "" to disable the knob
 ): string {
   const w = Number.isFinite(width) && width > 0 ? Math.floor(width) : 0;
   if (w <= 0) return "";
-  if (!Number.isFinite(durMs) || durMs <= 0) return empty.repeat(w);
+  const hasKnob = knob.length > 0;
+  if (!Number.isFinite(durMs) || durMs <= 0) {
+    // No duration: empty track, knob (if any) parked at the start.
+    return hasKnob && w > 0 ? knob + empty.repeat(w - 1) : empty.repeat(w);
+  }
   const pos = Math.min(Math.max(Number.isFinite(posMs) ? posMs : 0, 0), durMs);
-  const filled = Math.min(w, Math.max(0, Math.round((pos / durMs) * w)));
-  return fill.repeat(filled) + empty.repeat(w - filled);
+  if (!hasKnob) {
+    const filled = Math.min(w, Math.max(0, Math.round((pos / durMs) * w)));
+    return fill.repeat(filled) + empty.repeat(w - filled);
+  }
+  // Knob style: the play-head takes one cell; the rest splits played/remaining.
+  const head = Math.min(w - 1, Math.max(0, Math.round((pos / durMs) * (w - 1))));
+  return fill.repeat(head) + knob + empty.repeat(w - 1 - head);
 }
 
 /**
