@@ -45,22 +45,13 @@ Vite：`base:"./"`（适配 `https://app.vrcsm/` 虚拟主机）；注入 `__VRC
 
 ### 2.1 运行时装配
 
-`web/src/i18n/index.ts` 静态 import 7 个 locale JSON（en/ja/ko/ru/th/hi/zh-CN），`fallbackLng:"en"`，探测顺序 `localStorage → navigator`，持久化键 `vrcsm.language`，`escapeValue:false`。
+`web/src/i18n/index.ts` 只**同步** import `en`（fallback），其余 6 个 locale（ja/ko/ru/th/hi/zh-CN）经 `LOADERS` map **懒加载**（按需 dynamic `import()`，rollup 每语言一个 chunk，约 700KB 移出主包）。`fallbackLng:"en"`，探测顺序 `localStorage → navigator`，持久化键 `vrcsm.language`，`escapeValue:false`。启动时 `i18nReady` await init 后直接读 localStorage 应用存储语言（修过一次"每次启动回英文"的时序 bug）。
 
 ### 2.2 键覆盖度（实测）
 
-以 `en.json` 扁平化为源共 1833 键。各语言缺口：
+**全部 7 个 locale 现已 full parity —— en/zh-CN/ja/ko/ru/th/hi 各 2844 leaf 键。** en 是规范超集（无仅中文存在的键），此前的 +770 超集 / 295~297 缺口已作废。
 
-| locale | keys | 缺失（en 有它无） | 多余（它有 en 无） |
-|---|---|---|---|
-| zh-CN | 2603 | 0 | 770 |
-| ja / ko / ru / hi | 1548 | 295 | 10 |
-| th | 1567 | 297 | 31 |
-
-> [!WARNING] **i18n 有真实漂移，且无门禁捕获**：
-> - **zh-CN 是事实超集**（+770 键，整棵 `vrchatWorkspace.*` 只在中文里）—— en 源落后于中文。翻译脚本以 en 为源（`i18n-translate.mjs:26`），且写回时只接受 en 中存在的键（`:269`），故这些仅中文存在的键**结构上无法回填**其他语言。
-> - ja/ko/ru/hi 各缺 295、th 缺 297（整棵 `vrcPlus.*`、`nav.models` 等）—— VRC+ 新页面翻译未补齐，运行时回退英文。
-> - 无任何构建期/测试期 i18n 校验门禁，键漂移不会让 `pnpm build` 或 vitest 失败。唯一检查手段是手动 `pnpm i18n:check`。
+> [!NOTE] **i18n 有覆盖率门禁**：`web/src/i18n/__tests__/locale-coverage.test.ts` 断言 en ⊇ 各 locale，键漂移会让 vitest 失败（不再是"无门禁"）。加新键时 7 语言一起补 + 占位符对齐。
 
 ### 2.3 翻译脚本
 
@@ -72,7 +63,7 @@ Vite：`base:"./"`（适配 `https://app.vrcsm/` 虚拟主机）；注入 `__VRC
 
 ### 3.1 C++ 测试（gtest）
 
-单一可执行体 `VRCSM_Tests`，源 `main.cpp` + `CommonTests.cpp`（84 个 TEST/TEST_F）+ `PluginManifestTests.cpp`（15 个 TEST），链接 `vrcsm_core + gtest_main`。gtest 经 FetchContent 固定，`gtest_force_shared_crt ON`（与顶层 `MultiThreadedDLL` 一致）。
+单一可执行体 `VRCSM_Tests`，源 `main.cpp` + `CommonTests.cpp`（111 个 TEST/TEST_F）+ `PluginManifestTests.cpp`（18 个）+ `FriendAnalyticsTests.cpp`(10) + `LyricsProxyTests.cpp`(11) + `HttpClientTests.cpp`(5)，链接 `vrcsm_core + gtest_main`。gtest 经 FetchContent 固定，`gtest_force_shared_crt ON`（与顶层 `MultiThreadedDLL` 一致）。
 
 `CommonTests.cpp` 覆盖：路径边界 `EnsureWithinBase*`、HW 遥测解析、SafeDelete 保护 CWP 根、Migrator/Junction 越界拒绝、AvatarPreview 缓存键与路径逃逸、AssetCache、avatar 基准 upsert、统一 feed/co-presence/好友预测、全局搜索、DB 世界访问去重、**UpdatePackage 校验（installer 目录约束、SHA256 缺失/错配）**、SteamVR 修复根/备份边界、**插件权限拆分（`ipc:shell` 不得触碰文件系统）**、UnityFS 截断 magic 不可信、LogAtoms/LogParser 全套日志解析、DiscordRpc 帧编解码、Toast/VrOverlay 格式化与门禁。`PluginManifestTests.cpp` 覆盖 SemVer 排序、manifest 形状、`SanitizePluginId` 目录穿越防护。
 
@@ -104,7 +95,7 @@ Vite：`base:"./"`（适配 `https://app.vrcsm/` 虚拟主机）；注入 `__VRC
 
 ## 关键交接要点
 
-1. **i18n 漂移**：zh-CN 超集 +770 键，其他语言缺 295~297；翻译脚本结构上只从 en 生成，无法回填中文独有键；无构建/测试门禁。
+1. **i18n**：已 full parity（7 语言各 2844 键），由 `web/src/i18n/__tests__/locale-coverage.test.ts` 门禁保护（漂移即 vitest 失败）。加键时 7 语言同步 + 占位符对齐。
 2. **密钥卫生**：`i18n-translate.mjs:29` 硬编码默认 API key。
 3. **测试盲区**：C++ 测试只链 core；前端全走 mock。
 4. **构建耦合**：`web/dist` 非 CMake 生成物，改前端后必须先 `pnpm build` 再重建 host。

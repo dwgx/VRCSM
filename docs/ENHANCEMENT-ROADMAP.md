@@ -34,9 +34,10 @@ Done and verified (build + 54/54 tests pass):
   `UpdatePackageValidationRejectsMissingSha256`, `...RejectsWrongSha256`.
 
 Still open from the audit (not yet fixed):
-- **M3** SafeDelete lacks a reparse-point guard before `remove_all` (SteamVR path has one).
-- **M4** VrcApi interpolates unencoded IDs into URL paths; reachable by plugins with
-  `ipc:vrc:api`. Percent-encode path segments or validate ID patterns.
+- ~~**M3** SafeDelete reparse-point guard~~ **FIXED** — `SafeDelete.cpp` has
+  `isReparsePoint` (:39-51) + refusal returning `reparse_target` (:225-230).
+- ~~**M4** VrcApi unencoded path IDs~~ **FIXED** — `VrcApi.cpp` calls `percentEncode()`
+  on interpolated path segments at ~20 sites (e.g. fetchInstance :2130).
 - **M5/M6** Plugin `ipc:fs:listDir` (whole-disk enumeration) and `ipc:fs:writePlan`
   (arbitrary-dir write) lack base containment; `.`/`-` plugin host-label collision.
 - **M7** `CacheIndex::LoadPersisted` now does per-entry filesystem I/O synchronously

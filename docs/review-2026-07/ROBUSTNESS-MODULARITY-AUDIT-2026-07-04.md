@@ -24,7 +24,7 @@ modularization backlog — mostly latent risk, not active fires.
   `VrcApi` fetchInstance/fetchWorld; JunctionUtil reparse-buffer bounds; UnityBundle blocksInfo/2GiB caps.
 
 ### Top 3 remaining themes
-1. **Untrusted-bundle parsing has one true crash bug.** `UnityMesh.cpp:601` integer-overflow bypasses a
+1. **[FIXED]** ~~Untrusted-bundle parsing has one true crash bug.~~ (Now `UnityMesh.cpp:606` uses the underflow-safe `streamOffset > n || streamSize > n - streamOffset` guard; findings #1/#2/#17/#18 all remediated — see the ✅ column.) Original: `UnityMesh.cpp:601` integer-overflow bypasses a
    bounds check and reads from a wild pointer — a **segfault that `IpcBridge`'s `catch(...)` cannot
    contain**. Everything else in the Unity path degrades cleanly; this one does not. Highest-value fix.
 2. **Irreversible + security-sensitive paths are correct but under-tested.** SafeDelete junction branch,
