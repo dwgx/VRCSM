@@ -528,58 +528,82 @@
             <span class="page-mono">v0.15.1 · 77393a7</span>
           </div>
 
-          <div class="about-card">
-            <div class="about-header">
-              <img src="https://q.qlogo.cn/headimg_dl?dst_uin=136666451&spec=640" alt="VRCSM" class="about-avatar">
-              <div>
-                <h2>VRCSM</h2>
-                <p class="about-sub">VRChat Settings Manager</p>
-              </div>
+          <div class="about-grid">
+            <div class="about-portrait">
+              <img src="https://q.qlogo.cn/headimg_dl?dst_uin=136666451&spec=640" alt="dwgx" id="aboutPortrait" title="点我">
+              <div class="about-name">dwgx</div>
+              <div class="about-handle">QQ 136666451</div>
             </div>
-            <div class="about-meta">
-              <div class="about-row"><span class="about-label">Version</span><span>v0.15.1</span></div>
-              <div class="about-row"><span class="about-label">Commit</span><span class="mono">77393a7</span></div>
-              <div class="about-row"><span class="about-label">Released</span><span>2026-07-09</span></div>
-              <div class="about-row"><span class="about-label">QQ Group</span><span class="mono">974118886</span></div>
-              <div class="about-row"><span class="about-label">License</span><span>MIT</span></div>
-              <div class="about-row"><span class="about-label">GitHub</span><a href="https://github.com/dwgx/VRCSM" target="_blank" rel="noreferrer">dwgx/VRCSM</a></div>
+            <div class="about-info">
+              <div class="about-row">
+                <div class="key">Version</div>
+                <div class="val"><b>v0.15.1</b> · released 2026-07-09 · commit <code style="font-family:var(--font-mono);background:var(--canvas);padding:1px 5px;border-radius:3px;color:var(--primary)">77393a7</code></div>
+              </div>
+              <div class="about-row">
+                <div class="key">Author</div>
+                <div class="val">dwgx · <a href="mailto:somdhmtb@gmail.com">somdhmtb@gmail.com</a></div>
+              </div>
+              <div class="about-row">
+                <div class="key">Repository</div>
+                <div class="val"><a href="https://github.com/dwgx/VRCSM" target="_blank" rel="noreferrer">github.com/dwgx/VRCSM</a></div>
+              </div>
+              <div class="about-row">
+                <div class="key">License</div>
+                <div class="val">VRCSM Source-Available License (VSAL) — 源码可见，禁止二次分发与商业用途</div>
+              </div>
+              <div class="about-row">
+                <div class="key">QQ Group</div>
+                <div class="val"><b>974118886</b> — VRCSM 用户交流群</div>
+              </div>
             </div>
           </div>
 
-          <div class="card-mono" style="margin:18px 0 10px;display:block">Changelog</div>
+          <div class="card-mono" style="margin:24px 0 10px;display:block">Changelog</div>
           <div class="changelog">
-            <div class="changelog-entry">
-              <div class="changelog-version">v0.15.1 <span class="changelog-date">2026-07-09</span></div>
-              <ul>
-                <li>Fix {music.lyrics} variable resolution in OscTools so lyrics card actually sends</li>
-                <li>Wipe renderer-locked thumbnail caches on next launch (reset fix)</li>
-                <li>Add opt-in live QQ Music lyric-fetch probe test</li>
-                <li>Refresh handoff surface to v0.15.1 local state</li>
+            <div class="changelog-version">
+              <div class="changelog-header">
+                <span class="changelog-tag">v0.15.1</span>
+                <span class="changelog-date">2026-07-09</span>
+              </div>
+              <ul class="changelog-list">
+                <li>QQ Music 歌词源 + Kugou 第 4 源 + QQ 纯标题回退</li>
+                <li>修复 {music.lyrics} 在 OscTools 中发送为空</li>
+                <li>修复工厂重置未清除缩略图缓存</li>
+                <li>修复 i18n 启动时语言重置为英文</li>
               </ul>
             </div>
-            <div class="changelog-entry">
-              <div class="changelog-version">v0.15.0 <span class="changelog-date">2026-07-03</span></div>
-              <ul>
-                <li>Database split into 9 domain TUs + internal header</li>
-                <li>IpcBridge decoupled into 21 per-domain bridge files</li>
-                <li>Wave-2 security review + remediation pass</li>
-                <li>ctest green 151/151, vitest 363, Playwright 54/54</li>
+            <div class="changelog-version">
+              <div class="changelog-header">
+                <span class="changelog-tag">v0.15.0</span>
+                <span class="changelog-date">2026-07-09</span>
+              </div>
+              <ul class="changelog-list">
+                <li>GUI↔API 全量审计 + 9 批安全/正确性修复</li>
+                <li>GSMTC 正在播放 + 同步歌词（LRCLIB/NetEase/QQ）</li>
+                <li>系统托盘 + 数据库拆分 + i18n 7 语言满覆盖</li>
+                <li>自更新热替换 + LyricsProxy SSRF 加固</li>
               </ul>
             </div>
-            <div class="changelog-entry">
-              <div class="changelog-version">v0.14.6 <span class="changelog-date">2026-06-28</span></div>
-              <ul>
-                <li>GSMTC now-playing integration with 4 lyrics sources</li>
-                <li>OSC Studio visual synthesizer with chatbox preview</li>
-                <li>Discord Rich Presence auto-sync with privacy toggle</li>
+            <div class="changelog-version">
+              <div class="changelog-header">
+                <span class="changelog-tag">v0.14.6</span>
+                <span class="changelog-date">2026-06-24</span>
+              </div>
+              <ul class="changelog-list">
+                <li>OSC Studio 可视化合成器 + 硬件遥测卡片</li>
+                <li>插件系统 + Auto-Uploader + 应用内热更新</li>
+                <li>Discord Rich Presence + 截图 PNG 元数据注入</li>
               </ul>
             </div>
-            <div class="changelog-entry">
-              <div class="changelog-version">v0.14.5 <span class="changelog-date">2026-06-21</span></div>
-              <ul>
-                <li>Historical radar session reconstruction from output_log</li>
-                <li>Automation rules engine (condition-action pairs)</li>
-                <li>SteamVR diagnostics with one-click repair</li>
+            <div class="changelog-version">
+              <div class="changelog-header">
+                <span class="changelog-tag">v0.14.5</span>
+                <span class="changelog-date">2026-05-09</span>
+              </div>
+              <ul class="changelog-list">
+                <li>日志回填修复（首日后数据丢失）+ 去重唯一约束</li>
+                <li>历史雷达离线分析 + 非好友显示名去哈希</li>
+                <li>硬件检测 + SteamVR 推荐 + BoopCard 简化</li>
               </ul>
             </div>
           </div>
