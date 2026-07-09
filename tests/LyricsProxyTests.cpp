@@ -180,3 +180,27 @@ TEST(LyricsProxyLive, DISABLED_NeteaseLyricReturnsChineseLrc)
     std::printf("[live] NetEase lyric body (first 300 chars):\n%s\n",
                 res.body.substr(0, 300).c_str());
 }
+
+TEST(LyricsProxyLive, DISABLED_QqLyricReturnsChineseLrc)
+{
+    if (!LiveLyricsEnabled())
+    {
+        GTEST_SKIP() << "set VRCSM_LIVE_LYRICS_TEST=1 to run live QQ probe";
+    }
+    // Drives the EXACT host transport lyrics.fetch uses (LyricsFetch) against
+    // QQ Music, mirroring fromQQ: fcg_query_lyric_new with nobase64=1. Uses a
+    // known mid (周杰伦 - 晴天, 0039MnYb0qxYhV). Proves the SSRF rail passes
+    // c.y.qq.com and the y.qq.com Referer is accepted end-to-end.
+    const std::string url =
+        "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg"
+        "?songmid=0039MnYb0qxYhV&format=json&nobase64=1&g_tk=5381";
+    const auto res = LyricsFetch(url, "https://y.qq.com/");
+    ASSERT_TRUE(res.error.empty()) << "transport error: " << res.error;
+    EXPECT_GE(res.status, 200);
+    EXPECT_LT(res.status, 300);
+    EXPECT_NE(res.body.find("\"lyric\""), std::string::npos)
+        << "QQ lyric body (first 400 chars): " << res.body.substr(0, 400);
+    EXPECT_NE(res.body.find("["), std::string::npos);
+    std::printf("[live] QQ lyric body (first 300 chars):\n%s\n",
+                res.body.substr(0, 300).c_str());
+}
