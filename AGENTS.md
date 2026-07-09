@@ -38,7 +38,7 @@ scripts/build-msi.bat
 
 The CMake post-build step (`cmake/sync-web-dist.cmake`) copies `web/dist/` into the build output's `web/` folder so the WebView2 host can serve it. Rebuild the frontend with `pnpm build` in `web/` before rebuilding the C++ host if you changed frontend code.
 
-Tests: C++ `ctest --test-dir build\x64-release`, web `pnpm test` (vitest) and `pnpm test:smoke` (Playwright UI smoke). Current green baseline: ctest 151/151 (3 opt-in live network probes DISABLED by default), 363 vitest, Playwright UI smoke 54/54, `tsc` + build clean. Run the full web vitest with `--no-file-parallelism` — the default parallel runner flakes ~25 fails in the two heavy render suites (contention, not a regression). See `MEMORY.md` for the full verification sequence.
+Tests: C++ `ctest --test-dir build\x64-release`, web `pnpm test` (vitest) and `pnpm test:smoke` (Playwright UI smoke). Current green baseline: ctest 151/151 (3 opt-in live network probes DISABLED by default), 366 vitest, Playwright UI smoke 54/54, `tsc` + build clean. Run the full web vitest with `--no-file-parallelism` — the default parallel runner flakes ~25 fails in the two heavy render suites (contention, not a regression). See `MEMORY.md` for the full verification sequence.
 
 ## Architecture
 

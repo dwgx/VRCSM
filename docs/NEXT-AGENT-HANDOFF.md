@@ -29,32 +29,42 @@ Last updated: 2026-07-09
 
 ## Latest Session (2026-07-09 session 2) — READ FIRST
 
-**Music/lyrics/OSC polish + local-only v0.15.1.** After v0.15.0 shipped, this
-session added the **QQ Music lyrics source** (chain: LRCLIB → NetEase → QQ),
-**OSC progress/marquee sliders**, and fixed: **i18n language reset on launch**,
-**factory-reset not clearing thumbnails**, and **`{music.lyrics}` sending empty**
-from the OSC card. Full detail + the 7 unpushed commits are in `MEMORY.md`
-→ "Post-0.15.0 local work".
+**Music/lyrics/OSC feature work + local v0.15.1.** On top of v0.15.0 this added:
+the now-playing **lyrics chain LRCLIB → NetEase → QQ → Kugou** (`77393a7`, +
+a QQ **title-only fallback** for obscure/uploaded tracks), **OSC progress/marquee
+sliders**, a **VRChat-safe seek-bar progress + 4 rich Now Playing presets**
+(`600440e` — the old `▬/▭` rendered as empty circles in-game), a **gh-pages
+landing rewrite**, and fixes for **i18n language reset on launch**, **factory-reset
+not clearing thumbnails**, and **`{music.lyrics}` sending empty** from the OSC
+card. Full commit-by-commit detail in `MEMORY.md` → "Post-0.15.0 local work".
 
-**Branch reality.** `main` is **7 commits ahead of `origin/main`, 0 behind** —
-HEAD `821f3b7`, **NOT pushed**. v0.15.0 is released on GitHub; **v0.15.1 is
-LOCAL-only** (`VERSION`=0.15.1, a local MSI is installed). Pushing/releasing
-0.15.1 is an outstanding outward-facing step — confirm with the owner first.
+**Branch reality.** `main` is **1 commit ahead of `origin/main`, 0 behind** —
+HEAD `600440e` (OSC seek bar), **NOT pushed**; everything through `45668b0` IS
+pushed. v0.15.0 is released on GitHub; **v0.15.1 is LOCAL** (`VERSION`=0.15.1,
+`vcpkg.json` lags at 0.14.6; a local MSI is installed + running). Pushing +
+cutting a 0.15.1 GitHub release is an outstanding outward-facing step — confirm
+with the owner first.
 
 **Verification baseline (re-confirmed 2026-07-09 at 0.15.1):** ctest **151/151**
-(3 opt-in live probes DISABLED), vitest **363/363** (`--no-file-parallelism`),
+(3 opt-in live probes DISABLED), vitest **366/366** (`--no-file-parallelism`),
 Playwright UI smoke **54/54**, tsc + release build clean (2 pre-existing
-warnings). **Reinstall trap:** stop VRCSM before installing an MSI or the running
-WebView2 locks `web/` and the installer silently keeps the stale bundle.
+warnings). **Reinstall trap:** stop VRCSM before installing an MSI, AND if the
+same version is already installed do `msiexec /x` then `/i` (a same-version
+`REINSTALLMODE=amus` will NOT replace the hashed `web/` bundle — verified this
+session; the running WebView2 also locks `web/`).
 
 **Top open follow-ups (see `MEMORY.md` "Open follow-ups" for full detail):**
-1. **Online lyric-source expansion** for obscure/uploaded tracks (Kugou is the
-   widest; + a QQ title-only fallback). Two research workflows already ran —
-   integrate their synthesis. This is the recommended next feature.
-2. **Local QQ `.qrc` cache decrypt — PARKED (hard):** on-disk cache uses a
-   different scheme than the network qrc; decode is inlined in QQMusic.exe.
-   Pursue only if #1 doesn't cover enough. `D:\Tool\debugger` toolkit available.
-3. world_visits mixed-timestamp dwell hours; audit batches B10/B11.
+1. **Push + cut the 0.15.1 GitHub release** (outward-facing — owner confirms).
+   Bump `vcpkg.json` (still 0.14.6) as part of it; follow the release mechanics
+   in `MEMORY.md` (reconfigure preset after VERSION bump; `SHA256:` line in notes).
+2. **Local QQ `.qrc` cache decrypt — PARKED (hard):** the on-disk cache uses a
+   different scheme than the network qrc, and decode is inlined in QQMusic.exe
+   (plaintext transient). Online sources (LRCLIB/NetEase/QQ/Kugou + title-only)
+   now cover most tracks, so only pursue this for songs even those miss.
+   `D:\Tool\debugger` (Frida 17/Ghidra/x64dbg/radare2/DIE) is available.
+3. **world_visits mixed-timestamp dwell hours** (GUI-API audit) — `joined_at`
+   DOT-local vs some `left_at` ISO `+09:00` → julianday goes negative; parked at 0.
+4. **GUI-API audit batches B10 (smoke coverage) + B11 (dead-code)** still open.
 
 ---
 
