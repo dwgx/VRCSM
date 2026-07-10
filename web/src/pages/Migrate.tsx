@@ -126,6 +126,7 @@ function Migrate() {
   const [progress, setProgress] = useState<MigrateProgress | null>(null);
   const [running, setRunning] = useState(false);
   const migrationCompletionNotified = useRef(false);
+  const migrateBusyRef = useRef(false);
 
   // ── Junction repair ─────────────────────────────────────────────
   const [repairing, setRepairing] = useState(false);
@@ -191,6 +192,7 @@ function Migrate() {
   const finishMigration = useCallback(
     (ok: boolean, message?: string) => {
       setRunning(false);
+      migrateBusyRef.current = false;
       if (migrationCompletionNotified.current) return;
       migrationCompletionNotified.current = true;
 
@@ -281,6 +283,8 @@ function Migrate() {
 
   const migrateOneClick = async () => {
     if (!selected || !target.trim()) return;
+    if (migrateBusyRef.current) return;
+    migrateBusyRef.current = true;
     // Use logical_path (the junction location) when it exists on disk,
     // so the backend can detect `sourceIsJunction` correctly.
     const sourcePath =
@@ -298,10 +302,12 @@ function Migrate() {
       setPlan(res);
       if (res.sourceIsJunction) {
         setPlanLoading(false);
+        migrateBusyRef.current = false;
         return;
       }
       if (res.vrcRunning || res.blockers.length > 0) {
         setPlanLoading(false);
+        migrateBusyRef.current = false;
         return;
       }
       setPlanLoading(false);
@@ -320,6 +326,7 @@ function Migrate() {
     } catch (e: unknown) {
       setRunning(false);
       setPlanLoading(false);
+      migrateBusyRef.current = false;
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(t("migrate.executeFailed", { error: msg, defaultValue: "Migration failed: {{error}}" }));
     }

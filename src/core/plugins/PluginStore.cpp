@@ -1,5 +1,8 @@
 #include "PluginStore.h"
 
+#include "../JunctionUtil.h"
+#include "../SafeDelete.h"
+
 #include <spdlog/spdlog.h>
 
 #include <fstream>
@@ -160,15 +163,15 @@ Result<std::monostate> PluginStore::Uninstall(std::string_view id)
         return Error{"plugin_path_unsafe", "plugin uninstall path escaped the VRCSM plugin roots", 400};
     }
 
-    std::filesystem::remove_all(it->second.installDir, ec);
-    if (ec)
+    auto rmInstall = SafeDelete::DeleteWithinRoot(pluginsRoot, it->second.installDir);
+    if (!isOk(rmInstall))
     {
-        spdlog::warn("[plugins] uninstall: remove_all installDir failed: {}", ec.message());
+        spdlog::warn("[plugins] uninstall: remove installDir failed: {}", error(rmInstall).message);
     }
-    std::filesystem::remove_all(it->second.dataDir, ec);
-    if (ec)
+    auto rmData = SafeDelete::DeleteWithinRoot(dataRoot, it->second.dataDir);
+    if (!isOk(rmData))
     {
-        spdlog::warn("[plugins] uninstall: remove_all dataDir failed: {}", ec.message());
+        spdlog::warn("[plugins] uninstall: remove dataDir failed: {}", error(rmData).message);
     }
 
     m_plugins.erase(it);
@@ -365,7 +368,7 @@ void PluginStore::MirrorBundledLocked()
                              toUtf8(targetDir.wstring()));
                 continue;
             }
-            std::filesystem::remove_all(targetDir, ec);
+            (void)SafeDelete::DeleteWithinRoot(dst, targetDir);
             std::filesystem::create_directories(targetDir.parent_path(), ec);
             std::filesystem::copy(ent.path(), targetDir,
                 std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing, ec);

@@ -52,6 +52,36 @@ void to_json(nlohmann::json& j, const MigrateSummary& s)
 
 namespace
 {
+
+// Junction-safe recursive removal: never descends through NTFS reparse
+// points (junctions/symlinks). Unlinks them instead of following.
+std::size_t removeTreeNoFollow(const std::filesystem::path& dir, std::error_code& ec)
+{
+    std::size_t removed = 0;
+    std::filesystem::directory_iterator it(dir, ec);
+    if (ec) return removed;
+    for (; it != std::filesystem::directory_iterator{}; it.increment(ec))
+    {
+        if (ec) return removed;
+        const auto& child = it->path();
+        if (JunctionUtil::isReparsePoint(child))
+        {
+            if (std::filesystem::remove(child, ec)) ++removed;
+            if (ec) return removed;
+            continue;
+        }
+        std::error_code statEc;
+        if (std::filesystem::is_directory(child, statEc) && !statEc)
+        {
+            removed += removeTreeNoFollow(child, ec);
+            if (ec) return removed;
+        }
+        if (std::filesystem::remove(child, ec)) ++removed;
+        if (ec) return removed;
+    }
+    return removed;
+}
+
 struct DirectoryStats
 {
     std::uint64_t bytes = 0;
@@ -399,7 +429,8 @@ Result<MigrateSummary> Migrator::execute(
     emit("cleanup", bytesDone, totalStats.bytes, filesDone, totalStats.files,
          "removing backup");
     std::error_code backupRmEc;
-    std::filesystem::remove_all(backupPath, backupRmEc);
+    removeTreeNoFollow(backupPath, backupRmEc);
+    if (!backupRmEc) std::filesystem::remove(backupPath, backupRmEc);
 
     summary.ok = true;
     summary.bytesCopied = bytesDone;

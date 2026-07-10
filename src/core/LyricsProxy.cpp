@@ -1,5 +1,7 @@
 #include "LyricsProxy.h"
 
+#include "Common.h"
+
 #include <array>
 #include <cctype>
 #include <cstdint>
@@ -244,7 +246,7 @@ LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer
         return result;
     }
 
-    const std::wstring wideUrl(url.begin(), url.end());
+    const std::wstring wideUrl = toWide(url);
 
     // Crack the URL into components so we can pull scheme/host/path.
     URL_COMPONENTS uc{};

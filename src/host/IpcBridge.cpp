@@ -211,6 +211,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "db.coPresenceGraph",
         "db.avatarHistory.list",
         "db.avatarHistory.count",
+        "db.avatarHistory.record",
         "db.avatarHistory.resolve",
         "db.avatarBenchmarks.list",
         "db.stats.heatmap",

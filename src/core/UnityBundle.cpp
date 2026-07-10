@@ -570,11 +570,13 @@ Result<UnityBundle> parseUnityBundle(const std::filesystem::path& path)
     for (const auto& node : bundle.nodes)
     {
         if (node.offset < 0 || node.size < 0 ||
-            static_cast<std::uint64_t>(node.offset + node.size) > bundle.data.size())
+            static_cast<std::uint64_t>(node.offset) + static_cast<std::uint64_t>(node.size) > bundle.data.size())
         {
             return Error{"bundle_invalid", fmt::format(
                 "Node '{}' range [{}..{}) exceeds stream size {}",
-                node.path, node.offset, node.offset + node.size, bundle.data.size())};
+                node.path, node.offset,
+                static_cast<std::uint64_t>(node.offset) + static_cast<std::uint64_t>(node.size),
+                bundle.data.size())};
         }
     }
 

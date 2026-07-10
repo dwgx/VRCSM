@@ -55,7 +55,9 @@ export default function Rules() {
 
   useEffect(() => {
     if (!selectedId) return;
-    ipc.rulesHistory(selectedId).then((r) => setFirings((r?.firings ?? []) as unknown as RuleFiring[])).catch(() => {});
+    let alive = true;
+    ipc.rulesHistory(selectedId).then((r) => { if (alive) setFirings((r?.firings ?? []) as unknown as RuleFiring[]); }).catch(() => {});
+    return () => { alive = false; };
   }, [selectedId]);
 
   const selected = rules.find((r) => r.id === selectedId) ?? null;

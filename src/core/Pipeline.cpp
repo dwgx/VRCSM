@@ -478,8 +478,9 @@ bool Pipeline::RunOneConnection(const std::string& wsToken)
         }
     }
 
-    // m_running went false — tell the server and unwind.
-    WinHttpWebSocketClose(ownedSocket, WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, nullptr, 0);
+    // m_running went false — Stop() already closed the socket from its
+    // thread (that's what unblocked WinHttpWebSocketReceive above).
+    // ScopedSocketReclaim sees m_activeSocket==null and is a no-op.
     return true;
 }
 

@@ -1,6 +1,7 @@
 #include "PluginInstaller.h"
 
 #include "PluginStore.h"
+#include "../JunctionUtil.h"
 
 #include <spdlog/spdlog.h>
 
@@ -163,13 +164,39 @@ void FlattenSingleTopDir(const std::filesystem::path& root)
         const auto dest = root / child.path().filename();
         std::filesystem::rename(child.path(), dest, ec);
     }
-    std::filesystem::remove_all(wrap, ec);
+    std::filesystem::remove_all(wrap, ec); // wrap is our own staging temp — safe
 }
 
 void WipeDirSafe(const std::filesystem::path& p)
 {
     std::error_code ec;
-    std::filesystem::remove_all(p, ec);
+    if (!std::filesystem::exists(p, ec) || ec) return;
+    // Junction-safe: unlink reparse points rather than descending through them.
+    std::function<void(const std::filesystem::path&)> walk =
+        [&](const std::filesystem::path& dir) {
+        std::filesystem::directory_iterator it(dir, ec);
+        if (ec) return;
+        for (; it != std::filesystem::directory_iterator{}; it.increment(ec))
+        {
+            if (ec) return;
+            const auto& child = it->path();
+            if (JunctionUtil::isReparsePoint(child))
+            {
+                std::filesystem::remove(child, ec);
+                continue;
+            }
+            std::error_code statEc;
+            if (std::filesystem::is_directory(child, statEc) && !statEc)
+            {
+                walk(child);
+                if (ec) return;
+            }
+            std::filesystem::remove(child, ec);
+            if (ec) return;
+        }
+    };
+    walk(p);
+    std::filesystem::remove(p, ec);
 }
 
 } // namespace
@@ -357,7 +384,7 @@ Result<InstallReport> InstallFromFile(const std::filesystem::path& archive,
     const auto finalDir = PluginStore::PluginsRoot() / toWide(manifest.id);
     if (std::filesystem::exists(finalDir, ec))
     {
-        std::filesystem::remove_all(finalDir, ec);
+        WipeDirSafe(finalDir);
     }
     std::filesystem::rename(staging, finalDir, ec);
     if (ec)
