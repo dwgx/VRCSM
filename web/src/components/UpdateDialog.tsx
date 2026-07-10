@@ -52,6 +52,22 @@ export function UpdateDialog({ open, onOpenChange, initial }: UpdateDialogProps)
       : { kind: "idle" },
   );
 
+  // Sync phase when the `initial` prop arrives after mount (the hook's
+  // async check completes after the dialog component first renders).
+  useEffect(() => {
+    if (!initial) return;
+    setPhase((prev) => {
+      if (prev.kind !== "idle" && prev.kind !== "checking") return prev;
+      if (initial.currentMsiPath) {
+        return { kind: "ready", info: initial, msiPath: initial.currentMsiPath };
+      }
+      if (initial.available) {
+        return { kind: "available", info: initial };
+      }
+      return { kind: "up_to_date", info: initial };
+    });
+  }, [initial]);
+
   useEffect(() => {
     if (!open) return;
     if (phase.kind !== "idle") return;
