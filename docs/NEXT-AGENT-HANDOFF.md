@@ -29,9 +29,9 @@ Last updated: 2026-08-20
 
 ## Latest Session (2026-08-20) — READ FIRST
 
-**v0.16.0 RELEASE** plus follow-up **7-locale companion i18n** on `main` (not yet version-bumped). Grey helpers default OFF. LICENSE VSAL. Companion UI keys now exist in en/zh-CN/ja/ko/ru/th/hi; locale-coverage checks all 7 plus `{{placeholder}}` parity.
+**v0.16.1 RELEASE.** 7-locale companion i18n + sidebar defaultValue so `nav.hotWorlds` is not a raw key. Grey helpers default OFF. LICENSE VSAL.
 
-Verified for the cut: tsc + vite build clean; jsdom smoke 76/76; Playwright UI smoke **61/61**; x64-release FileVersion **0.16.0.0**; ctest release **225/225**. GitHub Latest **v0.16.0** (tag + MSI/ZIP, SHA256 line present). This machine reinstalled: uninstall 0.15.2 then MSI 0.16.0 (FileVersion 0.16.0.0, companion chunks in `%LocalAppData%\VRCSM\web`).
+Verified: tsc + vite build clean; jsdom smoke 76/76; x64-release FileVersion **0.16.1.0**; ctest release **225/225**. GitHub Latest **v0.16.1**. MSI SHA256 `4cb6bbd98a86de26cc6a170756e872de5f705cea40aebdff44fbd13cc114f443`. Local reinstall: stop VRCSM, uninstall 0.16.0, install 0.16.1.
 
 Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
 
