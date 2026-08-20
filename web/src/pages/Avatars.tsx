@@ -49,6 +49,7 @@ import type { AvatarHistoryItem, AvatarSearchResult, LocalAvatarItem, UserSearch
 import { Eye, Sliders, Search, User, Info, Lock, Box, Heart, Globe2, Loader2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { ImageZoom } from "@/components/ImageZoom";
+import { AvatarPresetsPanel } from "@/pages/osc/AvatarPresetsPanel";
 
 const AvatarPreview3D = lazy(() =>
   import("@/components/AvatarPreview3D").then((mod) => ({ default: mod.AvatarPreview3D })),
@@ -832,6 +833,7 @@ function AvatarInspector({
   }, [selected.avatar_id]);
 
   return (
+    <div className="flex flex-col gap-3">
     <Card elevation="flat" className="flex flex-col overflow-hidden p-0">
       <div className="unity-panel-header">
         {t("avatars.inspectorPaneTitle")}
@@ -1194,6 +1196,10 @@ function AvatarInspector({
         </div>
       </div>
     </Card>
+    {selected.avatar_id.startsWith("avtr_") ? (
+      <AvatarPresetsPanel avatarId={selected.avatar_id} userId={selected.user_id} />
+    ) : null}
+    </div>
   );
 }
 

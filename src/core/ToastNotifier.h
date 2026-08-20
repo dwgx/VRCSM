@@ -50,6 +50,20 @@ struct ToastContent
 std::optional<ToastContent> FormatPipelineToast(const std::string& type,
                                                 const nlohmann::json& content);
 
+// Spoken phrase for a formatted toast. Uses `title` (display name) / `body`
+// only — never `launchArg` (which carries usr_* ids). Optional templates
+// accept `{name}` / `{who}` placeholders; empty templates use English defaults
+// matching the FE `tts.*` defaultValue strings.
+struct TtsPhraseTemplates
+{
+    std::string friendOnline;   // default "{name} is now online"
+    std::string invite;         // default "Invite from {who}"
+    std::string friendRequest;  // default "Friend request from {who}"
+};
+
+std::string FormatTtsPhrase(const ToastContent& toast,
+                            const TtsPhraseTemplates& templates = {});
+
 // Escape a string for safe insertion into toast XML (handles & < > " ').
 std::string XmlEscape(const std::string& raw);
 

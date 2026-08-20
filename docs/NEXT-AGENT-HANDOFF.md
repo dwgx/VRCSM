@@ -1,6 +1,6 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-07-09
+Last updated: 2026-08-20
 
 ## 承上启下 — 给接手 AI 的话（READ THIS FIRST）
 
@@ -26,6 +26,22 @@ Last updated: 2026-07-09
 
 ---
 
+
+## Latest Session (2026-08-20) — READ FIRST
+
+**Companion-waves landed on `feat/companion-waves`, unreleased.** Still version `0.15.2`. Grey helpers default OFF. LICENSE VSAL. i18n: `defaultValue` plus four sidebar keys.
+
+Verified this session: tsc + vite build clean; jsdom smoke 76/76 (pages 39 + interaction 37); Playwright UI smoke **61/61**; ctest debug **225/225**. MSI not cut.
+
+Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
+
+Parked next: P15 OnLeftRoom atoms, P2 Discord webhook, P5 join-recommender panel. Review was deferred by Owner.
+
+Node `fs` fallback in `lyrics.ts` is **vitest-only**; WebView2 uses `lyrics.readFolder`. Keep it.
+
+Pre-existing unused-looking IPC (`fs.writePlan` etc.) still has host handlers — do **not** delete without a plugin/caller audit.
+
+---
 
 ## Latest Session (2026-07-09 session 2) — READ FIRST
 

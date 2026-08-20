@@ -21,7 +21,7 @@ export interface LyricLine {
   trText?: string;
 }
 
-export type LyricsSource = "lrclib" | "netease" | "qq" | "kugou" | "none";
+export type LyricsSource = "lrclib" | "netease" | "qq" | "kugou" | "local" | "none";
 
 export interface LyricsResult {
   synced: LyricLine[];
@@ -170,6 +170,16 @@ function stripNoise(s: string): string {
 }
 
 /**
+ * Strip YouTube/uploader suffixes from a GSMTC title so lyric providers
+ * match the actual track. Parentheticals (`(Official Video)`, `【MV】`),
+ * trailing feat./ft. credits (word-bounded so "Daft" is kept), and common
+ * noise words (Official Video, Lyrics, HD, 官方…) are removed. Pure.
+ */
+export function cleanMediaTitle(title: string): string {
+  return stripNoise((title ?? "").trim());
+}
+
+/**
  * Clean up messy GSMTC/browser titles into a searchable {title, artist}.
  * Strips parenthetical years/tags, "feat./ft.", and noise words (Official, MV,
  * Lyrics, OST, Cover, HD, 4K, 高清, 官方...). When the title contains " - " and
@@ -192,8 +202,8 @@ export function normalizeQuery(title: string, artist: string): NormalizedQuery {
     }
   }
 
-  t = stripNoise(t);
-  a = stripNoise(a);
+  t = cleanMediaTitle(t);
+  a = cleanMediaTitle(a);
   return { title: t, artist: a };
 }
 
@@ -303,6 +313,7 @@ export interface LyricsSources {
   netease: boolean;
   qq: boolean;
   kugou: boolean;
+  local?: boolean;
 }
 
 interface LrclibRecord {
@@ -642,31 +653,125 @@ async function fromKugou(
 
 const MISS: LyricsResult = { synced: [], found: false, instrumental: false, source: "none" };
 
+function sanitizeLrcStem(s: string): string {
+  return s.replace(/[<>:"/\\|?*]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function lrcFileKey(name: string): string {
+  return name.replace(/\.lrc$/i, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+async function readDirLrcFiles(lrcDir: string): Promise<Array<{ name: string; text: string }>> {
+  if (!lrcDir) return [];
+  try {
+    const res = await ipc.call<{ dir: string }, { files?: Array<{ name: string; text: string }> }>(
+      "lyrics.readFolder",
+      { dir: lrcDir },
+    );
+    if (Array.isArray(res.files) && res.files.length > 0) return res.files;
+  } catch {
+    // Host missing or path rejected — fall through to Node (vitest).
+  }
+  try {
+    // Non-literal import so tsc/vite leave Node builtins out of the WebView
+    // bundle. Works in vitest (Node); fails closed in the browser.
+    const fsNs = "node:fs/promises";
+    const fs = (await import(/* @vite-ignore */ fsNs)) as {
+      readdir: (dir: string) => Promise<string[]>;
+      readFile: (path: string, encoding: string) => Promise<string>;
+    };
+    const names = await fs.readdir(lrcDir);
+    const out: Array<{ name: string; text: string }> = [];
+    const root = lrcDir.replace(/[\\/]+$/, "");
+    for (const name of names) {
+      if (!name.toLowerCase().endsWith(".lrc")) continue;
+      try {
+        const text = await fs.readFile(`${root}/${name}`, "utf8");
+        out.push({ name, text });
+      } catch {
+        // skip unreadable entries
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Local `.lrc` folder provider. Looks up `{artist} - {title}.lrc` then
+ * `{title}.lrc` (case-insensitive) under `lrcDir`. Returns a synced result
+ * or null on miss / unreadable dir. Used after the online chain.
+ */
+export async function fromLocalLrc(
+  title: string,
+  artist: string,
+  lrcDir: string,
+): Promise<LyricsResult | null> {
+  if (!lrcDir) return null;
+  const rawTitle = (title ?? "").trim();
+  const rawArtist = (artist ?? "").trim();
+  const cleanedTitle = cleanMediaTitle(rawTitle);
+  const cleanedArtist = cleanMediaTitle(rawArtist);
+
+  const candidateKeys: string[] = [];
+  const push = (stem: string) => {
+    const s = sanitizeLrcStem(stem);
+    if (!s) return;
+    const key = lrcFileKey(s);
+    if (key && !candidateKeys.includes(key)) candidateKeys.push(key);
+  };
+  if (rawArtist && rawTitle) push(`${rawArtist} - ${rawTitle}`);
+  if (rawTitle) push(rawTitle);
+  if (cleanedArtist && cleanedTitle) push(`${cleanedArtist} - ${cleanedTitle}`);
+  if (cleanedTitle) push(cleanedTitle);
+  if (candidateKeys.length === 0) return null;
+
+  const files = await readDirLrcFiles(lrcDir);
+  if (files.length === 0) return null;
+
+  const byKey = new Map<string, { name: string; text: string }>();
+  for (const file of files) byKey.set(lrcFileKey(file.name), file);
+
+  let hit: { name: string; text: string } | undefined;
+  for (const key of candidateKeys) {
+    hit = byKey.get(key);
+    if (hit) break;
+  }
+  if (!hit || !hit.text.trim()) return null;
+
+  const synced = parseLrc(hit.text.replace(/^\uFEFF/, ""));
+  if (!synced.length) return null;
+  return { synced, found: true, instrumental: false, source: "local" };
+}
+
 /**
  * Resolve synced lyrics for a track through a provider chain (first accepted
- * synced result wins): LRCLIB exact → LRCLIB search → NetEase → QQ → Kugou.
- * Never throws — returns `{ found:false, source:'none' }` on any error or total
- * miss. Cached in-memory per normalized track key.
+ * synced result wins): LRCLIB exact → LRCLIB search → NetEase → QQ → Kugou
+ * → local `.lrc`. Never throws — returns `{ found:false, source:'none' }` on
+ * any error or total miss. Cached in-memory per normalized track key.
  */
 export async function fetchLyrics(
   track: string,
   artist: string,
   album: string,
   durationMs: number,
-  options?: { sources?: Partial<LyricsSources> },
+  options?: { sources?: Partial<LyricsSources>; lrcDir?: string },
 ): Promise<LyricsResult> {
   // Default all providers on; a caller-supplied `false` skips that provider.
   const lrclibEnabled = options?.sources?.lrclib !== false;
   const neteaseEnabled = options?.sources?.netease !== false;
   const qqEnabled = options?.sources?.qq !== false;
   const kugouEnabled = options?.sources?.kugou !== false;
+  const lrcDir = (options?.lrcDir ?? "").trim();
+  const localEnabled = options?.sources?.local !== false && lrcDir.length > 0;
 
   const durMs = Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 0;
   const durSec = durMs > 0 ? Math.round(durMs / 1000) : 0;
   const q = normalizeQuery(track, artist);
   // Key the cache on the enabled providers too, so toggling a source on/off
   // doesn't serve a stale result resolved under the old provider set.
-  const key = `${cacheKey(q, durSec)}|${lrclibEnabled ? 1 : 0}${neteaseEnabled ? 1 : 0}${qqEnabled ? 1 : 0}${kugouEnabled ? 1 : 0}`;
+  const key = `${cacheKey(q, durSec)}|${lrclibEnabled ? 1 : 0}${neteaseEnabled ? 1 : 0}${qqEnabled ? 1 : 0}${kugouEnabled ? 1 : 0}${localEnabled ? 1 : 0}|${lrcDir}`;
   const cached = lyricsCache.get(key);
   if (cached) return cached;
 
@@ -699,6 +804,14 @@ export async function fetchLyrics(
     }
   } catch {
     result = MISS;
+  }
+  if (result.source === "none" && localEnabled) {
+    try {
+      const fromLocal = await fromLocalLrc(q.title, q.artist, lrcDir);
+      if (fromLocal) result = fromLocal;
+    } catch {
+      // keep miss
+    }
   }
   lyricsCache.set(key, result);
   return result;

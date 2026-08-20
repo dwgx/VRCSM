@@ -61,11 +61,17 @@ const Migrate = lazy(() => import("@/pages/Migrate"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const MemoryRadar = lazy(() => import("@/pages/MemoryRadar"));
 const OscTools = lazy(() => import("@/pages/OscTools"));
+const LastInstance = lazy(() => import("@/pages/LastInstance"));
+const InviteSlots = lazy(() => import("@/pages/InviteSlots"));
+const PlayspaceOffsetPage = lazy(() => import("@/pages/PlayspaceOffset"));
+const EventWatchPage = lazy(() => import("@/pages/EventWatch"));
 const PluginsMarket = lazy(() => import("@/pages/PluginsMarket"));
 const PluginDetail = lazy(() => import("@/pages/PluginDetail"));
 const PluginInstalled = lazy(() => import("@/pages/PluginInstalled"));
 const PluginHost = lazy(() => import("@/pages/PluginHost"));
 const WorldHistory = lazy(() => import("@/pages/WorldHistory"));
+const ActivityLedger = lazy(() => import("@/pages/ActivityLedger"));
+const HotWorlds = lazy(() => import("@/pages/HotWorlds"));
 const CalendarPage = lazy(() => import("@/pages/Calendar"));
 const RulesPage = lazy(() => import("@/pages/Rules"));
 const EventRecorder = lazy(() => import("@/pages/EventRecorder"));
@@ -264,6 +270,27 @@ function AppContent() {
           t("nav.osc", { defaultValue: "OSC Tools" }),
         ],
       },
+      "/tools/last-instance": {
+        title: t("lastInstance.title", { defaultValue: "Last instance" }),
+        breadcrumb: [
+          t("nav.category.workspace", { defaultValue: "Workspace" }),
+          t("lastInstance.title", { defaultValue: "Last instance" }),
+        ],
+      },
+      "/tools/invite-slots": {
+        title: t("inviteSlots.title", { defaultValue: "Slot mail" }),
+        breadcrumb: [
+          t("nav.category.workspace", { defaultValue: "Workspace" }),
+          t("inviteSlots.title", { defaultValue: "Slot mail" }),
+        ],
+      },
+      "/tools/playspace": {
+        title: t("playspace.title", { defaultValue: "Playspace offset" }),
+        breadcrumb: [
+          t("nav.category.workspace", { defaultValue: "Workspace" }),
+          t("playspace.title", { defaultValue: "Playspace offset" }),
+        ],
+      },
       "/calendar": {
         title: t("nav.calendar", { defaultValue: "Calendar & Jams" }),
         breadcrumb: [
@@ -276,6 +303,20 @@ function AppContent() {
         breadcrumb: [
           t("nav.category.social", { defaultValue: "Social" }),
           t("nav.worldHistory", { defaultValue: "World History" }),
+        ],
+      },
+      "/history/activity": {
+        title: t("activityLedger.title", { defaultValue: "Activity Ledger" }),
+        breadcrumb: [
+          t("nav.category.social", { defaultValue: "Social" }),
+          t("activityLedger.title", { defaultValue: "Activity Ledger" }),
+        ],
+      },
+      "/history/hot-worlds": {
+        title: t("hotWorlds.title", { defaultValue: "Hot Worlds" }),
+        breadcrumb: [
+          t("nav.category.social", { defaultValue: "Social" }),
+          t("hotWorlds.title", { defaultValue: "Hot Worlds" }),
         ],
       },
       "/migrate": {
@@ -539,6 +580,8 @@ function AppContent() {
                                 <Route path="/screenshots" element={<Screenshots />} />
                                 <Route path="/friend-log" element={<Navigate to="/radar" replace />} />
                                 <Route path="/history/worlds" element={<WorldHistory />} />
+                                <Route path="/history/activity" element={<ActivityLedger />} />
+                                <Route path="/history/hot-worlds" element={<HotWorlds />} />
                                 <Route path="/calendar" element={<CalendarPage />} />
                                 <Route path="/rules" element={<RulesPage />} />
                                 <Route path="/events" element={<EventRecorder />} />
@@ -551,6 +594,10 @@ function AppContent() {
                                 <Route path="/settings" element={<Settings />} />
                                 <Route path="/tools/memory-radar" element={<MemoryRadar />} />
                                 <Route path="/tools/osc" element={<OscTools />} />
+                                <Route path="/tools/last-instance" element={<LastInstance />} />
+                                <Route path="/tools/invite-slots" element={<InviteSlots />} />
+                                <Route path="/tools/playspace" element={<PlayspaceOffsetPage />} />
+                                <Route path="/tools/event-watch" element={<EventWatchPage />} />
                                 <Route path="/plugins" element={<PluginsMarket />} />
                                 <Route path="/plugins/installed" element={<PluginInstalled />} />
                                 <Route path="/plugins/:id" element={<PluginDetail />} />

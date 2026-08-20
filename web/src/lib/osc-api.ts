@@ -1,4 +1,5 @@
 import { ipc, type OscTaggedArg } from "@/lib/ipc";
+import { CHATBOX_LIMIT, fitChatbox } from "@/lib/chatbox-fit";
 
 // A plain OSC value, or a type-tagged value (see OscTaggedArg) for cases where
 // the bare JS type would lose fidelity — a whole-number float, most importantly.
@@ -30,7 +31,7 @@ export function sendChatbox(
 ): Promise<OscSendResult> {
   return sendOscMessage(
     "/chatbox/input",
-    [message.slice(0, 144), sendImmediately, playNotificationSound],
+    [fitChatbox(message, CHATBOX_LIMIT), sendImmediately, playNotificationSound],
     options,
   );
 }

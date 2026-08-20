@@ -1,5 +1,7 @@
 #include "RateLimiter.h"
 
+#include <algorithm>
+#include <cmath>
 #include <thread>
 
 #include <spdlog/spdlog.h>
@@ -66,6 +68,18 @@ void RateLimiter::Acquire()
 
     refill();
     tokens_ = std::max(0.0, tokens_ - 1.0);
+}
+
+bool RateLimiter::TryAcquire()
+{
+    std::unique_lock lock(mutex_);
+    refill();
+    if (tokens_ >= 1.0)
+    {
+        tokens_ -= 1.0;
+        return true;
+    }
+    return false;
 }
 
 } // namespace vrcsm::core

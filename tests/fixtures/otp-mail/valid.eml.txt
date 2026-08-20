@@ -1,0 +1,9 @@
+From: VRChat <noreply@vrchat.com>
+Subject: Your VRChat email verification code
+Date: 2026-08-20T12:00:00Z
+
+Hello,
+
+Your VRChat verification code is: 123456
+
+If you did not request this, ignore the email.

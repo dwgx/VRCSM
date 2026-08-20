@@ -37,6 +37,21 @@ add_library(vrcsm_core STATIC
     RateLimiter.cpp
     HttpClient.cpp
     VrcApi.cpp
+    GreyPrefs.cpp
+    InviteSlots.cpp
+    GreyAudit.cpp
+    Database_Grey.cpp
+    PlayspaceOffset.cpp
+    SapiVoice.cpp
+    LocationParse.cpp
+    PresenceCache.cpp
+    GreyRateLimit.cpp
+    OtpMailParser.cpp
+    OtpMailStore.cpp
+    ImapClient.cpp
+    InviteAssist.cpp
+    EventWatch.cpp
+    AppBackup.cpp
     Pipeline.cpp
     DiscordRpc.cpp
     ToastNotifier.cpp
@@ -132,6 +147,7 @@ if(MSVC)
         #   Propsys       — InitPropVariantFromString for the shortcut AUMID property
         RuntimeObject
         Propsys
+        sapi
     )
 endif()
 

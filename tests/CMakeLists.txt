@@ -17,6 +17,13 @@ add_executable(VRCSM_Tests
   FriendAnalyticsTests.cpp
   LyricsProxyTests.cpp
   HttpClientTests.cpp
+  InviteSlotsTests.cpp
+  PlayspaceOffsetTests.cpp
+  GreyTtsTests.cpp
+  OtpMailTests.cpp
+  InviteAssistTests.cpp
+  EventWatchTests.cpp
+  AppBackupTests.cpp
 )
 
 target_link_libraries(VRCSM_Tests PRIVATE

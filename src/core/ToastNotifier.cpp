@@ -276,7 +276,7 @@ std::optional<ToastContent> FormatPipelineToast(const std::string& type,
             return out;
         }
 
-        if (*innerType == "invite")
+        if (*innerType == "invite" || *innerType == "requestInvite")
         {
             ToastContent out;
             out.kind = ToastKind::Invite;
@@ -294,6 +294,69 @@ std::optional<ToastContent> FormatPipelineToast(const std::string& type,
     }
 
     return std::nullopt;
+}
+
+namespace
+{
+
+std::string ReplacePlaceholder(std::string templ, std::string_view token, std::string_view value)
+{
+    const std::string needle = "{" + std::string(token) + "}";
+    std::size_t pos = 0;
+    while ((pos = templ.find(needle, pos)) != std::string::npos)
+    {
+        templ.replace(pos, needle.size(), value);
+        pos += value.size();
+    }
+    return templ;
+}
+
+std::string WhoFromToast(const ToastContent& toast)
+{
+    // Bodies are "Invite from Pix" / "Friend request from Pix" / "New invite".
+    // Prefer the human suffix; never launchArg (usr_*).
+    const auto from = toast.body.find(" from ");
+    if (from != std::string::npos)
+    {
+        auto who = toast.body.substr(from + 6);
+        if (!who.empty()) return who;
+    }
+    if (!toast.title.empty() && toast.title != "Invite" && toast.title != "Friend request")
+    {
+        return toast.title;
+    }
+    return "Someone";
+}
+
+} // namespace
+
+std::string FormatTtsPhrase(const ToastContent& toast, const TtsPhraseTemplates& templates)
+{
+    switch (toast.kind)
+    {
+    case ToastKind::FriendOnline:
+    {
+        const auto templ = templates.friendOnline.empty()
+                               ? std::string("{name} is now online")
+                               : templates.friendOnline;
+        return ReplacePlaceholder(templ, "name", toast.title);
+    }
+    case ToastKind::Invite:
+    {
+        const auto templ = templates.invite.empty()
+                               ? std::string("Invite from {who}")
+                               : templates.invite;
+        return ReplacePlaceholder(templ, "who", WhoFromToast(toast));
+    }
+    case ToastKind::FriendRequest:
+    {
+        const auto templ = templates.friendRequest.empty()
+                               ? std::string("Friend request from {who}")
+                               : templates.friendRequest;
+        return ReplacePlaceholder(templ, "who", WhoFromToast(toast));
+    }
+    }
+    return {};
 }
 
 bool ToastNotifier::EnsureSetup()

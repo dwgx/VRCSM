@@ -128,6 +128,7 @@ public:
     static Result<nlohmann::json> fetchCurrentUser();
     static Result<std::vector<nlohmann::json>> fetchFriends(bool offline);
     static Result<std::vector<nlohmann::json>> fetchGroups();
+    static Result<nlohmann::json> fetchGroupInstances(const std::string& groupId);
     static Result<std::vector<nlohmann::json>> fetchPlayerModerations();
     static Result<std::vector<nlohmann::json>> fetchFavoritedAvatars();
     static Result<std::vector<nlohmann::json>> fetchFavoritedWorlds();
@@ -286,11 +287,19 @@ public:
     /// `GET /api/1/message/{me}/{messageType}`. messageType is one of
     /// `invite`, `inviteResponse`, `requestInvite`, `requestInviteResponse`.
     /// Returns up to 4 entries with `slot`, `message`, `remainingCooldownMinutes`.
-    /// These are user-defined text snippets configured in the VRChat client
-    /// — VRCSM cannot edit them, but it can read them so the boop UI can
-    /// preview which message will be attached to a given slot.
+    /// Wave 4 Slot mail can also PUT/DELETE these via updateSavedMessage /
+    /// resetSavedMessage (VRChat 60-minute cooldown per slot).
     static Result<nlohmann::json> fetchSavedMessages(
         const std::string& messageType);
+
+    static Result<nlohmann::json> updateSavedMessage(
+        const std::string& messageType,
+        int slot,
+        const std::string& message);
+
+    static Result<nlohmann::json> resetSavedMessage(
+        const std::string& messageType,
+        int slot);
 
     /// Fetch calendar discovery feed via GET /api/1/calendar/discover.
     static Result<std::vector<nlohmann::json>> fetchCalendarDiscover();

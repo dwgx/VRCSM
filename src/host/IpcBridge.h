@@ -6,6 +6,7 @@
 #include "../core/TaskQueue.h"        // m_previewQueue — held by value
 #include "../core/VrcRadarEngine.h"   // m_radarEngine  — held by value
 
+#include <chrono>
 #include <future>
 
 class WebViewHost;
@@ -24,6 +25,7 @@ class LogTailer;
 class OscBridge;
 class Pipeline;
 class ScreenshotWatcher;
+struct ToastContent;
 } // namespace vrcsm::core
 
 // Structured exception carrying a full Error. Bridge handlers throw this
@@ -41,6 +43,11 @@ class IpcBridge
 public:
     explicit IpcBridge(WebViewHost& host);
     ~IpcBridge();
+
+    void PostGreyEvent(std::string_view eventName, const nlohmann::json& data) const
+    {
+        PostEventToUi(eventName, data);
+    }
 
     IpcBridge(const IpcBridge&) = delete;
     IpcBridge& operator=(const IpcBridge&) = delete;
@@ -100,6 +107,8 @@ private:
     nlohmann::json HandleJunctionRepair(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleShellPickFolder(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleShellOpenUrl(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleShellLaunchVrchatLocation(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleShellWriteInstanceShortcut(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFsListDir(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFsWritePlan(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFsAppDataDir(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -128,11 +137,13 @@ private:
     // (src/core/NowPlaying.cpp) and surface it as a snake_case snapshot.
     // Implementation in bridges/MusicBridge.cpp.
     nlohmann::json HandleMusicNowPlaying(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleMusicSessions(const nlohmann::json& params, const std::optional<std::string>& id);
 
     // lyrics.fetch — standalone WinHTTP GET proxy so the web lyrics chain can
     // reach NetEase / LRCLIB without WebView2's CORS/Referer limits. Async
     // (network I/O). Implementation in bridges/LyricsBridge.cpp.
     nlohmann::json HandleLyricsFetch(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleLyricsReadFolder(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleModerationsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleCalendarDiscover(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -169,6 +180,51 @@ private:
     nlohmann::json HandleVisitsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserRequestInvite(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserGetSavedMessages(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleGreyPrefsGet(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleGreyPrefsSet(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteSlotsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteSlotsUpdate(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteSlotsReset(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteSlotsSendInvite(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteSlotsSendRequest(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteSlotsRespond(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePlayspaceStatus(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePlayspaceStart(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePlayspaceStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePlayspaceSetLocks(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePlayspaceNudge(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandlePlayspaceReset(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOtpMailGetConfig(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOtpMailSetConfig(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOtpMailClear(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOtpMailTest(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOtpMailStart(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOtpMailStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleOtpMailPoll(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteAssistGet(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteAssistSetEnabled(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteAssistConfirm(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteAssistAllowAdd(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteAssistAllowRemove(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleInviteAssistCancelPending(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventWatchList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventWatchUpsert(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventWatchRemove(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventWatchStart(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventWatchStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventWatchPollNow(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventWatchCancelJoin(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleEventWatchJoinNow(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleTtsStatus(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleTtsVoices(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleTtsSpeak(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleTtsStop(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleTtsSetVoice(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleBackupCreate(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleBackupList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleBackupRestore(const nlohmann::json& params, const std::optional<std::string>& id);
+    void InitTtsFromGreyPrefs();
+    void MaybeSpeakToast(const vrcsm::core::ToastContent& toast);
     nlohmann::json HandleUserMute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserUnmute(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleUserBlock(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -369,6 +425,11 @@ private:
     // toast toggles above — an event surfaces in VR only when its toast type
     // is enabled AND this is on.
     std::atomic<bool> m_vrOverlayEnabled{false};
+    std::atomic<bool> m_ttsEnabled{false};
+    std::atomic<bool> m_ttsScopeAll{false};
+    std::atomic<bool> m_ttsChatbox{false};
+    std::mutex m_ttsChatboxMutex;
+    std::chrono::steady_clock::time_point m_lastTtsChatbox{};
 
     std::unique_ptr<vrcsm::core::OscBridge> m_osc;
     std::unique_ptr<vrcsm::core::ScreenshotWatcher> m_screenshotWatcher;

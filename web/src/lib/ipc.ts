@@ -50,6 +50,33 @@ function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+let mockGreyPrefs: Record<string, unknown> = { schema: 1, greyEnabled: false };
+
+function smokeGreyForcedOn(): boolean {
+  return typeof window !== "undefined" && window.__SMOKE_GREY__ === true;
+}
+
+function mockGreyPrefsSnapshot(): Record<string, unknown> {
+  const prefs = { ...mockGreyPrefs };
+  if (smokeGreyForcedOn() && prefs.greyEnabled !== true) {
+    prefs.greyEnabled = true;
+  }
+  return prefs;
+}
+
+function applyMockGreyPrefsPatch(patch: Record<string, unknown>): void {
+  const next = { ...mockGreyPrefs };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== null && typeof value === "object" && !Array.isArray(value)
+        && next[key] !== null && typeof next[key] === "object" && !Array.isArray(next[key])) {
+      next[key] = { ...(next[key] as Record<string, unknown>), ...(value as Record<string, unknown>) };
+    } else if (key !== "patch") {
+      next[key] = value;
+    }
+  }
+  mockGreyPrefs = next;
+}
+
 function buildMockSteamVrConfig(): SteamVrConfig {
   return {
     ok: true,
@@ -316,6 +343,26 @@ export interface DataClearTargetResult {
   error?: { code: string; message: string };
 }
 
+export interface AppBackupEntry {
+  id: string;
+  createdAt: string;
+  bytes: number;
+  files: string[];
+}
+
+export interface AppBackupCreateResult extends AppBackupEntry {
+  ok: boolean;
+  pruned: number;
+}
+
+export interface AppBackupListResult {
+  backups: AppBackupEntry[];
+}
+
+export interface AppBackupRestoreResult extends AppBackupEntry {
+  ok: boolean;
+}
+
 export interface DataClearResponse {
   results: Record<string, DataClearTargetResult>;
 }
@@ -352,6 +399,8 @@ declare global {
     __VRCSM_MOCK__?: boolean;
     /** Set true by the UI smoke harness (before app boot) to enable the tap. */
     __SMOKE_TAP__?: boolean;
+    /** Smoke-only: Helpers pages + Experimental cards render as if greyEnabled. */
+    __SMOKE_GREY__?: boolean;
     /** Append-only sink the smoke harness reads back. */
     __SMOKE_EVENTS__?: SmokeIpcEvent[];
   }
@@ -1037,6 +1086,13 @@ class IpcClient {
         // Mock branch: no side effect, just echo success so the UI can be
         // exercised in browser-only dev mode without shelling out.
         return { ok: true } as unknown as TResult;
+      case "shell.launchVrchatLocation":
+        return { ok: true, via: "openUrl" } as unknown as TResult;
+      case "shell.writeInstanceShortcut":
+        return {
+          ok: true,
+          path: "C:/Users/dev/Desktop/VRCSM-last-instance.lnk",
+        } as unknown as TResult;
       case "discord.clearActivity":
         return { ok: true } as unknown as TResult;
       case "notify.setPrefs": {
@@ -1058,16 +1114,19 @@ class IpcClient {
         // "playing" fixture so the NowPlayingPanel + {music.*} tokens render
         // real-looking output without a host attached. position_at_ms=now so
         // client-side extrapolation advances from the sampled position.
+        const p = (params ?? {}) as { appId?: string; app_id?: string };
+        const want = (p.appId ?? p.app_id ?? "").trim();
         const durationMs = 214_000;
         const positionMs = 72_000;
+        const edge = want.toLowerCase() === "msedge";
         return {
           active: true,
-          title: "Mock Song Title",
-          artist: "Mock Artist",
+          title: edge ? "Other Tab" : "Mock Song Title",
+          artist: edge ? "YouTube" : "Mock Artist",
           album: "Mock Album",
-          status: "playing",
-          app_id: "Spotify.exe",
-          app_name: "Spotify",
+          status: edge ? "paused" : "playing",
+          app_id: edge ? "msedge" : "Spotify.exe",
+          app_name: edge ? "msedge" : "Spotify",
           position_ms: positionMs,
           duration_ms: durationMs,
           position_at_ms: Date.now(),
@@ -1075,6 +1134,31 @@ class IpcClient {
           has_thumbnail: true,
         } as unknown as TResult;
       }
+      case "music.sessions":
+        return {
+          sessions: [
+            {
+              appId: "Spotify.exe",
+              appName: "Spotify",
+              title: "Mock Song Title",
+              artist: "Mock Artist",
+              status: "playing",
+              app_id: "Spotify.exe",
+              app_name: "Spotify",
+            },
+            {
+              appId: "msedge",
+              appName: "msedge",
+              title: "Other Tab",
+              artist: "YouTube",
+              status: "paused",
+              app_id: "msedge",
+              app_name: "msedge",
+            },
+          ],
+        } as unknown as TResult;
+      case "lyrics.readFolder":
+        return { files: [] } as unknown as TResult;
       case "lyrics.fetch": {
         // Browser-dev / smoke mode has no host proxy. Return a small canned
         // LRCLIB-shaped body so the lyrics chain resolves without hitting the
@@ -2028,10 +2112,15 @@ class IpcClient {
         return { avatars } as unknown as TResult;
       }
       case "screenshots.list": {
+        // Align mock capture times with `db.worldVisits.list` windows so
+        // Group-by-visit is visible under `pnpm dev` (no C++ host).
+        const base = Date.now();
         const mockShots = Array.from({ length: 8 }).map((_, i) => {
-          const d = new Date(Date.now() - i * 86400000);
-          const dateStr = d.toISOString().slice(0, 10);
-          const timeStr = d.toISOString().slice(11, 19).replace(/:/g, "-");
+          const joined = base - (i + 1) * 3_600_000;
+          const left = base - i * 3_600_000 - 12 * 60_000;
+          const d = new Date(Math.floor((joined + left) / 2));
+          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          const timeStr = `${String(d.getHours()).padStart(2, "0")}-${String(d.getMinutes()).padStart(2, "0")}-${String(d.getSeconds()).padStart(2, "0")}`;
           const filename = `VRChat_2560x1440_${dateStr}_${timeStr}.png`;
           return {
             path: `C:/Users/dev/Pictures/VRChat/${dateStr.slice(0, 7)}/${filename}`,
@@ -2272,6 +2361,78 @@ class IpcClient {
         return { avatars: [] } as unknown as TResult;
       case "user.getSavedMessages":
         return { messages: [] } as unknown as TResult;
+      case "grey.prefs.get":
+        return { prefs: mockGreyPrefsSnapshot() } as unknown as TResult;
+      case "grey.prefs.set": {
+        const patch =
+          params && typeof params === "object" && !Array.isArray(params)
+            ? ((params as { patch?: Record<string, unknown> }).patch ??
+              (params as Record<string, unknown>))
+            : {};
+        applyMockGreyPrefsPatch(patch);
+        return { prefs: mockGreyPrefsSnapshot() } as unknown as TResult;
+      }
+      case "inviteSlots.list":
+        return { messages: [] } as unknown as TResult;
+      case "inviteSlots.update":
+      case "inviteSlots.reset":
+      case "inviteSlots.sendInvite":
+      case "inviteSlots.sendRequest":
+      case "inviteSlots.respond":
+        return { ok: true } as unknown as TResult;
+      case "playspace.status":
+        return { state: "steamvr_not_running" } as unknown as TResult;
+      case "playspace.start":
+      case "playspace.stop":
+      case "playspace.setLocks":
+      case "playspace.nudge":
+      case "playspace.reset":
+        return { state: "steamvr_not_running" } as unknown as TResult;
+      case "tts.status":
+        return { engine: "none", voices: [], speaking: false } as unknown as TResult;
+      case "tts.voices":
+        return { voices: [] } as unknown as TResult;
+      case "tts.speak":
+      case "tts.stop":
+      case "tts.setVoice":
+        return { ok: true } as unknown as TResult;
+      case "otpMail.getConfig":
+        return { enabled: false, host: "", port: 993, tls: "imaps", username: "", passwordSaved: false, markSeen: false } as unknown as TResult;
+      case "otpMail.setConfig":
+        return { ok: true, passwordSaved: true } as unknown as TResult;
+      case "otpMail.clear":
+        return { ok: true } as unknown as TResult;
+      case "otpMail.test":
+        return { ok: true, inboxExists: true } as unknown as TResult;
+      case "otpMail.start":
+      case "otpMail.stop":
+        return { ok: true } as unknown as TResult;
+      case "otpMail.poll":
+        return { code: null } as unknown as TResult;
+      case "inviteAssist.get":
+        return { enabled: false, confirmed: false, confirmedAt: null, allowlist: [] } as unknown as TResult;
+      case "inviteAssist.setEnabled":
+      case "inviteAssist.confirm":
+      case "inviteAssist.allowAdd":
+      case "inviteAssist.allowRemove":
+      case "inviteAssist.cancelPending":
+        return { ok: true } as unknown as TResult;
+      case "eventWatch.list":
+        return { watches: [] } as unknown as TResult;
+      case "eventWatch.upsert":
+      case "eventWatch.remove":
+      case "eventWatch.start":
+      case "eventWatch.stop":
+      case "eventWatch.pollNow":
+      case "eventWatch.cancelJoin":
+      case "eventWatch.joinNow":
+        return { ok: true } as unknown as TResult;
+      case "backup.create":
+        return { ok: true, id: "20260820T000000Z", createdAt: new Date().toISOString(), bytes: 0, files: [], pruned: 0 } as unknown as TResult;
+      case "backup.list":
+        return { backups: [] } as unknown as TResult;
+      case "backup.restore":
+        return { ok: true, id: "20260820T000000Z" } as unknown as TResult;
       case "jams.list":
         return [] as unknown as TResult;
       case "jams.detail":
@@ -2296,8 +2457,26 @@ class IpcClient {
         return { ok: true, connected: false } as unknown as TResult;
 
       // ── Screenshot metadata read ────────────────────────────────────────
-      case "screenshots.readMetadata":
-        return { metadata: {} } as unknown as TResult;
+      case "screenshots.readMetadata": {
+        const p = (params ?? {}) as { path?: string };
+        const path = p.path ?? "";
+        const players = [
+          { displayName: "Mock Friend", userId: "usr_mock-friend", isLocal: false },
+          { displayName: "You", userId: "usr_mock-1234-5678", isLocal: true },
+        ];
+        if (path.length % 2 === 0) {
+          players.push({ displayName: "Neko", userId: "usr_mock-neko", isLocal: false });
+        }
+        return {
+          metadata: {
+            "vrcsm:world": "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "vrcsm:instance":
+              "wrld_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345~hidden(usr_mock)~region(jp)",
+            "vrcsm:players": JSON.stringify(players),
+            Description: `Players: ${players.map((x) => x.displayName).join(", ")}`,
+          },
+        } as unknown as TResult;
+      }
 
       // ── Live memory reader / radar (no host attached in dev) ────────────
       case "memory.status":
@@ -3002,10 +3181,13 @@ class IpcClient {
   // host so the native Pipeline event lambda knows which Action Center
   // toasts to raise. The host echoes back the resolved flags.
   async notifySetPrefs(prefs: {
-    friendOnline: boolean;
-    invite: boolean;
-    friendRequest: boolean;
-    vrOverlay: boolean;
+    friendOnline?: boolean;
+    invite?: boolean;
+    friendRequest?: boolean;
+    vrOverlay?: boolean;
+    ttsEnabled?: boolean;
+    ttsScope?: "all" | "friends";
+    ttsChatbox?: boolean;
   }) {
     return this.call<
       typeof prefs,
@@ -3015,8 +3197,68 @@ class IpcClient {
         invite: boolean;
         friendRequest: boolean;
         vrOverlay: boolean;
+        ttsEnabled?: boolean;
+        ttsScope?: "all" | "friends";
+        ttsChatbox?: boolean;
       }
     >("notify.setPrefs", prefs);
+  }
+
+  async ttsStatus() {
+    return this.call<
+      Record<string, never>,
+      {
+        engine: "sapi" | "none";
+        voices: { id: string; name: string; lang: string }[];
+        speaking: boolean;
+        voiceId?: string;
+        rate?: number;
+        volume?: number;
+        chatbox?: boolean;
+        enabled?: boolean;
+      }
+    >("tts.status", {});
+  }
+
+  async ttsVoices() {
+    return this.call<Record<string, never>, { voices: { id: string; name: string; lang: string }[] }>(
+      "tts.voices",
+      {},
+    );
+  }
+
+  async ttsSpeak(text: string, lang?: string, echoChatbox?: boolean) {
+    return this.call<
+      { text: string; lang?: string; echoChatbox?: boolean },
+      { ok: boolean }
+    >("tts.speak", { text, lang, echoChatbox });
+  }
+
+  async ttsStop() {
+    return this.call<Record<string, never>, { ok: boolean }>("tts.stop", {});
+  }
+
+  async ttsSetVoice(prefs: {
+    voiceId?: string;
+    rate?: number;
+    volume?: number;
+    chatbox?: boolean;
+  }) {
+    return this.call<
+      typeof prefs,
+      { ok: boolean; voiceId: string; rate: number; volume: number; chatbox: boolean }
+    >("tts.setVoice", prefs);
+  }
+
+  async greyPrefsGet() {
+    return this.call<Record<string, never>, { prefs: Record<string, unknown> }>("grey.prefs.get", {});
+  }
+
+  async greyPrefsSet(patch: Record<string, unknown>) {
+    return this.call<{ patch: Record<string, unknown> }, { prefs: Record<string, unknown> }>(
+      "grey.prefs.set",
+      { patch },
+    );
   }
 
   // ── OSC bridge ──────────────────────────────────────────────────────
@@ -3219,6 +3461,18 @@ class IpcClient {
     return this.call<{ targets: string[] }, DataClearResponse>("data.clear", {
       targets,
     });
+  }
+
+  async backupCreate(keep = 3) {
+    return this.call<{ keep: number }, AppBackupCreateResult>("backup.create", { keep });
+  }
+
+  async backupList() {
+    return this.call<Record<string, never>, AppBackupListResult>("backup.list", {});
+  }
+
+  async backupRestore(id: string) {
+    return this.call<{ id: string }, AppBackupRestoreResult>("backup.restore", { id });
   }
 
   async searchGlobal(params: SearchGlobalRequest) {

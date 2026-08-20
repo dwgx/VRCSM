@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -14,14 +14,34 @@ import {
   Eye,
   FolderSearch,
   Loader2,
+  Layers,
+  LogIn,
+  Users,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { ipc } from "@/lib/ipc";
+import { listWorldVisits } from "@/lib/history-api";
+import { rejoinLocationFromVisit, openVrchatLocation } from "@/lib/shell-api";
+import {
+  groupShotsByVisit,
+  metadataHasPlayer,
+  parseLiberalTimestamp,
+  parseScreenshotPlayers,
+  type ScreenshotPlayer,
+} from "@/lib/screenshot-visits";
+import type { DbWorldVisit } from "@/lib/types";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { cn } from "@/lib/utils";
+
+const GROUP_BY_VISIT_PREF = "vrcsm.screenshots.groupByVisit";
+const VISIT_LIST_LIMIT = 2000;
+const META_SWEEP_CONCURRENCY = 4;
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -91,6 +111,21 @@ function formatTime(iso: string, locale: string): string {
   }
 }
 
+function formatVisitInstant(raw: string | null | undefined, locale: string): string {
+  const ms = parseLiberalTimestamp(raw);
+  if (ms == null) return (raw ?? "").trim() || "—";
+  try {
+    return new Date(ms).toLocaleString(locale, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return raw ?? "—";
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  ScreenshotTile                                                     */
 /* ------------------------------------------------------------------ */
@@ -102,6 +137,10 @@ function ScreenshotTile({
   onOpen,
   onClick,
   onContextMenu,
+  onHover,
+  onPlayerClick,
+  players,
+  activePlayerId,
   eager,
 }: {
   shot: Screenshot;
@@ -110,6 +149,10 @@ function ScreenshotTile({
   onOpen: (s: Screenshot) => void;
   onClick: (s: Screenshot, e: React.MouseEvent) => void;
   onContextMenu: (s: Screenshot, e: React.MouseEvent) => void;
+  onHover?: (s: Screenshot) => void;
+  onPlayerClick?: (player: ScreenshotPlayer) => void;
+  players?: ScreenshotPlayer[];
+  activePlayerId?: string | null;
   /** True for above-fold tiles — lets us skip IntersectionObserver and
    * prioritise their fetch. */
   eager: boolean;
@@ -152,13 +195,13 @@ function ScreenshotTile({
       : source === "full" ? shot.url
         : undefined;
 
+  const playerHint =
+    players && players.length > 0
+      ? players.map((p) => p.displayName).join(", ")
+      : shot.filename;
+
   return (
-    <button
-      ref={ref}
-      type="button"
-      onClick={(e) => onClick(shot, e)}
-      onDoubleClick={() => onOpen(shot)}
-      onContextMenu={(e) => onContextMenu(shot, e)}
+    <div
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-[var(--radius-sm)]",
         "border-2 bg-[hsl(var(--canvas))]",
@@ -166,67 +209,183 @@ function ScreenshotTile({
           ? "border-[hsl(var(--primary))] ring-1 ring-[hsl(var(--primary)/0.4)]"
           : "border-[hsl(var(--border))] hover:border-[hsl(var(--border-strong))]",
         "hover:shadow-md transition-all duration-150",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--primary))]",
       )}
-      title={shot.filename}
+      onMouseEnter={() => onHover?.(shot)}
+      onContextMenu={(e) => onContextMenu(shot, e)}
     >
-      {/* Selection indicator */}
-      {selected && (
-        <div className="absolute top-1.5 left-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white shadow-sm">
-          <CheckSquare className="size-3" />
-        </div>
-      )}
-
-      {/* Thumbnail */}
-      <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-[hsl(var(--muted)/0.25)] to-[hsl(var(--muted)/0.05)]">
-        {visible && activeSrc ? (
-          <img
-            src={activeSrc}
-            alt={shot.filename}
-            loading={eager ? "eager" : "lazy"}
-            decoding="async"
-            fetchPriority={eager ? "high" : "auto"}
-            className={cn(
-              "h-full w-full object-cover transition-opacity duration-300",
-              loaded ? "opacity-100" : "opacity-0",
-            )}
-            onLoad={() => setLoaded(true)}
-            onError={() => {
-              // Thumb 404 → try the full-res URL once. If that also
-              // fails, give up and show the placeholder.
-              if (source === "thumb" && shot.url) {
-                setSource("full");
-                setLoaded(false);
-              } else {
-                setSource("error");
-              }
-            }}
-          />
-        ) : null}
-        {(!loaded || source === "error") && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <ImageIcon className="size-8 text-[hsl(var(--muted-foreground)/0.4)]" />
+      <button
+        ref={ref}
+        type="button"
+        onClick={(e) => onClick(shot, e)}
+        onDoubleClick={() => onOpen(shot)}
+        className={cn(
+          "relative flex flex-col",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--primary))]",
+        )}
+        title={playerHint}
+      >
+        {/* Selection indicator */}
+        {selected && (
+          <div className="absolute top-1.5 left-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white shadow-sm">
+            <CheckSquare className="size-3" />
           </div>
         )}
-        {/* Hover overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
-            {t("screenshots.openHover", { defaultValue: "Open" })}
+
+        {/* Thumbnail */}
+        <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-[hsl(var(--muted)/0.25)] to-[hsl(var(--muted)/0.05)]">
+          {visible && activeSrc ? (
+            <img
+              src={activeSrc}
+              alt={shot.filename}
+              loading={eager ? "eager" : "lazy"}
+              decoding="async"
+              fetchPriority={eager ? "high" : "auto"}
+              className={cn(
+                "h-full w-full object-cover transition-opacity duration-300",
+                loaded ? "opacity-100" : "opacity-0",
+              )}
+              onLoad={() => setLoaded(true)}
+              onError={() => {
+                // Thumb 404 → try the full-res URL once. If that also
+                // fails, give up and show the placeholder.
+                if (source === "thumb" && shot.url) {
+                  setSource("full");
+                  setLoaded(false);
+                } else {
+                  setSource("error");
+                }
+              }}
+            />
+          ) : null}
+          {(!loaded || source === "error") && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <ImageIcon className="size-8 text-[hsl(var(--muted-foreground)/0.4)]" />
+            </div>
+          )}
+          {/* Hover overlay */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
+              {t("screenshots.openHover", { defaultValue: "Open" })}
+            </span>
+          </div>
+        </div>
+
+        {/* Meta row */}
+        <div className="flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+          <Calendar className="size-3 shrink-0" />
+          <span className="truncate">{formatDate(shot.created_at, locale)}</span>
+          <Clock className="size-3 shrink-0" />
+          <span className="shrink-0">{formatTime(shot.created_at, locale)}</span>
+          <span className="ml-auto shrink-0 font-mono">
+            {formatBytes(shot.size_bytes)}
           </span>
         </div>
-      </div>
+      </button>
 
-      {/* Meta row */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
-        <Calendar className="size-3 shrink-0" />
-        <span className="truncate">{formatDate(shot.created_at, locale)}</span>
-        <Clock className="size-3 shrink-0" />
-        <span className="shrink-0">{formatTime(shot.created_at, locale)}</span>
-        <span className="ml-auto shrink-0 font-mono">
-          {formatBytes(shot.size_bytes)}
+      {players && players.length > 0 && (
+        <div className="flex flex-wrap gap-1 px-2 pb-1.5">
+          {players.map((player) => {
+            const key = player.userId || player.displayName;
+            const active = Boolean(activePlayerId && player.userId === activePlayerId);
+            return (
+              <button
+                key={key}
+                type="button"
+                disabled={!player.userId || !onPlayerClick}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (player.userId) onPlayerClick?.(player);
+                }}
+                title={
+                  player.userId
+                    ? t("screenshots.filterByPlayer", {
+                        name: player.displayName,
+                        defaultValue: "Show shots with {{name}}",
+                      })
+                    : player.displayName
+                }
+                className={cn(
+                  "max-w-full truncate rounded-full border px-1.5 py-0 text-[10px]",
+                  active
+                    ? "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]"
+                    : "border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] text-[hsl(var(--foreground))] hover:border-[hsl(var(--primary)/0.4)]",
+                  !player.userId && "cursor-default opacity-70",
+                )}
+              >
+                {player.displayName}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VisitGroupHeader({
+  visit,
+  shotCount,
+  locale,
+  prefetch,
+}: {
+  visit: DbWorldVisit | null;
+  shotCount: number;
+  locale: string;
+  prefetch: boolean;
+}) {
+  const { t } = useTranslation();
+  const loc = visit
+    ? rejoinLocationFromVisit(visit.world_id, visit.instance_id)
+    : null;
+
+  return (
+    <header className="flex flex-wrap items-center gap-2">
+      {visit?.world_id ? (
+        <WorldPopupBadge worldId={visit.world_id} prefetch={prefetch} />
+      ) : visit ? (
+        <span className="text-[12px] font-medium">
+          {t("screenshots.unknownWorld", { defaultValue: "Unknown world" })}
         </span>
-      </div>
-    </button>
+      ) : (
+        <span className="text-[12px] font-medium">
+          {t("screenshots.ungrouped", { defaultValue: "Ungrouped" })}
+        </span>
+      )}
+      {visit ? (
+        <span className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
+          {formatVisitInstant(visit.joined_at, locale)}
+          {" → "}
+          {visit.left_at
+            ? formatVisitInstant(visit.left_at, locale)
+            : t("screenshots.stillInWorld", { defaultValue: "still in world" })}
+        </span>
+      ) : (
+        <span className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
+          {t("screenshots.ungroupedHint", {
+            defaultValue: "Shots that did not fall inside a logged world visit",
+          })}
+        </span>
+      )}
+      {loc ? (
+        <button
+          type="button"
+          className="flex items-center gap-0.5 text-[10px] text-[hsl(var(--primary))] hover:underline"
+          onClick={() => void openVrchatLocation(loc)}
+          title={t("screenshots.rejoinHint", {
+            defaultValue: "Launch VRChat into this exact instance",
+          })}
+        >
+          <LogIn className="size-3" />
+          {t("screenshots.rejoin", { defaultValue: "Rejoin" })}
+        </button>
+      ) : null}
+      <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">
+        {t("screenshots.visitShots", {
+          defaultValue: "{{count}} shots",
+          count: shotCount,
+        })}
+      </span>
+    </header>
   );
 }
 
@@ -459,13 +618,53 @@ export default function Screenshots() {
     staleTime: 5 * 60_000,
   });
 
+  const [groupByVisit, setGroupByVisit] = useUiPrefBoolean(GROUP_BY_VISIT_PREF, true);
+  const visitsQuery = useQuery({
+    queryKey: ["db.worldVisits.list", { limit: VISIT_LIST_LIMIT, offset: 0 }],
+    queryFn: () => listWorldVisits(VISIT_LIST_LIMIT, 0),
+    staleTime: 2 * 60_000,
+    gcTime: 30 * 60_000,
+    enabled: groupByVisit,
+  });
+
   const data = listQuery.data ?? null;
   const loading = listQuery.isPending;
   const refetching = listQuery.isFetching && !listQuery.isPending;
   const error = listQuery.error instanceof Error ? listQuery.error.message : null;
+  const visits = (visitsQuery.data?.items ?? []) as DbWorldVisit[];
+  const visitsReady = visitsQuery.isSuccess || visitsQuery.isError || !groupByVisit;
 
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, 150);
+  const [playerFilter, setPlayerFilter] = useState<ScreenshotPlayer | null>(null);
+  const [scanRemaining, setScanRemaining] = useState(0);
+
+  const metaCacheRef = useRef(new Map<string, Record<string, string>>());
+  const inFlightRef = useRef(new Set<string>());
+  const [metaTick, setMetaTick] = useState(0);
+
+  const rememberMeta = useCallback((path: string, meta: Record<string, string>) => {
+    metaCacheRef.current.set(path, meta);
+    setMetaTick((n) => n + 1);
+  }, []);
+
+  const loadMeta = useCallback(async (path: string) => {
+    if (metaCacheRef.current.has(path)) return metaCacheRef.current.get(path);
+    if (inFlightRef.current.has(path)) return undefined;
+    inFlightRef.current.add(path);
+    try {
+      const res = await ipc.screenshotsReadMetadata(path);
+      const meta =
+        res?.metadata && typeof res.metadata === "object" ? res.metadata : {};
+      rememberMeta(path, meta);
+      return meta;
+    } catch {
+      rememberMeta(path, {});
+      return {};
+    } finally {
+      inFlightRef.current.delete(path);
+    }
+  }, [rememberMeta]);
 
   // Selection state
   const [selectedSet, setSelectedSet] = useState<Set<string>>(new Set());
@@ -491,6 +690,100 @@ export default function Screenshots() {
         ? s.filename.toLowerCase().includes(debouncedFilter.toLowerCase())
         : true,
     ) ?? [];
+
+  const groupingActive = groupByVisit && visitsReady;
+  const grouped = useMemo(
+    () => (groupingActive ? groupShotsByVisit(filtered, visits) : []),
+    [groupingActive, filtered, visits],
+  );
+
+  const displayGroups = useMemo(() => {
+    if (!groupingActive) return grouped;
+    if (!playerFilter) return grouped;
+    return grouped
+      .map((g) => ({
+        ...g,
+        shots: g.shots.filter((s) => {
+          const meta = metaCacheRef.current.get(s.path);
+          return meta != null && metadataHasPlayer(meta, playerFilter.userId);
+        }),
+      }))
+      .filter((g) => g.shots.length > 0);
+  }, [grouped, groupingActive, playerFilter, metaTick]);
+
+  const visibleShots = useMemo(() => {
+    const shots = groupingActive ? displayGroups.flatMap((g) => g.shots) : filtered;
+    if (!playerFilter) return shots;
+    return shots.filter((s) => {
+      const meta = metaCacheRef.current.get(s.path);
+      return meta != null && metadataHasPlayer(meta, playerFilter.userId);
+    });
+  }, [groupingActive, displayGroups, filtered, playerFilter, metaTick]);
+
+  useEffect(() => {
+    return ipc.on<{ path?: string; metadata?: Record<string, string> }>(
+      "screenshots.new",
+      (ev) => {
+        if (ev?.path && ev.metadata && typeof ev.metadata === "object") {
+          rememberMeta(ev.path, ev.metadata);
+        }
+        void queryClient.invalidateQueries({ queryKey: ["screenshots.list"] });
+      },
+    );
+  }, [queryClient, rememberMeta]);
+
+  useEffect(() => {
+    if (!playerFilter) {
+      setScanRemaining(0);
+      return;
+    }
+    let cancelled = false;
+    const pending = filtered
+      .map((s) => s.path)
+      .filter((path) => !metaCacheRef.current.has(path));
+    setScanRemaining(pending.length);
+    if (pending.length === 0) return;
+
+    const queue = pending.slice();
+    const workers = Array.from({ length: Math.min(META_SWEEP_CONCURRENCY, queue.length) }, async () => {
+      while (!cancelled) {
+        const path = queue.shift();
+        if (!path) return;
+        await loadMeta(path);
+        if (!cancelled) {
+          setScanRemaining(queue.length + inFlightRef.current.size);
+        }
+      }
+    });
+    void Promise.all(workers).then(() => {
+      if (!cancelled) setScanRemaining(0);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [playerFilter, filtered, loadMeta]);
+
+  const handleHover = useCallback((shot: Screenshot) => {
+    void loadMeta(shot.path);
+  }, [loadMeta]);
+
+  const handlePlayerClick = useCallback((player: ScreenshotPlayer) => {
+    setPlayerFilter((prev) =>
+      prev?.userId === player.userId ? null : player,
+    );
+  }, []);
+
+  useEffect(() => {
+    if (selectedSet.size !== 1) return;
+    const path = selectedSet.values().next().value;
+    if (path) void loadMeta(path);
+  }, [selectedSet, loadMeta]);
+
+  const playersFor = useCallback((path: string): ScreenshotPlayer[] | undefined => {
+    const meta = metaCacheRef.current.get(path);
+    if (!meta) return undefined;
+    return parseScreenshotPlayers(meta);
+  }, [metaTick]);
 
   /* ---- Actions ---- */
 
@@ -592,14 +885,14 @@ export default function Screenshots() {
       const next = new Set(prev);
 
       if (e.shiftKey && lastClickedRef.current) {
-        const lastIdx = filtered.findIndex(
+        const lastIdx = visibleShots.findIndex(
           (s) => s.path === lastClickedRef.current,
         );
-        const curIdx = filtered.findIndex((s) => s.path === shot.path);
+        const curIdx = visibleShots.findIndex((s) => s.path === shot.path);
         if (lastIdx !== -1 && curIdx !== -1) {
           const [from, to] = lastIdx < curIdx ? [lastIdx, curIdx] : [curIdx, lastIdx];
           for (let i = from; i <= to; i++) {
-            next.add(filtered[i].path);
+            next.add(visibleShots[i].path);
           }
         }
       } else if (e.ctrlKey || e.metaKey) {
@@ -624,7 +917,7 @@ export default function Screenshots() {
   }
 
   function selectAll() {
-    setSelectedSet(new Set(filtered.map((s) => s.path)));
+    setSelectedSet(new Set(visibleShots.map((s) => s.path)));
   }
 
   function clearSelection() {
@@ -650,14 +943,14 @@ export default function Screenshots() {
   /* ---- Bulk actions ---- */
 
   function openSelected() {
-    const selected = filtered.filter((s) => selectedSet.has(s.path));
+    const selected = visibleShots.filter((s) => selectedSet.has(s.path));
     for (const shot of selected) {
       void ipc.call("screenshots.open", { path: shot.path });
     }
   }
 
   function copySelectedPaths() {
-    const paths = filtered
+    const paths = visibleShots
       .filter((s) => selectedSet.has(s.path))
       .map((s) => s.path)
       .join("\n");
@@ -737,15 +1030,59 @@ export default function Screenshots() {
 
         {data && (
           <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
-            {filtered.length}{" "}
+            {visibleShots.length}{" "}
             {t("screenshots.countSuffix", { defaultValue: "shots" })}
+            {playerFilter && visibleShots.length !== filtered.length && (
+              <span className="ml-1 opacity-70">
+                / {filtered.length}
+              </span>
+            )}
             {refetching && (
               <span className="ml-2 inline-flex items-center gap-1 opacity-60">
                 <Loader2 className="size-3 animate-spin" />
                 {t("common.refreshing", { defaultValue: "refreshing" })}
               </span>
             )}
+            {scanRemaining > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 opacity-60">
+                <Loader2 className="size-3 animate-spin" />
+                {t("screenshots.scanningMetadata", {
+                  defaultValue: "checking {{count}}",
+                  count: scanRemaining,
+                })}
+              </span>
+            )}
           </span>
+        )}
+
+        <Button
+          variant={groupByVisit ? "default" : "outline"}
+          size="sm"
+          className="h-6 px-2 text-[11px]"
+          aria-pressed={groupByVisit}
+          onClick={() => setGroupByVisit((v) => !v)}
+          title={t("screenshots.groupByVisitHint", {
+            defaultValue: "Group screenshots by the world visit they were taken in",
+          })}
+        >
+          <Layers className="size-3" />
+          {t("screenshots.groupByVisit", { defaultValue: "Group by visit" })}
+        </Button>
+
+        {playerFilter && (
+          <button
+            type="button"
+            onClick={() => setPlayerFilter(null)}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+              "border-[hsl(var(--primary)/0.55)] bg-[hsl(var(--primary)/0.16)] text-[hsl(var(--primary))]",
+            )}
+            title={t("screenshots.clearPlayerFilter", { defaultValue: "Clear player filter" })}
+          >
+            <Users className="size-3" />
+            <span className="max-w-[10rem] truncate">{playerFilter.displayName}</span>
+            <X className="size-3" />
+          </button>
         )}
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -761,7 +1098,7 @@ export default function Screenshots() {
             variant="ghost"
             size="sm"
             onClick={selectAll}
-            disabled={filtered.length === 0}
+            disabled={visibleShots.length === 0}
             className="h-6 px-2 text-[11px]"
           >
             <CheckSquare className="size-3" />
@@ -801,16 +1138,51 @@ export default function Screenshots() {
             </div>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : visibleShots.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-[hsl(var(--muted-foreground))]">
           <ImageIcon className="size-10 opacity-30" />
           <span className="text-[12px]">
-            {t("screenshots.empty", { defaultValue: "No screenshots" })}
+            {playerFilter
+              ? t("screenshots.emptyPlayerFilter", {
+                  defaultValue: "No screenshots with that player yet",
+                })
+              : t("screenshots.empty", { defaultValue: "No screenshots" })}
           </span>
+        </div>
+      ) : groupingActive ? (
+        <div className="flex flex-col gap-6">
+          {displayGroups.map((group, groupIdx) => (
+            <section key={group.visit?.id ?? `ungrouped-${groupIdx}`} className="flex flex-col gap-2">
+              <VisitGroupHeader
+                visit={group.visit}
+                shotCount={group.shots.length}
+                locale={locale}
+                prefetch={groupIdx < 12}
+              />
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+                {group.shots.map((shot, idx) => (
+                  <ScreenshotTile
+                    key={shot.path}
+                    shot={shot}
+                    selected={selectedSet.has(shot.path)}
+                    locale={locale}
+                    onOpen={openShot}
+                    onClick={handleTileClick}
+                    onContextMenu={handleContextMenu}
+                    onHover={handleHover}
+                    onPlayerClick={handlePlayerClick}
+                    players={playersFor(shot.path)}
+                    activePlayerId={playerFilter?.userId ?? null}
+                    eager={groupIdx === 0 && idx < 16}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
-          {filtered.map((shot, idx) => (
+          {visibleShots.map((shot, idx) => (
             <ScreenshotTile
               key={shot.path}
               shot={shot}
@@ -819,6 +1191,10 @@ export default function Screenshots() {
               onOpen={openShot}
               onClick={handleTileClick}
               onContextMenu={handleContextMenu}
+              onHover={handleHover}
+              onPlayerClick={handlePlayerClick}
+              players={playersFor(shot.path)}
+              activePlayerId={playerFilter?.userId ?? null}
               eager={idx < 16}
             />
           ))}

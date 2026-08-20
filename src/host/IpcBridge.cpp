@@ -22,6 +22,7 @@
 #include "../core/ScreenshotWatcher.h"
 
 #include "../core/plugins/PluginRegistry.h"
+#include "bridges/GreyBridge.h"
 
 #include <cctype>
 #include <future>
@@ -125,6 +126,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "fs.listDir",
         "fs.writePlan",
         "fs.appDataDir",
+        "shell.launchVrchatLocation",
         "thumbnails.fetch",
         "images.cache",
         "assets.resolve",
@@ -192,6 +194,49 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "user.inviteTo",
         "user.requestInvite",
         "user.getSavedMessages",
+        "grey.prefs.get",
+        "grey.prefs.set",
+        "inviteSlots.list",
+        "inviteSlots.update",
+        "inviteSlots.reset",
+        "inviteSlots.sendInvite",
+        "inviteSlots.sendRequest",
+        "inviteSlots.respond",
+        "playspace.status",
+        "playspace.start",
+        "playspace.stop",
+        "playspace.setLocks",
+        "playspace.nudge",
+        "playspace.reset",
+        "otpMail.getConfig",
+        "otpMail.setConfig",
+        "otpMail.clear",
+        "otpMail.test",
+        "otpMail.start",
+        "otpMail.stop",
+        "otpMail.poll",
+        "inviteAssist.get",
+        "inviteAssist.setEnabled",
+        "inviteAssist.confirm",
+        "inviteAssist.allowAdd",
+        "inviteAssist.allowRemove",
+        "inviteAssist.cancelPending",
+        "eventWatch.list",
+        "eventWatch.upsert",
+        "eventWatch.remove",
+        "eventWatch.start",
+        "eventWatch.stop",
+        "eventWatch.pollNow",
+        "eventWatch.cancelJoin",
+        "eventWatch.joinNow",
+        "backup.create",
+        "backup.list",
+        "backup.restore",
+        "tts.status",
+        "tts.voices",
+        "tts.speak",
+        "tts.stop",
+        "tts.setVoice",
         "user.mute",
         "user.unmute",
         "user.block",
@@ -267,7 +312,9 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "hw.recommend",
         "hw.telemetry",
         "music.nowPlaying",
+        "music.sessions",
         "lyrics.fetch",
+        "lyrics.readFolder",
         "update.check",
         "update.download",
         "update.install",
@@ -372,6 +419,8 @@ IpcBridge::IpcBridge(WebViewHost& host)
     }
 
     RegisterHandlers();
+    InitTtsFromGreyPrefs();
+    GreyBindBridge(this);
 
     // Kick off background cache indexer.
     {
@@ -400,6 +449,7 @@ IpcBridge::IpcBridge(WebViewHost& host)
 
 IpcBridge::~IpcBridge()
 {
+    GreyShutdownWorkers();
     {
         std::lock_guard<std::mutex> lk(m_asyncMutex);
         m_drainingAsync = true;
@@ -645,6 +695,8 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("rules.history", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleRulesHistory(p, id); });
     m_handlers.emplace("shell.pickFolder", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellPickFolder(p, id); });
     m_handlers.emplace("shell.openUrl", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellOpenUrl(p, id); });
+    m_handlers.emplace("shell.launchVrchatLocation", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellLaunchVrchatLocation(p, id); });
+    m_handlers.emplace("shell.writeInstanceShortcut", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleShellWriteInstanceShortcut(p, id); });
     m_handlers.emplace("fs.listDir", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsListDir(p, id); });
     m_handlers.emplace("fs.writePlan", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsWritePlan(p, id); });
     m_handlers.emplace("fs.appDataDir", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFsAppDataDir(p, id); });
@@ -731,7 +783,9 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("hw.recommend", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwRecommend(p, id); });
     m_handlers.emplace("hw.telemetry", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwTelemetry(p, id); });
     m_handlers.emplace("music.nowPlaying", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleMusicNowPlaying(p, id); });
+    m_handlers.emplace("music.sessions", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleMusicSessions(p, id); });
     m_handlers.emplace("lyrics.fetch", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLyricsFetch(p, id); });
+    m_handlers.emplace("lyrics.readFolder", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleLyricsReadFolder(p, id); });
     m_handlers.emplace("moderations.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleModerationsList(p, id); });
     m_handlers.emplace("calendar.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarList(p, id); });
     m_handlers.emplace("calendar.discover", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleCalendarDiscover(p, id); });
@@ -768,6 +822,49 @@ void IpcBridge::RegisterHandlers()
     m_handlers.emplace("visits.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleVisitsList(p, id); });
     m_handlers.emplace("user.requestInvite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserRequestInvite(p, id); });
     m_handlers.emplace("user.getSavedMessages", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserGetSavedMessages(p, id); });
+    m_handlers.emplace("grey.prefs.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGreyPrefsGet(p, id); });
+    m_handlers.emplace("grey.prefs.set", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGreyPrefsSet(p, id); });
+    m_handlers.emplace("inviteSlots.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteSlotsList(p, id); });
+    m_handlers.emplace("inviteSlots.update", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteSlotsUpdate(p, id); });
+    m_handlers.emplace("inviteSlots.reset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteSlotsReset(p, id); });
+    m_handlers.emplace("inviteSlots.sendInvite", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteSlotsSendInvite(p, id); });
+    m_handlers.emplace("inviteSlots.sendRequest", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteSlotsSendRequest(p, id); });
+    m_handlers.emplace("inviteSlots.respond", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteSlotsRespond(p, id); });
+    m_handlers.emplace("playspace.status", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePlayspaceStatus(p, id); });
+    m_handlers.emplace("playspace.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePlayspaceStart(p, id); });
+    m_handlers.emplace("playspace.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePlayspaceStop(p, id); });
+    m_handlers.emplace("playspace.setLocks", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePlayspaceSetLocks(p, id); });
+    m_handlers.emplace("playspace.nudge", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePlayspaceNudge(p, id); });
+    m_handlers.emplace("playspace.reset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandlePlayspaceReset(p, id); });
+    m_handlers.emplace("otpMail.getConfig", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOtpMailGetConfig(p, id); });
+    m_handlers.emplace("otpMail.setConfig", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOtpMailSetConfig(p, id); });
+    m_handlers.emplace("otpMail.clear", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOtpMailClear(p, id); });
+    m_handlers.emplace("otpMail.test", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOtpMailTest(p, id); });
+    m_handlers.emplace("otpMail.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOtpMailStart(p, id); });
+    m_handlers.emplace("otpMail.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOtpMailStop(p, id); });
+    m_handlers.emplace("otpMail.poll", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleOtpMailPoll(p, id); });
+    m_handlers.emplace("inviteAssist.get", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteAssistGet(p, id); });
+    m_handlers.emplace("inviteAssist.setEnabled", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteAssistSetEnabled(p, id); });
+    m_handlers.emplace("inviteAssist.confirm", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteAssistConfirm(p, id); });
+    m_handlers.emplace("inviteAssist.allowAdd", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteAssistAllowAdd(p, id); });
+    m_handlers.emplace("inviteAssist.allowRemove", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteAssistAllowRemove(p, id); });
+    m_handlers.emplace("inviteAssist.cancelPending", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleInviteAssistCancelPending(p, id); });
+    m_handlers.emplace("eventWatch.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventWatchList(p, id); });
+    m_handlers.emplace("eventWatch.upsert", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventWatchUpsert(p, id); });
+    m_handlers.emplace("eventWatch.remove", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventWatchRemove(p, id); });
+    m_handlers.emplace("eventWatch.start", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventWatchStart(p, id); });
+    m_handlers.emplace("eventWatch.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventWatchStop(p, id); });
+    m_handlers.emplace("eventWatch.pollNow", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventWatchPollNow(p, id); });
+    m_handlers.emplace("eventWatch.cancelJoin", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventWatchCancelJoin(p, id); });
+    m_handlers.emplace("eventWatch.joinNow", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleEventWatchJoinNow(p, id); });
+    m_handlers.emplace("backup.create", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleBackupCreate(p, id); });
+    m_handlers.emplace("backup.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleBackupList(p, id); });
+    m_handlers.emplace("backup.restore", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleBackupRestore(p, id); });
+    m_handlers.emplace("tts.status", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleTtsStatus(p, id); });
+    m_handlers.emplace("tts.voices", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleTtsVoices(p, id); });
+    m_handlers.emplace("tts.speak", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleTtsSpeak(p, id); });
+    m_handlers.emplace("tts.stop", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleTtsStop(p, id); });
+    m_handlers.emplace("tts.setVoice", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleTtsSetVoice(p, id); });
     m_handlers.emplace("user.mute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserMute(p, id); });
     m_handlers.emplace("user.unmute", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserUnmute(p, id); });
     m_handlers.emplace("user.block", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleUserBlock(p, id); });

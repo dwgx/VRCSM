@@ -3,6 +3,8 @@
 #include "Common.h" // vrcsm::core::Result / Error
 
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace vrcsm::core
 {
@@ -30,13 +32,25 @@ struct NowPlayingSnapshot
     bool hasThumbnail = false; // availability only (image out of scope)
 };
 
-// Read the current media session. A missing session is NOT an error — it
-// returns a snapshot with active=false and empty/zero fields. WinRT init
-// failure (or any unexpected WinRT error) returns Error{"nowplaying_unavailable"}.
-// Never throws. The underlying GSMTC async calls round-trip into the media
-// source app and can stall, so each is bounded by an internal timeout
-// (~1.5s); on timeout the call degrades to empty/partial data rather than
-// blocking the caller's thread. Intended to be invoked off the UI thread.
+// Read the current (or preferred) media session. A missing session is NOT
+// an error — it returns a snapshot with active=false and empty/zero fields.
+// WinRT init failure (or any unexpected WinRT error) returns
+// Error{"nowplaying_unavailable"}. Never throws. The underlying GSMTC async
+// calls round-trip into the media source app and can stall, so each is
+// bounded by an internal timeout (~1.5s); on timeout the call degrades to
+// empty/partial data rather than blocking the caller's thread. Intended to
+// be invoked off the UI thread.
+//
+// When `preferredAppId` is empty, this is GetCurrentSession() (the OS
+// "now playing" session). When set, GetSessions() is searched for a matching
+// AUMID and that session is used; if none match, falls back to current.
 Result<NowPlayingSnapshot> ReadNowPlaying();
+Result<NowPlayingSnapshot> ReadNowPlaying(std::string_view preferredAppId);
+
+// Enumerate every GSMTC session (title/artist/status/app id). An empty
+// list is NOT an error — CI / no-media returns ok + empty vector. Same
+// timeout rail as ReadNowPlaying(); per-session property failures skip
+// that session rather than failing the whole call.
+Result<std::vector<NowPlayingSnapshot>> ReadNowPlayingSessions();
 
 } // namespace vrcsm::core

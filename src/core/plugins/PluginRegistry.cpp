@@ -36,6 +36,7 @@ const std::unordered_map<std::string, std::unordered_set<std::string>>& Permissi
         {"ipc:vrc:auth", {"auth.status", "auth.user", "user.me"}},
         {"ipc:vrc:api", {"avatar.details", "world.details", "friends.list",
                           "groups.list", "user.me", "user.getProfile"}},
+        {"ipc:grey:read", {"grey.prefs.get", "inviteSlots.list", "tts.status", "tts.voices", "eventWatch.list"}},
         {"ipc:logs", {"logs.stream.start", "logs.stream.stop"}},
         {"ipc:screenshots", {"screenshots.list", "screenshots.folder", "screenshots.open"}},
         {"ipc:settings", {"settings.readAll", "settings.writeOne"}},

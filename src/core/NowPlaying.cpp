@@ -19,6 +19,7 @@
 #include <winerror.h> // RPC_E_CHANGED_MODE
 
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Media.Control.h>
 #include <winrt/Windows.Storage.Streams.h>
 
@@ -28,6 +29,7 @@
 #include <chrono>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace wmc = winrt::Windows::Media::Control;
 
@@ -146,9 +148,132 @@ std::string FriendlyAppName(const std::string& appId)
     return appId;
 }
 
+bool AppIdEquals(std::string_view a, std::string_view b)
+{
+    if (a.size() != b.size())
+    {
+        return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        if (std::tolower(static_cast<unsigned char>(a[i])) !=
+            std::tolower(static_cast<unsigned char>(b[i])))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+NowPlayingSnapshot FillSnapshot(wmc::GlobalSystemMediaTransportControlsSession const& session)
+{
+    NowPlayingSnapshot snap;
+    snap.active = true;
+
+    // Media properties: title / artist / album / thumbnail availability.
+    try
+    {
+        auto props = AwaitBounded(session.TryGetMediaPropertiesAsync());
+        if (props)
+        {
+            snap.title = winrt::to_string(props.Title());
+            snap.artist = winrt::to_string(props.Artist());
+            snap.album = winrt::to_string(props.AlbumTitle());
+            snap.hasThumbnail = props.Thumbnail() != nullptr;
+        }
+    }
+    catch (const winrt::hresult_error&)
+    {
+        // Some sources fail this async even while a session exists; leave
+        // the string fields empty rather than failing the whole read.
+    }
+
+    // Timeline: position / duration + the sample time for extrapolation.
+    // The anchor MUST be LastUpdatedTime (the UTC instant the source last
+    // reported Position), NOT the read time — GSMTC does not self-advance
+    // Position, so stamping "now" makes the client extrapolate from a stale
+    // position and the progress bar snaps backward on each poll (sawtooth).
+    // Fall back to now only when the source never reported a timeline.
+    try
+    {
+        auto tl = session.GetTimelineProperties();
+        snap.durationMs = TimeSpanToMs(tl.EndTime());
+        snap.positionMs = TimeSpanToMs(tl.Position());
+        const long long updatedAt = DateTimeToEpochMs(tl.LastUpdatedTime());
+        snap.positionAtMs = updatedAt > 0 ? updatedAt : NowEpochMs();
+    }
+    catch (const winrt::hresult_error&)
+    {
+    }
+
+    // Playback info: status + rate.
+    try
+    {
+        auto pi = session.GetPlaybackInfo();
+        snap.status = StatusToString(pi.PlaybackStatus());
+        if (auto rate = pi.PlaybackRate())
+        {
+            snap.playbackRate = rate.Value();
+        }
+    }
+    catch (const winrt::hresult_error&)
+    {
+    }
+
+    // Source app identity.
+    snap.appId = winrt::to_string(session.SourceAppUserModelId());
+    snap.appName = FriendlyAppName(snap.appId);
+
+    return snap;
+}
+
+wmc::GlobalSystemMediaTransportControlsSession PickSession(
+    const wmc::GlobalSystemMediaTransportControlsSessionManager& mgr,
+    std::string_view preferredAppId)
+{
+    if (!preferredAppId.empty())
+    {
+        try
+        {
+            auto sessions = mgr.GetSessions();
+            // Index with Size()/GetAt(): SDK 10.0.28000 IIterable::begin
+            // returns auto and cannot be used in a range-for (C3779).
+            const uint32_t n = sessions.Size();
+            for (uint32_t i = 0; i < n; ++i)
+            {
+                auto const session = sessions.GetAt(i);
+                if (!session)
+                {
+                    continue;
+                }
+                const std::string id = winrt::to_string(session.SourceAppUserModelId());
+                if (AppIdEquals(id, preferredAppId))
+                {
+                    return session;
+                }
+            }
+        }
+        catch (const winrt::hresult_error&)
+        {
+            // Fall through to GetCurrentSession().
+        }
+    }
+    return mgr.GetCurrentSession();
+}
+
+Error NowPlayingUnavailable(const winrt::hresult_error& ex)
+{
+    return Error{"nowplaying_unavailable", winrt::to_string(ex.message()), 0};
+}
+
 } // namespace
 
 Result<NowPlayingSnapshot> ReadNowPlaying()
+{
+    return ReadNowPlaying(std::string_view{});
+}
+
+Result<NowPlayingSnapshot> ReadNowPlaying(std::string_view preferredAppId)
 {
     try
     {
@@ -162,73 +287,91 @@ Result<NowPlayingSnapshot> ReadNowPlaying()
             return snap; // no manager — treat as no session, not an error
         }
 
-        auto session = mgr.GetCurrentSession();
+        auto session = PickSession(mgr, preferredAppId);
         if (!session)
         {
             return snap; // active stays false — this is the CI / no-media case
         }
 
-        snap.active = true;
-
-        // Media properties: title / artist / album / thumbnail availability.
-        try
-        {
-            auto props = AwaitBounded(session.TryGetMediaPropertiesAsync());
-            if (props)
-            {
-                snap.title = winrt::to_string(props.Title());
-                snap.artist = winrt::to_string(props.Artist());
-                snap.album = winrt::to_string(props.AlbumTitle());
-                snap.hasThumbnail = props.Thumbnail() != nullptr;
-            }
-        }
-        catch (const winrt::hresult_error&)
-        {
-            // Some sources fail this async even while a session exists; leave
-            // the string fields empty rather than failing the whole read.
-        }
-
-        // Timeline: position / duration + the sample time for extrapolation.
-        // The anchor MUST be LastUpdatedTime (the UTC instant the source last
-        // reported Position), NOT the read time — GSMTC does not self-advance
-        // Position, so stamping "now" makes the client extrapolate from a stale
-        // position and the progress bar snaps backward on each poll (sawtooth).
-        // Fall back to now only when the source never reported a timeline.
-        try
-        {
-            auto tl = session.GetTimelineProperties();
-            snap.durationMs = TimeSpanToMs(tl.EndTime());
-            snap.positionMs = TimeSpanToMs(tl.Position());
-            const long long updatedAt = DateTimeToEpochMs(tl.LastUpdatedTime());
-            snap.positionAtMs = updatedAt > 0 ? updatedAt : NowEpochMs();
-        }
-        catch (const winrt::hresult_error&)
-        {
-        }
-
-        // Playback info: status + rate.
-        try
-        {
-            auto pi = session.GetPlaybackInfo();
-            snap.status = StatusToString(pi.PlaybackStatus());
-            if (auto rate = pi.PlaybackRate())
-            {
-                snap.playbackRate = rate.Value();
-            }
-        }
-        catch (const winrt::hresult_error&)
-        {
-        }
-
-        // Source app identity.
-        snap.appId = winrt::to_string(session.SourceAppUserModelId());
-        snap.appName = FriendlyAppName(snap.appId);
-
-        return snap;
+        return FillSnapshot(session);
     }
     catch (const winrt::hresult_error& ex)
     {
-        return Error{"nowplaying_unavailable", winrt::to_string(ex.message()), 0};
+        return NowPlayingUnavailable(ex);
+    }
+    catch (const std::exception& ex)
+    {
+        return Error{"nowplaying_unavailable", ex.what(), 0};
+    }
+    catch (...)
+    {
+        return Error{"nowplaying_unavailable", "Unknown GSMTC failure", 0};
+    }
+}
+
+Result<std::vector<NowPlayingSnapshot>> ReadNowPlayingSessions()
+{
+    try
+    {
+        EnsureApartment();
+
+        std::vector<NowPlayingSnapshot> out;
+
+        auto mgr = AwaitBounded(wmc::GlobalSystemMediaTransportControlsSessionManager::RequestAsync());
+        if (!mgr)
+        {
+            return out;
+        }
+
+        // Bound the enumeration: each session may round-trip into a hung
+        // source app (~1.5s). Twelve is plenty for a picker and keeps the
+        // IPC worker from sitting on GSMTC for tens of seconds.
+        constexpr size_t kMaxSessions = 12;
+        try
+        {
+            auto sessions = mgr.GetSessions();
+            // Index with Size()/GetAt(): SDK 10.0.28000 IIterable::begin
+            // returns auto and cannot be used in a range-for (C3779).
+            const uint32_t n = sessions.Size();
+            for (uint32_t i = 0; i < n && out.size() < kMaxSessions; ++i)
+            {
+                auto const session = sessions.GetAt(i);
+                if (!session)
+                {
+                    continue;
+                }
+                try
+                {
+                    out.push_back(FillSnapshot(session));
+                }
+                catch (const winrt::hresult_error&)
+                {
+                    // Skip a single bad session; keep listing the rest.
+                }
+            }
+        }
+        catch (const winrt::hresult_error&)
+        {
+            // GetSessions failed — try the current session so the picker
+            // still has something when the OS reports a now-playing source.
+            try
+            {
+                auto current = mgr.GetCurrentSession();
+                if (current)
+                {
+                    out.push_back(FillSnapshot(current));
+                }
+            }
+            catch (const winrt::hresult_error&)
+            {
+            }
+        }
+
+        return out;
+    }
+    catch (const winrt::hresult_error& ex)
+    {
+        return NowPlayingUnavailable(ex);
     }
     catch (const std::exception& ex)
     {

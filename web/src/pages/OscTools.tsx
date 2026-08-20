@@ -31,6 +31,7 @@ import { AddMessageMenu } from "./osc/AddMessageMenu";
 import { LoopPanel } from "./osc/LoopPanel";
 import { HardwarePanel } from "./osc/HardwarePanel";
 import { AvatarScanPanel } from "./osc/AvatarScanPanel";
+import { AvatarPresetsPanel } from "./osc/AvatarPresetsPanel";
 import { NowPlayingPanel } from "./osc/NowPlayingPanel";
 import { outgoingSpecForCard, type TemplateExtras } from "./osc/shared";
 
@@ -88,6 +89,7 @@ export default function OscTools() {
     stopAutoSend,
     hardwareLoading,
     nowPlaying,
+    world,
   } = studio;
 
   const [selectedId, setSelectedId] = useState<string | null>(() => cards[0]?.id ?? null);
@@ -131,6 +133,10 @@ export default function OscTools() {
       musicLyricLine: music && music.active ? currentLyricLine(lines, posMs) : "",
       musicLyricTranslated: music && music.active ? currentLyricTrans(lines, posMs) : "",
       asciiFold: nowPlaying.asciiFold,
+      worldName: world.worldName,
+      worldId: world.worldId,
+      instanceId: world.instanceId,
+      instanceType: world.instanceType,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -140,6 +146,10 @@ export default function OscTools() {
     nowPlaying.progressWidth,
     nowPlaying.marqueeWidth,
     nowPlaying.asciiFold,
+    world.worldName,
+    world.worldId,
+    world.instanceId,
+    world.instanceType,
   ]);
 
   const selectedCard = useMemo(
@@ -332,6 +342,7 @@ export default function OscTools() {
           />
           <HardwarePanel hardware={hardware} loading={hardwareLoading} />
           <AvatarScanPanel localAvatars={localAvatars} onAddCard={handleAddCard} />
+          <AvatarPresetsPanel localAvatars={localAvatars} incoming={studio.log} />
         </div>
       </section>
     </div>

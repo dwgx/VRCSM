@@ -100,6 +100,48 @@ std::optional<std::time_t> parsePresenceInstant(const std::string& s)
     return mktime(&tm);
 }
 
+namespace
+{
+bool scanVisitWallClock(std::string_view raw,
+                        int& year, int& mon, int& day,
+                        int& hour, int& minute, int& sec)
+{
+    const std::string s(raw);
+    year = mon = day = hour = minute = sec = 0;
+    if (sscanf_s(s.c_str(), "%d-%d-%dT%d:%d:%d",
+                 &year, &mon, &day, &hour, &minute, &sec) == 6)
+    {
+        return true;
+    }
+    year = mon = day = hour = minute = sec = 0;
+    return sscanf_s(s.c_str(), "%d.%d.%d %d:%d:%d",
+                    &year, &mon, &day, &hour, &minute, &sec) == 6;
+}
+} // namespace
+
+std::string NormalizeVisitTimestamp(std::string_view raw)
+{
+    if (raw.empty())
+    {
+        return {};
+    }
+    // Validity gate shares parsePresenceInstant (DOT, ISO, Z, ±HH:MM).
+    // Reformat from the written wall digits rather than gmtime/localtime
+    // so a +09:00 stamp stays comparable to a DOT-local stamp of the
+    // same wall hour regardless of the host timezone.
+    if (!parsePresenceInstant(std::string(raw)).has_value())
+    {
+        return std::string(raw);
+    }
+    int year = 0, mon = 0, day = 0, hour = 0, minute = 0, sec = 0;
+    if (!scanVisitWallClock(raw, year, mon, day, hour, minute, sec))
+    {
+        return std::string(raw);
+    }
+    return fmt::format("{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}",
+                       year, mon, day, hour, minute, sec);
+}
+
 std::time_t intervalOverlap(const PresenceInterval& a, const PresenceInterval& b)
 {
     const std::time_t lo = std::max(a.start, b.start);

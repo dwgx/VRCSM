@@ -32,6 +32,7 @@ import { APP_ICON_URL } from "@/lib/assets";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_LANGUAGES, changeLanguage } from "@/i18n";
 import { ipc } from "@/lib/ipc";
+import { useGreyPrefs } from "@/lib/grey-prefs";
 import { useInstalledPanelPlugins } from "@/lib/plugin-context";
 import { pluginDisplayName } from "@/lib/plugin-i18n";
 import type { AppVersion } from "@/lib/types";
@@ -53,6 +54,8 @@ const coreItems: NavItem[] = [
   { to: "/avatars", labelKey: "nav.avatars", icon: User },
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
   { to: "/history/worlds", labelKey: "nav.worldHistory", icon: Globe2 },
+  { to: "/history/activity", labelKey: "nav.activityLedger", icon: ScrollText },
+  { to: "/history/hot-worlds", labelKey: "nav.hotWorlds", icon: TrendingUp },
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
@@ -69,6 +72,13 @@ const labItems: NavItem[] = [
   { to: "/fbt", labelKey: "nav.fbt", icon: Activity },
   { to: "/rules", labelKey: "nav.rules", icon: Zap },
   { to: "/tools/osc", labelKey: "nav.osc", icon: Zap },
+  { to: "/tools/last-instance", labelKey: "nav.lastInstance", icon: Radio },
+];
+
+const helperItems: NavItem[] = [
+  { to: "/tools/invite-slots", labelKey: "nav.inviteSlots", icon: Users },
+  { to: "/tools/playspace", labelKey: "nav.playspace", icon: Orbit },
+  { to: "/tools/event-watch", labelKey: "nav.eventWatch", icon: CalendarDays },
 ];
 
 function LanguageMenu() {
@@ -155,9 +165,19 @@ function VersionFooter() {
   );
 }
 
-function LabSection({ items }: { items: NavItem[] }) {
+function CollapsibleNavGroup({
+  storageKey,
+  labelKey,
+  defaultLabel,
+  items,
+}: {
+  storageKey: string;
+  labelKey: string;
+  defaultLabel: string;
+  items: NavItem[];
+}) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(() => localStorage.getItem("vrcsm.sidebar.labOpen") === "true");
+  const [open, setOpen] = useState(() => localStorage.getItem(storageKey) === "true");
   return (
     <>
       <button
@@ -165,12 +185,12 @@ function LabSection({ items }: { items: NavItem[] }) {
         onClick={() => {
           const next = !open;
           setOpen(next);
-          localStorage.setItem("vrcsm.sidebar.labOpen", String(next));
+          localStorage.setItem(storageKey, String(next));
         }}
         className="mt-1 flex items-center gap-1.5 px-2.5 pt-1 text-[9.5px] uppercase tracking-[0.08em] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
       >
         <ChevronRight className={cn("size-3 transition-transform", open && "rotate-90")} />
-        {t("nav.labSection", { defaultValue: "Lab" })}
+        {t(labelKey, { defaultValue: defaultLabel })}
         <span className="ml-auto rounded-[3px] bg-[hsl(45_93%_47%/0.15)] px-1 py-px text-[8px] font-semibold text-[hsl(45_93%_47%)]">
           {items.length}
         </span>
@@ -188,8 +208,18 @@ function LabSection({ items }: { items: NavItem[] }) {
             )
           }
         >
-          <item.icon className="size-[14px] shrink-0" aria-hidden />
-          <span className="flex-1 truncate">{t(item.labelKey)}</span>
+          {({ isActive }) => (
+            <>
+              {isActive ? (
+                <span
+                  aria-hidden
+                  className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full bg-[hsl(var(--primary))]"
+                />
+              ) : null}
+              <item.icon className="size-[14px] shrink-0" aria-hidden />
+              <span className="flex-1 truncate">{t(item.labelKey)}</span>
+            </>
+          )}
         </NavLink>
       ))}
     </>
@@ -198,6 +228,8 @@ function LabSection({ items }: { items: NavItem[] }) {
 
 export function Sidebar() {
   const { t, i18n } = useTranslation();
+  const { prefs } = useGreyPrefs();
+  const helpersOn = prefs?.greyEnabled === true;
   const panelPlugins = useInstalledPanelPlugins();
   const pluginItems = useMemo(
     () =>
@@ -277,7 +309,20 @@ export function Sidebar() {
         ))}
 
         {/* Lab / Experimental section — collapsible */}
-        <LabSection items={labItems} />
+        <CollapsibleNavGroup
+          storageKey="vrcsm.sidebar.labOpen"
+          labelKey="nav.labSection"
+          defaultLabel="Lab"
+          items={labItems}
+        />
+        {helpersOn ? (
+          <CollapsibleNavGroup
+            storageKey="vrcsm.sidebar.helpersOpen"
+            labelKey="nav.helpersSection"
+            defaultLabel="Helpers"
+            items={helperItems}
+          />
+        ) : null}
 
         {pluginItems.length > 0 ? (
           <>

@@ -1,0 +1,7 @@
+From: VRChat <noreply@vrchat.com>
+Subject: VRChat login
+Date: 2026-08-20T12:00:00Z
+
+The year-like token 202608 is not a code.
+Your code: 111222
+Another number 333444 should lose.

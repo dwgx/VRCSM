@@ -867,6 +867,30 @@ CREATE INDEX IF NOT EXISTS idx_avatar_benchmark_params
         return std::get<Error>(r);
     }
 
+    static const char* kSchemaV19Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS grey_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT NOT NULL,
+    feature TEXT NOT NULL,
+    action TEXT NOT NULL,
+    detail_json TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_grey_audit_at ON grey_audit(at);
+CREATE INDEX IF NOT EXISTS idx_grey_audit_feature ON grey_audit(feature);
+    )SQL";
+
+    if (const auto r = ExecSimple(kSchemaV19Sql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 19;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
     const auto commitResult = ExecSimple("COMMIT;");
     if (std::holds_alternative<Error>(commitResult))
     {

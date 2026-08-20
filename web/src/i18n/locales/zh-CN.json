@@ -34,6 +34,10 @@
       "plugins": "插件"
     },
     "worldHistory": "世界历史",
+    "activityLedger": "活动账本",
+    "lastInstance": "上一房",
+    "inviteSlots": "邀请槽",
+    "playspace": "Playspace",
     "calendar": "日历和活动",
     "events": "事件记录器",
     "social": "社交分析",

@@ -15,7 +15,10 @@
 #include "../WebViewHost.h"
 
 #include <fstream>
+#include <KnownFolders.h>
+#include <objidl.h>
 #include <shellapi.h>
+#include <shlguid.h>
 #include <shlobj.h>
 #include <shobjidl.h>
 
@@ -56,6 +59,205 @@ std::optional<std::filesystem::path> SafeRelativeSubdir(const std::string& raw)
     }
 
     return out.lexically_normal();
+}
+
+// Match JS encodeURIComponent so vrchat://launch?id= round-trips with the SPA.
+std::string PercentEncodeUriComponent(std::string_view input)
+{
+    std::string out;
+    out.reserve(input.size() + 16);
+    static const char kHex[] = "0123456789ABCDEF";
+    for (const unsigned char c : input)
+    {
+        const bool unescaped =
+            (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+            || c == '-' || c == '_' || c == '.' || c == '!' || c == '~'
+            || c == '*' || c == '\'' || c == '(' || c == ')';
+        if (unescaped)
+        {
+            out.push_back(static_cast<char>(c));
+        }
+        else
+        {
+            out.push_back('%');
+            out.push_back(kHex[(c >> 4) & 0xF]);
+            out.push_back(kHex[c & 0xF]);
+        }
+    }
+    return out;
+}
+
+std::string PercentDecodeUriComponent(std::string_view input)
+{
+    std::string out;
+    out.reserve(input.size());
+    auto hexVal = [](unsigned char h) -> int {
+        if (h >= '0' && h <= '9') return h - '0';
+        if (h >= 'A' && h <= 'F') return h - 'A' + 10;
+        if (h >= 'a' && h <= 'f') return h - 'a' + 10;
+        return -1;
+    };
+    for (size_t i = 0; i < input.size();)
+    {
+        const unsigned char c = static_cast<unsigned char>(input[i]);
+        if (c == '%' && i + 2 < input.size())
+        {
+            const int hi = hexVal(static_cast<unsigned char>(input[i + 1]));
+            const int lo = hexVal(static_cast<unsigned char>(input[i + 2]));
+            if (hi >= 0 && lo >= 0)
+            {
+                out.push_back(static_cast<char>((hi << 4) | lo));
+                i += 3;
+                continue;
+            }
+        }
+        out.push_back(static_cast<char>(c));
+        ++i;
+    }
+    return out;
+}
+
+std::optional<std::string> LocationFromVrchatLaunchUrl(std::string_view url)
+{
+    auto idPos = url.find("?id=");
+    if (idPos == std::string_view::npos)
+    {
+        idPos = url.find("&id=");
+        if (idPos == std::string_view::npos)
+        {
+            return std::nullopt;
+        }
+    }
+    auto rest = url.substr(idPos + 4);
+    const auto amp = rest.find('&');
+    if (amp != std::string_view::npos)
+    {
+        rest = rest.substr(0, amp);
+    }
+    return PercentDecodeUriComponent(rest);
+}
+
+bool IsValidVrchatLocation(std::string_view location)
+{
+    if (location.empty() || location.size() > 2048)
+    {
+        return false;
+    }
+    if (location.rfind("wrld_", 0) != 0)
+    {
+        return false;
+    }
+    for (const unsigned char c : location)
+    {
+        if (c < 0x20 || c == 0x7F)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::string BuildVrchatLocationLaunchUrl(std::string_view location)
+{
+    return "vrchat://launch?ref=vrchat.com&id=" + PercentEncodeUriComponent(location);
+}
+
+bool TryWriteVrchatLaunchPipe(const std::string& utf8Url)
+{
+    constexpr wchar_t kPipeName[] = L"\\\\.\\pipe\\VRChatURLLaunchPipe";
+    constexpr DWORD kTimeoutMs = 1500;
+
+    auto openPipe = [&]() -> HANDLE {
+        return CreateFileW(
+            kPipeName,
+            GENERIC_WRITE,
+            0,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+    };
+
+    HANDLE raw = openPipe();
+    if (raw == INVALID_HANDLE_VALUE && GetLastError() == ERROR_PIPE_BUSY)
+    {
+        if (WaitNamedPipeW(kPipeName, kTimeoutMs))
+        {
+            raw = openPipe();
+        }
+    }
+    if (raw == INVALID_HANDLE_VALUE)
+    {
+        return false;
+    }
+
+    DWORD written = 0;
+    const BOOL ok = WriteFile(
+        raw,
+        utf8Url.data(),
+        static_cast<DWORD>(utf8Url.size()),
+        &written,
+        nullptr);
+    (void)FlushFileBuffers(raw);
+    CloseHandle(raw);
+    return ok == TRUE && written == utf8Url.size();
+}
+
+std::filesystem::path ResolveInstanceShortcutPath(const std::string& destRaw)
+{
+    namespace fs = std::filesystem;
+
+    if (destRaw.empty())
+    {
+        const auto desk = vrcsm::core::tryGetKnownFolderPath(FOLDERID_Desktop);
+        if (!desk)
+        {
+            throw IpcException(vrcsm::core::Error{
+                "io_error", "shell.writeInstanceShortcut: cannot resolve Desktop folder", 0});
+        }
+        return *desk / L"VRCSM-last-instance.lnk";
+    }
+
+    fs::path dest(Utf8ToWide(destRaw));
+    if (!dest.is_absolute())
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_params", "shell.writeInstanceShortcut: destPath must be absolute", 0});
+    }
+
+    std::error_code ec;
+    dest = fs::weakly_canonical(dest, ec);
+    if (ec)
+    {
+        dest = fs::path(Utf8ToWide(destRaw));
+    }
+
+    const auto ext = dest.extension().wstring();
+    if (_wcsicmp(ext.c_str(), L".lnk") != 0)
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_params", "shell.writeInstanceShortcut: destPath must end with .lnk", 0});
+    }
+
+    const auto profile = vrcsm::core::tryGetEnvPath(L"USERPROFILE");
+    if (!profile || !vrcsm::core::ensureWithinBase(*profile, dest))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_params",
+            "shell.writeInstanceShortcut: destPath must be under the user profile",
+            0});
+    }
+
+    const auto parent = dest.parent_path();
+    ec.clear();
+    if (!fs::exists(parent, ec) || !fs::is_directory(parent, ec))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_params",
+            "shell.writeInstanceShortcut: destPath parent directory does not exist",
+            0});
+    }
+    return dest;
 }
 
 } // namespace
@@ -165,32 +367,23 @@ nlohmann::json IpcBridge::HandleShellOpenUrl(const nlohmann::json& params, const
     // When VRChat is already running, prefer its REST API over the
     // vrchat:// protocol handler so the running process receives the
     // join command through its existing server connection instead of
-    // spawning a second VRChat.exe.
+    // spawning a second VRChat.exe. Location is percent-decoded so
+    // BuildVrchatLocationLaunchUrl's encodeURIComponent round-trips
+    // (`wrld_…%3A…` → `wrld_…:…`) before inviteSelf.
     if (url.rfind("vrchat://launch", 0) == 0)
     {
         const auto vrc = vrcsm::core::ProcessGuard::IsVRChatRunning();
         if (vrc.running)
         {
-            // Extract world+instance id from vrchat://launch?id=wrld_xxx:instance
-            const auto idPos = url.find("?id=");
-            if (idPos == std::string::npos)
+            const auto location = LocationFromVrchatLaunchUrl(url);
+            if (!location || !IsValidVrchatLocation(*location))
             {
-                const auto idPos2 = url.find("&id=");
-                if (idPos2 == std::string::npos)
-                {
-                    throw std::runtime_error("shell.openUrl: vrchat://launch URL missing id parameter");
-                }
-                const std::string location = url.substr(idPos2 + 4);
-                const auto r = vrcsm::core::VrcApi::inviteSelf(location);
-                if (std::holds_alternative<vrcsm::core::Error>(r))
-                {
-                    const auto& err = std::get<vrcsm::core::Error>(r);
-                    throw std::runtime_error("shell.openUrl: inviteSelf failed: " + err.message);
-                }
-                return nlohmann::json{{"ok", true}};
+                throw IpcException(vrcsm::core::Error{
+                    "invalid_params",
+                    "shell.openUrl: missing or invalid location id",
+                    0});
             }
-            const std::string location = url.substr(idPos + 4);
-            const auto r = vrcsm::core::VrcApi::inviteSelf(location);
+            const auto r = vrcsm::core::VrcApi::inviteSelf(*location);
             if (std::holds_alternative<vrcsm::core::Error>(r))
             {
                 const auto& err = std::get<vrcsm::core::Error>(r);
@@ -216,6 +409,157 @@ nlohmann::json IpcBridge::HandleShellOpenUrl(const nlohmann::json& params, const
     }
 
     return nlohmann::json{{"ok", true}};
+}
+
+nlohmann::json IpcBridge::HandleShellLaunchVrchatLocation(
+    const nlohmann::json& params,
+    const std::optional<std::string>& id)
+{
+    const std::string location = JsonStringField(params, "location").value_or("");
+    if (!IsValidVrchatLocation(location))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_params",
+            "shell.launchVrchatLocation: missing or invalid 'location'",
+            0});
+    }
+
+    bool preferPipe = true;
+    if (params.is_object() && params.contains("preferPipe") && params["preferPipe"].is_boolean())
+    {
+        preferPipe = params["preferPipe"].get<bool>();
+    }
+
+    const std::string url = BuildVrchatLocationLaunchUrl(location);
+    // Named pipe gets a raw location id. VRChat's launch pipe historically
+    // wants wrld_…:instance, not percent-encoded ':' (%3A).
+    const std::string pipeUrl = "vrchat://launch?ref=vrchat.com&id=" + location;
+
+    if (preferPipe)
+    {
+        const auto vrc = vrcsm::core::ProcessGuard::IsVRChatRunning();
+        if (vrc.running && TryWriteVrchatLaunchPipe(pipeUrl))
+        {
+            return nlohmann::json{{"ok", true}, {"via", "pipe"}};
+        }
+    }
+
+    nlohmann::json result = HandleShellOpenUrl(nlohmann::json{{"url", url}}, id);
+    if (!result.is_object())
+    {
+        result = nlohmann::json::object();
+    }
+    result["ok"] = true;
+    result["via"] = "openUrl";
+    return result;
+}
+
+nlohmann::json IpcBridge::HandleShellWriteInstanceShortcut(
+    const nlohmann::json& params,
+    const std::optional<std::string>&)
+{
+    const std::string location = JsonStringField(params, "location").value_or("");
+    if (!IsValidVrchatLocation(location))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "invalid_params",
+            "shell.writeInstanceShortcut: missing or invalid 'location'",
+            0});
+    }
+
+    const std::string worldName = JsonStringField(params, "worldName").value_or("");
+    const std::string destRaw = JsonStringField(params, "destPath").value_or("");
+    const std::string url = BuildVrchatLocationLaunchUrl(location);
+    const std::filesystem::path dest = ResolveInstanceShortcutPath(destRaw);
+
+    wchar_t sysDir[MAX_PATH]{};
+    if (GetSystemDirectoryW(sysDir, MAX_PATH) == 0)
+    {
+        throw IpcException(vrcsm::core::Error{
+            "io_error", "shell.writeInstanceShortcut: GetSystemDirectory failed", 0});
+    }
+    const std::wstring rundll = std::wstring(sysDir) + L"\\rundll32.exe";
+    const std::wstring urlWide = Utf8ToWide(url);
+    const std::wstring args = L"url.dll,FileProtocolHandler " + urlWide;
+
+    std::wstring desc = Utf8ToWide(worldName);
+    if (desc.empty())
+    {
+        desc = L"VRCSM last instance";
+    }
+    if (desc.size() > 200)
+    {
+        desc.resize(200);
+    }
+    for (auto& ch : desc)
+    {
+        if (ch < 32)
+        {
+            ch = L' ';
+        }
+    }
+
+    const HRESULT init = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    const bool needsUninit = (init == S_OK);
+    auto uninit = wil::scope_exit([&]()
+    {
+        if (needsUninit)
+        {
+            CoUninitialize();
+        }
+    });
+    if (FAILED(init) && init != RPC_E_CHANGED_MODE)
+    {
+        throw IpcException(vrcsm::core::Error{
+            "com_error", "shell.writeInstanceShortcut: CoInitializeEx failed", 0});
+    }
+
+    Microsoft::WRL::ComPtr<IShellLinkW> link;
+    HRESULT hr = CoCreateInstance(
+        CLSID_ShellLink,
+        nullptr,
+        CLSCTX_INPROC_SERVER,
+        IID_PPV_ARGS(&link));
+    if (FAILED(hr) || !link)
+    {
+        throw IpcException(vrcsm::core::Error{
+            "com_error", "shell.writeInstanceShortcut: CoCreateInstance(IShellLink) failed", 0});
+    }
+
+    hr = link->SetPath(rundll.c_str());
+    if (FAILED(hr))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "com_error", "shell.writeInstanceShortcut: IShellLink::SetPath failed", 0});
+    }
+    (void)link->SetArguments(args.c_str());
+    (void)link->SetDescription(desc.c_str());
+    (void)link->SetShowCmd(SW_SHOWNORMAL);
+    (void)link->SetWorkingDirectory(L"");
+
+    Microsoft::WRL::ComPtr<IPersistFile> persist;
+    hr = link.As(&persist);
+    if (FAILED(hr) || !persist)
+    {
+        throw IpcException(vrcsm::core::Error{
+            "com_error", "shell.writeInstanceShortcut: IPersistFile query failed", 0});
+    }
+
+    hr = persist->Save(dest.c_str(), TRUE);
+    if (FAILED(hr))
+    {
+        throw IpcException(vrcsm::core::Error{
+            "io_error",
+            fmt::format(
+                "shell.writeInstanceShortcut: Save failed (HRESULT 0x{:08X})",
+                static_cast<unsigned long>(hr)),
+            0});
+    }
+
+    return nlohmann::json{
+        {"ok", true},
+        {"path", WideToUtf8(dest.wstring())},
+    };
 }
 
 nlohmann::json IpcBridge::HandleFsListDir(const nlohmann::json& params, const std::optional<std::string>&)

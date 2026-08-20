@@ -71,6 +71,10 @@ nlohmann::json IpcBridge::HandlePipelineStart(const nlohmann::json&, const std::
             // Fire-and-forget: failures are swallowed inside ShowToast.
             if (auto toast = vrcsm::core::FormatPipelineToast(type, content))
             {
+                // SAPI announcements are independent of desktop toasts so the
+                // user can hear events with toasts off (and with the SPA in tray).
+                MaybeSpeakToast(*toast);
+
                 bool enabled = false;
                 switch (toast->kind)
                 {
@@ -139,6 +143,13 @@ nlohmann::json IpcBridge::HandleNotifySetPrefs(const nlohmann::json& params, con
     readBool("invite", m_toastInvite);
     readBool("friendRequest", m_toastFriendRequest);
     readBool("vrOverlay", m_vrOverlayEnabled);
+    readBool("ttsEnabled", m_ttsEnabled);
+    readBool("ttsChatbox", m_ttsChatbox);
+    auto scopeIt = params.find("ttsScope");
+    if (scopeIt != params.end() && scopeIt->is_string())
+    {
+        m_ttsScopeAll.store(scopeIt->get<std::string>() == "all");
+    }
 
     return nlohmann::json{
         {"ok", true},
@@ -146,6 +157,9 @@ nlohmann::json IpcBridge::HandleNotifySetPrefs(const nlohmann::json& params, con
         {"invite", m_toastInvite.load()},
         {"friendRequest", m_toastFriendRequest.load()},
         {"vrOverlay", m_vrOverlayEnabled.load()},
+        {"ttsEnabled", m_ttsEnabled.load()},
+        {"ttsScope", m_ttsScopeAll.load() ? "all" : "friends"},
+        {"ttsChatbox", m_ttsChatbox.load()},
     };
 }
 

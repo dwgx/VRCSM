@@ -417,17 +417,21 @@ Result<nlohmann::json> Database::StatsOverview()
         "(SELECT COUNT(DISTINCT user_id) FROM player_encounters) AS total_players_encountered, "
         "(SELECT COUNT(*) FROM avatar_history) AS total_avatars_seen, "
         "("
-        // NOTE: total dwell hours is intentionally left on the raw columns for
-        // now. world_visits stores MIXED timestamp formats in the same column
-        // (joined_at is DOT-local "YYYY.MM.DD HH:MM:SS" while some left_at rows
-        // are ISO with a +09:00-style offset). A naive julianday() over both
-        // mismatches naive-vs-UTC and yields negative intervals, which is worse
-        // than the prior 0. A correct fix must normalize offset-aware values to
-        // a common zone first — tracked as a separate follow-up so this batch
-        // ships only the verified heatmap + parser fixes.
-        "    SELECT COALESCE(SUM(julianday(left_at) - julianday(joined_at)) * 24, 0.0) "
-        "    FROM world_visits "
-        "    WHERE left_at IS NOT NULL"
+        // world_visits may mix DOT-local "YYYY.MM.DD HH:MM:SS" (log ingest)
+        // with ISO "YYYY-MM-DDTHH:MM:SS+09:00" (nowIso() on shutdown). SQLite
+        // treats naive stamps as UTC but converts offset stamps to UTC, so a
+        // raw julianday(left)-julianday(joined) goes negative. Normalize both
+        // to naive wall clock: dots→dashes, T→space, then substr(1,19) drops
+        // Z/±HH:MM. Unparsable julianday is NULL → CASE ELSE 0. Clamp so
+        // total_hours_in_world is never negative.
+        "    SELECT COALESCE(SUM(CASE WHEN delta_hours > 0 THEN delta_hours ELSE 0 END), 0.0) "
+        "    FROM ("
+        "        SELECT (julianday(substr(replace(replace(left_at, '.', '-'), 'T', ' '), 1, 19)) "
+        "              - julianday(substr(replace(replace(joined_at, '.', '-'), 'T', ' '), 1, 19))) * 24.0 "
+        "            AS delta_hours "
+        "        FROM world_visits "
+        "        WHERE left_at IS NOT NULL AND left_at <> ''"
+        "    ) AS visit_hours"
         ") AS total_hours_in_world;";
 
     sqlite3_stmt* rawStmt = nullptr;

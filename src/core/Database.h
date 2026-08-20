@@ -517,6 +517,12 @@ public:
         const std::string& result_body);
     Result<nlohmann::json> RuleFiringHistory(int64_t rule_id, int limit = 50);
 
+    // Append-only Wave 4 audit. `detail` must not contain secrets.
+    Result<std::monostate> InsertGreyAudit(
+        const std::string& feature,
+        const std::string& action,
+        const nlohmann::json& detail);
+
     ~Database();
     Database(const Database&) = delete;
     Database& operator=(const Database&) = delete;

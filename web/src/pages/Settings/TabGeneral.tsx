@@ -31,7 +31,15 @@ import {
   NOTIFY_PREF_FRIEND_REQUEST,
   NOTIFY_PREF_VR_OVERLAY,
 } from "@/lib/notifications";
-import { TTS_PREF_ENABLED, TTS_PREF_SCOPE, isTtsSupported } from "@/lib/tts";
+import {
+  TTS_PREF_CHATBOX,
+  TTS_PREF_ENABLED,
+  TTS_PREF_SCOPE,
+  isTtsSupported,
+  setHostTtsEngine,
+  type TtsVoiceInfo,
+} from "@/lib/tts";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { useReport } from "@/lib/report-context";
 import type { AppVersion } from "@/lib/types";
@@ -74,10 +82,41 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
   const [toastInvite, setToastInvite] = useUiPrefBoolean(NOTIFY_PREF_INVITE, false);
   const [toastFriendRequest, setToastFriendRequest] = useUiPrefBoolean(NOTIFY_PREF_FRIEND_REQUEST, false);
   const [toastVrOverlay, setToastVrOverlay] = useUiPrefBoolean(NOTIFY_PREF_VR_OVERLAY, false);
-  // Spoken announcements (Web Speech API). Independent of the toast channel.
-  const ttsSupported = isTtsSupported();
+  // Spoken announcements. Host SAPI is primary; Web Speech is fallback.
   const [ttsEnabled, setTtsEnabled] = useUiPrefBoolean(TTS_PREF_ENABLED, false);
   const [ttsScope, setTtsScope] = useUiPrefString(TTS_PREF_SCOPE, "friends");
+  const [ttsChatbox, setTtsChatbox] = useUiPrefBoolean(TTS_PREF_CHATBOX, false);
+  const [ttsVoices, setTtsVoices] = useState<TtsVoiceInfo[]>([]);
+  const [ttsVoiceId, setTtsVoiceId] = useState("");
+  const [ttsRate, setTtsRate] = useState(0);
+  const [ttsVolume, setTtsVolume] = useState(80);
+  const [ttsEngine, setTtsEngine] = useState<"sapi" | "none" | "unknown">("unknown");
+  const ttsSupported = ttsEngine === "sapi" || ttsEngine === "unknown" || isTtsSupported();
+
+  useEffect(() => {
+    let cancelled = false;
+    void ipc
+      .ttsStatus()
+      .then((s) => {
+        if (cancelled) return;
+        const engine = s.engine === "sapi" ? "sapi" : "none";
+        setHostTtsEngine(engine);
+        setTtsEngine(engine);
+        setTtsVoices(s.voices ?? []);
+        setTtsVoiceId(s.voiceId ?? "");
+        if (typeof s.rate === "number") setTtsRate(s.rate);
+        if (typeof s.volume === "number") setTtsVolume(s.volume);
+        if (typeof s.chatbox === "boolean") setTtsChatbox(s.chatbox);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHostTtsEngine("none");
+        setTtsEngine("none");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [clearCacheOpen, setClearCacheOpen] = useState(false);
   const [clearCacheWorking, setClearCacheWorking] = useState(false);
@@ -692,24 +731,116 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
             </Button>
           </SettingRow>
           {ttsEnabled && ttsSupported ? (
-            <SettingRow
-              label={t("settings.notify.ttsScope.label", { defaultValue: "What to Speak" })}
-              hint={t("settings.notify.ttsScope.desc", {
-                defaultValue:
-                  "Friends only announces friends coming online; All also speaks invites and friend requests.",
-              })}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setTtsScope(ttsScope === "all" ? "friends" : "all")}
-                className="h-7 px-3 text-[12px]"
+            <>
+              <SettingRow
+                label={t("settings.notify.ttsScope.label", { defaultValue: "What to Speak" })}
+                hint={t("settings.notify.ttsScope.desc", {
+                  defaultValue:
+                    "Friends only announces friends coming online; All also speaks invites and friend requests.",
+                })}
               >
-                {ttsScope === "all"
-                  ? t("settings.notify.ttsScope.all", { defaultValue: "All events" })
-                  : t("settings.notify.ttsScope.friends", { defaultValue: "Friends only" })}
-              </Button>
-            </SettingRow>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTtsScope(ttsScope === "all" ? "friends" : "all")}
+                  className="h-7 px-3 text-[12px]"
+                >
+                  {ttsScope === "all"
+                    ? t("settings.notify.ttsScope.all", { defaultValue: "All events" })
+                    : t("settings.notify.ttsScope.friends", { defaultValue: "Friends only" })}
+                </Button>
+              </SettingRow>
+              {ttsEngine === "sapi" ? (
+                <>
+                  <SettingRow
+                    label={t("settings.notify.ttsVoice.label", { defaultValue: "Voice" })}
+                    hint={t("settings.notify.ttsVoice.desc", {
+                      defaultValue: "Windows system voice. Empty keeps the OS default.",
+                    })}
+                  >
+                    <select
+                      className="h-8 max-w-[220px] rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 text-[12px]"
+                      value={ttsVoiceId}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setTtsVoiceId(next);
+                        void ipc.ttsSetVoice({ voiceId: next, rate: ttsRate, volume: ttsVolume }).catch(() => {});
+                      }}
+                    >
+                      <option value="">
+                        {t("settings.notify.ttsVoice.system", { defaultValue: "System default" })}
+                      </option>
+                      {ttsVoices.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                          {v.lang ? ` (${v.lang})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </SettingRow>
+                  <SettingRow
+                    label={t("settings.notify.ttsRate.label", { defaultValue: "Rate" })}
+                    hint={t("settings.notify.ttsRate.desc", { defaultValue: "SAPI rate, −5 to +5." })}
+                  >
+                    <Slider
+                      className="w-40"
+                      min={-5}
+                      max={5}
+                      step={1}
+                      value={ttsRate}
+                      onValueChange={(next) => {
+                        setTtsRate(next);
+                        void ipc.ttsSetVoice({ voiceId: ttsVoiceId, rate: next, volume: ttsVolume }).catch(() => {});
+                      }}
+                    />
+                  </SettingRow>
+                  <SettingRow
+                    label={t("settings.notify.ttsVolume.label", { defaultValue: "Volume" })}
+                    hint={t("settings.notify.ttsVolume.desc", { defaultValue: "SAPI volume, 0 to 100." })}
+                  >
+                    <Slider
+                      className="w-40"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={ttsVolume}
+                      onValueChange={(next) => {
+                        setTtsVolume(next);
+                        void ipc.ttsSetVoice({ voiceId: ttsVoiceId, rate: ttsRate, volume: next }).catch(() => {});
+                      }}
+                    />
+                  </SettingRow>
+                </>
+              ) : null}
+              <SettingRow
+                label={t("settings.notify.ttsChatbox.label", { defaultValue: "Echo to chatbox" })}
+                hint={t("settings.notify.ttsChatbox.desc", {
+                  defaultValue:
+                    "Also post the spoken sentence to VRChat chatbox via OSC. Other players can see it. Default off.",
+                })}
+              >
+                <Button
+                  variant={ttsChatbox ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    const next = !ttsChatbox;
+                    setTtsChatbox(next);
+                    void ipc.ttsSetVoice({ chatbox: next }).catch(() => {});
+                  }}
+                  className="h-7 px-3 text-[12px]"
+                >
+                  {ttsChatbox
+                    ? t("common.enabled", { defaultValue: "Enabled" })
+                    : t("common.disabled", { defaultValue: "Disabled" })}
+                </Button>
+              </SettingRow>
+              <p className="px-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+                {t("grey.tos.oscTts", {
+                  defaultValue:
+                    "Announcements use the Windows system voice on this PC. Optional chatbox echo posts the same sentence into VRChat using OSC. Other players can see chatbox text. Default off.",
+                })}
+              </p>
+            </>
           ) : null}
         </CardContent>
       </Card>

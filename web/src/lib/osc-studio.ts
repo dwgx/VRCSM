@@ -1,4 +1,5 @@
 import type { OscTaggedArg } from "@/lib/ipc";
+import { CHATBOX_LIMIT, fitChatbox } from "@/lib/chatbox-fit";
 
 export type OscCardKind =
   | "chatbox-template"
@@ -171,6 +172,13 @@ export interface OscTemplateContext {
   musicLyricTranslated?: string;
   /** When true, fold the rendered line to ASCII (strip/transliterate). */
   asciiFold?: boolean;
+  /** Last/current world + instance from logs / visits (optional). */
+  worldName?: string;
+  worldId?: string;
+  instanceId?: string;
+  instanceType?: string;
+  /** Last incoming HR OSC bpm (HRtoVRChat). Empty when stale/missing. */
+  hrBpm?: string;
 }
 
 export type OscTemplateComponentGroup = "time" | "cpu" | "gpu" | "memory" | "system";
@@ -267,6 +275,16 @@ export const OSC_VARIABLE_GROUPS = [
     id: "music",
     label: "Music",
     tokens: ["{music.title}", "{music.artist}", "{music.album}", "{music.status}", "{music.position}", "{music.duration}", "{music.progressBar}", "{music.percent}", "{music.appName}", "{music.marquee}", "{music.lyrics}", "{music.lyricsTranslated}"],
+  },
+  {
+    id: "world",
+    label: "World",
+    tokens: ["{world.name}", "{world.id}", "{instance.id}", "{instance.type}"],
+  },
+  {
+    id: "hr",
+    label: "Heart rate",
+    tokens: ["{hr.bpm}"],
   },
 ] as const;
 
@@ -1109,6 +1127,13 @@ export function renderOscTemplate(
       context.musicLyricLine ?? "",
       context.musicLyricTranslated ?? "",
     ),
+    // World/instance tokens render "" when unknown so a world-only card
+    // collapses instead of sending placeholder dashes.
+    "{world.name}": context.worldName ?? "",
+    "{world.id}": context.worldId ?? "",
+    "{instance.id}": context.instanceId ?? "",
+    "{instance.type}": context.instanceType ?? "",
+    "{hr.bpm}": context.hrBpm ?? "",
   };
 
   const rendered = Object.entries(replacements).reduce(
@@ -1137,8 +1162,8 @@ export function foldToAscii(text: string): string {
 }
 
 export function cardPreview(card: OscStudioCard, context: OscTemplateContext): string {
-  if (card.template) return renderOscTemplate(card.template, context).slice(0, 144);
-  return card.value.slice(0, 144);
+  const raw = card.template ? renderOscTemplate(card.template, context) : card.value;
+  return fitChatbox(raw, CHATBOX_LIMIT);
 }
 
 function isOscStudioCard(value: unknown): value is OscStudioCard {

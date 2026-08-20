@@ -3,6 +3,7 @@
 #include "AuthStore.h"
 #include "Common.h"
 #include "HttpClient.h"
+#include "InviteSlots.h"
 #include "UnityBundle.h"
 #include "RateLimiter.h"
 
@@ -2634,6 +2635,179 @@ Result<nlohmann::json> VrcApi::fetchSavedMessages(const std::string& messageType
     }
 }
 
+namespace
+{
+
+std::atomic<int> g_inviteSlotWireKind{0};
+
+std::string InviteSlotTypeForWire(const std::string& liveType)
+{
+    if (g_inviteSlotWireKind.load() == 2)
+    {
+        return std::string(OpenApiInviteSlotAlias(liveType));
+    }
+    return liveType;
+}
+
+Result<std::string> currentUserIdForSavedMessages()
+{
+    const auto me = VrcApi::fetchCurrentUser();
+    if (!isOk(me))
+    {
+        const auto& err = error(me);
+        if (err.code == "auth_expired") AuthStore::Instance().Clear("savedMessages/auth_expired");
+        return err;
+    }
+    const auto idIt = value(me).find("id");
+    if (idIt == value(me).end() || !idIt->is_string())
+    {
+        return Error{"api_error", "current user has no id", 500};
+    }
+    return idIt->get<std::string>();
+}
+
+http::HttpResponse savedMessageRequestOnce(
+    const wchar_t* method,
+    const std::string& myId,
+    const std::string& typeName,
+    int slot,
+    const std::string& cookieHeader,
+    const std::string& bodyUtf8)
+{
+    std::vector<std::pair<std::wstring, std::wstring>> headers;
+    headers.emplace_back(L"Cookie", toWide(cookieHeader));
+    if (!bodyUtf8.empty())
+    {
+        headers.emplace_back(L"Content-Type", L"application/json");
+    }
+    RateLimiter::Instance().Acquire();
+    return http::requestOnce(
+        method,
+        kApiHostW,
+        toWide(fmt::format("/api/1/message/{}/{}/{}?apiKey={}", myId, typeName, slot, kApiKey)),
+        headers,
+        bodyUtf8,
+        false);
+}
+
+Result<nlohmann::json> parseOrHttpError(const http::HttpResponse& response, std::string_view label)
+{
+    if (response.error.has_value()) return Error{"network", *response.error, 0};
+    if (response.status == 429) return InviteSlotHttpError(429);
+    if (response.status == 401) return InviteSlotHttpError(401);
+    if (response.status < 200 || response.status >= 300)
+    {
+        const auto msg = extractApiErrorMessage(response.body);
+        return Error{"api_error",
+            msg.value_or(fmt::format("{} returned HTTP {}", label, response.status)),
+            static_cast<int>(response.status)};
+    }
+    if (response.body.empty()) return nlohmann::json::object();
+    try
+    {
+        return nlohmann::json::parse(response.body);
+    }
+    catch (const std::exception& e)
+    {
+        return Error{"parse_error", e.what(), 500};
+    }
+}
+
+} // namespace
+
+Result<nlohmann::json> VrcApi::updateSavedMessage(
+    const std::string& messageType,
+    int slot,
+    const std::string& message)
+{
+    std::string trimmed;
+    if (const auto r = ValidateSavedMessageUpdate(messageType, slot, message, &trimmed); !isOk(r))
+    {
+        return error(r);
+    }
+
+    const auto myIdRes = currentUserIdForSavedMessages();
+    if (!isOk(myIdRes)) return error(myIdRes);
+    const std::string myId = value(myIdRes);
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    const nlohmann::json body{{"message", trimmed}};
+    const std::string liveWire = InviteSlotTypeForWire(messageType);
+    auto response = savedMessageRequestOnce(
+        L"PUT", myId, liveWire, slot, cookieHeader, body.dump());
+
+    const bool usedAliasFirst = liveWire != messageType;
+    if (response.status == 400 && !usedAliasFirst)
+    {
+        const auto alias = std::string(OpenApiInviteSlotAlias(messageType));
+        if (alias != messageType)
+        {
+            spdlog::info("updateSavedMessage: live type {} returned 400, retrying OpenAPI alias {}",
+                         messageType, alias);
+            response = savedMessageRequestOnce(
+                L"PUT", myId, alias, slot, cookieHeader, body.dump());
+            if (response.status >= 200 && response.status < 300)
+            {
+                g_inviteSlotWireKind.store(2);
+            }
+        }
+    }
+    else if (response.status >= 200 && response.status < 300)
+    {
+        g_inviteSlotWireKind.store(usedAliasFirst ? 2 : 1);
+    }
+
+    return parseOrHttpError(response, "updateSavedMessage");
+}
+
+Result<nlohmann::json> VrcApi::resetSavedMessage(
+    const std::string& messageType,
+    int slot)
+{
+    if (const auto r = ValidateSavedMessageSlot(messageType, slot); !isOk(r))
+    {
+        return error(r);
+    }
+
+    const auto myIdRes = currentUserIdForSavedMessages();
+    if (!isOk(myIdRes)) return error(myIdRes);
+    const std::string myId = value(myIdRes);
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+        return Error{"auth_expired", "No session cookie", 401};
+
+    const std::string liveWire = InviteSlotTypeForWire(messageType);
+    auto response = savedMessageRequestOnce(
+        L"DELETE", myId, liveWire, slot, cookieHeader, "");
+
+    const bool usedAliasFirst = liveWire != messageType;
+    if (response.status == 400 && !usedAliasFirst)
+    {
+        const auto alias = std::string(OpenApiInviteSlotAlias(messageType));
+        if (alias != messageType)
+        {
+            spdlog::info("resetSavedMessage: live type {} returned 400, retrying OpenAPI alias {}",
+                         messageType, alias);
+            response = savedMessageRequestOnce(
+                L"DELETE", myId, alias, slot, cookieHeader, "");
+            if (response.status >= 200 && response.status < 300)
+            {
+                g_inviteSlotWireKind.store(2);
+            }
+        }
+    }
+    else if (response.status >= 200 && response.status < 300)
+    {
+        g_inviteSlotWireKind.store(usedAliasFirst ? 2 : 1);
+    }
+
+    return parseOrHttpError(response, "resetSavedMessage");
+}
+
 Result<nlohmann::json> VrcApi::inviteUser(
     const std::string& targetUserId,
     const std::string& instanceLocation,
@@ -3375,6 +3549,40 @@ Result<nlohmann::json> VrcApi::deleteAvatar(const std::string& avatarId)
             static_cast<int>(response.status)};
     }
     return nlohmann::json{{"ok", true}};
+}
+
+Result<nlohmann::json> VrcApi::fetchGroupInstances(const std::string& groupId)
+{
+    if (groupId.empty())
+    {
+        return Error{"invalid_params", "groupId required", 400};
+    }
+
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+    std::optional<std::string> authHeader = cookieHeader;
+
+    const std::wstring path = toWide(fmt::format(
+        "/api/1/groups/{}/instances?apiKey={}",
+        percentEncode(groupId),
+        kApiKey));
+    const auto response = httpGet(kApiHostW, path, authHeader);
+
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status == 404)
+    {
+        return Error{"not_found", fmt::format("Group {} not found", groupId), 404};
+    }
+    if (response.status != 200)
+    {
+        return Error{"api_error",
+            fmt::format("/groups/{}/instances returned HTTP {}", groupId, response.status),
+            static_cast<int>(response.status)};
+    }
+    return parseJsonBody(response, "/groups/{id}/instances");
 }
 
 } // namespace vrcsm::core

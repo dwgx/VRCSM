@@ -47,6 +47,10 @@ export function vrchatAvatarUrl(avatarId: string): string {
   return `https://vrchat.com/home/avatar/${encodeURIComponent(avatarId)}`;
 }
 
+export function vrchatGroupUrl(groupId: string): string {
+  return `https://vrchat.com/home/group/${encodeURIComponent(groupId)}`;
+}
+
 export async function openExternalUrl(url: string): Promise<ShellOpenResult> {
   return ipc.call<{ url: string }, ShellOpenResult>("shell.openUrl", { url });
 }
@@ -61,6 +65,36 @@ export function openVrchatWorld(worldId: string): Promise<ShellOpenResult> {
 
 export function openVrchatLocation(location: string): Promise<ShellOpenResult> {
   return openExternalUrl(buildVrchatLocationLaunchUrl(location));
+}
+
+export interface LaunchVrchatLocationResult extends ShellOpenResult {
+  via?: "pipe" | "openUrl" | string;
+}
+
+export function launchVrchatLocation(
+  location: string,
+  preferPipe = true,
+): Promise<LaunchVrchatLocationResult> {
+  return ipc.call<{ location: string; preferPipe: boolean }, LaunchVrchatLocationResult>(
+    "shell.launchVrchatLocation",
+    { location, preferPipe },
+  );
+}
+
+export interface WriteInstanceShortcutResult {
+  ok: boolean;
+  path: string;
+}
+
+export function writeInstanceShortcut(params: {
+  location: string;
+  worldName?: string;
+  destPath?: string;
+}): Promise<WriteInstanceShortcutResult> {
+  return ipc.call<typeof params, WriteInstanceShortcutResult>(
+    "shell.writeInstanceShortcut",
+    params,
+  );
 }
 
 export function openVrchatUserProfile(userId: string): Promise<ShellOpenResult> {

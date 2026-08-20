@@ -8,6 +8,28 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
+Companion-tools wave on `feat/companion-waves` (not yet version-bumped; still 0.15.2 until a release cut). Grey social/VR helpers stay **default OFF**. No GPL (VRCX-0) / VNCOL (VRCNext) source.
+
+- **Last-instance recovery** (`/tools/last-instance`): newest visit, named-pipe launch, desktop `.lnk`, `inviteSelf` fallback. Pipe payload is raw `id=`; URL `id=` is decoded before invite-self.
+- **OSC Studio nits:** GSMTC session picker (`music.sessions`), title cleaner, 144-char `fitChatbox`, `{world.*}` / `{instance.*}` tokens, local `.lrc` via host `lyrics.readFolder` (path-jailed) + folder picker.
+- **Screenshots keyed by world visit** plus who-was-in-shot from PNG tEXt.
+- **Activity ledger** (`/history/activity`) with kind chips; paging uses the unified-feed offset after a kind walk.
+- **Avatar param presets** (localStorage `vrcsm.avatar.presets.v1`) on OSC Studio + Avatars inspector.
+- **Entity Quick Search** in Ctrl+K ranks friends/worlds/avatars/groups/notes above commands.
+- **App-data backup** (keep 3 folders of db + grey-prefs + plugin-state; no VRChat cache / session.dat / imap-otp.dat).
+- **Slot mail** (`/tools/invite-slots`): edit/send VRChat invite-message slots. Not a messenger.
+- **Playspace offset** (`/tools/playspace`): OpenVR chaperone nudge, SteamVR required, clamps 5 m / ±0.25 m.
+- **SAPI TTS** for notify announcements (still default OFF; Web Speech fallback).
+- **Email OTP helper:** IMAP over SChannel + DPAPI (`vrcsm-imap-otp-v1`). Fills LoginForm on `emailOtp`; Submit-once is explicit. DNS fail-closed SSRF rail.
+- **Invite Assist:** allowlist-only auto-invite on requestInvite; Friend-detail add/remove; first-run confirm.
+- **Event Watch:** notify-first instance watch; auto-join off; interval 30–300 s; `wrld_` launch gate.
+- **Hot Worlds** (`/history/hot-worlds`): local visit ranking.
+- **`{hr.bpm}`** from incoming OSC (HRtoVRChat-style addresses, 15 s stale).
+- **config.json** exposes `cache_expiry_delay`.
+- **world_visits dwell hours** no longer go negative on mixed DOT/ISO timestamps.
+- Sidebar **Helpers** group hidden until Experimental grey master is on.
+- Interaction smoke now click-throughs companion routes (jsdom + Playwright). Playwright UI smoke **61/61**.
+
 ## [0.15.1] — 2026-07-09
 
 - **Synced-lyrics chain widened to four sources: LRCLIB → NetEase → QQ Music → Kugou.** QQ Music and then Kugou were added on top of LRCLIB/NetEase for far better coverage of Chinese/CPOP and obscure or user-uploaded tracks the first sources miss; QQ also has a title-only fallback for tracks that a title+artist query can't find. All requests route through the host lyrics proxy (SSRF-railed, https-only) with a per-source toggle in the OSC now-playing panel; i18n across all 7 locales. Verified end-to-end against the live QQ and NetEase lyric endpoints.

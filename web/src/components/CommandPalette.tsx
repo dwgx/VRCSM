@@ -23,11 +23,19 @@ import {
   PanelLeftClose,
   PanelBottomClose,
   Plug,
+  LogIn,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { GlobalSearchResult } from "@/lib/types";
+import {
+  entityOpenIntent,
+  matchScore,
+  PALETTE_ENTITY_SECTION_I18N,
+  rankPaletteRows,
+} from "@/lib/command-palette-search";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { useGreyPrefs } from "@/lib/grey-prefs";
 import { useInstalledPanelPlugins } from "@/lib/plugin-context";
 import { listPlayerEvents, searchGlobal } from "@/lib/history-api";
 import { openExternalUrlQuietly } from "@/lib/shell-api";
@@ -68,22 +76,6 @@ interface GlobalSearchEntry extends GlobalSearchResult {
 const MAX_LOGS = 500;
 const MAX_GLOBAL_RESULTS = 20;
 
-function matchScore(haystack: string, query: string): number {
-  if (!query) return 1;
-  const h = haystack.toLowerCase();
-  const q = query.toLowerCase();
-  if (h === q) return 1000;
-  if (h.startsWith(q)) return 500;
-  if (h.includes(q)) return 100;
-  // Subsequence match (loose fuzzy)
-  let i = 0;
-  for (const ch of h) {
-    if (ch === q[i]) i++;
-    if (i === q.length) return 50;
-  }
-  return 0;
-}
-
 export function CommandPalette({
   open,
   onOpenChange,
@@ -118,6 +110,8 @@ export function CommandPalette({
   );
 
   const panelPlugins = useInstalledPanelPlugins();
+  const { prefs: greyPrefs } = useGreyPrefs();
+  const helpersOn = greyPrefs?.greyEnabled === true;
 
   const commands: CommandEntry[] = useMemo(
     () => [
@@ -134,6 +128,15 @@ export function CommandPalette({
       { id: "nav-vrchat", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("menu.goVrchat"), icon: <Globe className="size-3.5" />, action: () => navigate("/vrchat"), keywords: "vrchat workspace" },
       { id: "nav-screenshots", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("menu.goScreenshots"), icon: <Camera className="size-3.5" />, action: () => navigate("/screenshots"), keywords: "screenshots media" },
       { id: "nav-migrate", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("menu.toolsMigrate"), icon: <Shuffle className="size-3.5" />, action: () => navigate("/migrate"), keywords: "migrate cache junction" },
+      { id: "last-instance", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("lastInstance.title", { defaultValue: "Last instance" }), icon: <LogIn className="size-3.5" />, action: () => navigate("/tools/last-instance"), keywords: "last instance rejoin recover crash kick vrchat:// shortcut", hint: t("lastInstance.cmdHint", { defaultValue: "Rejoin the newest logged instance" }) },
+      { id: "hot-worlds", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("hotWorlds.title", { defaultValue: "Hot Worlds" }), icon: <Globe className="size-3.5" />, action: () => navigate("/history/hot-worlds"), keywords: "hot worlds visits ranking friends" },
+      ...(helpersOn
+        ? [
+            { id: "invite-slots", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("inviteSlots.title", { defaultValue: "Slot mail" }), icon: <UserPlus className="size-3.5" />, action: () => navigate("/tools/invite-slots"), keywords: "invite slots mail message cooldown" },
+            { id: "playspace", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("playspace.title", { defaultValue: "Playspace offset" }), icon: <Shuffle className="size-3.5" />, action: () => navigate("/tools/playspace"), keywords: "playspace offset steamvr space drag" },
+            { id: "event-watch", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("eventWatch.title", { defaultValue: "Event Watch" }), icon: <Globe className="size-3.5" />, action: () => navigate("/tools/event-watch"), keywords: "event watch instance notify join" },
+          ]
+        : []),
       { id: "nav-plugins", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("nav.plugins", { defaultValue: "Plugins" }), icon: <Plug className="size-3.5" />, action: () => navigate("/plugins"), keywords: "plugins market extensions" },
       { id: "nav-plugins-installed", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("plugins.installed.title", { defaultValue: "Installed plugins" }), icon: <Plug className="size-3.5" />, action: () => navigate("/plugins/installed"), keywords: "plugins installed manage" },
       { id: "nav-settings", section: t("cmd.sections.navigate", { defaultValue: "Navigate" }), label: t("menu.toolsSettings"), icon: <SettingsIcon className="size-3.5" />, shortcut: "Ctrl+,", action: () => navigate("/settings"), keywords: "settings preferences" },
@@ -156,7 +159,7 @@ export function CommandPalette({
         keywords: `plugin ${p.id} ${p.name}`,
       })),
     ],
-    [navigate, onRescan, onOpenAbout, setSidebarHidden, setDockHidden, t, panelPlugins],
+    [navigate, onRescan, onOpenAbout, setSidebarHidden, setDockHidden, t, panelPlugins, helpersOn],
   );
 
   useEffect(() => {
@@ -247,54 +250,54 @@ export function CommandPalette({
 
   const filtered = useMemo(() => {
     const q = query.trim();
+    const ranked = rankPaletteRows({
+      query: q,
+      commands,
+      commandScore: (cmd) =>
+        Math.max(matchScore(cmd.label, q), matchScore(cmd.keywords ?? "", q)),
+      entities: globalResults,
+      logs,
+      logScore: (log) => Math.max(matchScore(log.label, q), matchScore(log.keywords, q)),
+    });
+
     const allItems: Array<
       | (CommandEntry & { _type: "command"; score: number })
       | (GlobalSearchEntry & { _type: "search"; score: number })
       | (LogEntry & { _type: "log"; score: number })
     > = [];
 
-    for (const cmd of commands) {
-      const s = Math.max(
-        matchScore(cmd.label, q),
-        matchScore(cmd.keywords ?? "", q),
-      );
-      if (q === "" || s > 0) {
-        allItems.push({ ...cmd, _type: "command", score: q === "" ? 1 : s });
-      }
-    }
-
-    // Only show logs when user types a query; otherwise keep the
-    // palette focused on navigation/actions.
-    if (q !== "") {
-      globalResults.forEach((result, index) => {
+    for (const row of ranked) {
+      if (row.row === "entity") {
+        const result = row.item;
+        const i18n = PALETTE_ENTITY_SECTION_I18N[row.kind];
         allItems.push({
           ...result,
-          section: t("cmd.sections.globalSearch", { defaultValue: "Global Search" }),
+          section: t(i18n.key, { defaultValue: i18n.defaultValue }),
           action: () => {
-            if (result.primaryAction.enabled && result.primaryAction.route) {
-              navigate(result.primaryAction.route);
+            const intent = entityOpenIntent(result);
+            if (intent.via === "navigate") {
+              navigate(intent.route);
               return;
             }
-            void navigator.clipboard?.writeText(result.id);
+            if (intent.via === "shell") {
+              openExternalUrlQuietly(intent.url);
+              return;
+            }
+            void navigator.clipboard?.writeText(intent.text);
           },
           _type: "search",
-          score: 900 - index,
+          score: 0,
         });
-      });
-
-      for (const log of logs) {
-        const s = Math.max(
-          matchScore(log.label, q),
-          matchScore(log.keywords, q),
-        );
-        if (s > 0) {
-          allItems.push({ ...log, _type: "log", score: s });
-        }
+        continue;
       }
+      if (row.row === "command") {
+        allItems.push({ ...row.item, _type: "command", score: row.score });
+        continue;
+      }
+      allItems.push({ ...row.item, _type: "log", score: row.score });
     }
 
-    allItems.sort((a, b) => b.score - a.score);
-    return allItems.slice(0, 80);
+    return allItems;
   }, [commands, globalResults, logs, navigate, query, t]);
 
   const grouped = useMemo(() => {

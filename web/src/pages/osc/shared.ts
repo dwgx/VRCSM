@@ -20,6 +20,10 @@ export type TemplateExtras = Pick<
   | "musicLyricLine"
   | "musicLyricTranslated"
   | "asciiFold"
+  | "worldName"
+  | "worldId"
+  | "instanceId"
+  | "instanceType"
 >;
 
 /** Shape returned by the `avatar.parameters.local` IPC method. */

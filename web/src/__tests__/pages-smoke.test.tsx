@@ -144,9 +144,21 @@ const ROUTES: Array<{ path: string; marker: RegExp }> = [
   { path: "/calendar", marker: /calendar|events|jams/i },
   { path: "/benchmark", marker: /avatar|benchmark|performance/i },
   { path: "/history/worlds", marker: /./ },
+  { path: "/history/activity", marker: /activity ledger|join|meet|invite/i },
+  { path: "/history/hot-worlds", marker: /hot worlds|visits/i },
   { path: "/settings", marker: /./ },
   { path: "/plugins", marker: /plugins|market/i },
   { path: "/tools/osc", marker: /osc|studio/i },
+  { path: "/tools/last-instance", marker: /last instance|rejoin/i },
+  { path: "/tools/invite-slots", marker: /slot mail|invite/i },
+  { path: "/tools/playspace", marker: /playspace|steamvr/i },
+  { path: "/tools/event-watch", marker: /event watch|notify/i },
+  { path: "/migrate", marker: /migrate|junction|cache/i },
+  { path: "/events", marker: /event|record/i },
+  { path: "/fbt", marker: /fbt|tracker|full.body/i },
+  { path: "/rules", marker: /rule/i },
+  { path: "/plugins/installed", marker: /plugin|installed/i },
+  { path: "/tools/memory-radar", marker: /memory|radar/i },
 ];
 
 /**

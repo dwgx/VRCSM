@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Users, LogIn, Trash2 } from "lucide-react";
 import { ipc } from "@/lib/ipc";
 import { rejoinLocationFromVisit, openVrchatLocation } from "@/lib/shell-api";
+import { httpsLaunchUrl } from "@/lib/last-instance";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
@@ -331,14 +332,39 @@ export default function WorldHistory() {
                     const loc = rejoinLocationFromVisit(v.world_id, v.instance_id);
                     if (!loc) return null;
                     return (
-                      <button
-                        className="flex items-center gap-0.5 text-[10px] text-[hsl(var(--primary))] hover:underline"
-                        onClick={() => void openVrchatLocation(loc)}
-                        title={t("worldHistory.rejoinHint", { defaultValue: "Launch VRChat into this exact instance" })}
-                      >
-                        <LogIn className="size-3" />
-                        {t("worldHistory.rejoinAction", { defaultValue: "Rejoin" })}
-                      </button>
+                      <>
+                        <button
+                          className="flex items-center gap-0.5 text-[10px] text-[hsl(var(--primary))] hover:underline"
+                          onClick={() => void openVrchatLocation(loc)}
+                          title={t("worldHistory.rejoinHint", { defaultValue: "Launch VRChat into this exact instance" })}
+                        >
+                          <LogIn className="size-3" />
+                          {t("worldHistory.rejoinAction", { defaultValue: "Rejoin" })}
+                        </button>
+                        <button
+                          className="text-[10px] text-[hsl(var(--primary))] hover:underline"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(httpsLaunchUrl(loc)).then(
+                              () =>
+                                toast.success(
+                                  t("worldHistory.copyHttpsDone", { defaultValue: "Copied https launch URL." }),
+                                ),
+                              (err: unknown) =>
+                                toast.error(
+                                  t("worldHistory.copyHttpsFailed", {
+                                    error: err instanceof Error ? err.message : String(err),
+                                    defaultValue: "Copy failed: {{error}}",
+                                  }),
+                                ),
+                            );
+                          }}
+                          title={t("worldHistory.copyHttpsHint", {
+                            defaultValue: "Copy https://vrchat.com/home/launch URL",
+                          })}
+                        >
+                          {t("worldHistory.copyHttps", { defaultValue: "Copy https" })}
+                        </button>
+                      </>
                     );
                   })()}
                   <button

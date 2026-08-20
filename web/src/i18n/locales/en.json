@@ -36,6 +36,10 @@
       "plugins": "Plugins"
     },
     "worldHistory": "World History",
+    "activityLedger": "Activity Ledger",
+    "lastInstance": "Last instance",
+    "inviteSlots": "Slot mail",
+    "playspace": "Playspace",
     "calendar": "Calendar & Jams",
     "events": "Event Recorder",
     "social": "Social Analytics",

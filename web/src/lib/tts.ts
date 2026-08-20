@@ -2,42 +2,90 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { subscribePipelineEvent } from "./pipeline-events";
 import { useAuth } from "./auth-context";
+import { ipc } from "./ipc";
 import { readUiPrefBoolean, readUiPrefString } from "./ui-prefs";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Text-to-speech announcements — reusable domain module.
 //
-// VRCX speaks live social events ("X is now online") through the OS voice so
-// you hear them while immersed in VR without reading a toast. We do the same
-// with the browser-native Web Speech API (`window.speechSynthesis`) — no C++,
-// no host IPC, since WebView2 ships the same SpeechSynthesis the page can use
-// directly. The host already raises Action Center toasts for these events
-// (see notifications.ts); TTS is a parallel, independently-gated channel.
+// Host SAPI (`tts.speak` / Pipeline callback) is the primary engine so
+// announcements still work when the SPA is minimized to tray. Web Speech
+// remains the fallback when `tts.status.engine` is `"none"`.
 //
 // Default OFF: nothing is spoken until the user opts in under Settings.
+// Pref keys `vrcsm.notify.tts.enabled` / `.scope` are unchanged.
 // ─────────────────────────────────────────────────────────────────────────
 
 export const TTS_PREF_ENABLED = "vrcsm.notify.tts.enabled";
-// Which event classes to speak. Stored as a single string the Settings UI
-// cycles through, mirroring how the toast toggles gate per-type. Kept coarse
-// (all / friends-only) on purpose — finer per-type control already exists for
-// the toast channel and speaking every notification would be noise.
 export const TTS_PREF_SCOPE = "vrcsm.notify.tts.scope";
+export const TTS_PREF_CHATBOX = "vrcsm.notify.tts.chatbox";
 
 export type TtsScope = "all" | "friends";
+export type TtsEngine = "sapi" | "none" | "unknown";
+export type TtsPhraseKind = "friendOnline" | "invite" | "friendRequest";
 
-/** True when the running WebView/browser exposes the Web Speech API. */
+export interface TtsVoiceInfo {
+  id: string;
+  name: string;
+  lang: string;
+}
+
+export interface TtsPhraseFields {
+  displayName?: string | null;
+  senderUsername?: string | null;
+  userId?: string | null;
+}
+
+/** Host engine cache. `unknown` until the first `tts.status` probe. */
+let hostEngine: TtsEngine = "unknown";
+
+export function getHostTtsEngine(): TtsEngine {
+  return hostEngine;
+}
+
+export function setHostTtsEngine(engine: TtsEngine): void {
+  hostEngine = engine;
+}
+
+/** True when SAPI or the Web Speech API can produce audio. */
 export function isTtsSupported(): boolean {
+  if (hostEngine === "sapi") return true;
   return typeof window !== "undefined" && "speechSynthesis" in window;
+}
+
+/** Page-side Web Speech is skipped when the host already owns the engine. */
+export function shouldSpeakInPage(engine: TtsEngine = hostEngine): boolean {
+  return engine !== "sapi";
+}
+
+export function formatTtsPhrase(
+  kind: TtsPhraseKind,
+  fields: TtsPhraseFields,
+): string | null {
+  // Never interpolate userId — phrases are display names only.
+  if (kind === "friendOnline") {
+    const name = fields.displayName?.trim();
+    if (!name) return null;
+    return `${name} is now online`;
+  }
+  const who = fields.senderUsername?.trim() || "Someone";
+  if (kind === "invite") return `Invite from ${who}`;
+  if (kind === "friendRequest") return `Friend request from ${who}`;
+  return null;
 }
 
 /**
  * Speak a phrase, best-effort. No-ops when unsupported. Cancels any in-flight
  * utterance first so a burst of events (mass friend-online on login) doesn't
  * queue a minute of backlogged speech — the latest event wins.
+ *
+ * When the host engine is SAPI this is a no-op: the Pipeline callback already
+ * spoke. Tests pin this gate via `setHostTtsEngine("sapi")`.
  */
 export function speak(text: string, lang?: string): void {
-  if (!isTtsSupported() || !text) return;
+  if (!text) return;
+  if (!shouldSpeakInPage()) return;
+  if (!isTtsSupported()) return;
   try {
     const synth = window.speechSynthesis;
     synth.cancel();
@@ -52,6 +100,7 @@ export function speak(text: string, lang?: string): void {
 interface TtsPrefs {
   enabled: boolean;
   scope: TtsScope;
+  chatbox: boolean;
 }
 
 function readTtsPrefs(): TtsPrefs {
@@ -59,28 +108,43 @@ function readTtsPrefs(): TtsPrefs {
   return {
     enabled: readUiPrefBoolean(TTS_PREF_ENABLED, false),
     scope: scope === "all" ? "all" : "friends",
+    chatbox: readUiPrefBoolean(TTS_PREF_CHATBOX, false),
   };
 }
 
+function pushTtsHostPrefs(prefs: TtsPrefs = readTtsPrefs()): void {
+  void ipc
+    .notifySetPrefs({
+      ttsEnabled: prefs.enabled,
+      ttsScope: prefs.scope,
+      ttsChatbox: prefs.chatbox,
+    })
+    .catch((err) => {
+      console.warn("[tts] notify.setPrefs failed", err);
+    });
+}
+
 const UI_PREF_CHANGED_EVENT = "vrcsm:ui-pref-changed";
-const TTS_PREF_KEYS = new Set<string>([TTS_PREF_ENABLED, TTS_PREF_SCOPE]);
+const TTS_PREF_KEYS = new Set<string>([TTS_PREF_ENABLED, TTS_PREF_SCOPE, TTS_PREF_CHATBOX]);
 
 /**
  * Mount once at the app shell, next to useStrangerAlert(). Subscribes to the
  * pipeline bus and speaks friend-online and incoming-notification events when
- * enabled. Prefs are read live (held in a ref, refreshed on the ui-pref change
- * event) so toggling in Settings takes effect without a remount.
+ * enabled AND the host engine is not SAPI (host already spoke). Prefs are read
+ * live so toggling in Settings takes effect without a remount.
  */
 export function useTtsAnnounce(): void {
   const { t, i18n } = useTranslation();
   const { status } = useAuth();
   const prefsRef = useRef<TtsPrefs>(readTtsPrefs());
+  const engineRef = useRef<TtsEngine>(hostEngine);
 
-  // Keep prefs fresh without re-subscribing the pipeline handlers.
   useEffect(() => {
     const refresh = () => {
       prefsRef.current = readTtsPrefs();
+      pushTtsHostPrefs(prefsRef.current);
     };
+    refresh();
     const onCustom = (event: Event) => {
       const detail = (event as CustomEvent<{ key?: string }>).detail;
       if (detail?.key && TTS_PREF_KEYS.has(detail.key)) refresh();
@@ -97,6 +161,26 @@ export function useTtsAnnounce(): void {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    void ipc
+      .ttsStatus()
+      .then((s) => {
+        if (cancelled) return;
+        const next: TtsEngine = s.engine === "sapi" ? "sapi" : "none";
+        setHostTtsEngine(next);
+        engineRef.current = next;
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHostTtsEngine("none");
+        engineRef.current = "none";
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!status.authed) return;
     const lang = i18n.language;
 
@@ -105,37 +189,45 @@ export function useTtsAnnounce(): void {
       user?: { displayName?: string };
     }>("friend-online", (content) => {
       if (!prefsRef.current.enabled) return;
+      // Skip while probing (`unknown`) so we never double-speak with SAPI.
+      if (engineRef.current === "unknown" || !shouldSpeakInPage(engineRef.current)) return;
       const name = content?.user?.displayName;
       if (!name) return;
+      if (!formatTtsPhrase("friendOnline", { displayName: name, userId: content?.userId })) return;
       speak(t("tts.friendOnline", { name, defaultValue: "{{name}} is now online" }), lang);
     });
 
-    // Notifications (invites, friend requests). Only spoken in "all" scope —
-    // "friends" scope is presence-only to stay quiet.
     const speakNotification = (content: {
       type?: string;
       senderUsername?: string;
+      senderUserId?: string;
     } | null) => {
       if (!prefsRef.current.enabled || prefsRef.current.scope !== "all") return;
+      if (engineRef.current === "unknown" || !shouldSpeakInPage(engineRef.current)) return;
       if (!content?.type) return;
-      const who = content.senderUsername ?? t("tts.someone", { defaultValue: "Someone" });
       if (content.type === "invite" || content.type === "requestInvite") {
+        const who = content.senderUsername ?? t("tts.someone", { defaultValue: "Someone" });
+        if (!formatTtsPhrase("invite", { senderUsername: who, userId: content.senderUserId })) return;
         speak(t("tts.invite", { who, defaultValue: "Invite from {{who}}" }), lang);
       } else if (content.type === "friendRequest") {
+        const who = content.senderUsername ?? t("tts.someone", { defaultValue: "Someone" });
+        if (!formatTtsPhrase("friendRequest", { senderUsername: who, userId: content.senderUserId })) return;
         speak(
           t("tts.friendRequest", { who, defaultValue: "Friend request from {{who}}" }),
           lang,
         );
       }
     };
-    const unsubNotif = subscribePipelineEvent<{ type?: string; senderUsername?: string }>(
-      "notification",
-      speakNotification,
-    );
-    const unsubNotifV2 = subscribePipelineEvent<{ type?: string; senderUsername?: string }>(
-      "notification-v2",
-      speakNotification,
-    );
+    const unsubNotif = subscribePipelineEvent<{
+      type?: string;
+      senderUsername?: string;
+      senderUserId?: string;
+    }>("notification", speakNotification);
+    const unsubNotifV2 = subscribePipelineEvent<{
+      type?: string;
+      senderUsername?: string;
+      senderUserId?: string;
+    }>("notification-v2", speakNotification);
 
     return () => {
       unsubOnline();

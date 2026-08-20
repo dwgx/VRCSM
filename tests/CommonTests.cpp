@@ -3383,3 +3383,25 @@ TEST(CommonTests, NowPlayingReadsCleanlyWithOrWithoutSession)
         EXPECT_GT(snap.positionAtMs, 0);
     }
 }
+
+// ReadNowPlayingSessions() is the same "no media is not an error" contract
+// as ReadNowPlaying(): CI with no player returns ok + empty vector. A live
+// session (dev machine) must carry an app id and a mapped status string.
+TEST(CommonTests, NowPlayingSessionsReadsCleanlyWithOrWithoutSession)
+{
+    const auto result = vrcsm::core::ReadNowPlayingSessions();
+
+    ASSERT_TRUE(vrcsm::core::isOk(result))
+        << "ReadNowPlayingSessions returned an error: " << vrcsm::core::error(result).message;
+
+    const auto& sessions = vrcsm::core::value(result);
+    for (const auto& snap : sessions)
+    {
+        EXPECT_FALSE(snap.appId.empty()) << "enumerated session missing appId";
+        if (snap.active)
+        {
+            EXPECT_TRUE(snap.status == "playing" || snap.status == "paused" ||
+                        snap.status == "stopped");
+        }
+    }
+}

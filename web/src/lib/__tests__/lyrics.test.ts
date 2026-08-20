@@ -10,9 +10,11 @@ vi.mock("@/lib/ipc", () => ({
 }));
 
 import {
+  cleanMediaTitle,
   currentLyricLine,
   currentLyricTrans,
   fetchLyrics,
+  fromLocalLrc,
   hostFetchJson,
   mergeTranslation,
   normalizeQuery,
@@ -177,6 +179,77 @@ describe("{music.lyrics} rendering", () => {
       musicLyricLine: "solo",
     });
     expect(out).toBe("solo");
+  });
+});
+
+describe("cleanMediaTitle", () => {
+  it("strips YouTube official-video suffixes", () => {
+    expect(cleanMediaTitle("Shape of You (Official Video)")).toBe("Shape of You");
+    expect(cleanMediaTitle("Song 【MV】")).toBe("Song");
+    expect(cleanMediaTitle("Track (Official Music Video) [HD]")).toBe("Track");
+  });
+
+  it("strips feat. credits without eating Daft", () => {
+    expect(cleanMediaTitle("Stay feat. Justin Bieber")).toBe("Stay");
+    expect(cleanMediaTitle("Daft Punk")).toBe("Daft Punk");
+  });
+});
+
+describe("fromLocalLrc", () => {
+  async function withTempDir(
+    files: Record<string, string>,
+    run: (dir: string) => Promise<void>,
+  ) {
+    const fsNs = "node:fs/promises";
+    const pathNs = "node:path";
+    const osNs = "node:os";
+    const fs = (await import(fsNs)) as {
+      mkdtemp: (prefix: string) => Promise<string>;
+      writeFile: (path: string, data: string, enc: string) => Promise<void>;
+      rm: (path: string, opts: { recursive: boolean; force: boolean }) => Promise<void>;
+    };
+    const path = (await import(pathNs)) as { join: (...parts: string[]) => string };
+    const os = (await import(osNs)) as { tmpdir: () => string };
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vrcsm-lrc-"));
+    try {
+      for (const [name, body] of Object.entries(files)) {
+        await fs.writeFile(path.join(dir, name), body, "utf8");
+      }
+      await run(dir);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("reads {artist} - {title}.lrc from a temp dir", async () => {
+    await withTempDir(
+      { "Artist - Title.lrc": "[00:01.00] local line\n" },
+      async (dir) => {
+        const res = await fromLocalLrc("Title", "Artist", dir);
+        expect(res?.source).toBe("local");
+        expect(res?.found).toBe(true);
+        expect(res?.synced[0]?.text).toBe("local line");
+      },
+    );
+  });
+
+  it("falls back to {title}.lrc case-insensitively", async () => {
+    await withTempDir(
+      { "hello.LRC": "[00:02.00] title only\n" },
+      async (dir) => {
+        const res = await fromLocalLrc("Hello", "Someone", dir);
+        expect(res?.synced[0]?.text).toBe("title only");
+      },
+    );
+  });
+
+  it("returns null when the folder has no match", async () => {
+    await withTempDir(
+      { "Other - Song.lrc": "[00:00.00] nope\n" },
+      async (dir) => {
+        expect(await fromLocalLrc("Missing", "Nobody", dir)).toBeNull();
+      },
+    );
   });
 });
 
@@ -468,6 +541,37 @@ describe("fetchLyrics source selection", () => {
     expect(res.found).toBe(true);
     expect(res.synced.length).toBe(2);
     expect(res.synced[0].text).toBe("kugou line one");
+  });
+
+  it("falls through to a local .lrc after online sources miss", async () => {
+    ipcCallMock.mockResolvedValue({ status: 200, body: JSON.stringify({}) });
+    const fsNs = "node:fs/promises";
+    const pathNs = "node:path";
+    const osNs = "node:os";
+    const fs = (await import(fsNs)) as {
+      mkdtemp: (prefix: string) => Promise<string>;
+      writeFile: (path: string, data: string, enc: string) => Promise<void>;
+      rm: (path: string, opts: { recursive: boolean; force: boolean }) => Promise<void>;
+    };
+    const path = (await import(pathNs)) as { join: (...parts: string[]) => string };
+    const os = (await import(osNs)) as { tmpdir: () => string };
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vrcsm-lrc-chain-"));
+    try {
+      await fs.writeFile(
+        path.join(dir, "LocalOnlyTrackForTestXYZ.lrc"),
+        "[00:03.00] from disk\n",
+        "utf8",
+      );
+      const res = await fetchLyrics("LocalOnlyTrackForTestXYZ", "Nobody", "", 200_000, {
+        sources: { lrclib: true, netease: true, qq: true, kugou: true },
+        lrcDir: dir,
+      });
+      expect(res.source).toBe("local");
+      expect(res.found).toBe(true);
+      expect(res.synced[0]?.text).toBe("from disk");
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("skips Kugou when sources.kugou is false", async () => {

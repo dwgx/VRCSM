@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { Music, Plus, Type } from "lucide-react";
+import { FolderOpen, Music, Plus, Type } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
+import { ipc } from "@/lib/ipc";
 import {
   MUSIC_PRESETS,
   MUSIC_STATUS_GLYPHS,
@@ -60,6 +61,11 @@ export function NowPlayingPanel({
     lyrics,
     lyricsStatus,
     lyricsSource,
+    sessions,
+    preferredAppId,
+    setPreferredAppId,
+    lrcDir,
+    setLrcDir,
   } = nowPlaying;
   // Per-source lyrics toggles (both default on). Bound to the same UI-pref keys
   // useNowPlaying reads, so flipping one re-resolves lyrics for the live track.
@@ -82,6 +88,19 @@ export function NowPlayingPanel({
       onSetTemplate(preset.template);
     } else {
       onAddCard(makeMusicPresetCard(preset));
+    }
+  }
+
+  async function browseLrcDir() {
+    try {
+      const res = await ipc.pickFolder({
+        title: t("osc.music.lrcDir", { defaultValue: "Local .lrc folder" }),
+        initialDir: lrcDir || undefined,
+      });
+      if (res.cancelled || !res.path) return;
+      setLrcDir(res.path);
+    } catch {
+      // Native/in-app picker unavailable — leave the stored folder unchanged.
     }
   }
 
@@ -145,7 +164,9 @@ export function NowPlayingPanel({
                         ? t("osc.music.sourceNetease", { defaultValue: "NetEase" })
                         : lyricsSource === "kugou"
                           ? t("osc.music.sourceKugou", { defaultValue: "酷狗" })
-                          : t("osc.music.sourceQq", { defaultValue: "QQ 音乐" })}
+                          : lyricsSource === "local"
+                            ? t("osc.music.sourceLocal", { defaultValue: "Local .lrc" })
+                            : t("osc.music.sourceQq", { defaultValue: "QQ 音乐" })}
                   </Badge>
                 ) : null}
               </div>
@@ -169,6 +190,33 @@ export function NowPlayingPanel({
             })}
           </p>
         )}
+
+        {sessions.length > 0 ? (
+          <label className="grid grid-cols-[64px_1fr] items-center gap-2">
+            <span className="text-[hsl(var(--muted-foreground))]">
+              {t("osc.music.session", { defaultValue: "Session" })}
+            </span>
+            <select
+              value={preferredAppId}
+              onChange={(e) => setPreferredAppId(e.target.value)}
+              aria-label={t("osc.music.session", { defaultValue: "Session" })}
+              className="h-7 min-w-0 truncate rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-1.5 text-[11px]"
+            >
+              <option value="">
+                {t("osc.music.sessionAuto", { defaultValue: "Auto (current)" })}
+              </option>
+              {preferredAppId && !sessions.some((s) => s.appId === preferredAppId) ? (
+                <option value={preferredAppId}>{preferredAppId}</option>
+              ) : null}
+              {sessions.map((session) => (
+                <option key={session.appId || session.appName} value={session.appId}>
+                  {(session.appName || session.appId || "app")
+                    + (session.title ? ` — ${session.title}` : "")}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         {/* Presets */}
         <div className="grid gap-1.5">
@@ -352,6 +400,32 @@ export function NowPlayingPanel({
               className="size-4 cursor-pointer accent-[hsl(var(--primary))]"
             />
           </label>
+          <div className="grid gap-1.5 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 py-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="grid min-w-0 gap-0.5">
+                <span className="text-[11px] font-medium">
+                  {t("osc.music.lrcDir", { defaultValue: "Local .lrc folder" })}
+                </span>
+                <span
+                  className="truncate text-[9px] text-[hsl(var(--muted-foreground))]"
+                  title={lrcDir || undefined}
+                >
+                  {lrcDir
+                    ? lrcDir
+                    : t("osc.music.lrcDirEmpty", { defaultValue: "No folder selected" })}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => void browseLrcDir()}
+                className="inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-1.5 py-1 text-[10px] hover:border-[hsl(var(--primary))]"
+                aria-label={t("osc.music.lrcDirBrowse", { defaultValue: "Browse" })}
+              >
+                <FolderOpen className="size-3" />
+                {t("osc.music.lrcDirBrowse", { defaultValue: "Browse" })}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </Card>

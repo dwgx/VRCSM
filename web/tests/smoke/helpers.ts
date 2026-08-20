@@ -56,6 +56,18 @@ export const ROUTES = [
   "/tools/memory-radar",
 ] as const;
 
+/** Click-through coverage for companion-waves pages. Visual baselines stay on ROUTES. */
+export const INTERACTION_ROUTES = [
+  ...ROUTES,
+  "/history/activity",
+  "/history/hot-worlds",
+  "/tools/last-instance",
+  "/tools/invite-slots",
+  "/tools/playspace",
+  "/tools/event-watch",
+  "/migrate",
+] as const;
+
 export function routeSlug(route: string): string {
   const s = route.replace(/^\/+|\/+$/g, "").replace(/[/?=&:]+/g, "_");
   return s.length ? s : "root";
@@ -73,6 +85,7 @@ export function viewportTag(vp: ViewportSize): string {
 export async function bootWithTap(page: Page): Promise<void> {
   await page.addInitScript(() => {
     (window as unknown as { __SMOKE_TAP__?: boolean }).__SMOKE_TAP__ = true;
+    (window as unknown as { __SMOKE_GREY__?: boolean }).__SMOKE_GREY__ = true;
     (window as unknown as { __SMOKE_EVENTS__?: unknown[] }).__SMOKE_EVENTS__ = [];
   });
 }

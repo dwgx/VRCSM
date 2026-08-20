@@ -1,0 +1,5 @@
+From: VRChat <noreply@vrchat.com>
+Subject: VRChat one-time code
+Date: 2026-08-20T12:00:00Z
+
+<html><body><p>Your verification <b>code</b> is <span>654321</span>.</p></body></html>

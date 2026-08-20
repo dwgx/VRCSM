@@ -1,4 +1,5 @@
 #include "Database.h"
+#include "FriendAnalytics.h"
 
 #include <sqlite3.h>
 
@@ -29,19 +30,21 @@ Result<std::int64_t> Database::InsertWorldVisit(const WorldVisitInsert& v)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    const std::string joinedAt = analytics::NormalizeVisitTimestamp(v.joined_at);
+
     const char* sql =
         "INSERT OR IGNORE INTO world_visits ("
         "world_id, instance_id, access_type, owner_id, region, joined_at"
         ") VALUES (?, ?, ?, ?, ?, ?);";
 
-    const auto result = RunOnce(sql, [this, &v](sqlite3_stmt* stmt) -> Result<std::monostate>
+    const auto result = RunOnce(sql, [this, &v, &joinedAt](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
         if (BindText(stmt, 1, v.world_id) != SQLITE_OK ||
             BindText(stmt, 2, v.instance_id) != SQLITE_OK ||
             BindOptionalText(stmt, 3, v.access_type) != SQLITE_OK ||
             BindOptionalText(stmt, 4, v.owner_id) != SQLITE_OK ||
             BindOptionalText(stmt, 5, v.region) != SQLITE_OK ||
-            BindText(stmt, 6, v.joined_at) != SQLITE_OK)
+            BindText(stmt, 6, joinedAt) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }
@@ -62,6 +65,8 @@ Result<std::monostate> Database::MarkVisitLeft(const std::string& world_id,
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    const std::string leftAt = analytics::NormalizeVisitTimestamp(left_at);
+
     const char* sql =
         "UPDATE world_visits "
         "SET left_at = ? "
@@ -72,9 +77,9 @@ Result<std::monostate> Database::MarkVisitLeft(const std::string& world_id,
         "    LIMIT 1"
         ");";
 
-    return RunOnce(sql, [this, &world_id, &instance_id, &left_at](sqlite3_stmt* stmt) -> Result<std::monostate>
+    return RunOnce(sql, [this, &world_id, &instance_id, &leftAt](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
-        if (BindText(stmt, 1, left_at) != SQLITE_OK ||
+        if (BindText(stmt, 1, leftAt) != SQLITE_OK ||
             BindText(stmt, 2, world_id) != SQLITE_OK ||
             BindText(stmt, 3, instance_id) != SQLITE_OK)
         {
@@ -89,14 +94,16 @@ Result<std::monostate> Database::CloseOpenWorldVisits(const std::string& left_at
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    const std::string leftAt = analytics::NormalizeVisitTimestamp(left_at);
+
     const char* sql =
         "UPDATE world_visits "
         "SET left_at = ? "
         "WHERE left_at IS NULL;";
 
-    return RunOnce(sql, [this, &left_at](sqlite3_stmt* stmt) -> Result<std::monostate>
+    return RunOnce(sql, [this, &leftAt](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
-        if (BindText(stmt, 1, left_at) != SQLITE_OK)
+        if (BindText(stmt, 1, leftAt) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }

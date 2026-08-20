@@ -23,6 +23,9 @@ public:
     /// Blocks the calling thread until a token is available.
     void Acquire();
 
+    /// Non-blocking: true if a token was taken.
+    bool TryAcquire();
+
     // Non-copyable, non-movable.
     RateLimiter(const RateLimiter&) = delete;
     RateLimiter& operator=(const RateLimiter&) = delete;

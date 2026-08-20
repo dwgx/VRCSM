@@ -1,6 +1,15 @@
 #include <gtest/gtest.h>
 
+#include "core/Common.h"
+#include "core/Database.h"
 #include "core/FriendAnalytics.h"
+
+#include <sqlite3.h>
+
+#include <filesystem>
+#include <string>
+
+#include <Windows.h>
 
 using namespace vrcsm::core::analytics;
 
@@ -30,6 +39,17 @@ TEST(FriendAnalytics, ParsePresenceInstantAcceptsVrchatDotFormat)
     EXPECT_EQ(*dotLater - *dot, 3600);
     // Garbage still rejected.
     EXPECT_FALSE(parsePresenceInstant("not-a-timestamp").has_value());
+}
+
+TEST(FriendAnalytics, NormalizeVisitTimestampRewritesDotAndStripsOffset)
+{
+    EXPECT_EQ(NormalizeVisitTimestamp(""), "");
+    EXPECT_EQ(NormalizeVisitTimestamp("2026.07.05 21:01:10"), "2026-07-05T21:01:10");
+    EXPECT_EQ(NormalizeVisitTimestamp("2026-07-05T22:01:10+09:00"), "2026-07-05T22:01:10");
+    EXPECT_EQ(NormalizeVisitTimestamp("2026-07-05T21:01:10Z"), "2026-07-05T21:01:10");
+    EXPECT_EQ(NormalizeVisitTimestamp("2026-07-05T21:01:10"), "2026-07-05T21:01:10");
+    // Unparsable: leave the original string unchanged (do not invent a stamp).
+    EXPECT_EQ(NormalizeVisitTimestamp("not-a-timestamp"), "not-a-timestamp");
 }
 
 TEST(FriendAnalytics, IntervalOverlapDisjointIsZero)
@@ -186,4 +206,170 @@ TEST(FriendAnalytics, GlobalSearchTypeFilterExcludesUnrequested)
     nlohmann::json request = {{"types", nlohmann::json::array({"world"})}};
     const auto out = globalSearch(input, request, "", "", 20, 0);
     EXPECT_EQ(out["items"].size(), 0u);
+}
+
+// ─── world_visits dwell hours (NormalizeVisitTimestamp + StatsOverview) ──
+
+namespace
+{
+
+class TempVisitDb
+{
+public:
+    explicit TempVisitDb(std::wstring_view name)
+    {
+        dir_ = std::filesystem::temp_directory_path()
+            / (std::wstring(name) + L"-" + std::to_wstring(::GetCurrentProcessId()));
+        std::error_code ec;
+        std::filesystem::remove_all(dir_, ec);
+        std::filesystem::create_directories(dir_, ec);
+        auto& db = vrcsm::core::Database::Instance();
+        db.Close();
+        const auto opened = db.Open(dir_ / L"vrcsm.db");
+        opened_ = vrcsm::core::isOk(opened);
+    }
+
+    ~TempVisitDb()
+    {
+        vrcsm::core::Database::Instance().Close();
+        std::error_code ec;
+        std::filesystem::remove_all(dir_, ec);
+    }
+
+    bool ok() const { return opened_; }
+    std::filesystem::path path() const { return dir_ / L"vrcsm.db"; }
+
+    TempVisitDb(const TempVisitDb&) = delete;
+    TempVisitDb& operator=(const TempVisitDb&) = delete;
+
+private:
+    std::filesystem::path dir_;
+    bool opened_ = false;
+};
+
+void ExecSqlOrFail(sqlite3* db, const char* sql)
+{
+    char* error = nullptr;
+    const int rc = sqlite3_exec(db, sql, nullptr, nullptr, &error);
+    if (rc != SQLITE_OK)
+    {
+        const std::string message = error != nullptr ? error : "sqlite3_exec failed";
+        sqlite3_free(error);
+        FAIL() << message;
+    }
+}
+
+} // namespace
+
+TEST(FriendAnalytics, StatsOverviewDotPairIsOneHour)
+{
+    TempVisitDb tmp(L"vrcsm-visit-time-dot");
+    ASSERT_TRUE(tmp.ok());
+    auto& db = vrcsm::core::Database::Instance();
+    ASSERT_TRUE(vrcsm::core::isOk(db.InsertWorldVisit({
+        "wrld_dot",
+        "wrld_dot:1",
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        "2026.07.05 21:01:10",
+    })));
+    ASSERT_TRUE(vrcsm::core::isOk(db.MarkVisitLeft(
+        "wrld_dot", "wrld_dot:1", "2026.07.05 22:01:10")));
+
+    auto visits = db.RecentWorldVisits(1, 0);
+    ASSERT_TRUE(vrcsm::core::isOk(visits));
+    ASSERT_EQ(vrcsm::core::value(visits).size(), 1u);
+    EXPECT_EQ(vrcsm::core::value(visits)[0].at("joined_at"), "2026-07-05T21:01:10");
+    EXPECT_EQ(vrcsm::core::value(visits)[0].at("left_at"), "2026-07-05T22:01:10");
+
+    auto result = db.StatsOverview();
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    EXPECT_NEAR(vrcsm::core::value(result).at("total_hours_in_world").get<double>(), 1.0, 0.01);
+}
+
+TEST(FriendAnalytics, StatsOverviewIngestNormalizesIsoOffsetLeave)
+{
+    TempVisitDb tmp(L"vrcsm-visit-time-ingest-iso");
+    ASSERT_TRUE(tmp.ok());
+    auto& db = vrcsm::core::Database::Instance();
+    ASSERT_TRUE(vrcsm::core::isOk(db.InsertWorldVisit({
+        "wrld_iso",
+        "wrld_iso:1",
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        "2026.07.05 21:01:10",
+    })));
+    ASSERT_TRUE(vrcsm::core::isOk(db.CloseOpenWorldVisits("2026-07-05T22:01:10+09:00")));
+
+    auto visits = db.RecentWorldVisits(1, 0);
+    ASSERT_TRUE(vrcsm::core::isOk(visits));
+    ASSERT_EQ(vrcsm::core::value(visits).size(), 1u);
+    EXPECT_EQ(vrcsm::core::value(visits)[0].at("left_at"), "2026-07-05T22:01:10");
+
+    auto result = db.StatsOverview();
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    EXPECT_NEAR(vrcsm::core::value(result).at("total_hours_in_world").get<double>(), 1.0, 0.01);
+}
+
+TEST(FriendAnalytics, StatsOverviewMixedDotIsoOffsetIsNonNegative)
+{
+    // Pre-existing rows: DOT joined_at + ISO+09:00 left_at. Naive
+    // julianday(left)-julianday(joined) used to go negative (~-8h) because
+    // SQLite converts the offset stamp to UTC while treating the DOT/naive
+    // stamp as UTC. The aggregate must drop the timezone and clamp.
+    TempVisitDb tmp(L"vrcsm-visit-time-mixed");
+    ASSERT_TRUE(tmp.ok());
+    auto& db = vrcsm::core::Database::Instance();
+    db.Close();
+
+    sqlite3* raw = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(
+                  vrcsm::core::toUtf8(tmp.path().wstring()).c_str(),
+                  &raw,
+                  SQLITE_OPEN_READWRITE,
+                  nullptr),
+              SQLITE_OK);
+    ASSERT_NE(raw, nullptr);
+    ExecSqlOrFail(raw,
+        "INSERT INTO world_visits (world_id, instance_id, joined_at, left_at) VALUES "
+        "('wrld_mix', 'wrld_mix:1', '2026.07.05 21:01:10', '2026-07-05T22:01:10+09:00');");
+    sqlite3_close_v2(raw);
+
+    ASSERT_TRUE(vrcsm::core::isOk(db.Open(tmp.path())));
+    auto result = db.StatsOverview();
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    const double hours = vrcsm::core::value(result).at("total_hours_in_world").get<double>();
+    EXPECT_GE(hours, 0.0);
+    EXPECT_NEAR(hours, 1.0, 0.01);
+}
+
+TEST(FriendAnalytics, StatsOverviewUnparsableVisitSkipped)
+{
+    TempVisitDb tmp(L"vrcsm-visit-time-bad");
+    ASSERT_TRUE(tmp.ok());
+    auto& db = vrcsm::core::Database::Instance();
+    db.Close();
+
+    sqlite3* raw = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(
+                  vrcsm::core::toUtf8(tmp.path().wstring()).c_str(),
+                  &raw,
+                  SQLITE_OPEN_READWRITE,
+                  nullptr),
+              SQLITE_OK);
+    ASSERT_NE(raw, nullptr);
+    ExecSqlOrFail(raw,
+        "INSERT INTO world_visits (world_id, instance_id, joined_at, left_at) VALUES "
+        "('wrld_bad', 'wrld_bad:1', 'not-a-timestamp', 'also-bad'),"
+        "('wrld_ok', 'wrld_ok:1', '2026.07.05 10:00:00', '2026.07.05 11:00:00');");
+    sqlite3_close_v2(raw);
+
+    ASSERT_TRUE(vrcsm::core::isOk(db.Open(tmp.path())));
+    auto result = db.StatsOverview();
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    const double hours = vrcsm::core::value(result).at("total_hours_in_world").get<double>();
+    EXPECT_GE(hours, 0.0);
+    EXPECT_NEAR(hours, 1.0, 0.01);
 }

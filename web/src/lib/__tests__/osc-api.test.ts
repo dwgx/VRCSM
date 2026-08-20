@@ -25,4 +25,12 @@ describe("osc-api chatbox payload", () => {
       { host: "127.0.0.1", port: 9000 },
     );
   });
+
+  it("fits chatbox text by dropping the last segment before send", async () => {
+    const { sendChatbox } = await import("../osc-api");
+    const keep = "A".repeat(80);
+    const drop = "B".repeat(80);
+    await sendChatbox(`${keep} | ${drop}`);
+    expect(oscSendMock.mock.calls[0][1][0]).toBe(keep);
+  });
 });

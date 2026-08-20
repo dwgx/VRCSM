@@ -35,6 +35,9 @@ import {
 } from "@/lib/osc-studio";
 import { useNowPlaying } from "@/lib/useNowPlaying";
 import { currentLyricLine, currentLyricTrans } from "@/lib/lyrics";
+import { useOscWorldContext } from "@/lib/useOscWorldContext";
+import { CHATBOX_LIMIT, fitChatbox } from "@/lib/chatbox-fit";
+import { formatHrBpmToken, hrBpmFromOscMessage } from "@/lib/hr-from-osc";
 
 export const MAX_LOG_ENTRIES = 200;
 export const AUTO_TELEMETRY_REFRESH_MS = 5000;
@@ -125,6 +128,8 @@ export function useOscStudio() {
 
   // --- Now-playing media snapshot (polled + pushed) --------------------------
   const nowPlaying = useNowPlaying();
+  const world = useOscWorldContext();
+  const worldRef = useRef(world);
 
   // --- Profiles + cards ------------------------------------------------------
   const [profilesState, setProfilesState] = useState(() => loadOscStudioProfiles());
@@ -155,6 +160,8 @@ export function useOscStudio() {
   const manualChatboxSentRef = useRef<number[]>([]);
   const lastChatboxAutoSentRef = useRef(0);
   const lastHardwareRefreshRef = useRef(0);
+  const hrBpmRef = useRef<number | null>(null);
+  const hrAtMsRef = useRef(0);
 
   useEffect(() => {
     latestCardsRef.current = cards;
@@ -173,7 +180,16 @@ export function useOscStudio() {
   }, [sendPort]);
 
   useEffect(() => {
+    worldRef.current = world;
+  }, [world]);
+
+  useEffect(() => {
     const unsub = ipc.on<OscMessageEvent>("osc.message", (msg) => {
+      const bpm = hrBpmFromOscMessage(msg.address, msg.args);
+      if (bpm != null) {
+        hrBpmRef.current = bpm;
+        hrAtMsRef.current = Date.now();
+      }
       setLog((prev) => {
         const entry: OscLogEntry = {
           ts: new Date().toISOString().slice(11, 23),
@@ -365,7 +381,7 @@ export function useOscStudio() {
       }
     }
     const message = typeof messageSource === "function" ? messageSource() : messageSource;
-    const trimmed = message.trim().slice(0, 144);
+    const trimmed = fitChatbox(message.trim(), CHATBOX_LIMIT);
     if (!trimmed) {
       const reason = t("osc.studio.emptyRendered", { defaultValue: "Template has no available values" });
       if (!options.silentSuccess) {
@@ -409,6 +425,7 @@ export function useOscStudio() {
     const lines = nowPlaying.lyricsRef.current;
     const lyricLine = music && music.active ? currentLyricLine(lines, posMs) : "";
     const lyricTranslated = music && music.active ? currentLyricTrans(lines, posMs) : "";
+    const w = worldRef.current;
     return {
       hardware: hardwareRef.current,
       now,
@@ -418,6 +435,11 @@ export function useOscStudio() {
       musicLyricLine: lyricLine,
       musicLyricTranslated: lyricTranslated,
       asciiFold: nowPlaying.asciiFoldRef.current,
+      worldName: w.worldName,
+      worldId: w.worldId,
+      instanceId: w.instanceId,
+      instanceType: w.instanceType,
+      hrBpm: formatHrBpmToken(hrBpmRef.current, hrAtMsRef.current, now.getTime()),
     };
   }
 
@@ -682,6 +704,7 @@ export function useOscStudio() {
     // now-playing music
     nowPlaying,
     liveTemplateContext,
+    world,
 
     // sending
     sendCard,

@@ -157,6 +157,39 @@ describe("osc-studio templates", () => {
 
     expect(cardPreview(card, { now: fixedNow })).toHaveLength(144);
   });
+
+  it("drops the last ` | ` segment before grapheme-trimming a chatbox preview", () => {
+    const card: OscStudioCard = {
+      id: "seg",
+      kind: "chatbox-template",
+      title: "Seg",
+      group: "chatbox",
+      enabled: true,
+      address: "/chatbox/input",
+      valueType: "string",
+      value: "",
+      template: `${"A".repeat(80)} | ${"B".repeat(80)}`,
+    };
+    expect(cardPreview(card, { now: fixedNow })).toBe("A".repeat(80));
+  });
+
+  it("renders {world.name} {world.id} {instance.id} {instance.type}", () => {
+    const out = renderOscTemplate(
+      "{world.name} | {world.id} | {instance.id} | {instance.type}",
+      {
+        now: fixedNow,
+        worldName: "The Great Pug",
+        worldId: "wrld_abc",
+        instanceId: "12345",
+        instanceType: "friends+",
+      },
+    );
+    expect(out).toBe("The Great Pug | wrld_abc | 12345 | friends+");
+  });
+
+  it("collapses a world-only card when location is unknown", () => {
+    expect(renderOscTemplate("{world.name} {instance.id}", { now: fixedNow })).toBe("");
+  });
 });
 
 describe("osc-studio profiles", () => {

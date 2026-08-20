@@ -50,6 +50,8 @@ public:
     // for the frontend to show "indexing..." status.
     bool IsReady() const { return m_ready.load(); }
 
+    bool IsScanning() const { return m_scanning.load(); }
+
     // Number of entries indexed so far (grows during scan).
     std::size_t EntryCount() const;
 

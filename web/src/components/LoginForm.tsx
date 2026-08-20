@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Lock, LogIn, Shield, User } from "lucide-react";
 import {
@@ -13,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth, type TwoFactorMethod } from "@/lib/auth-context";
+import { ipc } from "@/lib/ipc";
+import { attachOtpMailSession } from "@/lib/otp-mail-ui";
 
 type Stage = "credentials" | "twofactor";
 
@@ -53,11 +56,27 @@ export function LoginForm({ open, onOpenChange }: LoginFormProps) {
 
   const usernameRef = useRef<HTMLInputElement>(null);
   const codeRef = useRef<HTMLInputElement>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+
+  const [otpHelper, setOtpHelper] = useState<"unknown" | "ready" | "off">("unknown");
+  const [otpFilled, setOtpFilled] = useState(false);
+  const [otpSubmitOnceArmed, setOtpSubmitOnceArmed] = useState(false);
 
   // Reset the form every time the dialog opens — we don't want a
   // previous "Invalid password" banner clinging to a fresh attempt.
+  // Also drop twofactor on close so a reopen cannot start IMAP from
+  // leftover emailOtp stage before this reset runs.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setStage("credentials");
+      setMethod("totp");
+      setCode("");
+      setOtpHelper("unknown");
+      setOtpFilled(false);
+      setOtpSubmitOnceArmed(false);
+      return;
+    }
     setStage("credentials");
     setUsername("");
     setPassword("");
@@ -65,6 +84,9 @@ export function LoginForm({ open, onOpenChange }: LoginFormProps) {
     setMethod("totp");
     setSubmitting(false);
     setError(null);
+    setOtpHelper("unknown");
+    setOtpFilled(false);
+    setOtpSubmitOnceArmed(false);
     // Focus the username field — Radix' dialog handles initial focus,
     // but our refForwarding wrapper needs a nudge.
     window.setTimeout(() => usernameRef.current?.focus(), 60);
@@ -75,6 +97,51 @@ export function LoginForm({ open, onOpenChange }: LoginFormProps) {
       window.setTimeout(() => codeRef.current?.focus(), 60);
     }
   }, [stage]);
+
+  useEffect(() => {
+    if (!open || stage !== "twofactor" || method !== "emailOtp") {
+      setOtpHelper("unknown");
+      setOtpFilled(false);
+      setOtpSubmitOnceArmed(false);
+      return;
+    }
+    let cancelled = false;
+    let detach: (() => void) | undefined;
+    setOtpHelper("unknown");
+    setOtpFilled(false);
+    setOtpSubmitOnceArmed(false);
+    void attachOtpMailSession({
+      ipc: {
+        call: (m, p) => ipc.call(m, p),
+        on: (event, handler) => ipc.on(event, handler),
+      },
+      onCode: (digits) => {
+        if (cancelled) return;
+        setCode(digits);
+        setOtpFilled(true);
+      },
+      onLoginCompleted: (ok) => {
+        if (cancelled || !ok) return;
+        toast.success(t("auth.loginSuccess"));
+        onOpenChangeRef.current(false);
+      },
+    })
+      .then((session) => {
+        if (cancelled) {
+          session.detach();
+          return;
+        }
+        detach = session.detach;
+        setOtpHelper(session.ready ? "ready" : "off");
+      })
+      .catch(() => {
+        if (!cancelled) setOtpHelper("off");
+      });
+    return () => {
+      cancelled = true;
+      detach?.();
+    };
+  }, [open, stage, method, t]);
 
   const onSubmitCredentials = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -145,6 +212,17 @@ export function LoginForm({ open, onOpenChange }: LoginFormProps) {
       setError(result.error);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onSubmitOnce = async () => {
+    if (submitting || otpHelper !== "ready") return;
+    setError(null);
+    try {
+      await ipc.call("otpMail.start", { submitOnce: true });
+      setOtpSubmitOnceArmed(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -275,6 +353,52 @@ export function LoginForm({ open, onOpenChange }: LoginFormProps) {
                 className="font-mono tracking-[0.35em]"
               />
             </label>
+
+            {method === "emailOtp" ? (
+              <div className="flex flex-col gap-2">
+                {otpHelper === "ready" ? (
+                  <>
+                    <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                      {otpFilled
+                        ? t("otpMail.filled", {
+                            defaultValue: "Filled from mailbox. Click Verify.",
+                          })
+                        : otpSubmitOnceArmed
+                          ? t("otpMail.waitingSubmit", {
+                              defaultValue: "Waiting for the next email code, then submitting once.",
+                            })
+                          : t("otpMail.waiting", {
+                              defaultValue: "Waiting for VRChat email…",
+                            })}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void onSubmitOnce()}
+                      disabled={submitting || otpSubmitOnceArmed}
+                    >
+                      {t("otpMail.submitOnce", { defaultValue: "Submit next OTP once" })}
+                    </Button>
+                  </>
+                ) : otpHelper === "off" ? (
+                  <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                    {t("otpMail.settingsHint", {
+                      defaultValue: "Email OTP helper is off.",
+                    })}{" "}
+                    <Link
+                      to="/settings?tab=experimental"
+                      className="text-[hsl(var(--primary))] underline underline-offset-2"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      {t("otpMail.settingsLink", {
+                        defaultValue: "Settings → Experimental",
+                      })}
+                    </Link>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {error ? (
               <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--destructive)/0.45)] bg-[hsl(var(--destructive)/0.08)] px-3 py-2 text-[11px] text-[hsl(var(--warn-foreground,var(--destructive)))]">

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { isTtsSupported, speak } from "../tts";
+import { isTtsSupported, setHostTtsEngine, shouldSpeakInPage, speak } from "../tts";
 
 // The pure, side-effecting surface of the TTS module. The pipeline-wiring hook
 // (useTtsAnnounce) is exercised indirectly by the pages smoke test mounting the
@@ -8,21 +8,30 @@ import { isTtsSupported, speak } from "../tts";
 describe("tts isTtsSupported", () => {
   const orig = (globalThis as { speechSynthesis?: unknown }).speechSynthesis;
   afterEach(() => {
+    setHostTtsEngine("unknown");
     if (orig === undefined) delete (globalThis as { speechSynthesis?: unknown }).speechSynthesis;
     else (globalThis as { speechSynthesis?: unknown }).speechSynthesis = orig;
     vi.unstubAllGlobals();
   });
 
-  it("is false when the API is absent", () => {
+  it("is false when the API is absent and the host engine is not sapi", () => {
+    setHostTtsEngine("none");
     delete (globalThis as { speechSynthesis?: unknown }).speechSynthesis;
     expect(isTtsSupported()).toBe(false);
   });
 
   it("is true when speechSynthesis exists", () => {
+    setHostTtsEngine("none");
     (globalThis as { speechSynthesis?: unknown }).speechSynthesis = {
       speak: vi.fn(),
       cancel: vi.fn(),
     };
+    expect(isTtsSupported()).toBe(true);
+  });
+
+  it("is true when the host engine is sapi even without Web Speech", () => {
+    setHostTtsEngine("sapi");
+    delete (globalThis as { speechSynthesis?: unknown }).speechSynthesis;
     expect(isTtsSupported()).toBe(true);
   });
 });
@@ -32,6 +41,7 @@ describe("tts speak", () => {
   let cancelSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    setHostTtsEngine("none");
     speakSpy = vi.fn();
     cancelSpy = vi.fn();
     (globalThis as { speechSynthesis?: unknown }).speechSynthesis = {
@@ -52,6 +62,7 @@ describe("tts speak", () => {
   });
 
   afterEach(() => {
+    setHostTtsEngine("unknown");
     delete (globalThis as { speechSynthesis?: unknown }).speechSynthesis;
     vi.unstubAllGlobals();
   });
@@ -75,5 +86,14 @@ describe("tts speak", () => {
       throw new Error("synth boom");
     });
     expect(() => speak("boom")).not.toThrow();
+  });
+
+  it("does not speak when host engine is sapi", () => {
+    setHostTtsEngine("sapi");
+    speak("hello world", "en-US");
+    expect(speakSpy).not.toHaveBeenCalled();
+    expect(cancelSpy).not.toHaveBeenCalled();
+    expect(shouldSpeakInPage("sapi")).toBe(false);
+    expect(shouldSpeakInPage("none")).toBe(true);
   });
 });

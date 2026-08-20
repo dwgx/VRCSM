@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -17,6 +18,7 @@ import {
   Users,
   MapPin,
   UserMinus,
+  UserPlus,
   BellRing,
   CalendarClock,
   Tag,
@@ -70,6 +72,12 @@ import {
   statusShapeClass,
 } from "@/lib/vrcFriends";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { useGreyPrefs } from "@/lib/grey-prefs";
+import {
+  isOnInviteAssistAllowlist,
+  parseInviteAssistGet,
+  toggleInviteAssistMembership,
+} from "@/lib/invite-assist-friend";
 import { cn } from "@/lib/utils";
 
 // ---- Bio link parser (mirrors ProfileCard) ------------------------------------
@@ -965,6 +973,7 @@ export function FriendDetailDialog({ friend, onClose, readOnly = false }: Friend
           {/* Boop/requestInvite are friend-only; hidden in profile-only mode
               (e.g. a friendRequest sender who isn't a friend yet). */}
           {!readOnly && <BoopCard friend={friend} inWorld={inWorld} />}
+          {!readOnly && <InviteAssistRow friend={friend} />}
 
           {/* ========== 6. Friend Note ========== */}
           <div className="px-5 py-4">
@@ -1020,6 +1029,82 @@ const BOOP_EMOJI = [
   "🎮","👾","🕹","🎲","🎯","🪄","💻","📱","🔔","💡",
   "💀","👻","🤖","👽","💩","🍑","👁","🧠","💤","💢","💯","❓","❗",
 ];
+
+function InviteAssistRow({ friend }: { friend: Friend | null }) {
+  const { t } = useTranslation();
+  const { prefs } = useGreyPrefs();
+  const greyEnabled = prefs?.greyEnabled === true;
+  const [busy, setBusy] = useState(false);
+  const query = useIpcQuery<Record<string, never>, unknown>(
+    "inviteAssist.get",
+    {},
+    { enabled: greyEnabled && Boolean(friend?.id), staleTime: 15_000 },
+  );
+
+  if (!greyEnabled || !friend?.id) {
+    return null;
+  }
+
+  const snapshot = parseInviteAssistGet(query.data);
+  const onList = isOnInviteAssistAllowlist(snapshot.allowlist, friend.id);
+
+  async function onToggle() {
+    if (!friend?.id) return;
+    setBusy(true);
+    try {
+      const result = await toggleInviteAssistMembership({
+        userId: friend.id,
+        displayName: friend.displayName,
+        allowlist: snapshot.allowlist,
+        confirmedAt: snapshot.confirmedAt,
+      });
+      if (result === "confirmRequired") {
+        toast(t("inviteAssist.confirmRequired", {
+          defaultValue: "Experimental confirm is required before adding people to Invite Assist.",
+        }));
+        return;
+      }
+      toast.success(
+        result === "added"
+          ? t("inviteAssist.added", { defaultValue: "Added to Invite Assist" })
+          : t("inviteAssist.removed", { defaultValue: "Removed from Invite Assist" }),
+      );
+      await query.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="px-5 py-3 border-t border-[hsl(var(--border)/0.4)]">
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
+        <UserPlus className="size-3" />
+        {t("inviteAssist.title", { defaultValue: "Invite Assist" })}
+        <span className="ml-auto font-normal normal-case tracking-normal font-mono text-[10px]">
+          {query.isLoading
+            ? null
+            : snapshot.enabled
+              ? t("inviteAssist.on", { defaultValue: "On" })
+              : t("inviteAssist.off", { defaultValue: "Off" })}
+        </span>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 text-[11px] gap-1.5"
+        disabled={busy || query.isLoading}
+        onClick={() => void onToggle()}
+      >
+        {busy || query.isLoading ? <Loader2 className="size-3 animate-spin" /> : null}
+        {onList
+          ? t("inviteAssist.remove", { defaultValue: "Remove from InviteAssist" })
+          : t("inviteAssist.add", { defaultValue: "Add to InviteAssist" })}
+      </Button>
+    </div>
+  );
+}
 
 function BoopCard({
   friend,
@@ -1158,6 +1243,12 @@ function BoopCard({
       <div className="text-[10px] uppercase tracking-wider font-semibold text-[hsl(var(--muted-foreground))] mb-2 flex items-center gap-1.5">
         <BellRing className="size-3" />
         {t("friendDetail.boop", { defaultValue: "Boop / Ping" })}
+        <Link
+          to="/tools/invite-slots"
+          className="ml-auto font-normal normal-case tracking-normal text-[hsl(var(--primary))] underline underline-offset-2"
+        >
+          {t("inviteSlots.editLink", { defaultValue: "Edit slots…" })}
+        </Link>
       </div>
       <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--surface))] p-3">
         {/* Native boop — instant friends-only ping via the real VRChat

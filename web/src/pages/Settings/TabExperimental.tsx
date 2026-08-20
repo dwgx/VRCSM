@@ -15,6 +15,10 @@ import {
   MODEL_VERSION,
 } from "@/lib/avatar-embedding";
 import { VisualSearchDialog } from "@/components/VisualSearchDialog";
+import { useGreyPrefs } from "@/lib/grey-prefs";
+import { Link } from "react-router-dom";
+import InviteAssistCard from "@/pages/InviteAssistCard";
+import { OtpMailCard } from "./OtpMailCard";
 
 function ToggleRow({
   flag,
@@ -215,6 +219,62 @@ function VisualSearchPanel() {
   );
 }
 
+function GreyMasterCard() {
+  const { t } = useTranslation();
+  const { prefs, patchPrefs, isSaving, isLoading } = useGreyPrefs();
+  const enabled = prefs?.greyEnabled === true;
+  return (
+    <div className="unity-panel border border-[hsl(var(--border))] p-3 flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-[12px] font-medium">
+            {t("grey.master.title", { defaultValue: "Optional social/VR helpers" })}
+          </div>
+          <div className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
+            {t("grey.master.desc", {
+              defaultValue:
+                "Master switch for Slot mail and later helpers. Each helper still requires a user click (or its own opt-in). Off by default.",
+            })}
+          </div>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer select-none shrink-0">
+          <span className="font-mono text-[11px] uppercase tracking-wider">
+            {enabled
+              ? t("settings.experimental.toggleOn", { defaultValue: "ON" })
+              : t("settings.experimental.toggleOff", { defaultValue: "OFF" })}
+          </span>
+          <input
+            type="checkbox"
+            checked={enabled}
+            disabled={isLoading || isSaving}
+            onChange={(e) => {
+              void patchPrefs({ greyEnabled: e.target.checked });
+            }}
+            className={cn(
+              "w-4 h-4 cursor-pointer",
+              "border border-[hsl(var(--border-strong))]",
+            )}
+          />
+        </label>
+      </div>
+      <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] font-mono border-l-2 border-[hsl(var(--warning,var(--border-strong)))] pl-2">
+        {t("grey.tos.master", {
+          defaultValue:
+            "Enable optional social/VR helpers only if you understand VRChat’s Terms of Service. Slot mail is not a messenger. Auto-invite, auto-join, and mailbox OTP stay off until each helper’s own confirm. VRCSM will not auto-send from Slot mail.",
+        })}
+      </p>
+      {enabled ? (
+        <Link
+          to="/tools/invite-slots"
+          className="text-[11px] text-[hsl(var(--primary))] underline underline-offset-2"
+        >
+          {t("inviteSlots.title", { defaultValue: "Slot mail" })}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
 export function TabExperimental() {
   const { t } = useTranslation();
   return (
@@ -228,6 +288,9 @@ export function TabExperimental() {
             "These features are in active development. Expect rough edges, unexpected resource usage, and occasional breakage. They can be turned off anytime — state persists locally.",
         })}
       </p>
+      <GreyMasterCard />
+      <OtpMailCard />
+      <InviteAssistCard />
       <div className="flex flex-col gap-2">
         {EXPERIMENTAL_FLAGS.map((flag) => (
           <ToggleRow key={flag.key} flag={flag} />

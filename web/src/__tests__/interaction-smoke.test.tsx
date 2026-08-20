@@ -119,6 +119,7 @@ const originalError = console.error;
 const originalWarn = console.warn;
 beforeEach(() => {
   unhandled.length = 0;
+  window.__SMOKE_GREY__ = true;
   window.addEventListener("unhandledrejection", onUnhandled);
   process.on("unhandledRejection", onNodeUnhandled);
   console.error = (...args: unknown[]) => {
@@ -292,6 +293,8 @@ function interactiveElements(): HTMLElement[] {
     '[role="switch"]',
     "a[href]",
     "summary",
+    'input[type="checkbox"]:not([disabled])',
+    'input[type="radio"]:not([disabled])',
   ].join(",");
   const seen = new Set<HTMLElement>();
   const nodes: HTMLElement[] = [];
@@ -427,12 +430,19 @@ const ROUTES = [
   "/fbt",
   "/friend-log",
   "/history/worlds",
+  "/history/activity",
+  "/history/hot-worlds",
   "/rules",
   "/settings",
   "/plugins",
   "/plugins/installed",
   "/tools/osc",
   "/tools/memory-radar",
+  "/tools/last-instance",
+  "/tools/invite-slots",
+  "/tools/playspace",
+  "/tools/event-watch",
+  "/migrate",
 ];
 
 describe("interaction smoke — click every control on every page", () => {
@@ -520,9 +530,11 @@ describe("interaction smoke — account-mutating friend actions", () => {
 
     await act(async () => {
       render(
-        <QueryClientProvider client={queryClient}>
-          <FriendDetailDialog friend={friend as never} onClose={() => {}} />
-        </QueryClientProvider>,
+        <HashRouter>
+          <QueryClientProvider client={queryClient}>
+            <FriendDetailDialog friend={friend as never} onClose={() => {}} />
+          </QueryClientProvider>
+        </HashRouter>,
       );
     });
     await flush(60);

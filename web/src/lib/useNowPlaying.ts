@@ -2,7 +2,28 @@ import { useEffect, useRef, useState } from "react";
 import { ipc } from "@/lib/ipc";
 import type { NowPlayingSnapshot } from "@/lib/osc-studio";
 import { fetchLyrics, type LyricLine, type LyricsSource } from "@/lib/lyrics";
-import { useUiPrefBoolean } from "@/lib/ui-prefs";
+import { useUiPrefBoolean, useUiPrefString } from "@/lib/ui-prefs";
+
+export const MUSIC_PREFERRED_APP_PREF_KEY = "vrcsm.music.preferredAppId";
+export const MUSIC_LRC_DIR_PREF_KEY = "vrcsm.music.lrcDir";
+
+export interface MusicSessionInfo {
+  appId: string;
+  appName: string;
+  title: string;
+  artist: string;
+  status: string;
+}
+
+function normalizeSession(raw: Record<string, unknown>): MusicSessionInfo {
+  return {
+    appId: String(raw.appId ?? raw.app_id ?? ""),
+    appName: String(raw.appName ?? raw.app_name ?? ""),
+    title: String(raw.title ?? ""),
+    artist: String(raw.artist ?? ""),
+    status: String(raw.status ?? ""),
+  };
+}
 
 // Per-source lyrics toggles, both default on. Persisted as UI prefs so the
 // NowPlayingPanel switches and the fetch path read the same state.
@@ -41,6 +62,9 @@ export function useNowPlaying() {
   const [lyricsNetease] = useUiPrefBoolean(LYRICS_NETEASE_PREF_KEY, true);
   const [lyricsQq] = useUiPrefBoolean(LYRICS_QQ_PREF_KEY, true);
   const [lyricsKugou] = useUiPrefBoolean(LYRICS_KUGOU_PREF_KEY, true);
+  const [preferredAppId, setPreferredAppId] = useUiPrefString(MUSIC_PREFERRED_APP_PREF_KEY, "");
+  const [lrcDir, setLrcDir] = useUiPrefString(MUSIC_LRC_DIR_PREF_KEY, "");
+  const [sessions, setSessions] = useState<MusicSessionInfo[]>([]);
 
   const musicRef = useRef<NowPlayingSnapshot | null>(null);
   const progressWidthRef = useRef(progressWidth);
@@ -48,6 +72,8 @@ export function useNowPlaying() {
   const asciiFoldRef = useRef(asciiFold);
   const lyricsRef = useRef<LyricLine[]>([]);
   const lyricsSourcesRef = useRef({ lrclib: lyricsLrclib, netease: lyricsNetease, qq: lyricsQq, kugou: lyricsKugou });
+  const lrcDirRef = useRef(lrcDir);
+  const preferredAppIdRef = useRef(preferredAppId);
   // Identity of the track we last fetched lyrics for, so a 2s poll of the same
   // song doesn't re-fetch. Cleared to "" when nothing is playing.
   const lyricsTrackKeyRef = useRef<string>("");
@@ -70,6 +96,15 @@ export function useNowPlaying() {
     syncLyrics(musicRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lyricsLrclib, lyricsNetease, lyricsQq, lyricsKugou]);
+  useEffect(() => {
+    lrcDirRef.current = lrcDir;
+    lyricsTrackKeyRef.current = "";
+    syncLyrics(musicRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lrcDir]);
+  useEffect(() => {
+    preferredAppIdRef.current = preferredAppId;
+  }, [preferredAppId]);
 
   function setLyricLines(
     lines: LyricLine[],
@@ -98,6 +133,7 @@ export function useNowPlaying() {
     setLyricLines([], "none");
     void fetchLyrics(snapshot.title, snapshot.artist, snapshot.album, snapshot.duration_ms, {
       sources: lyricsSourcesRef.current,
+      lrcDir: lrcDirRef.current || undefined,
     })
       .then((res) => {
         // A newer track may have arrived while we were awaiting; ignore stale.
@@ -133,12 +169,29 @@ export function useNowPlaying() {
       if (inFlight) return;
       inFlight = true;
       try {
-        const snapshot = await ipc.call<undefined, NowPlayingSnapshot>("music.nowPlaying");
+        const appId = preferredAppIdRef.current.trim();
+        const snapshot = await ipc.call<{ appId?: string }, NowPlayingSnapshot>(
+          "music.nowPlaying",
+          appId ? { appId } : undefined,
+        );
         if (!cancelled) apply(snapshot);
       } catch {
         // No media session / host unavailable — treat as "nothing playing"
         // rather than surfacing an error toast on a background poll.
         if (!cancelled && musicRef.current !== null) apply(null);
+      }
+      try {
+        const listed = await ipc.call<undefined, { sessions?: Array<Record<string, unknown>> }>(
+          "music.sessions",
+        );
+        if (!cancelled) {
+          const next = Array.isArray(listed?.sessions)
+            ? listed.sessions.map((row) => normalizeSession(row ?? {}))
+            : [];
+          setSessions(next);
+        }
+      } catch {
+        if (!cancelled) setSessions([]);
       } finally {
         inFlight = false;
       }
@@ -155,7 +208,7 @@ export function useNowPlaying() {
       window.clearInterval(timer);
       unsub();
     };
-  }, []);
+  }, [preferredAppId]);
 
   return {
     music,
@@ -173,6 +226,11 @@ export function useNowPlaying() {
     lyricsRef,
     lyricsStatus,
     lyricsSource,
+    sessions,
+    preferredAppId,
+    setPreferredAppId,
+    lrcDir,
+    setLrcDir,
   };
 }
 

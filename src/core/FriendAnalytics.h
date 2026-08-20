@@ -13,6 +13,7 @@
 #include <ctime>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -25,6 +26,13 @@ namespace vrcsm::core::analytics
 // Parse a presence occurred_at string into an absolute UTC time_t. Handles
 // trailing 'Z' (UTC), '±HH:MM' (offset), and no-designator (naive-local).
 std::optional<std::time_t> parsePresenceInstant(const std::string& s);
+
+// Canonicalize a world_visits timestamp for storage and julianday math.
+// DOT-local "YYYY.MM.DD HH:MM:SS" and ISO (optional Z / ±HH:MM) become
+// naive "YYYY-MM-DDTHH:MM:SS" keeping the written wall clock (offset is
+// dropped, not converted through the host zone). Empty → empty.
+// Unparsable → the original string unchanged so ingest does not invent a stamp.
+std::string NormalizeVisitTimestamp(std::string_view raw);
 
 // One reconstructed presence interval [start, end] in absolute seconds.
 struct PresenceInterval

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ipc } from "@/lib/ipc";
-import type { DataUsage } from "@/lib/ipc";
+import { ipc, IpcError } from "@/lib/ipc";
+import type { AppBackupEntry, DataUsage } from "@/lib/ipc";
 import { cn, formatBytes } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,6 +113,9 @@ export function TabData() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [dangerAck, setDangerAck] = useState(false);
   const [working, setWorking] = useState(false);
+  const [backups, setBackups] = useState<AppBackupEntry[]>([]);
+  const [backupWorking, setBackupWorking] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -124,6 +127,14 @@ export function TabData() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+    }
+    try {
+      const listed = await ipc.backupList();
+      setBackups(listed.backups ?? []);
+    } catch (e: unknown) {
+      if (!(e instanceof IpcError && e.code === "method_not_found")) {
+        setBackups([]);
+      }
     }
   }, []);
 
@@ -287,6 +298,55 @@ export function TabData() {
 
   const canClear = selectedKeys.length > 0 && !working;
   const confirmDisabled = working || (confirmHasDanger && !dangerAck);
+  const latestBackup = backups[0] ?? null;
+
+  async function runBackupNow() {
+    setBackupWorking(true);
+    try {
+      const created = await ipc.backupCreate(3);
+      toast.success(
+        t("settings.data.backup.created", {
+          defaultValue: "Backup saved ({{id}}).",
+          id: created.id,
+        }),
+      );
+      await refresh();
+    } catch (e: unknown) {
+      toast.error(
+        t("settings.data.backup.createError", {
+          defaultValue: "Backup failed: {{error}}",
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+    } finally {
+      setBackupWorking(false);
+    }
+  }
+
+  async function runRestoreLatest() {
+    if (!latestBackup) return;
+    setBackupWorking(true);
+    try {
+      await ipc.backupRestore(latestBackup.id);
+      toast.success(
+        t("settings.data.backup.restored", {
+          defaultValue: "Restored backup {{id}}.",
+          id: latestBackup.id,
+        }),
+      );
+      setRestoreOpen(false);
+      await refresh();
+    } catch (e: unknown) {
+      toast.error(
+        t("settings.data.backup.restoreError", {
+          defaultValue: "Restore failed: {{error}}",
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+    } finally {
+      setBackupWorking(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -299,6 +359,47 @@ export function TabData() {
             "Review and clear the caches and data VRCSM stores on this machine. Rebuildable caches are safe to clear; history and asset data are removed permanently.",
         })}
       </p>
+
+      <div className="flex flex-col gap-2">
+        <div className="unity-panel-header">
+          {t("settings.data.backup.heading", { defaultValue: "App data backup" })}
+        </div>
+        <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+          {t("settings.data.backup.blurb", {
+            defaultValue:
+              "Copies grey-prefs.json, plugin-state.json, and vrcsm.db into LocalAppData/VRCSM/backups. Keeps the 3 newest. Not a VRChat cache clone.",
+          })}
+        </p>
+        <p className="font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
+          {latestBackup
+            ? t("settings.data.backup.latest", {
+                defaultValue: "Latest: {{id}} ({{size}})",
+                id: latestBackup.id,
+                size: formatBytes(latestBackup.bytes),
+              })
+            : t("settings.data.backup.none", { defaultValue: "No backups yet." })}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={backupWorking || working}
+            onClick={() => void runBackupNow()}
+          >
+            {backupWorking
+              ? t("settings.data.backup.creating", { defaultValue: "Working…" })
+              : t("settings.data.backup.now", { defaultValue: "Backup now" })}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={backupWorking || working || !latestBackup}
+            onClick={() => setRestoreOpen(true)}
+          >
+            {t("settings.data.backup.restoreLatest", { defaultValue: "Restore latest" })}
+          </Button>
+        </div>
+      </div>
 
       {usage && (
         <p className="font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -421,6 +522,48 @@ export function TabData() {
               {working
                 ? t("settings.data.clearing", { defaultValue: "Clearing…" })
                 : t("settings.data.confirmClear", { defaultValue: "Clear now" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={restoreOpen}
+        onOpenChange={(open) => {
+          if (!backupWorking) setRestoreOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t("settings.data.backup.restoreTitle", { defaultValue: "Restore latest backup" })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("settings.data.backup.restoreBody", {
+                defaultValue:
+                  "Replace the current database, grey-prefs.json, and plugin-state.json with backup {{id}}. The app will keep running; a restart is safest if anything looks stale.",
+                id: latestBackup?.id ?? "",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={backupWorking}
+              onClick={() => setRestoreOpen(false)}
+            >
+              {t("settings.data.cancel", { defaultValue: "Cancel" })}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={backupWorking || !latestBackup}
+              onClick={() => void runRestoreLatest()}
+            >
+              {backupWorking
+                ? t("settings.data.backup.restoring", { defaultValue: "Restoring…" })
+                : t("settings.data.backup.restoreConfirm", { defaultValue: "Restore now" })}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import {
-  ROUTES,
+  INTERACTION_ROUTES,
   PRIMARY_VIEWPORT,
   routeSlug,
   bootWithTap,
@@ -71,6 +71,8 @@ async function clickThrough(
       '[role="switch"]',
       "a[href]",
       "summary",
+      'input[type="checkbox"]:not([disabled])',
+      'input[type="radio"]:not([disabled])',
     ].join(",");
 
     const labelFor = (el: Element): string => {
@@ -156,7 +158,7 @@ async function clickThrough(
 }
 
 test.describe("interaction — click every scoped control on every route", () => {
-  for (const route of ROUTES) {
+  for (const route of INTERACTION_ROUTES) {
     test(`${route} click-through has no crash / dead interaction`, async ({ page }) => {
       const rejections: string[] = [];
       page.on("pageerror", (err) => rejections.push(String(err)));
