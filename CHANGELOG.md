@@ -8,7 +8,9 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
-Companion-tools wave on `feat/companion-waves` (not yet version-bumped; still 0.15.2 until a release cut). Grey social/VR helpers stay **default OFF**. No GPL (VRCX-0) / VNCOL (VRCNext) source.
+## [0.16.0] — 2026-08-20
+
+Companion-tools wave. Grey social/VR helpers stay **default OFF**. LICENSE remains VSAL. No GPL (VRCX-0) / VNCOL (VRCNext) source. New UI keys use `defaultValue` (7-locale JSON not expanded in this cut).
 
 - **Last-instance recovery** (`/tools/last-instance`): newest visit, named-pipe launch, desktop `.lnk`, `inviteSelf` fallback. Pipe payload is raw `id=`; URL `id=` is decoded before invite-self.
 - **OSC Studio nits:** GSMTC session picker (`music.sessions`), title cleaner, 144-char `fitChatbox`, `{world.*}` / `{instance.*}` tokens, local `.lrc` via host `lyrics.readFolder` (path-jailed) + folder picker.
@@ -28,7 +30,12 @@ Companion-tools wave on `feat/companion-waves` (not yet version-bumped; still 0.
 - **config.json** exposes `cache_expiry_delay`.
 - **world_visits dwell hours** no longer go negative on mixed DOT/ISO timestamps.
 - Sidebar **Helpers** group hidden until Experimental grey master is on.
+- **Update dialog** no longer sticks on "checking" when the initial phase arrives after mount (`ad132c5`, after v0.15.2).
 - Interaction smoke now click-throughs companion routes (jsdom + Playwright). Playwright UI smoke **61/61**.
+
+## [0.15.2] — 2026-07-10
+
+Patch cut after v0.15.1: pipeline shutdown use-after-close, UnityBundle node-bounds overflow, junction-safe migrator backup cleanup and plugin uninstall, migration double-click guard, avatar-history IPC moved off the UI thread, lyrics URL encoding for non-ASCII, rules-panel stale selection, and the update dialog "checking" race that still needed a follow-up in 0.16.0.
 
 ## [0.15.1] — 2026-07-09
 

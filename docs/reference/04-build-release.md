@@ -8,7 +8,7 @@
 
 ### 1.1 版本单一真源
 
-`CMakeLists.txt:5-8` 读取仓库根 `VERSION` 文件（当前 `0.15.1`；改后须 reconfigure preset，否则 ninja 不重建）作为 `project(VRCSM VERSION ...)`，派生 `VRCSM_PRODUCT_VERSION`（`a.b.c.0`）与逗号分隔的 `VRCSM_FILE_VERSION`，供 `resources/app.rc` 用 `@ONLY` 展开。C++20、无扩展、标准强制；MSVC 全局 `/utf-8 /W4 /permissive- /Zc:__cplusplus /MP /EHsc` + `NOMINMAX/WIN32_LEAN_AND_MEAN/UNICODE`。运行时库为动态多线程（`CMAKE_MSVC_RUNTIME_LIBRARY`）—— 对 gtest 一致性重要。
+`CMakeLists.txt:5-8` 读取仓库根 `VERSION` 文件（当前 `0.16.0`；改后须 reconfigure preset，否则 ninja 不重建）作为 `project(VRCSM VERSION ...)`，派生 `VRCSM_PRODUCT_VERSION`（`a.b.c.0`）与逗号分隔的 `VRCSM_FILE_VERSION`，供 `resources/app.rc` 用 `@ONLY` 展开。C++20、无扩展、标准强制；MSVC 全局 `/utf-8 /W4 /permissive- /Zc:__cplusplus /MP /EHsc` + `NOMINMAX/WIN32_LEAN_AND_MEAN/UNICODE`。运行时库为动态多线程（`CMAKE_MSVC_RUNTIME_LIBRARY`）—— 对 gtest 一致性重要。
 
 ### 1.2 目标依赖树
 
@@ -91,7 +91,7 @@ Vite：`base:"./"`（适配 `https://app.vrcsm/` 虚拟主机）；注入 `__VRC
 
 > [!IMPORTANT] **`SHA256:` 行是硬约束**：in-app updater（`UpdatePackage.cpp`）要求 GitHub release notes 里有匹配的 `SHA256:` 行，否则拒装（fail-closed）。这条约束由 `CommonTests` 的 `UpdatePackageValidationRejectsMissingSha256/WrongSha256` 守护。粘贴该行是强制发布步骤。见 [更新子系统文档](core/hw-updater-plugins.md#二更新子系统srccoreupdater)。
 
-版本一致性：`VERSION` 与 `web/package.json` 均为 `0.15.1`（互相一致；但 `vcpkg.json` 落后于 `0.14.6`，需手动 bump）。0.15.1 为本地未发布版本——最后一次 GitHub release 为 0.15.0。
+版本一致性：`VERSION`、`web/package.json`、`vcpkg.json`、README badge/artifact 名必须一起 bump（`scripts/verify-release-metadata.ps1` 会检查）。当前 `0.16.0`。改 `VERSION` 后必须 `cmake --preset x64-release` reconfigure，否则 ninja 不重建 `app.rc`。
 
 ## 关键交接要点
 

@@ -1,10 +1,10 @@
 # VRCSM Markdown Index
 
-Last updated: 2026-07-09
+Last updated: 2026-08-20
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
-> Note: **v0.15.1 released 2026-07-09 (Latest on GitHub); `main` in sync with origin** — 0.15.1 adds the now-playing lyrics chain **LRCLIB→NetEase→QQ→Kugou** (+ QQ title-only fallback), OSC sliders + a **VRChat-safe seek-bar progress + 4 rich Now Playing presets**, and the i18n-language / factory-reset-thumbnail / {music.lyrics}-send fixes. All version files (incl. `vcpkg.json`) are in sync at 0.15.1. Several docs below labeled "plan" now describe shipped work (OSC Studio, now-playing module). Current test baseline: ctest 151/151 (3 opt-in live network probes DISABLED), 366 vitest (run `--no-file-parallelism`), Playwright UI smoke 54/54. i18n full parity across all 7 locales. See `docs/review-2026-07/GUI-API-CONTRACT-AUDIT-2026-07-09.md` for the GUI↔API audit + remediation, and `MEMORY.md` "Post-0.15.0 local work" for the lyrics/OSC/RE follow-ups.
+> Note: **v0.16.0 released 2026-08-20 (Latest on GitHub)** — companion-tools wave (last-instance, grey helpers default OFF, backups, Hot Worlds, `{hr.bpm}`, visit-time normalize). Version files (`VERSION`, `web/package.json`, `vcpkg.json`, README badge+artifacts) are in sync at 0.16.0. Prior Latest was v0.15.2. Several docs below labeled "plan" now describe shipped work (OSC Studio, now-playing module, companion helpers). Current test baseline: see `MEMORY.md`. i18n full parity across all 7 locales for older keys; 0.16.0 new UI uses `defaultValue`. See `docs/review-2026-07/GUI-API-CONTRACT-AUDIT-2026-07-09.md` for the GUI↔API audit + remediation.
 
 ## Required Startup Order
 

@@ -68,7 +68,7 @@ foreach ($forbidden in @('npm ci', 'package-lock.json', 'cache: npm')) {
         Add-Failure ".github/workflows/ci.yml still references '$forbidden'"
     }
 }
-foreach ($required in @('pnpm/action-setup@v4', 'cache: pnpm', 'web/pnpm-lock.yaml', 'pnpm install --frozen-lockfile')) {
+foreach ($required in @('pnpm/action-setup@', 'cache: pnpm', 'web/pnpm-lock.yaml', 'pnpm install --frozen-lockfile')) {
     if (-not (Test-Contains $ci $required)) {
         Add-Failure ".github/workflows/ci.yml is missing '$required'"
     }

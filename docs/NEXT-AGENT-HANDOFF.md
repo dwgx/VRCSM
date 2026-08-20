@@ -29,9 +29,9 @@ Last updated: 2026-08-20
 
 ## Latest Session (2026-08-20) — READ FIRST
 
-**Companion-waves landed on `feat/companion-waves`, unreleased.** Still version `0.15.2`. Grey helpers default OFF. LICENSE VSAL. i18n: `defaultValue` plus four sidebar keys.
+**v0.16.0 RELEASE.** Companion-tools wave merged from `feat/companion-waves` and version-bumped. Grey helpers default OFF. LICENSE VSAL. i18n: `defaultValue` plus four sidebar keys.
 
-Verified this session: tsc + vite build clean; jsdom smoke 76/76 (pages 39 + interaction 37); Playwright UI smoke **61/61**; ctest debug **225/225**. MSI not cut.
+Pre-cut verification: tsc + vite build clean; jsdom smoke 76/76 (pages 39 + interaction 37); Playwright UI smoke **61/61**; ctest debug **225/225**. Release CMake must be reconfigured after `VERSION` → `0.16.0`. MSI + ZIP + GitHub tag `v0.16.0` + local reinstall are the release steps for this session.
 
 Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
 
@@ -40,6 +40,8 @@ Parked next: P15 OnLeftRoom atoms, P2 Discord webhook, P5 join-recommender panel
 Node `fs` fallback in `lyrics.ts` is **vitest-only**; WebView2 uses `lyrics.readFolder`. Keep it.
 
 Pre-existing unused-looking IPC (`fs.writePlan` etc.) still has host handlers — do **not** delete without a plugin/caller audit.
+
+**Reinstall trap (still true):** stop VRCSM before installing an MSI. If the same version is already installed, `msiexec /x` then `/i` — a same-version `REINSTALLMODE=amus` will NOT replace the hashed `web/` bundle. 0.16.0 is a new version so MajorUpgrade should replace 0.15.2, but still quit the running WebView2 first.
 
 ---
 
