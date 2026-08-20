@@ -29,9 +29,9 @@ Last updated: 2026-08-20
 
 ## Latest Session (2026-08-20) — READ FIRST
 
-**v0.16.1 RELEASE.** 7-locale companion i18n + sidebar defaultValue so `nav.hotWorlds` is not a raw key. Grey helpers default OFF. LICENSE VSAL.
+**v0.16.2 RELEASE.** Grey-rail wrap-up (clamp G5/G6 windows, IMAP sockaddr pin, grey_disabled on grey reads/writes). 0.16.1 already shipped 7-locale i18n. Grey helpers default OFF. LICENSE VSAL.
 
-Verified: tsc + vite build clean; jsdom smoke 76/76; x64-release FileVersion **0.16.1.0**; ctest release **225/225**. GitHub Latest **v0.16.1**. MSI SHA256 `4cb6bbd98a86de26cc6a170756e872de5f705cea40aebdff44fbd13cc114f443`. Local reinstall: stop VRCSM, uninstall 0.16.0, install 0.16.1.
+Verified: tsc + vite build clean; jsdom smoke 76/76; x64-release FileVersion **0.16.2.0**; ctest release **229/229**. GitHub Latest **v0.16.2**. MSI SHA256 `730fca138908a438daaba0792a1d12070a1a2c215bb5495a1bee2f0f273c14fe`. Local reinstall: stop VRCSM, uninstall 0.16.1, install 0.16.2.
 
 Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
 
