@@ -8,7 +8,15 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
-- **Grey rails:** Invite Assist cancel window is forced to 5 s; per-sender cooldown clamped 600–3600 s; Event Watch join delay 15–60 s and join cooldown 600–3600 s. Enabling the master switch stamps `masterTosAcceptedAt`. IMAP connect checks each resolved sockaddr (no second-lookup TOCTOU to RFC1918). Grey reads/writes (`otpMail.getConfig`/`setConfig`/`clear`, `inviteAssist.get`, `eventWatch.list`, stop/cancel) return `grey_disabled` when the master is off.
+## [0.16.2] — 2026-08-20
+
+Grey-rail wrap-up after the 0.16.1 i18n cut.
+
+- Invite Assist cancel window forced to **5 s**; per-sender cooldown **600–3600 s**.
+- Event Watch join delay **15–60 s**, join cooldown **600–3600 s**.
+- Enabling the master switch stamps `masterTosAcceptedAt`.
+- IMAP connect checks each resolved sockaddr; DNS is not a separate lookup before TCP.
+- Grey IPC (`otpMail.*` get/set/clear/stop, `inviteAssist.get`/`cancelPending`, `eventWatch.list`/`stop`/`cancelJoin`) returns `grey_disabled` when the master is off. OTP Save/Test/Clear stay disabled until helpers are on.
 
 ## [0.16.1] — 2026-08-20
 
