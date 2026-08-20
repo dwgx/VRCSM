@@ -31,7 +31,7 @@ Last updated: 2026-08-20
 
 **v0.16.0 RELEASE.** Companion-tools wave merged from `feat/companion-waves` and version-bumped. Grey helpers default OFF. LICENSE VSAL. i18n: `defaultValue` plus four sidebar keys.
 
-Pre-cut verification: tsc + vite build clean; jsdom smoke 76/76 (pages 39 + interaction 37); Playwright UI smoke **61/61**; ctest debug **225/225**. Release CMake must be reconfigured after `VERSION` → `0.16.0`. MSI + ZIP + GitHub tag `v0.16.0` + local reinstall are the release steps for this session.
+Verified for the cut: tsc + vite build clean; jsdom smoke 76/76; Playwright UI smoke **61/61**; x64-release FileVersion **0.16.0.0**; ctest release **225/225**. MSI `VRCSM_v0.16.0_x64_Installer.msi` SHA256 `254745ce7f0a0709995bb00455c43139bfb6d3b976fa128b89d3b628b0f0f3bd`. GitHub tag `v0.16.0` + local reinstall are this session's remaining/completed release steps.
 
 Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
 
