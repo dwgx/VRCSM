@@ -36,8 +36,12 @@ export default function EventWatch() {
   }
 
   useEffect(() => {
+    if (!greyOn) {
+      setWatches([]);
+      return;
+    }
     void refresh().catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+  }, [greyOn]);
 
   async function save() {
     setError(null);

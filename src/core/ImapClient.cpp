@@ -156,6 +156,36 @@ bool SetSocketTimeouts(SOCKET s, int ms)
     return true;
 }
 
+// Fail closed: inet_ntop failure or unknown family is blocked. Presentation
+// goes through IsBlockedImapHost so connect and the DNS classifier share one rail.
+bool AddrinfoEntryBlocked(const addrinfo* ai)
+{
+    if (ai == nullptr || ai->ai_addr == nullptr)
+    {
+        return true;
+    }
+    char buf[INET6_ADDRSTRLEN]{};
+    if (ai->ai_family == AF_INET)
+    {
+        auto* sa = reinterpret_cast<sockaddr_in*>(ai->ai_addr);
+        if (inet_ntop(AF_INET, &sa->sin_addr, buf, sizeof(buf)) == nullptr)
+        {
+            return true;
+        }
+        return IsBlockedImapHost(buf);
+    }
+    if (ai->ai_family == AF_INET6)
+    {
+        auto* sa = reinterpret_cast<sockaddr_in6*>(ai->ai_addr);
+        if (inet_ntop(AF_INET6, &sa->sin6_addr, buf, sizeof(buf)) == nullptr)
+        {
+            return true;
+        }
+        return IsBlockedImapHost(buf);
+    }
+    return true;
+}
+
 class TlsSocket
 {
 public:
@@ -175,11 +205,33 @@ public:
         const auto portStr = std::to_string(port);
         if (getaddrinfo(host.c_str(), portStr.c_str(), &hints, &res) != 0 || res == nullptr)
         {
-            return Error{"imap_host_blocked", "IMAP host could not be resolved", 0};
+            return Error{"imap_host_unresolved", "IMAP host could not be resolved", 0};
+        }
+        bool sawAddress = false;
+        bool blocked = false;
+        for (auto* ai = res; ai != nullptr; ai = ai->ai_next)
+        {
+            if (AddrinfoEntryBlocked(ai))
+            {
+                blocked = true;
+            }
+            else
+            {
+                sawAddress = true;
+            }
+        }
+        if (blocked || !sawAddress)
+        {
+            freeaddrinfo(res);
+            return Error{"imap_host_blocked", "IMAP host resolved to a blocked address", 0};
         }
         SOCKET s = INVALID_SOCKET;
         for (auto* ai = res; ai != nullptr; ai = ai->ai_next)
         {
+            if (AddrinfoEntryBlocked(ai))
+            {
+                continue;
+            }
             s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
             if (s == INVALID_SOCKET)
             {
@@ -578,11 +630,8 @@ public:
         {
             return error(gate);
         }
-        if (ImapHostResolvesToBlocked(m_cfg.host))
-        {
-            spdlog::warn("imap_host_blocked");
-            return Error{"imap_host_blocked", "IMAP host resolved to a blocked address", 0};
-        }
+        // One getaddrinfo inside connectPlain: each sockaddr is checked with
+        // IsBlockedImapHost before TCP. A second lookup would re-open DNS rebinding.
 
         auto cr = m_sock.connectPlain(m_cfg.host, m_cfg.port, 8000);
         if (!isOk(cr))
@@ -829,30 +878,10 @@ ImapResolveStatus ClassifyImapHostResolution(const std::string& host)
     bool sawAddress = false;
     for (addrinfo* ai = results; ai != nullptr; ai = ai->ai_next)
     {
-        char buf[INET6_ADDRSTRLEN]{};
-        if (ai->ai_family == AF_INET)
+        sawAddress = true;
+        if (AddrinfoEntryBlocked(ai))
         {
-            auto* sa = reinterpret_cast<sockaddr_in*>(ai->ai_addr);
-            if (inet_ntop(AF_INET, &sa->sin_addr, buf, sizeof(buf)) != nullptr)
-            {
-                sawAddress = true;
-                if (IsBlockedImapHost(buf))
-                {
-                    blocked = true;
-                }
-            }
-        }
-        else if (ai->ai_family == AF_INET6)
-        {
-            auto* sa = reinterpret_cast<sockaddr_in6*>(ai->ai_addr);
-            if (inet_ntop(AF_INET6, &sa->sin6_addr, buf, sizeof(buf)) != nullptr)
-            {
-                sawAddress = true;
-                if (IsBlockedImapHost(buf))
-                {
-                    blocked = true;
-                }
-            }
+            blocked = true;
         }
     }
     freeaddrinfo(results);
@@ -901,17 +930,8 @@ Result<std::monostate> ValidateImapEndpoint(
         spdlog::warn("imap_host_blocked");
         return Error{"imap_host_blocked", "IMAP host is blocked", 0};
     }
-    switch (ClassifyImapHostResolution(host))
-    {
-    case ImapResolveStatus::Unresolved:
-        spdlog::warn("imap_host_unresolved");
-        return Error{"imap_host_unresolved", "IMAP host could not be resolved", 0};
-    case ImapResolveStatus::Blocked:
-        spdlog::warn("imap_host_blocked");
-        return Error{"imap_host_blocked", "IMAP host is blocked", 0};
-    case ImapResolveStatus::Allowed:
-        break;
-    }
+    // DNS is only done in connectPlain so the TCP peer is the same lookup
+    // that passed IsBlockedImapHost. setConfig uses this literal/port rail only.
     return std::monostate{};
 }
 

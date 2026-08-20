@@ -1,5 +1,6 @@
 #include "GreyPrefs.h"
 
+#include "Common.h"
 #include "EventWatch.h"
 #include "InviteSlots.h"
 
@@ -36,6 +37,27 @@ const std::unordered_set<std::string>& KnownTopKeys()
         "masterTosAcceptedAt",
     };
     return k;
+}
+
+void ClampGreyTiming(GreyPrefs& prefs)
+{
+    prefs.inviteAssist.cooldownSec = std::clamp(
+        prefs.inviteAssist.cooldownSec,
+        kInviteAssistCooldownMinSec,
+        kInviteAssistCooldownMaxSec);
+    prefs.inviteAssist.cancelWindowSec = kInviteAssistCancelWindowSec;
+    prefs.eventWatch.intervalSec = std::clamp(
+        prefs.eventWatch.intervalSec,
+        kEventWatchIntervalMinSec,
+        kEventWatchIntervalMaxSec);
+    prefs.eventWatch.joinDelaySec = std::clamp(
+        prefs.eventWatch.joinDelaySec,
+        kEventWatchJoinDelayMinSec,
+        kEventWatchJoinDelayMaxSec);
+    prefs.eventWatch.joinCooldownSec = std::clamp(
+        prefs.eventWatch.joinCooldownSec,
+        kEventWatchJoinCooldownMinSec,
+        kEventWatchJoinCooldownMaxSec);
 }
 
 bool IsForbiddenSecretKey(std::string_view key)
@@ -155,7 +177,7 @@ GreyPrefs FromJson(const nlohmann::json& doc)
         const auto& o = doc["eventWatch"];
         if (o.contains("intervalSec") && o["intervalSec"].is_number_integer())
         {
-            prefs.eventWatch.intervalSec = std::clamp(o["intervalSec"].get<int>(), 30, 300);
+            prefs.eventWatch.intervalSec = o["intervalSec"].get<int>();
         }
         if (o.contains("joinDelaySec") && o["joinDelaySec"].is_number_integer()) prefs.eventWatch.joinDelaySec = o["joinDelaySec"].get<int>();
         if (o.contains("joinCooldownSec") && o["joinCooldownSec"].is_number_integer()) prefs.eventWatch.joinCooldownSec = o["joinCooldownSec"].get<int>();
@@ -202,6 +224,7 @@ GreyPrefs FromJson(const nlohmann::json& doc)
         const auto s = doc["masterTosAcceptedAt"].get<std::string>();
         prefs.masterTosAcceptedAt = s.empty() ? std::nullopt : std::optional<std::string>(s);
     }
+    ClampGreyTiming(prefs);
     return prefs;
 }
 
@@ -495,6 +518,11 @@ Result<GreyPrefs> MergeGreyPrefsPatch(const GreyPrefs& current, const nlohmann::
     }
 
     next.authOtpMail.submitOnce = false;
+    if (next.greyEnabled && !current.greyEnabled && !next.masterTosAcceptedAt.has_value())
+    {
+        next.masterTosAcceptedAt = nowIso();
+    }
+    ClampGreyTiming(next);
     return next;
 }
 

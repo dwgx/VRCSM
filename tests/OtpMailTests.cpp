@@ -160,6 +160,18 @@ TEST(ImapSsrf, ValidateBlocksLoopbackLinkLocalAndV6)
     EXPECT_EQ(vrcsm::core::error(scheme).code, "invalid_params");
 }
 
+TEST(ImapSsrf, ConnectPresentationRailMatchesHostLiteralRail)
+{
+    // connectPlain inet_ntops each sockaddr and uses IsBlockedImapHost.
+    // A private address after DNS rebinding must not be connected.
+    EXPECT_TRUE(IsBlockedImapHost("127.0.0.1"));
+    EXPECT_TRUE(IsBlockedImapHost("10.0.0.1"));
+    EXPECT_TRUE(IsBlockedImapHost("192.168.1.1"));
+    EXPECT_TRUE(IsBlockedImapHost("169.254.169.254"));
+    EXPECT_TRUE(IsBlockedImapHost("::1"));
+    EXPECT_FALSE(IsBlockedImapHost("8.8.8.8"));
+}
+
 TEST(ImapSsrf, DnsFailureIsFailClosed)
 {
     EXPECT_TRUE(ImapHostResolvesToBlocked("127.0.0.1"));
@@ -170,9 +182,9 @@ TEST(ImapSsrf, DnsFailureIsFailClosed)
     // Overlong label: getaddrinfo fails locally (no DNS / no IMAP connect).
     const std::string tooLong(300, 'x');
     EXPECT_TRUE(ImapHostResolvesToBlocked(tooLong));
+    // Literal/port rail only — DNS is connectPlain's single lookup.
     auto unresolved = ValidateImapEndpoint(tooLong, 993, "imaps");
-    ASSERT_FALSE(isOk(unresolved));
-    EXPECT_EQ(vrcsm::core::error(unresolved).code, "imap_host_unresolved");
+    ASSERT_TRUE(isOk(unresolved));
 
     // Numeric public literal: getaddrinfo is local, no IMAP connect.
     auto pub = ValidateImapEndpoint("8.8.8.8", 993, "imaps");

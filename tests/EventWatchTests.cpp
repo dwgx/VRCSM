@@ -223,6 +223,14 @@ TEST(EventWatchPrefs, IntervalClampAndWatchSanitize)
     auto mid = GreyPrefsFromJson(nlohmann::json{{"eventWatch", {{"intervalSec", 120}}}});
     EXPECT_EQ(mid.eventWatch.intervalSec, 120);
 
+    auto joinLow = GreyPrefsFromJson(nlohmann::json{{"eventWatch", {{"joinDelaySec", 0}, {"joinCooldownSec", 1}}}});
+    EXPECT_EQ(joinLow.eventWatch.joinDelaySec, vrcsm::core::kEventWatchJoinDelayMinSec);
+    EXPECT_EQ(joinLow.eventWatch.joinCooldownSec, vrcsm::core::kEventWatchJoinCooldownMinSec);
+
+    auto joinHigh = GreyPrefsFromJson(nlohmann::json{{"eventWatch", {{"joinDelaySec", 999}, {"joinCooldownSec", 99999}}}});
+    EXPECT_EQ(joinHigh.eventWatch.joinDelaySec, vrcsm::core::kEventWatchJoinDelayMaxSec);
+    EXPECT_EQ(joinHigh.eventWatch.joinCooldownSec, vrcsm::core::kEventWatchJoinCooldownMaxSec);
+
     const auto prefs = GreyPrefsFromJson(nlohmann::json{
         {"eventWatch", {
             {"intervalSec", 30},

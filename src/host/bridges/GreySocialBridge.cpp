@@ -680,7 +680,7 @@ void GreyOnPrefsChanged(const GreyPrefs& prefs)
 
 nlohmann::json IpcBridge::HandleOtpMailGetConfig(const nlohmann::json&, const std::optional<std::string>&)
 {
-    auto prefs = Unwrap(GreyPrefsStore::Instance().Load());
+    auto prefs = Unwrap(RequireGrey());
     nlohmann::json out{
         {"enabled", prefs.authOtpMail.enabled},
         {"host", prefs.authOtpMail.host},
@@ -708,7 +708,7 @@ nlohmann::json IpcBridge::HandleOtpMailSetConfig(const nlohmann::json& params, c
         throw IpcException(Error{"invalid_params", "VRChat passwords cannot be stored in IMAP config", 0});
     }
 
-    auto prefs = Unwrap(GreyPrefsStore::Instance().Load());
+    auto prefs = Unwrap(RequireGrey());
     const bool enabled = params.value("enabled", prefs.authOtpMail.enabled);
     if (enabled)
     {
@@ -785,6 +785,7 @@ nlohmann::json IpcBridge::HandleOtpMailSetConfig(const nlohmann::json& params, c
 
 nlohmann::json IpcBridge::HandleOtpMailClear(const nlohmann::json&, const std::optional<std::string>&)
 {
+    Unwrap(RequireGrey());
     Unwrap(OtpMailStore::Instance().Clear());
     nlohmann::json patch{{"authOtpMail", {{"enabled", false}, {"username", ""}, {"host", ""}}}};
     (void)GreyPrefsStore::Instance().MergePatch(patch);
@@ -824,6 +825,7 @@ nlohmann::json IpcBridge::HandleOtpMailStart(const nlohmann::json& params, const
 
 nlohmann::json IpcBridge::HandleOtpMailStop(const nlohmann::json&, const std::optional<std::string>&)
 {
+    Unwrap(RequireGrey());
     auto& st = GS();
     st.otpRunning.store(false);
     st.otpSubmitOnce.store(false);
@@ -857,7 +859,7 @@ nlohmann::json IpcBridge::HandleOtpMailPoll(const nlohmann::json&, const std::op
 
 nlohmann::json IpcBridge::HandleInviteAssistGet(const nlohmann::json&, const std::optional<std::string>&)
 {
-    auto prefs = Unwrap(GreyPrefsStore::Instance().Load());
+    auto prefs = Unwrap(RequireGrey());
     return nlohmann::json{
         {"enabled", prefs.inviteAssist.enabled},
         {"confirmedAt", prefs.inviteAssist.confirmedAt
@@ -943,13 +945,14 @@ nlohmann::json IpcBridge::HandleInviteAssistAllowRemove(const nlohmann::json& pa
 
 nlohmann::json IpcBridge::HandleInviteAssistCancelPending(const nlohmann::json&, const std::optional<std::string>&)
 {
+    Unwrap(RequireGrey());
     GS().assist.cancelPending();
     return nlohmann::json{{"ok", true}};
 }
 
 nlohmann::json IpcBridge::HandleEventWatchList(const nlohmann::json&, const std::optional<std::string>&)
 {
-    auto prefs = Unwrap(GreyPrefsStore::Instance().Load());
+    auto prefs = Unwrap(RequireGrey());
     auto rows = GS().watch.watches();
     if (rows.empty())
     {
@@ -1045,6 +1048,7 @@ nlohmann::json IpcBridge::HandleEventWatchStart(const nlohmann::json&, const std
 
 nlohmann::json IpcBridge::HandleEventWatchStop(const nlohmann::json&, const std::optional<std::string>&)
 {
+    Unwrap(RequireGrey());
     StopWatch();
     return nlohmann::json{{"running", false}};
 }
@@ -1071,6 +1075,7 @@ nlohmann::json IpcBridge::HandleEventWatchPollNow(const nlohmann::json&, const s
 
 nlohmann::json IpcBridge::HandleEventWatchCancelJoin(const nlohmann::json&, const std::optional<std::string>&)
 {
+    Unwrap(RequireGrey());
     GS().watch.cancelJoin();
     (void)AppendGreyAudit("eventWatch", "watch.cancel", nlohmann::json::object());
     return nlohmann::json{{"ok", true}};

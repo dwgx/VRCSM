@@ -51,19 +51,29 @@ struct GreyAuthOtpMailPrefs
     std::optional<std::string> tosAcceptedAt;
 };
 
+inline constexpr int kInviteAssistCooldownMinSec = 600;
+inline constexpr int kInviteAssistCooldownMaxSec = 3600;
+inline constexpr int kInviteAssistCancelWindowSec = 5;
+inline constexpr int kEventWatchIntervalMinSec = 30;
+inline constexpr int kEventWatchIntervalMaxSec = 300;
+inline constexpr int kEventWatchJoinDelayMinSec = 15;
+inline constexpr int kEventWatchJoinDelayMaxSec = 60;
+inline constexpr int kEventWatchJoinCooldownMinSec = 600;
+inline constexpr int kEventWatchJoinCooldownMaxSec = 3600;
+
 struct GreyInviteAssistPrefs
 {
     bool enabled{false};
     std::optional<std::string> confirmedAt;
-    int cooldownSec{600};
-    int cancelWindowSec{5};
+    int cooldownSec{kInviteAssistCooldownMinSec};
+    int cancelWindowSec{kInviteAssistCancelWindowSec};
 };
 
 struct GreyEventWatchPrefs
 {
-    int intervalSec{30};
-    int joinDelaySec{15};
-    int joinCooldownSec{600};
+    int intervalSec{kEventWatchIntervalMinSec};
+    int joinDelaySec{kEventWatchJoinDelayMinSec};
+    int joinCooldownSec{kEventWatchJoinCooldownMinSec};
     bool autoJoinConfirmed{false};
     std::vector<GreyWatch> watches;
 };

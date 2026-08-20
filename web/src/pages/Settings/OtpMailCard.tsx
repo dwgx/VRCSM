@@ -40,6 +40,12 @@ export function OtpMailCard() {
 
   useEffect(() => {
     let alive = true;
+    if (!greyEnabled) {
+      setLoaded(true);
+      return () => {
+        alive = false;
+      };
+    }
     void ipc
       .call("otpMail.getConfig", {})
       .then((raw) => {
@@ -62,7 +68,7 @@ export function OtpMailCard() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [greyEnabled]);
 
   async function persist(opts?: { tosAcceptedAt?: string; enabled?: boolean }) {
     const tos = opts?.tosAcceptedAt ?? tosAcceptedAt;
@@ -317,13 +323,13 @@ export function OtpMailCard() {
       </label>
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="tonal" onClick={() => void onSave()} disabled={!loaded || busy !== null}>
+        <Button size="sm" variant="tonal" onClick={() => void onSave()} disabled={!greyEnabled || !loaded || busy !== null}>
           {t("otpMail.save", { defaultValue: "Save" })}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => void onTest()} disabled={!loaded || busy !== null}>
+        <Button size="sm" variant="outline" onClick={() => void onTest()} disabled={!greyEnabled || !loaded || busy !== null}>
           {t("otpMail.test", { defaultValue: "Test" })}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => void onClear()} disabled={!loaded || busy !== null}>
+        <Button size="sm" variant="outline" onClick={() => void onClear()} disabled={!greyEnabled || !loaded || busy !== null}>
           {t("otpMail.clear", { defaultValue: "Clear" })}
         </Button>
       </div>

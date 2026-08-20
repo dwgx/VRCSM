@@ -8,6 +8,8 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
+- **Grey rails:** Invite Assist cancel window is forced to 5 s; per-sender cooldown clamped 600–3600 s; Event Watch join delay 15–60 s and join cooldown 600–3600 s. Enabling the master switch stamps `masterTosAcceptedAt`. IMAP connect checks each resolved sockaddr (no second-lookup TOCTOU to RFC1918). Grey reads/writes (`otpMail.getConfig`/`setConfig`/`clear`, `inviteAssist.get`, `eventWatch.list`, stop/cancel) return `grey_disabled` when the master is off.
+
 ## [0.16.1] — 2026-08-20
 
 i18n follow-up that the 0.16.0 MSI did not ship. Companion pages and sidebar now have full 7-locale JSON (en / zh-CN / ja / ko / ru / th / hi). Sidebar `nav.hotWorlds` / `nav.eventWatch` no longer fall through to the raw key. Locale coverage asserts every locale matches `en` keys and `{{placeholders}}`.

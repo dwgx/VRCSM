@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Move3d, RotateCcw } from "lucide-react";
 import { ipc, IpcError } from "@/lib/ipc";
+import { useGreyPrefs } from "@/lib/grey-prefs";
 import { useVrcProcess } from "@/lib/vrc-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,8 @@ function asStatus(raw: unknown, prev: PlayspaceStatus): PlayspaceStatus {
 
 export default function PlayspaceOffsetPage() {
   const { t } = useTranslation();
+  const { prefs } = useGreyPrefs();
+  const helpersOn = prefs?.greyEnabled === true;
   const { status: vrcStatus } = useVrcProcess();
   const [status, setStatus] = useState<PlayspaceStatus>(() => idleStatus(DEFAULT_PLAYSPACE_LOCKS));
   const [busy, setBusy] = useState<"start" | "stop" | "reset" | null>(null);
@@ -117,6 +120,11 @@ export default function PlayspaceOffsetPage() {
   }, [applyStatus, handleIpcError]);
 
   useEffect(() => {
+    if (!helpersOn) {
+      setGreyDisabled(true);
+      return;
+    }
+    setGreyDisabled(false);
     void refresh();
     const unsub = ipc.on<unknown>("playspace.status", (data) => {
       applyStatus(asStatus(data, statusRef.current));
@@ -128,7 +136,7 @@ export default function PlayspaceOffsetPage() {
       unsub();
       window.clearInterval(id);
     };
-  }, [applyStatus, refresh]);
+  }, [helpersOn, applyStatus, refresh]);
 
   const callOrStatus = useCallback(
     async (method: string, params: Record<string, unknown> | undefined, kind: typeof busy) => {

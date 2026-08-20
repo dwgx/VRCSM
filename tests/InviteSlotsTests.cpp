@@ -11,6 +11,7 @@
 
 using vrcsm::core::DefaultGreyPrefs;
 using vrcsm::core::error;
+using vrcsm::core::GreyPrefsFromJson;
 using vrcsm::core::GreyPrefsToJson;
 using vrcsm::core::InviteSlotHttpError;
 using vrcsm::core::isOk;
@@ -188,6 +189,51 @@ TEST(GreyPrefs, RoundTripAndUnknownKeyRejected)
     auto secret = MergeGreyPrefsPatch(defaults, nlohmann::json{{"authOtpMail", {{"password", "nope"}}}});
     ASSERT_FALSE(isOk(secret));
     EXPECT_EQ(error(secret).code, "invalid_params");
+}
+
+TEST(GreyPrefs, AssistAndWatchSecondsAreClampedAndCancelWindowIsFixed)
+{
+    auto prefs = GreyPrefsFromJson(nlohmann::json{
+        {"inviteAssist", {{"cooldownSec", 1}, {"cancelWindowSec", 0}}},
+    });
+    EXPECT_EQ(prefs.inviteAssist.cooldownSec, vrcsm::core::kInviteAssistCooldownMinSec);
+    EXPECT_EQ(prefs.inviteAssist.cancelWindowSec, vrcsm::core::kInviteAssistCancelWindowSec);
+
+    auto high = GreyPrefsFromJson(nlohmann::json{
+        {"inviteAssist", {{"cooldownSec", 99999}, {"cancelWindowSec", 30}}},
+    });
+    EXPECT_EQ(high.inviteAssist.cooldownSec, vrcsm::core::kInviteAssistCooldownMaxSec);
+    EXPECT_EQ(high.inviteAssist.cancelWindowSec, vrcsm::core::kInviteAssistCancelWindowSec);
+}
+
+TEST(GreyPrefs, MergePatchClampsAssistAndWatchSeconds)
+{
+    auto defaults = DefaultGreyPrefs();
+    auto patched = MergeGreyPrefsPatch(defaults, nlohmann::json{
+        {"inviteAssist", {{"cooldownSec", 1}, {"cancelWindowSec", 0}}},
+        {"eventWatch", {{"joinDelaySec", 0}, {"joinCooldownSec", 3}}},
+    });
+    ASSERT_TRUE(isOk(patched));
+    const auto& p = vrcsm::core::value(patched);
+    EXPECT_EQ(p.inviteAssist.cooldownSec, vrcsm::core::kInviteAssistCooldownMinSec);
+    EXPECT_EQ(p.inviteAssist.cancelWindowSec, vrcsm::core::kInviteAssistCancelWindowSec);
+    EXPECT_EQ(p.eventWatch.joinDelaySec, vrcsm::core::kEventWatchJoinDelayMinSec);
+    EXPECT_EQ(p.eventWatch.joinCooldownSec, vrcsm::core::kEventWatchJoinCooldownMinSec);
+}
+
+TEST(GreyPrefs, EnablingMasterStampsTosAcceptedAt)
+{
+    auto defaults = DefaultGreyPrefs();
+    EXPECT_FALSE(defaults.masterTosAcceptedAt.has_value());
+    auto on = MergeGreyPrefsPatch(defaults, nlohmann::json{{"greyEnabled", true}});
+    ASSERT_TRUE(isOk(on));
+    EXPECT_TRUE(vrcsm::core::value(on).greyEnabled);
+    ASSERT_TRUE(vrcsm::core::value(on).masterTosAcceptedAt.has_value());
+    EXPECT_FALSE(vrcsm::core::value(on).masterTosAcceptedAt->empty());
+
+    auto keep = MergeGreyPrefsPatch(vrcsm::core::value(on), nlohmann::json{{"inviteSlots", {{"confirmBeforeSend", false}}}});
+    ASSERT_TRUE(isOk(keep));
+    EXPECT_EQ(*vrcsm::core::value(keep).masterTosAcceptedAt, *vrcsm::core::value(on).masterTosAcceptedAt);
 }
 
 TEST(GreyPrefs, CorruptFileYieldsDefaults)
