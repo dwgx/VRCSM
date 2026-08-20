@@ -148,10 +148,19 @@ export async function ensureSignedIn(page: Page): Promise<void> {
 export async function gotoRoute(page: Page, route: string): Promise<void> {
   await page.goto(`/#${route}`, { waitUntil: "domcontentloaded" });
   // Ensure the SPA actually processes the hash change (goto to same document
-  // with only a hash change does not always reload).
-  await page.evaluate((r) => {
-    if (window.location.hash !== `#${r}`) window.location.hash = `#${r}`;
-  }, route);
+  // with only a hash change does not always reload). Vite can also tear down
+  // the page between goto and evaluate; retry once after the document is back.
+  const syncHash = async () => {
+    await page.evaluate((r) => {
+      if (window.location.hash !== `#${r}`) window.location.hash = `#${r}`;
+    }, route);
+  };
+  try {
+    await syncHash();
+  } catch {
+    await page.waitForLoadState("domcontentloaded");
+    await syncHash();
+  }
   await page.waitForSelector("main", { timeout: 15_000 });
   await page
     .waitForFunction(

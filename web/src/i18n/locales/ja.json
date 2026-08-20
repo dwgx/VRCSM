@@ -46,7 +46,10 @@
     "rules": "自動化ルール",
     "vrcPlus": "VRC+",
     "models": "モデルデータベース",
-    "labSection": "ラボ"
+    "labSection": "ラボ",
+    "hotWorlds": "よく行くワールド",
+    "eventWatch": "イベント監視",
+    "helpersSection": "ヘルパー"
   },
   "profile": {
     "title": "マイプロフィール",
@@ -144,7 +147,20 @@
     "deletePartial": "一部のファイルを削除できませんでした",
     "deleteFailed": "削除に失敗しました",
     "confirmDelete": "このスクリーンショットを削除してもよろしいですか？",
-    "confirmDeleteBulk": "{{count}}枚のスクリーンショットを削除してもよろしいですか？"
+    "confirmDeleteBulk": "{{count}}枚のスクリーンショットを削除してもよろしいですか？",
+    "clearPlayerFilter": "プレイヤー絞り込みを解除",
+    "emptyPlayerFilter": "そのプレイヤーのスクリーンショットはまだありません",
+    "filterByPlayer": "{{name}} が写っているショット",
+    "groupByVisit": "訪問ごとにまとめる",
+    "groupByVisitHint": "撮影したワールド訪問ごとにスクリーンショットをまとめます",
+    "rejoin": "再参加",
+    "rejoinHint": "このインスタンスに VRChat を起動して参加",
+    "scanningMetadata": "{{count}} 件を確認中",
+    "stillInWorld": "ワールドに滞在中",
+    "ungrouped": "未分類",
+    "ungroupedHint": "記録されたワールド訪問に収まらなかったショット",
+    "unknownWorld": "不明なワールド",
+    "visitShots": "{{count}} 枚"
   },
   "avatars_extra": {
     "selectAvatar": "このアバターに切り替え",
@@ -495,7 +511,16 @@
       "sourceNeteaseToggleHint": "中国語楽曲と翻訳のカバー率が高い",
       "sourceQq": "QQ 音楽",
       "sourceQqToggle": "QQ 音楽 / QQ Music",
-      "sourceQqToggleHint": "NetEase にない中国語楽曲を補完"
+      "sourceQqToggleHint": "NetEase にない中国語楽曲を補完",
+      "lrcDir": "ローカル .lrc フォルダー",
+      "lrcDirBrowse": "参照",
+      "lrcDirEmpty": "フォルダー未選択",
+      "session": "セッション",
+      "sessionAuto": "自動（現在）",
+      "sourceKugou": "Kugou",
+      "sourceKugouToggle": "Kugou",
+      "sourceKugouToggleHint": "インディー・マイナー曲のカバーが最も広い",
+      "sourceLocal": "ローカル .lrc"
     },
     "auto": {
       "badge": "AUTO",
@@ -991,7 +1016,8 @@
     "navigate": "移動",
     "refreshing": "更新中",
     "showAll": "すべて表示（{{count}}）",
-    "unavailable": "利用不可"
+    "unavailable": "利用不可",
+    "disable": "無効にする"
   },
   "about": {
     "title": "VRCSM について",
@@ -1025,7 +1051,12 @@
       "actions": "アクション",
       "logs": "セッションログ",
       "globalSearch": "全体検索",
-      "plugins": "プラグイン"
+      "plugins": "プラグイン",
+      "friends": "フレンド",
+      "worlds": "ワールド",
+      "avatars": "アバター",
+      "groups": "グループ",
+      "notes": "メモ"
     }
   },
   "dock": {
@@ -1297,7 +1328,23 @@
     },
     "unavailable": "アバターは利用できません。",
     "wearerCurrentReference": "着用者の現在の参考画像",
-    "wearerReferenceNote": "不明"
+    "wearerReferenceNote": "不明",
+    "presets": {
+      "applied": "{{name}} を適用しました（{{count}} パラメータ）",
+      "apply": "適用",
+      "deleteTitle": "このプリセットを削除しますか？",
+      "empty": "プリセットはまだありません。",
+      "hint": "LocalAvatarData の既定値（とライブの OSC /avatar/parameters）を VRCSM JSON にスナップショットします。適用は OSC 送信です。別アバター用のプリセットを適用する前に確認します。",
+      "mismatchBody": "このプリセットは {{saved}} 用に保存されていますが、現在のアバターは {{current}} です。パラメータ名が一致しない場合があります。",
+      "mismatchTitle": "別のアバターに適用しますか？",
+      "namePlaceholder": "プリセット名",
+      "needName": "先にプリセット名を付けてください",
+      "noParams": "スナップショットするパラメータがありません",
+      "otherAvatars": "他のアバター",
+      "save": "現在を保存",
+      "saved": "{{name}} を保存しました（{{count}} パラメータ）",
+      "title": "パラメータプリセット"
+    }
   },
   "worlds": {
     "title": "ワールド",
@@ -3828,7 +3875,11 @@
       "successSave": "config.jsonを正常に更新しました！",
       "title": "アプリ設定 (config.json)",
       "vrcIdle": "VRChatは待機中です",
-      "vrcRunning": "VRChatは起動中です"
+      "vrcRunning": "VRChatは起動中です",
+      "cacheExpiryDelay": {
+        "hint": "未使用のキャッシュアセットを VRChat が期限切れにするまでの時間。0 はクライアント既定。",
+        "label": "キャッシュ期限切れ遅延（秒）"
+      }
     },
     "experimental": {
       "heading": "実験的機能",
@@ -3990,6 +4041,23 @@
         "assets": {
           "favorites": "ローカルのお気に入り、メモ、タグ"
         }
+      },
+      "backup": {
+        "blurb": "grey-prefs.json、plugin-state.json、vrcsm.db を LocalAppData/VRCSM/backups にコピーします。最新 3 件を保持。VRChat キャッシュの複製ではありません。",
+        "created": "バックアップを保存しました（{{id}}）。",
+        "createError": "バックアップ失敗: {{error}}",
+        "creating": "処理中…",
+        "heading": "アプリデータのバックアップ",
+        "latest": "最新: {{id}}（{{size}}）",
+        "none": "バックアップはまだありません。",
+        "now": "今すぐバックアップ",
+        "restoreBody": "現在のデータベース、grey-prefs.json、plugin-state.json をバックアップ {{id}} で置き換えます。アプリは動き続けますが、古い表示が出たら再起動が確実です。",
+        "restoreConfirm": "今すぐ復元",
+        "restored": "バックアップ {{id}} を復元しました。",
+        "restoreError": "復元失敗: {{error}}",
+        "restoreLatest": "最新を復元",
+        "restoreTitle": "最新バックアップを復元",
+        "restoring": "復元中…"
       }
     },
     "notify": {
@@ -4021,6 +4089,23 @@
         "desc": "「フレンドのみ」はフレンドのオンラインのみを読み上げ、「すべて」は招待とフレンドリクエストも読み上げます。",
         "all": "すべてのイベント",
         "friends": "フレンドのみ"
+      },
+      "ttsChatbox": {
+        "desc": "読み上げた文を OSC 経由で VRChat のチャットボックスにも投稿します。他プレイヤーにも見えます。既定はオフ。",
+        "label": "チャットボックスにエコー"
+      },
+      "ttsRate": {
+        "desc": "SAPI の速度。−5〜+5。",
+        "label": "速度"
+      },
+      "ttsVoice": {
+        "desc": "Windows のシステム音声。空なら OS 既定を使います。",
+        "label": "音声",
+        "system": "システムの既定"
+      },
+      "ttsVolume": {
+        "desc": "SAPI の音量。0〜100。",
+        "label": "音量"
       }
     },
     "hardware": {
@@ -4211,7 +4296,11 @@
     "noLoggedPlayers": "プレイヤーログなし",
     "noPlayerCountHint": "この訪問期間中に、ローカルのプレイヤー入退室イベントは記録されませんでした。",
     "playerCountHint": "この訪問期間中のローカルプレイヤーログイベントは{{count}}件です。",
-    "recentLimit": "最近の{{count}}回の訪問"
+    "recentLimit": "最近の{{count}}回の訪問",
+    "copyHttps": "https をコピー",
+    "copyHttpsDone": "https 起動 URL をコピーしました。",
+    "copyHttpsFailed": "コピーに失敗しました: {{error}}",
+    "copyHttpsHint": "https://vrchat.com/home/launch URL をコピー"
   },
   "strangerAlert": {
     "title": "知らないユーザーがあなたの{{access}}インスタンスに参加しました",
@@ -4480,5 +4569,193 @@
       "browse": "閲覧",
       "owned": "自分のアバター"
     }
+  },
+  "activityLedger": {
+    "copyId": "IDをコピー",
+    "empty": "この範囲に一致する履歴イベントはありません。",
+    "kind": {
+      "all": "すべて",
+      "join": "参加",
+      "leave": "退出",
+      "meet": "出会い",
+      "invite": "招待",
+      "inviteResponse": "招待への返信",
+      "requestInvite": "招待リクエスト",
+      "friendRequest": "フレンド申請",
+      "video": "動画",
+      "other": "その他"
+    },
+    "loadFailed": "アクティビティ台帳を読み込めませんでした。",
+    "open": "開く",
+    "searchPlaceholder": "名前、ID、ワールドを検索…",
+    "subtitle": "統合ログフィードからの参加・遭遇・招待・フレンドリクエスト・動画イベントの履歴です。",
+    "title": "アクティビティ台帳",
+    "range": {
+      "recent": "最近",
+      "7d": "7日",
+      "30d": "30日",
+      "all": "すべて"
+    }
+  },
+  "eventWatch": {
+    "autoJoin": "自動参加（15秒待ち）",
+    "autoJoinConfirm": "通知の 15 秒後に参加します。キャンセルできます。",
+    "cancelJoin": "参加をキャンセル",
+    "notify": "通知",
+    "title": "イベント監視",
+    "worldOnlyHint": "ワールドのみの監視はフレンド位置を使い、グループ監視はグループインスタンス一覧を使います。"
+  },
+  "grey": {
+    "disabled": {
+      "settingsHint": "任意のソーシャル/VR ヘルパーはオフです。設定 → 実験的機能 で有効にしてください。",
+      "masterHint": "任意ヘルパーはオフです。先に上のマスタースイッチをオンにしてください。"
+    },
+    "master": {
+      "desc": "スロットメールと後続ヘルパーのマスタースイッチ。各ヘルパーはユーザー操作（または個別のオプトイン）が必要です。既定はオフ。",
+      "enable": "任意のソーシャル/VR ヘルパーを有効にする",
+      "title": "任意のソーシャル/VR ヘルパー"
+    },
+    "tos": {
+      "eventWatch": "イベント監視は、設定したフィルターに合うグループまたはワールドのインスタンスを通知します。自動参加は別スイッチで、既定はオフです。自動参加がオンでも、VRCSM は先に通知し 15 秒待ってキャンセルできるようにします。インスタンスへの自動参加は、スナイプや嫌がらせに使うと VRChat の利用規約に違反する可能性があります。通知のみを推奨します。",
+      "inviteAssist": "招待アシストを有効にすると、リストの相手から招待リクエストが来たとき、今いるインスタンスへ招待します。相手のワールドへは参加しません。確認するまでオフです。自動招待はプライベートインスタンスで相手を驚かせることがあり、乱用すると VRChat の利用規約に違反する可能性があります。1人あたり 10 分のクールダウンがあります。",
+      "inviteSlots": "スロットメールは公式の VRChat 招待メッセージ API を使います。DM クライアントではありません。招待の連投は VRChat の利用規約に違反する可能性があります。VRCSM は送信をレート制限し、このページから自動送信しません。",
+      "master": "任意のソーシャル/VR ヘルパーは、VRChat の利用規約を理解したうえで有効にしてください。スロットメールはメッセンジャーではありません。自動招待、自動参加、メールボックス OTP は各ヘルパーの確認までオフのままです。スロットメールから自動送信はしません。",
+      "oscTts": "読み上げは、この PC の Windows システム音声を使います。任意のチャットボックスエコーは、同じ文を OSC で VRChat に投稿します。他プレイヤーにもチャットボックスの文字が見えます。既定はオフ。",
+      "playspace": "プレイスペースオフセットは、公式 OpenVR チャペロン API で SteamVR のトラッキング原点を動かします。VRChat は変更しません。大きなオフセットは物理ルームの外に出ることがあります。チャペロン境界は書き換えません。既定の Y ロックはオンのままです。",
+      "otpMail": "メール OTP ヘルパーは任意で、既定はオフです。VRCSM はメールのホストとアプリパスワードをこのユーザーの Windows DPAPI で保存し、VRChat のメール OTP プロンプトが表示されている間だけ未読メールを読みます。IMAP 設定に VRChat パスワードは保存せず、VRChat へ自動ログインもしません。ログインコードの自動取得は VRChat 利用規約やメール事業者の規約に違反する可能性があります。TOTP を推奨します。保存したメール秘密はいつでも削除できます。"
+    }
+  },
+  "hotWorlds": {
+    "empty": "ローカルログ履歴にワールド訪問はまだありません。",
+    "error": "訪問の読み込みに失敗しました: {{detail}}",
+    "friends": "フレンド {{count}} 人",
+    "hours": "{{hours}} 時間",
+    "lastVisit": "最終訪問 {{time}}",
+    "loading": "訪問を読み込み中…",
+    "open": "開く",
+    "subtitle": "記録されたワールド訪問からのローカルランキング。VRChat のスクレイピングはありません。",
+    "title": "よく行くワールド",
+    "unknownWorld": "不明なワールド",
+    "visits": "{{count}} 回訪問"
+  },
+  "inviteAssist": {
+    "add": "招待アシストに追加",
+    "added": "招待アシストに追加しました",
+    "cancel": "保留をキャンセル",
+    "confirm": "招待アシストを有効にする",
+    "confirmRequired": "招待アシストに追加する前に、実験的機能の確認が必要です。",
+    "enable": "招待アシストを有効にする",
+    "off": "オフ",
+    "on": "オン",
+    "openFriendHint": "フレンドを開いて招待アシストに追加できます。",
+    "remove": "招待アシストから外す",
+    "removed": "招待アシストから外しました",
+    "title": "招待アシスト"
+  },
+  "inviteSlots": {
+    "chip": {
+      "avatar": "アバター",
+      "location": "場所",
+      "user": "ユーザー",
+      "world": "ワールド"
+    },
+    "confirmSend": "スロット {{slot}} を {{name}} に送りますか？",
+    "confirmSendTitle": "スロットメールを送りますか？",
+    "cooldown": "VRChat のクールダウン: 残り {{minutes}} 分。",
+    "editLink": "スロットを編集…",
+    "empty": "この種類のスロットは返りませんでした。",
+    "friend": "フレンド",
+    "needLocation": "ワールドにいません。",
+    "openExperimental": "実験的機能を開く",
+    "pickFriend": "先にフレンドを選んでください。",
+    "reset": "デフォルトに戻す",
+    "resetDone": "スロットをデフォルトに戻しました。",
+    "save": "スロットを保存",
+    "saved": "スロットを保存しました。",
+    "sendCooldown": "送信クールダウン: {{seconds}}秒",
+    "sendInvite": "招待を送る",
+    "sendRequest": "リクエストを送る",
+    "sendSection": "送信（ユーザー操作のみ）",
+    "sent": "スロット {{slot}} を送りました。",
+    "slotN": "スロット {{n}}",
+    "subtitle": "ゲーム内と同じ、VRChat の定型招待文（4 スロット）です。非公開メッセンジャーではありません。スロット編集は VRChat により 1 時間に 1 回までです。",
+    "title": "スロットメール",
+    "useSlot": "スロット",
+    "type": {
+      "invite": "招待",
+      "inviteResponse": "招待への返信",
+      "requestInvite": "リクエスト",
+      "requestInviteResponse": "リクエストへの返信"
+    }
+  },
+  "lastInstance": {
+    "accessType": "アクセス",
+    "cmdHint": "最新の記録インスタンスに再参加",
+    "copyFailed": "コピーに失敗しました: {{error}}",
+    "copyHttps": "https をコピー",
+    "copyVrchat": "vrchat:// をコピー",
+    "empty": "ローカルログ履歴にワールド訪問はまだありません。",
+    "error": "訪問の読み込みに失敗しました: {{detail}}",
+    "joinedAt": "参加",
+    "loading": "訪問を読み込み中…",
+    "location": "場所",
+    "maxAge": "最大経過時間",
+    "maxAgeMinutes": "{{count}} 分",
+    "maxAgeOff": "オフ",
+    "noneEligible": "現在のフィルターに合うインスタンスはありません。",
+    "rejoin": "再参加",
+    "rejoinFailed": "再参加に失敗しました: {{error}}",
+    "rejoinOk": "起動を要求しました。",
+    "saveShortcut": ".lnk を保存",
+    "shortcutFailed": "ショートカットを保存できませんでした: {{error}}",
+    "shortcutSaved": "ショートカットを {{path}} に保存しました",
+    "skipPublic": "パブリックインスタンスをスキップ",
+    "stillInWorld": "ワールドに滞在中",
+    "subtitle": "クラッシュやキックのあと、最新の記録インスタンスに再参加します。",
+    "title": "直前のインスタンス",
+    "unknownWorld": "不明なワールド",
+    "world": "ワールド",
+    "copiedVrchat": "コピーしました。",
+    "copiedHttps": "コピーしました。"
+  },
+  "otpMail": {
+    "clear": "クリア",
+    "desc": "IMAP 受信箱から VRChat のメール OTP を読み取り、ログイン画面に入力します。既定はオフ。自動ログインではありません。",
+    "filled": "受信箱から入力しました。「確認」をクリックしてください。",
+    "host": "IMAP ホスト",
+    "markSeen": "OTP メールを既読にする（既定オフ）",
+    "password": "メールボックスのアプリパスワード",
+    "passwordKeep": "空欄で保存済みを維持",
+    "passwordMissing": "メールボックスのアプリパスワードがありません",
+    "passwordSaved": "メールボックスのアプリパスワードを保存しました",
+    "port": "ポート",
+    "save": "保存",
+    "settingsHint": "メール OTP ヘルパーはオフです。",
+    "settingsLink": "設定 → 実験的機能",
+    "submitOnce": "次の OTP を一度だけ送信",
+    "test": "テスト",
+    "testNoInbox": "IMAP ログイン成功。INBOX が見つかりません。",
+    "testOk": "IMAP ログイン成功。INBOX があります。",
+    "title": "メール OTP ヘルパー",
+    "tls": "TLS",
+    "understand": "理解しました",
+    "username": "メールボックスのユーザー名",
+    "waiting": "VRChat のメールを待っています…",
+    "waitingSubmit": "次のメールコードを待ち、一度だけ送信します。"
+  },
+  "playspace": {
+    "gripHeld": "グリップ押し中",
+    "keyboardHint": "テストパネル（ウィンドウフォーカス時）: 矢印で XZ 移動、Y ロック解除時は Page Up/Down で Y 移動。「開始」中はコントローラーのグリップ＋スティック。両手グリップタップで原点にリセット。",
+    "lockX": "X をロック",
+    "lockY": "Y をロック",
+    "lockZ": "Z をロック",
+    "offset": "オフセット",
+    "offsetLimit": "オフセット上限 5.0 m に達しました。リセットするまでそれ以上は無視されます。",
+    "reset": "リセット",
+    "start": "開始",
+    "steamvrNotRunning": "SteamVR が起動していません",
+    "stop": "停止",
+    "title": "プレイスペースオフセット",
+    "vrcRunning": "VRChat 起動中（表示のみ — 未接続）"
   }
 }

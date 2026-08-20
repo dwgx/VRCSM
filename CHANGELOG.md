@@ -8,6 +8,8 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
+- **i18n:** companion-tools strings (last-instance, Slot mail, Playspace, Event Watch, Hot Worlds, activity ledger, backups, TTS, IMAP OTP, Invite Assist, grey TOS) filled in all 7 locales. Locale coverage now requires every locale to match `en` keys and `{{placeholders}}`.
+
 ## [0.16.0] — 2026-08-20
 
 Companion-tools wave. Grey social/VR helpers stay **default OFF**. LICENSE remains VSAL. No GPL (VRCX-0) / VNCOL (VRCNext) source. New UI keys use `defaultValue` (7-locale JSON not expanded in this cut).

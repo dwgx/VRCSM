@@ -233,7 +233,7 @@ export default function PlayspaceOffsetPage() {
       {greyDisabled && (
         <Card className="unity-panel">
           <CardContent className="p-3 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
-            {t("grey.disabled", {
+            {t("grey.disabled.settingsHint", {
               defaultValue: "Optional social/VR helpers are off. Enable them in Settings → Experimental.",
             })}
           </CardContent>

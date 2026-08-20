@@ -46,7 +46,10 @@
     "benchmark": "Avatar Benchmark",
     "fbt": "FBT Monitor",
     "rules": "Automation Rules",
-    "labSection": "Lab"
+    "labSection": "Lab",
+    "hotWorlds": "Hot Worlds",
+    "eventWatch": "Event Watch",
+    "helpersSection": "Helpers"
   },
   "vrcPlus": {
     "title": "VRC+ Media",
@@ -189,7 +192,20 @@
     "deletePartial": "Some files could not be deleted",
     "deleteFailed": "Delete failed",
     "confirmDelete": "Are you sure you want to delete this screenshot?",
-    "confirmDeleteBulk": "Are you sure you want to delete {{count}} screenshots?"
+    "confirmDeleteBulk": "Are you sure you want to delete {{count}} screenshots?",
+    "clearPlayerFilter": "Clear player filter",
+    "emptyPlayerFilter": "No screenshots with that player yet",
+    "filterByPlayer": "Show shots with {{name}}",
+    "groupByVisit": "Group by visit",
+    "groupByVisitHint": "Group screenshots by the world visit they were taken in",
+    "rejoin": "Rejoin",
+    "rejoinHint": "Launch VRChat into this exact instance",
+    "scanningMetadata": "checking {{count}}",
+    "stillInWorld": "still in world",
+    "ungrouped": "Ungrouped",
+    "ungroupedHint": "Shots that did not fall inside a logged world visit",
+    "unknownWorld": "Unknown world",
+    "visitShots": "{{count}} shots"
   },
   "avatars_extra": {
     "selectAvatar": "Switch to this avatar",
@@ -458,7 +474,16 @@
       "sourceNeteaseToggleHint": "Better coverage for Chinese tracks + translations",
       "sourceQq": "QQ 音乐",
       "sourceQqToggle": "QQ 音乐 / QQ Music",
-      "sourceQqToggleHint": "Extra coverage for CPOP tracks NetEase misses"
+      "sourceQqToggleHint": "Extra coverage for CPOP tracks NetEase misses",
+      "lrcDir": "Local .lrc folder",
+      "lrcDirBrowse": "Browse",
+      "lrcDirEmpty": "No folder selected",
+      "session": "Session",
+      "sessionAuto": "Auto (current)",
+      "sourceKugou": "Kugou",
+      "sourceKugouToggle": "Kugou",
+      "sourceKugouToggleHint": "Widest coverage for indie and obscure tracks",
+      "sourceLocal": "Local .lrc"
     },
     "auto": {
       "badge": "AUTO",
@@ -1048,7 +1073,8 @@
     "navigate": "Navigate",
     "refreshing": "refreshing",
     "showAll": "Show all ({{count}})",
-    "unavailable": "Unavailable"
+    "unavailable": "Unavailable",
+    "disable": "Disable"
   },
   "about": {
     "title": "About VRCSM",
@@ -1082,7 +1108,12 @@
       "actions": "Actions",
       "logs": "Session Logs",
       "globalSearch": "Global Search",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "friends": "Friends",
+      "worlds": "Worlds",
+      "avatars": "Avatars",
+      "groups": "Groups",
+      "notes": "Notes"
     }
   },
   "dock": {
@@ -1403,7 +1434,23 @@
     },
     "unavailable": "Avatar unavailable.",
     "wearerCurrentReference": "Wearer current reference",
-    "wearerReferenceNote": "Unknown"
+    "wearerReferenceNote": "Unknown",
+    "presets": {
+      "applied": "Applied {{name}} ({{count}} params)",
+      "apply": "Apply",
+      "deleteTitle": "Delete this preset?",
+      "empty": "No presets yet.",
+      "hint": "Snapshot LocalAvatarData defaults (and any live OSC /avatar/parameters values) into VRCSM JSON. Apply sends OSC. Applying a preset saved for a different avatar asks first.",
+      "mismatchBody": "This preset was saved for {{saved}}, but the current avatar is {{current}}. Parameter names may not match.",
+      "mismatchTitle": "Apply to a different avatar?",
+      "namePlaceholder": "Preset name",
+      "needName": "Name this preset first",
+      "noParams": "No parameters to snapshot",
+      "otherAvatars": "Other avatars",
+      "save": "Save current",
+      "saved": "Saved {{name}} ({{count}} params)",
+      "title": "Param presets"
+    }
   },
   "worlds": {
     "title": "Worlds",
@@ -1733,6 +1780,23 @@
         "desc": "Friends only announces friends coming online; All also speaks invites and friend requests.",
         "all": "All events",
         "friends": "Friends only"
+      },
+      "ttsChatbox": {
+        "desc": "Also post the spoken sentence to VRChat chatbox via OSC. Other players can see it. Default off.",
+        "label": "Echo to chatbox"
+      },
+      "ttsRate": {
+        "desc": "SAPI rate, −5 to +5.",
+        "label": "Rate"
+      },
+      "ttsVoice": {
+        "desc": "Windows system voice. Empty keeps the OS default.",
+        "label": "Voice",
+        "system": "System default"
+      },
+      "ttsVolume": {
+        "desc": "SAPI volume, 0 to 100.",
+        "label": "Volume"
       }
     },
     "screenshots": {
@@ -3744,7 +3808,11 @@
         "label": "Ignore Particles",
         "hint": "Dramatically improves performance in crowded worlds"
       },
-      "defaultPlaceholder": "(default)"
+      "defaultPlaceholder": "(default)",
+      "cacheExpiryDelay": {
+        "hint": "How long VRChat keeps unused cached assets before expiry. 0 uses the client default.",
+        "label": "Cache Expiry Delay (seconds)"
+      }
     },
     "steamvr": {
       "title": "VR Streaming Settings (SteamVR / Steam Link)",
@@ -4184,6 +4252,23 @@
         "assets": {
           "favorites": "Local favorites, notes & tags"
         }
+      },
+      "backup": {
+        "blurb": "Copies grey-prefs.json, plugin-state.json, and vrcsm.db into LocalAppData/VRCSM/backups. Keeps the 3 newest. Not a VRChat cache clone.",
+        "created": "Backup saved ({{id}}).",
+        "createError": "Backup failed: {{error}}",
+        "creating": "Working…",
+        "heading": "App data backup",
+        "latest": "Latest: {{id}} ({{size}})",
+        "none": "No backups yet.",
+        "now": "Backup now",
+        "restoreBody": "Replace the current database, grey-prefs.json, and plugin-state.json with backup {{id}}. The app will keep running; a restart is safest if anything looks stale.",
+        "restoreConfirm": "Restore now",
+        "restored": "Restored backup {{id}}.",
+        "restoreError": "Restore failed: {{error}}",
+        "restoreLatest": "Restore latest",
+        "restoreTitle": "Restore latest backup",
+        "restoring": "Restoring…"
       }
     },
     "hardware": {
@@ -4287,7 +4372,11 @@
     "noLoggedPlayers": "No player log",
     "noPlayerCountHint": "No local player join/leave events were recorded in this visit window.",
     "playerCountHint": "{{count}} local player log events in this visit window.",
-    "recentLimit": "Recent {{count}} visits"
+    "recentLimit": "Recent {{count}} visits",
+    "copyHttps": "Copy https",
+    "copyHttpsDone": "Copied https launch URL.",
+    "copyHttpsFailed": "Copy failed: {{error}}",
+    "copyHttpsHint": "Copy https://vrchat.com/home/launch URL"
   },
   "strangerAlert": {
     "title": "Stranger joined your {{access}} instance",
@@ -4480,5 +4569,193 @@
       "browse": "Browse",
       "owned": "My Avatars"
     }
+  },
+  "activityLedger": {
+    "copyId": "Copy id",
+    "empty": "No matching historical events in this range.",
+    "kind": {
+      "all": "All",
+      "join": "Join",
+      "leave": "Leave",
+      "meet": "Meet",
+      "invite": "Invite",
+      "inviteResponse": "Invite response",
+      "requestInvite": "Request invite",
+      "friendRequest": "Friend request",
+      "video": "Video",
+      "other": "Other"
+    },
+    "loadFailed": "Could not load the activity ledger.",
+    "open": "Open",
+    "searchPlaceholder": "Search name, id, world…",
+    "subtitle": "Historical join, meet, invite, friend-request and video events from the unified log feed.",
+    "title": "Activity Ledger",
+    "range": {
+      "recent": "Recent",
+      "7d": "7d",
+      "30d": "30d",
+      "all": "All"
+    }
+  },
+  "eventWatch": {
+    "autoJoin": "Auto-join (wait 15s)",
+    "autoJoinConfirm": "Wait 15 seconds after the notification, then join. You can cancel.",
+    "cancelJoin": "Cancel join",
+    "notify": "Notify",
+    "title": "Event Watch",
+    "worldOnlyHint": "World-only watches use friend locations; group watches use the group instance list."
+  },
+  "grey": {
+    "disabled": {
+      "settingsHint": "Optional social/VR helpers are off. Enable them in Settings → Experimental.",
+      "masterHint": "Optional helpers are off. Enable the master switch above first."
+    },
+    "master": {
+      "desc": "Master switch for Slot mail and later helpers. Each helper still requires a user click (or its own opt-in). Off by default.",
+      "enable": "Enable optional social/VR helpers",
+      "title": "Optional social/VR helpers"
+    },
+    "tos": {
+      "eventWatch": "Event Watch notifies you when a group or world instance matches a filter you set. Auto-join is a separate toggle and is OFF by default. When auto-join is on, VRCSM still notifies first and waits 15 seconds so you can cancel. Joining instances automatically can violate VRChat’s Terms of Service if used to snipe or harass. Prefer notify-only.",
+      "inviteAssist": "Invite Assist, when enabled, will invite people on your InviteAssist list into your current instance when they send you an invite request. It will not join you to their world. It is OFF until you confirm. Auto-inviting can surprise people in private instances and may violate VRChat’s Terms of Service if abused. 10-minute cooldown per person.",
+      "inviteSlots": "Slot mail uses official VRChat invite-message APIs. It is not a DM client. Spamming invites can violate VRChat’s Terms of Service. VRCSM rate-limits sends and will not auto-send from this page.",
+      "master": "Enable optional social/VR helpers only if you understand VRChat’s Terms of Service. Slot mail is not a messenger. Auto-invite, auto-join, and mailbox OTP stay off until each helper’s own confirm. VRCSM will not auto-send from Slot mail.",
+      "oscTts": "Announcements use the Windows system voice on this PC. Optional chatbox echo posts the same sentence into VRChat using OSC. Other players can see chatbox text. Default off.",
+      "playspace": "Playspace offset moves SteamVR’s tracking origin through the official OpenVR chaperone API. It does not modify VRChat. Large offsets can put you outside your physical room. Chaperone bounds are not rewritten. Default Y-lock stays on.",
+      "otpMail": "Email OTP helper is optional and OFF by default. VRCSM will store your mailbox host and app password with Windows DPAPI on this user account, then read unread mail only while the VRChat email-OTP prompt is open. It never stores your VRChat password in the IMAP config and never logs in to VRChat by itself. Automatically collecting login codes may violate VRChat’s Terms of Service or your email provider’s rules. Prefer TOTP. You can delete the saved mailbox secret at any time."
+    }
+  },
+  "hotWorlds": {
+    "empty": "No world visits in the local log history yet.",
+    "error": "Failed to load visits: {{detail}}",
+    "friends": "{{count}} friends",
+    "hours": "{{hours}} h",
+    "lastVisit": "last visit {{time}}",
+    "loading": "Loading visits…",
+    "open": "Open",
+    "subtitle": "Local ranking from your logged world visits. No VRChat scrape.",
+    "title": "Hot Worlds",
+    "unknownWorld": "Unknown world",
+    "visits": "{{count}} visits"
+  },
+  "inviteAssist": {
+    "add": "Add to InviteAssist",
+    "added": "Added to Invite Assist",
+    "cancel": "Cancel pending",
+    "confirm": "Enable Invite Assist",
+    "confirmRequired": "Experimental confirm is required before adding people to Invite Assist.",
+    "enable": "Enable Invite Assist",
+    "off": "Off",
+    "on": "On",
+    "openFriendHint": "Open a friend to add people to Invite Assist.",
+    "remove": "Remove from InviteAssist",
+    "removed": "Removed from Invite Assist",
+    "title": "Invite Assist"
+  },
+  "inviteSlots": {
+    "chip": {
+      "avatar": "Avatar",
+      "location": "Location",
+      "user": "User",
+      "world": "World"
+    },
+    "confirmSend": "Send slot {{slot}} to {{name}}?",
+    "confirmSendTitle": "Send slot mail?",
+    "cooldown": "VRChat cooldown: {{minutes}} min remaining.",
+    "editLink": "Edit slots…",
+    "empty": "No slots returned for this type.",
+    "friend": "Friend",
+    "needLocation": "You are not in a world.",
+    "openExperimental": "Open Experimental",
+    "pickFriend": "Pick a friend first.",
+    "reset": "Reset to default",
+    "resetDone": "Slot reset to default.",
+    "save": "Save slot",
+    "saved": "Slot saved.",
+    "sendCooldown": "Send cooldown: {{seconds}}s",
+    "sendInvite": "Send invite",
+    "sendRequest": "Send request",
+    "sendSection": "Send (user click only)",
+    "sent": "Sent slot {{slot}}.",
+    "slotN": "Slot {{n}}",
+    "subtitle": "These are VRChat’s canned invite lines (the same four slots as in-game). They are not a private messenger. VRChat rate-limits edits to once per hour per slot.",
+    "title": "Slot mail",
+    "useSlot": "Slot",
+    "type": {
+      "invite": "Invite",
+      "inviteResponse": "Invite reply",
+      "requestInvite": "Request",
+      "requestInviteResponse": "Request reply"
+    }
+  },
+  "lastInstance": {
+    "accessType": "Access",
+    "cmdHint": "Rejoin the newest logged instance",
+    "copyFailed": "Copy failed: {{error}}",
+    "copyHttps": "Copy https",
+    "copyVrchat": "Copy vrchat://",
+    "empty": "No world visits in the local log history yet.",
+    "error": "Failed to load visits: {{detail}}",
+    "joinedAt": "Joined",
+    "loading": "Loading visits…",
+    "location": "Location",
+    "maxAge": "Max age",
+    "maxAgeMinutes": "{{count}} min",
+    "maxAgeOff": "Off",
+    "noneEligible": "No eligible instance under the current filters.",
+    "rejoin": "Rejoin",
+    "rejoinFailed": "Rejoin failed: {{error}}",
+    "rejoinOk": "Launch requested.",
+    "saveShortcut": "Save .lnk",
+    "shortcutFailed": "Could not save shortcut: {{error}}",
+    "shortcutSaved": "Shortcut saved to {{path}}",
+    "skipPublic": "Skip public instances",
+    "stillInWorld": "still in world",
+    "subtitle": "Rejoin the newest logged instance after a crash or kick.",
+    "title": "Last instance",
+    "unknownWorld": "Unknown world",
+    "world": "World",
+    "copiedVrchat": "Copied.",
+    "copiedHttps": "Copied."
+  },
+  "otpMail": {
+    "clear": "Clear",
+    "desc": "Reads the VRChat email OTP from your IMAP inbox and fills the login prompt. Off by default. Not auto-login.",
+    "filled": "Filled from mailbox. Click Verify.",
+    "host": "IMAP host",
+    "markSeen": "Mark OTP mail as seen (default off)",
+    "password": "Mailbox app password",
+    "passwordKeep": "Leave blank to keep saved",
+    "passwordMissing": "Mailbox app password missing",
+    "passwordSaved": "Mailbox app password saved",
+    "port": "Port",
+    "save": "Save",
+    "settingsHint": "Email OTP helper is off.",
+    "settingsLink": "Settings → Experimental",
+    "submitOnce": "Submit next OTP once",
+    "test": "Test",
+    "testNoInbox": "IMAP login succeeded; INBOX was not found.",
+    "testOk": "IMAP login succeeded; INBOX exists.",
+    "title": "Email OTP helper",
+    "tls": "TLS",
+    "understand": "I understand",
+    "username": "Mailbox username",
+    "waiting": "Waiting for VRChat email…",
+    "waitingSubmit": "Waiting for the next email code, then submitting once."
+  },
+  "playspace": {
+    "gripHeld": "Grip held",
+    "keyboardHint": "Test panel (window focused): arrows move XZ, Page Up/Down move Y if unlocked. Grip + stick on the controllers while Start is active. Dual-grip tap resets to identity.",
+    "lockX": "Lock X",
+    "lockY": "Lock Y",
+    "lockZ": "Lock Z",
+    "offset": "Offset",
+    "offsetLimit": "Offset limit 5.0 m reached. Further motion is ignored until Reset.",
+    "reset": "Reset",
+    "start": "Start",
+    "steamvrNotRunning": "SteamVR not running",
+    "stop": "Stop",
+    "title": "Playspace offset",
+    "vrcRunning": "VRChat running (display only — not attached)"
   }
 }

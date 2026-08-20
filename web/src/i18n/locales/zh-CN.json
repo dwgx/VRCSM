@@ -37,7 +37,7 @@
     "activityLedger": "活动账本",
     "lastInstance": "上一房",
     "inviteSlots": "邀请槽",
-    "playspace": "Playspace",
+    "playspace": "游戏空间",
     "calendar": "日历和活动",
     "events": "事件记录器",
     "social": "社交分析",
@@ -46,7 +46,10 @@
     "rules": "自动化规则",
     "vrcPlus": "VRC+",
     "models": "模型库",
-    "labSection": "实验室"
+    "labSection": "实验室",
+    "hotWorlds": "热门世界",
+    "eventWatch": "活动监视",
+    "helpersSection": "助手"
   },
   "profile": {
     "title": "我的资料",
@@ -144,7 +147,20 @@
     "deleteFailed": "删除失败",
     "deletePartial": "部分文件无法删除",
     "deleteSelected": "删除 ({{count}})",
-    "deleteSuccess": "已成功删除"
+    "deleteSuccess": "已成功删除",
+    "clearPlayerFilter": "清除玩家筛选",
+    "emptyPlayerFilter": "暂无该玩家的截图",
+    "filterByPlayer": "显示有 {{name}} 的截图",
+    "groupByVisit": "按访问分组",
+    "groupByVisitHint": "按拍摄时所在的世界访问分组截图",
+    "rejoin": "重新加入",
+    "rejoinHint": "启动 VRChat 并进入该 Instance",
+    "scanningMetadata": "正在检查 {{count}}",
+    "stillInWorld": "仍在此世界",
+    "ungrouped": "未分组",
+    "ungroupedHint": "未能归入已记录世界访问的截图",
+    "unknownWorld": "未知世界",
+    "visitShots": "{{count}} 张"
   },
   "avatars_extra": {
     "selectAvatar": "切换为此模型",
@@ -495,7 +511,16 @@
       "sourceNeteaseToggleHint": "更好地覆盖中文曲目及翻译",
       "sourceQq": "QQ 音乐",
       "sourceQqToggle": "QQ 音乐 / QQ Music",
-      "sourceQqToggleHint": "补充网易云找不到的华语/CPOP 歌曲"
+      "sourceQqToggleHint": "补充网易云找不到的华语/CPOP 歌曲",
+      "lrcDir": "本地 .lrc 文件夹",
+      "lrcDirBrowse": "浏览",
+      "lrcDirEmpty": "未选择文件夹",
+      "session": "会话",
+      "sessionAuto": "自动（当前）",
+      "sourceKugou": "酷狗",
+      "sourceKugouToggle": "酷狗",
+      "sourceKugouToggleHint": "独立/冷门曲目覆盖最广",
+      "sourceLocal": "本地 .lrc"
     },
     "auto": {
       "badge": "AUTO",
@@ -1003,7 +1028,8 @@
     "navigate": "导航",
     "refreshing": "刷新中",
     "showAll": "显示全部 ({{count}})",
-    "unavailable": "不可用"
+    "unavailable": "不可用",
+    "disable": "停用"
   },
   "about": {
     "title": "关于 VRCSM",
@@ -1037,7 +1063,12 @@
       "actions": "操作",
       "logs": "会话日志",
       "globalSearch": "全局搜索",
-      "plugins": "插件"
+      "plugins": "插件",
+      "friends": "好友",
+      "worlds": "世界",
+      "avatars": "化身",
+      "groups": "群组",
+      "notes": "备注"
     }
   },
   "dock": {
@@ -1309,7 +1340,23 @@
     },
     "unavailable": "模型不可用。",
     "wearerCurrentReference": "佩戴者当前参考",
-    "wearerReferenceNote": "未知"
+    "wearerReferenceNote": "未知",
+    "presets": {
+      "applied": "已应用 {{name}}（{{count}} 个参数）",
+      "apply": "应用",
+      "deleteTitle": "删除此预设？",
+      "empty": "暂无预设。",
+      "hint": "将 LocalAvatarData 默认值（以及当前 OSC /avatar/parameters 实况值）快照为 VRCSM JSON。应用会发送 OSC。若预设来自其他 Avatar，会先确认。",
+      "mismatchBody": "此预设保存自 {{saved}}，当前 Avatar 为 {{current}}。参数名可能对不上。",
+      "mismatchTitle": "应用到其他 Avatar？",
+      "namePlaceholder": "预设名称",
+      "needName": "请先为预设命名",
+      "noParams": "没有可快照的参数",
+      "otherAvatars": "其他 Avatar",
+      "save": "保存当前",
+      "saved": "已保存 {{name}}（{{count}} 个参数）",
+      "title": "参数预设"
+    }
   },
   "worlds": {
     "title": "地图",
@@ -3562,7 +3609,11 @@
         "label": "忽略粒子特效",
         "hint": "在人多的世界中显著提升性能"
       },
-      "defaultPlaceholder": "（默认）"
+      "defaultPlaceholder": "（默认）",
+      "cacheExpiryDelay": {
+        "hint": "VRChat 在过期前保留未使用缓存资源的时长。0 表示使用客户端默认值。",
+        "label": "缓存过期延迟（秒）"
+      }
     },
     "steamvr": {
       "title": "VR 串流设置 (SteamVR / Steam Link)",
@@ -3976,6 +4027,23 @@
         "desc": "“仅好友”只播报好友上线；“全部”还会播报邀请和好友请求。",
         "all": "全部事件",
         "friends": "仅好友"
+      },
+      "ttsChatbox": {
+        "desc": "同时通过 OSC 把朗读内容发到 VRChat chatbox。其他玩家可见。默认关闭。",
+        "label": "同步到 chatbox"
+      },
+      "ttsRate": {
+        "desc": "SAPI 语速，−5 到 +5。",
+        "label": "语速"
+      },
+      "ttsVoice": {
+        "desc": "Windows 系统语音。留空则使用系统默认。",
+        "label": "语音",
+        "system": "系统默认"
+      },
+      "ttsVolume": {
+        "desc": "SAPI 音量，0 到 100。",
+        "label": "音量"
       }
     },
     "data": {
@@ -4033,6 +4101,23 @@
         "assets": {
           "favorites": "本地收藏、备注与标签"
         }
+      },
+      "backup": {
+        "blurb": "将 grey-prefs.json、plugin-state.json 和 vrcsm.db 复制到 LocalAppData/VRCSM/backups。仅保留最新 3 份。不是 VRChat 缓存副本。",
+        "created": "备份已保存（{{id}}）。",
+        "createError": "备份失败：{{error}}",
+        "creating": "备份中…",
+        "heading": "应用数据备份",
+        "latest": "最新：{{id}}（{{size}}）",
+        "none": "暂无备份。",
+        "now": "立即备份",
+        "restoreBody": "用备份 {{id}} 替换当前数据库、grey-prefs.json 和 plugin-state.json。应用会继续运行；若界面看起来过时，建议重启。",
+        "restoreConfirm": "立即还原",
+        "restored": "已还原备份 {{id}}。",
+        "restoreError": "还原失败：{{error}}",
+        "restoreLatest": "还原最新备份",
+        "restoreTitle": "还原最新备份",
+        "restoring": "正在还原…"
       }
     },
     "hardware": {
@@ -4211,7 +4296,11 @@
     "noLoggedPlayers": "无玩家记录",
     "noPlayerCountHint": "此次访问时间段内未记录到本地玩家的加入/离开事件。",
     "playerCountHint": "此次访问时间段内有 {{count}} 条本地玩家日志事件。",
-    "recentLimit": "最近 {{count}} 次访问"
+    "recentLimit": "最近 {{count}} 次访问",
+    "copyHttps": "复制 https",
+    "copyHttpsDone": "已复制 https 启动链接。",
+    "copyHttpsFailed": "复制失败：{{error}}",
+    "copyHttpsHint": "复制 https://vrchat.com/home/launch 链接"
   },
   "strangerAlert": {
     "title": "陌生人加入了您的 {{access}} 房间",
@@ -4480,5 +4569,193 @@
       "browse": "浏览",
       "owned": "我的模型"
     }
+  },
+  "activityLedger": {
+    "copyId": "复制 ID",
+    "empty": "该范围内没有匹配的历史事件。",
+    "kind": {
+      "all": "全部",
+      "join": "加入",
+      "leave": "离开",
+      "meet": "相遇",
+      "invite": "邀请",
+      "inviteResponse": "邀请回复",
+      "requestInvite": "请求邀请",
+      "friendRequest": "好友申请",
+      "video": "视频",
+      "other": "其他"
+    },
+    "loadFailed": "无法加载活动账本。",
+    "open": "打开",
+    "searchPlaceholder": "搜索名称、ID、世界…",
+    "subtitle": "来自统一日志源的历史加入、相遇、邀请、好友请求和视频事件。",
+    "title": "活动账本",
+    "range": {
+      "recent": "最近",
+      "7d": "7 天",
+      "30d": "30 天",
+      "all": "全部"
+    }
+  },
+  "eventWatch": {
+    "autoJoin": "自动加入（等待 15 秒）",
+    "autoJoinConfirm": "通知后等待 15 秒再加入。可以取消。",
+    "cancelJoin": "取消加入",
+    "notify": "通知",
+    "title": "活动监视",
+    "worldOnlyHint": "仅世界监视使用好友位置；团体监视使用团体 Instance 列表。"
+  },
+  "grey": {
+    "disabled": {
+      "settingsHint": "可选社交/VR 助手已关闭。请到 设置 → 实验性 开启。",
+      "masterHint": "可选助手已关闭。请先打开上方的总开关。"
+    },
+    "master": {
+      "desc": "槽位邮件及后续助手的总开关。每个助手仍需你亲自点击（或单独选择启用）。默认关闭。",
+      "enable": "启用可选社交/VR 助手",
+      "title": "可选社交/VR 助手"
+    },
+    "tos": {
+      "eventWatch": "活动监视会在团体或世界 Instance 匹配你设置的筛选条件时通知你。自动加入是独立开关，默认关闭。开启自动加入后，VRCSM 仍会先通知并等待 15 秒，以便你取消。若用于截胡或骚扰，自动加入 Instance 可能违反 VRChat 服务条款。建议仅使用通知。",
+      "inviteAssist": "启用邀请协助后，当邀请协助名单中的人向你发送邀请请求时，会把他们邀请进你当前 Instance。不会把你加入他们的世界。在你确认前保持关闭。自动邀请可能让私人 Instance 里的人感到意外，若滥用可能违反 VRChat 服务条款。每人 10 分钟冷却。",
+      "inviteSlots": "槽位邮件使用官方 VRChat 邀请消息 API。它不是私信客户端。滥发邀请可能违反 VRChat 服务条款。VRCSM 会限制发送频率，且本页不会自动发送。",
+      "master": "仅在你理解 VRChat 服务条款的前提下启用可选社交/VR 助手。槽位邮件不是即时通讯。自动邀请、自动加入和邮箱 OTP 在各自助手单独确认前保持关闭。VRCSM 不会从槽位邮件自动发送。",
+      "oscTts": "播报使用本机 Windows 系统语音。可选的 chatbox 同步会通过 OSC 把同一句话发到 VRChat。其他玩家可以看到 chatbox 文本。默认关闭。",
+      "playspace": "游戏空间偏移通过官方 OpenVR chaperone API 移动 SteamVR 追踪原点。不会修改 VRChat。过大偏移可能让你超出实际房间范围。不会改写 chaperone 边界。默认锁定 Y 轴。",
+      "otpMail": "邮箱 OTP 助手可选，默认关闭。VRCSM 会用本机 Windows DPAPI 保存邮箱主机和应用专用密码，并且只在 VRChat 邮箱验证码提示出现时读取未读邮件。不会把 VRChat 密码写入 IMAP 配置，也不会自行登录 VRChat。自动收集登录验证码可能违反 VRChat 服务条款或邮箱服务商规则。建议优先使用 TOTP。你可以随时删除已保存的邮箱密钥。"
+    }
+  },
+  "hotWorlds": {
+    "empty": "本地日志历史中还没有世界访问记录。",
+    "error": "加载访问记录失败：{{detail}}",
+    "friends": "{{count}} 位好友",
+    "hours": "{{hours}} 小时",
+    "lastVisit": "上次访问 {{time}}",
+    "loading": "正在加载访问记录…",
+    "open": "打开",
+    "subtitle": "根据你记录的世界访问做本地排名。不抓取 VRChat。",
+    "title": "热门世界",
+    "unknownWorld": "未知世界",
+    "visits": "{{count}} 次访问"
+  },
+  "inviteAssist": {
+    "add": "添加到邀请协助",
+    "added": "已加入邀请协助",
+    "cancel": "取消待处理",
+    "confirm": "启用邀请协助",
+    "confirmRequired": "先完成实验性确认，才能把人加入邀请协助。",
+    "enable": "启用邀请协助",
+    "off": "关",
+    "on": "开",
+    "openFriendHint": "打开好友即可把人加入邀请协助。",
+    "remove": "移出邀请协助",
+    "removed": "已移出邀请协助",
+    "title": "邀请协助"
+  },
+  "inviteSlots": {
+    "chip": {
+      "avatar": "Avatar",
+      "location": "位置",
+      "user": "用户",
+      "world": "世界"
+    },
+    "confirmSend": "将槽位 {{slot}} 发送给 {{name}}？",
+    "confirmSendTitle": "发送槽位邮件？",
+    "cooldown": "VRChat 冷却：剩余 {{minutes}} 分钟。",
+    "editLink": "编辑槽位…",
+    "empty": "此类型没有返回槽位。",
+    "friend": "好友",
+    "needLocation": "你当前不在世界中。",
+    "openExperimental": "打开实验性功能",
+    "pickFriend": "请先选择好友。",
+    "reset": "恢复默认",
+    "resetDone": "槽位已恢复默认。",
+    "save": "保存槽位",
+    "saved": "槽位已保存。",
+    "sendCooldown": "发送冷却：{{seconds}} 秒",
+    "sendInvite": "发送邀请",
+    "sendRequest": "发送请求",
+    "sendSection": "发送（仅手动点击）",
+    "sent": "已发送槽位 {{slot}}。",
+    "slotN": "槽位 {{n}}",
+    "subtitle": "这些是 VRChat 的预设邀请语句（与游戏内四个槽位相同）。不是私信。VRChat 限制每个槽位每小时只能编辑一次。",
+    "title": "槽位邮件",
+    "useSlot": "槽位",
+    "type": {
+      "invite": "邀请",
+      "inviteResponse": "邀请回复",
+      "requestInvite": "请求",
+      "requestInviteResponse": "请求回复"
+    }
+  },
+  "lastInstance": {
+    "accessType": "权限",
+    "cmdHint": "重新加入最近记录的 Instance",
+    "copyFailed": "复制失败：{{error}}",
+    "copyHttps": "复制 https",
+    "copyVrchat": "复制 vrchat://",
+    "empty": "本地日志历史中还没有世界访问记录。",
+    "error": "加载访问记录失败：{{detail}}",
+    "joinedAt": "加入时间",
+    "loading": "正在加载访问记录…",
+    "location": "位置",
+    "maxAge": "时效上限",
+    "maxAgeMinutes": "{{count}} 分钟",
+    "maxAgeOff": "关",
+    "noneEligible": "当前筛选条件下没有符合的 Instance。",
+    "rejoin": "重新加入",
+    "rejoinFailed": "重新加入失败：{{error}}",
+    "rejoinOk": "已请求启动。",
+    "saveShortcut": "保存 .lnk",
+    "shortcutFailed": "无法保存快捷方式：{{error}}",
+    "shortcutSaved": "快捷方式已保存到 {{path}}",
+    "skipPublic": "跳过公开 Instance",
+    "stillInWorld": "仍在此世界",
+    "subtitle": "崩溃或被踢后，重新加入最近记录的 Instance。",
+    "title": "上次房间",
+    "unknownWorld": "未知世界",
+    "world": "世界",
+    "copiedVrchat": "已复制。",
+    "copiedHttps": "已复制。"
+  },
+  "otpMail": {
+    "clear": "清除",
+    "desc": "从 IMAP 收件箱读取 VRChat 邮箱 OTP 并填入登录提示。默认关闭。不是自动登录。",
+    "filled": "已从邮箱填入。请点击验证。",
+    "host": "IMAP 主机",
+    "markSeen": "将 OTP 邮件标为已读（默认关闭）",
+    "password": "邮箱应用专用密码",
+    "passwordKeep": "留空以保留已保存密码",
+    "passwordMissing": "缺少邮箱应用专用密码",
+    "passwordSaved": "邮箱应用专用密码已保存",
+    "port": "端口",
+    "save": "保存",
+    "settingsHint": "邮箱 OTP 助手已关闭。",
+    "settingsLink": "设置 → 实验性",
+    "submitOnce": "提交下一次 OTP（仅一次）",
+    "test": "测试",
+    "testNoInbox": "IMAP 登录成功；未找到 INBOX。",
+    "testOk": "IMAP 登录成功；INBOX 存在。",
+    "title": "邮箱 OTP 助手",
+    "tls": "TLS",
+    "understand": "我已了解",
+    "username": "邮箱用户名",
+    "waiting": "正在等待 VRChat 邮件…",
+    "waitingSubmit": "等待下一封邮件验证码，然后提交一次。"
+  },
+  "playspace": {
+    "gripHeld": "Grip 按住",
+    "keyboardHint": "测试面板（窗口聚焦时）：方向键移动 XZ；未锁定时可按 Page Up/Down 移动 Y。Start 启用后可用手柄 Grip + 摇杆。双 Grip 轻点复位到原点。",
+    "lockX": "锁定 X",
+    "lockY": "锁定 Y",
+    "lockZ": "锁定 Z",
+    "offset": "偏移",
+    "offsetLimit": "已达偏移上限 5.0 m，进一步移动将被忽略，直到重置。",
+    "reset": "重置",
+    "start": "开始",
+    "steamvrNotRunning": "SteamVR 未运行",
+    "stop": "停止",
+    "title": "游戏空间偏移",
+    "vrcRunning": "VRChat 运行中（仅显示 — 未附加）"
   }
 }

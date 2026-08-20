@@ -226,7 +226,7 @@ export default function InviteSlotsPage() {
           })}
         </p>
         <p className="text-[12px] text-[hsl(var(--muted-foreground))]">
-          {t("grey.disabled", {
+          {t("grey.disabled.settingsHint", {
             defaultValue: "Optional social/VR helpers are off. Enable them in Settings → Experimental.",
           })}
         </p>

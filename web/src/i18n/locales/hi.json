@@ -46,7 +46,10 @@
     "rules": "स्वचालन नियम",
     "vrcPlus": "VRC+",
     "models": "मॉडल डेटाबेस",
-    "labSection": "लैब"
+    "labSection": "लैब",
+    "hotWorlds": "अक्सर गए वर्ल्ड",
+    "eventWatch": "इवेंट निगरानी",
+    "helpersSection": "हेल्पर्स"
   },
   "profile": {
     "title": "मेरा प्रोफ़ाइल",
@@ -144,7 +147,20 @@
     "deletePartial": "कुछ फ़ाइलें हटाई नहीं जा सकीं",
     "deleteFailed": "हटाना विफल रहा",
     "confirmDelete": "क्या आप वाकई इस स्क्रीनशॉट को हटाना चाहते हैं?",
-    "confirmDeleteBulk": "क्या आप वाकई {{count}} स्क्रीनशॉट हटाना चाहते हैं?"
+    "confirmDeleteBulk": "क्या आप वाकई {{count}} स्क्रीनशॉट हटाना चाहते हैं?",
+    "clearPlayerFilter": "खिलाड़ी फ़िल्टर हटाएँ",
+    "emptyPlayerFilter": "उस खिलाड़ी के स्क्रीनशॉट नहीं हैं",
+    "filterByPlayer": "{{name}} वाले शॉट दिखाएँ",
+    "groupByVisit": "विज़िट से समूह",
+    "groupByVisitHint": "स्क्रीनशॉट को उसी वर्ल्ड विज़िट से समूह करें जिसमें वे लिए गए",
+    "rejoin": "फिर जॉइन करें",
+    "rejoinHint": "VRChat को ठीक इसी Instance में लॉन्च करें",
+    "scanningMetadata": "{{count}} जाँच",
+    "stillInWorld": "अभी वर्ल्ड में",
+    "ungrouped": "असमूहित",
+    "ungroupedHint": "शॉट जो किसी लॉग्ड वर्ल्ड विज़िट में नहीं आए",
+    "unknownWorld": "अज्ञात वर्ल्ड",
+    "visitShots": "{{count}} शॉट"
   },
   "avatars_extra": {
     "selectAvatar": "इस अवतार पर स्विच करें",
@@ -495,7 +511,16 @@
       "sourceNeteaseToggleHint": "चीनी ट्रैक और अनुवाद के लिए बेहतर कवरेज",
       "sourceQq": "QQ Music",
       "sourceQqToggle": "QQ 音乐 / QQ Music",
-      "sourceQqToggleHint": "NetEase में न मिलने वाले CPOP गानों के लिए अतिरिक्त कवरेज"
+      "sourceQqToggleHint": "NetEase में न मिलने वाले CPOP गानों के लिए अतिरिक्त कवरेज",
+      "lrcDir": "लोकल .lrc फ़ोल्डर",
+      "lrcDirBrowse": "ब्राउज़",
+      "lrcDirEmpty": "कोई फ़ोल्डर नहीं चुना",
+      "session": "सेशन",
+      "sessionAuto": "ऑटो (वर्तमान)",
+      "sourceKugou": "Kugou",
+      "sourceKugouToggle": "Kugou",
+      "sourceKugouToggleHint": "इंडी और दुर्लभ ट्रैक के लिए सबसे व्यापक कवरेज",
+      "sourceLocal": "लोकल .lrc"
     },
     "auto": {
       "badge": "AUTO",
@@ -991,7 +1016,8 @@
     "navigate": "नेविगेट करें",
     "refreshing": "रीफ्रेश हो रहा है",
     "showAll": "सभी दिखाएं ({{count}})",
-    "unavailable": "अनुपलब्ध"
+    "unavailable": "अनुपलब्ध",
+    "disable": "अक्षम करें"
   },
   "about": {
     "title": "VRCSM के बारे में",
@@ -1025,7 +1051,12 @@
       "actions": "क्रियाएँ",
       "logs": "सेशन लॉग्स",
       "globalSearch": "ग्लोबल खोज",
-      "plugins": "प्लगइन"
+      "plugins": "प्लगइन",
+      "friends": "मित्र",
+      "worlds": "वर्ल्ड",
+      "avatars": "अवतार",
+      "groups": "समूह",
+      "notes": "नोट्स"
     }
   },
   "dock": {
@@ -1297,7 +1328,23 @@
     },
     "unavailable": "अवतार अनुपलब्ध।",
     "wearerCurrentReference": "पहनने वाले का मौजूदा संदर्भ",
-    "wearerReferenceNote": "अज्ञात"
+    "wearerReferenceNote": "अज्ञात",
+    "presets": {
+      "applied": "{{name}} लागू ({{count}} पैरामीटर)",
+      "apply": "लागू करें",
+      "deleteTitle": "यह प्रीसेट हटाएँ?",
+      "empty": "अभी कोई प्रीसेट नहीं।",
+      "hint": "LocalAvatarData डिफ़ॉल्ट (और लाइव OSC /avatar/parameters मान) VRCSM JSON में स्नैपशॉट करें। लागू करने पर OSC भेजता है। दूसरे Avatar के लिए सेव प्रीसेट पहले पूछता है।",
+      "mismatchBody": "यह प्रीसेट {{saved}} के लिए सेव था, वर्तमान Avatar {{current}} है। पैरामीटर नाम मेल नहीं खा सकते।",
+      "mismatchTitle": "दूसरे Avatar पर लागू करें?",
+      "namePlaceholder": "प्रीसेट नाम",
+      "needName": "पहले प्रीसेट का नाम दें",
+      "noParams": "स्नैपशॉट के लिए कोई पैरामीटर नहीं",
+      "otherAvatars": "अन्य Avatar",
+      "save": "वर्तमान सेव करें",
+      "saved": "{{name}} सेव ({{count}} पैरामीटर)",
+      "title": "पैरामीटर प्रीसेट"
+    }
   },
   "worlds": {
     "title": "वर्ल्ड",
@@ -3828,7 +3875,11 @@
       "successSave": "config.json सफलतापूर्वक अपडेट किया गया!",
       "title": "ऐप कॉन्फ़िग (config.json)",
       "vrcIdle": "VRChat निष्क्रिय है",
-      "vrcRunning": "VRChat चल रहा है"
+      "vrcRunning": "VRChat चल रहा है",
+      "cacheExpiryDelay": {
+        "hint": "अप्रयुक्त कैश्ड एसेट VRChat कितनी देर रखता है। 0 क्लाइंट डिफ़ॉल्ट है।",
+        "label": "कैश समाप्ति विलंब (सेकंड)"
+      }
     },
     "experimental": {
       "heading": "प्रायोगिक सुविधाएँ",
@@ -3990,6 +4041,23 @@
         "assets": {
           "favorites": "स्थानीय फेवरेट्स, नोट्स और टैग"
         }
+      },
+      "backup": {
+        "blurb": "grey-prefs.json, plugin-state.json और vrcsm.db को LocalAppData/VRCSM/backups में कॉपी करता है। तीन नवीनतम रखता है। VRChat कैश क्लोन नहीं।",
+        "created": "बैकअप सेव हो गया ({{id}})।",
+        "createError": "बैकअप विफल: {{error}}",
+        "creating": "काम हो रहा है…",
+        "heading": "ऐप डेटा बैकअप",
+        "latest": "नवीनतम: {{id}} ({{size}})",
+        "none": "अभी कोई बैकअप नहीं।",
+        "now": "अभी बैकअप",
+        "restoreBody": "वर्तमान डेटाबेस, grey-prefs.json और plugin-state.json को बैकअप {{id}} से बदलें। ऐप चलता रहेगा; पुराना लगे तो रीस्टार्ट सबसे सुरक्षित है।",
+        "restoreConfirm": "अभी रिस्टोर करें",
+        "restored": "बैकअप {{id}} रिस्टोर हो गया।",
+        "restoreError": "रिस्टोर विफल: {{error}}",
+        "restoreLatest": "नवीनतम रिस्टोर करें",
+        "restoreTitle": "नवीनतम बैकअप रिस्टोर करें",
+        "restoring": "रिस्टोर हो रहा है…"
       }
     },
     "notify": {
@@ -4021,6 +4089,23 @@
         "desc": "\"केवल मित्र\" सिर्फ़ मित्रों के ऑनलाइन आने की घोषणा करता है; \"सभी\" इनवाइट और मित्र अनुरोध भी बोलता है।",
         "all": "सभी इवेंट",
         "friends": "केवल मित्र"
+      },
+      "ttsChatbox": {
+        "desc": "बोला गया वाक्य OSC से VRChat चैटबॉक्स में भी भेजें। अन्य खिलाड़ी देख सकते हैं। डिफ़ॉल्ट बंद।",
+        "label": "चैटबॉक्स में दोहराएँ"
+      },
+      "ttsRate": {
+        "desc": "SAPI गति, −5 से +5।",
+        "label": "गति"
+      },
+      "ttsVoice": {
+        "desc": "Windows सिस्टम आवाज़। खाली छोड़ने पर OS डिफ़ॉल्ट रहता है।",
+        "label": "आवाज़",
+        "system": "सिस्टम डिफ़ॉल्ट"
+      },
+      "ttsVolume": {
+        "desc": "SAPI वॉल्यूम, 0 से 100।",
+        "label": "वॉल्यूम"
       }
     },
     "hardware": {
@@ -4211,7 +4296,11 @@
     "noLoggedPlayers": "कोई प्लेयर लॉग नहीं",
     "noPlayerCountHint": "इस विज़िट विंडो में कोई लोकल प्लेयर जॉइन/लीव इवेंट दर्ज नहीं हुआ।",
     "playerCountHint": "इस विज़िट विंडो में {{count}} लोकल प्लेयर लॉग इवेंट।",
-    "recentLimit": "हाल की {{count}} विज़िट"
+    "recentLimit": "हाल की {{count}} विज़िट",
+    "copyHttps": "https कॉपी करें",
+    "copyHttpsDone": "https लॉन्च URL कॉपी हो गया।",
+    "copyHttpsFailed": "कॉपी विफल: {{error}}",
+    "copyHttpsHint": "https://vrchat.com/home/launch URL कॉपी करें"
   },
   "strangerAlert": {
     "title": "अजनबी आपके {{access}} इंस्टेंस में शामिल हुआ",
@@ -4480,5 +4569,193 @@
       "browse": "ब्राउज़ करें",
       "owned": "मेरे अवतार"
     }
+  },
+  "activityLedger": {
+    "copyId": "id कॉपी करें",
+    "empty": "इस सीमा में कोई मेल खाती ऐतिहासिक घटना नहीं।",
+    "kind": {
+      "all": "सभी",
+      "join": "जॉइन",
+      "leave": "लीव",
+      "meet": "मुलाकात",
+      "invite": "इनवाइट",
+      "inviteResponse": "इनवाइट जवाब",
+      "requestInvite": "इनवाइट अनुरोध",
+      "friendRequest": "फ्रेंड अनुरोध",
+      "video": "वीडियो",
+      "other": "अन्य"
+    },
+    "loadFailed": "गतिविधि लेजर लोड नहीं हो सका।",
+    "open": "खोलें",
+    "searchPlaceholder": "नाम, id, वर्ल्ड खोजें…",
+    "subtitle": "एकीकृत लॉग फ़ीड से ऐतिहासिक जॉइन, मुलाक़ात, इनवाइट, मित्र-अनुरोध और वीडियो घटनाएँ।",
+    "title": "गतिविधि लेजर",
+    "range": {
+      "recent": "हालिया",
+      "7d": "7 दिन",
+      "30d": "30 दिन",
+      "all": "सभी"
+    }
+  },
+  "eventWatch": {
+    "autoJoin": "ऑटो-जॉइन (15 सेकंड प्रतीक्षा)",
+    "autoJoinConfirm": "सूचना के 15 सेकंड बाद जॉइन करें। आप रद्द कर सकते हैं।",
+    "cancelJoin": "जॉइन रद्द करें",
+    "notify": "सूचित करें",
+    "title": "इवेंट निगरानी",
+    "worldOnlyHint": "केवल-वर्ल्ड निगरानी मित्र लोकेशन इस्तेमाल करती है; ग्रुप निगरानी ग्रुप Instance सूची इस्तेमाल करती है।"
+  },
+  "grey": {
+    "disabled": {
+      "settingsHint": "वैकल्पिक सोशल/VR हेल्पर बंद हैं। सेटिंग्स → प्रयोगात्मक में चालू करें।",
+      "masterHint": "वैकल्पिक हेल्पर बंद हैं। पहले ऊपर का मास्टर स्विच चालू करें।"
+    },
+    "master": {
+      "desc": "स्लॉट मेल और बाद के हेल्पर का मास्टर स्विच। हर हेल्पर को फिर भी यूज़र क्लिक (या अपना ऑप्ट-इन) चाहिए। डिफ़ॉल्ट बंद।",
+      "enable": "वैकल्पिक सोशल/VR हेल्पर सक्षम करें",
+      "title": "वैकल्पिक सोशल/VR हेल्पर"
+    },
+    "tos": {
+      "eventWatch": "इवेंट निगरानी तब सूचित करती है जब कोई ग्रुप या वर्ल्ड Instance आपके फ़िल्टर से मेल खाए। ऑटो-जॉइन अलग टॉगल है और डिफ़ॉल्ट बंद। ऑटो-जॉइन चालू होने पर VRCSM पहले सूचित करता है और 15 सेकंड प्रतीक्षा करता है ताकि आप रद्द कर सकें। Instance में अपने-आप जॉइन करना, स्नाइप या उत्पीड़न के लिए इस्तेमाल हो तो VRChat के Terms of Service का उल्लंघन हो सकता है। केवल-सूचना रखें।",
+      "inviteAssist": "इनवाइट सहायता सक्षम होने पर InviteAssist सूची के लोगों को आपके वर्तमान Instance में इनवाइट करेगी जब वे इनवाइट अनुरोध भेजें। यह आपको उनके वर्ल्ड में नहीं ले जाती। पुष्टि तक बंद रहती है। ऑटो-इनवाइट निजी Instance में लोगों को चौंका सकता है और दुरुपयोग पर VRChat के Terms of Service का उल्लंघन हो सकता है। प्रति व्यक्ति 10-मिनट कूलडाउन।",
+      "inviteSlots": "स्लॉट मेल आधिकारिक VRChat इनवाइट-संदेश API इस्तेमाल करता है। यह DM क्लाइंट नहीं है। इनवाइट स्पैम VRChat के Terms of Service का उल्लंघन कर सकता है। VRCSM भेजने पर दर-सीमा लगाता है और इस पेज से ऑटो-सेंड नहीं करेगा।",
+      "master": "वैकल्पिक सोशल/VR हेल्पर तभी सक्षम करें जब आप VRChat के Terms of Service समझते हों। स्लॉट मेल मैसेंजर नहीं है। ऑटो-इनवाइट, ऑटो-जॉइन और मेलबॉक्स OTP हर हेल्पर की अपनी पुष्टि तक बंद रहते हैं। VRCSM स्लॉट मेल से ऑटो-सेंड नहीं करेगा।",
+      "oscTts": "घोषणाएँ इस PC की Windows सिस्टम आवाज़ इस्तेमाल करती हैं। वैकल्पिक चैटबॉक्स इको वही वाक्य OSC से VRChat में भेजता है। अन्य खिलाड़ी चैटबॉक्स टेक्स्ट देख सकते हैं। डिफ़ॉल्ट बंद।",
+      "playspace": "प्लेस्पेस ऑफ़सेट आधिकारिक OpenVR chaperone API से SteamVR ट्रैकिंग ओरिजिन हिलाता है। VRChat नहीं बदलता। बड़े ऑफ़सेट आपको भौतिक कमरे से बाहर कर सकते हैं। Chaperone सीमाएँ नहीं लिखी जातीं। डिफ़ॉल्ट Y-लॉक चालू रहता है।",
+      "otpMail": "ईमेल OTP हेल्पर वैकल्पिक है और डिफ़ॉल्ट रूप से बंद है। VRCSM आपके मेल होस्ट और ऐप पासवर्ड को इस यूज़र के Windows DPAPI से सहेजता है, और केवल VRChat ईमेल-OTP प्रॉम्प्ट खुला होने पर अपठित मेल पढ़ता है। IMAP कॉन्फ़िग में VRChat पासवर्ड नहीं रखा जाता और VRChat में अपने आप लॉगिन नहीं होता। लॉगिन कोड अपने आप इकट्ठा करना VRChat की शर्तों या मेल प्रदाता के नियमों का उल्लंघन हो सकता है। TOTP बेहतर है। सहेजा गुप्त मेल डेटा कभी भी हटा सकते हैं।"
+    }
+  },
+  "hotWorlds": {
+    "empty": "लोकल लॉग इतिहास में अभी कोई वर्ल्ड विज़िट नहीं।",
+    "error": "विज़िट लोड विफल: {{detail}}",
+    "friends": "{{count}} मित्र",
+    "hours": "{{hours}} घंटे",
+    "lastVisit": "अंतिम विज़िट {{time}}",
+    "loading": "विज़िट लोड हो रहे हैं…",
+    "open": "खोलें",
+    "subtitle": "आपकी लॉग्ड वर्ल्ड विज़िट से लोकल रैंकिंग। VRChat स्क्रैप नहीं।",
+    "title": "अक्सर गए वर्ल्ड",
+    "unknownWorld": "अज्ञात वर्ल्ड",
+    "visits": "{{count}} विज़िट"
+  },
+  "inviteAssist": {
+    "add": "इनवाइट सहायता में जोड़ें",
+    "added": "इनवाइट सहायता में जोड़ा",
+    "cancel": "लंबित रद्द करें",
+    "confirm": "इनवाइट सहायता सक्षम करें",
+    "confirmRequired": "इनवाइट सहायता में लोगों को जोड़ने से पहले प्रायोगिक पुष्टि ज़रूरी है।",
+    "enable": "इनवाइट सहायता सक्षम करें",
+    "off": "बंद",
+    "on": "चालू",
+    "openFriendHint": "इनवाइट सहायता में जोड़ने के लिए मित्र खोलें।",
+    "remove": "इनवाइट सहायता से हटाएँ",
+    "removed": "इनवाइट सहायता से हटाया",
+    "title": "इनवाइट सहायता"
+  },
+  "inviteSlots": {
+    "chip": {
+      "avatar": "Avatar",
+      "location": "स्थान",
+      "user": "यूज़र",
+      "world": "वर्ल्ड"
+    },
+    "confirmSend": "{{name}} को स्लॉट {{slot}} भेजें?",
+    "confirmSendTitle": "स्लॉट मेल भेजें?",
+    "cooldown": "VRChat कूलडाउन: {{minutes}} मिनट बाकी।",
+    "editLink": "स्लॉट संपादित करें…",
+    "empty": "इस प्रकार के लिए कोई स्लॉट नहीं।",
+    "friend": "मित्र",
+    "needLocation": "आप किसी वर्ल्ड में नहीं हैं।",
+    "openExperimental": "प्रायोगिक खोलें",
+    "pickFriend": "पहले मित्र चुनें।",
+    "reset": "डिफ़ॉल्ट पर रीसेट",
+    "resetDone": "स्लॉट डिफ़ॉल्ट पर रीसेट।",
+    "save": "स्लॉट सेव करें",
+    "saved": "स्लॉट सेव हो गया।",
+    "sendCooldown": "भेजने का कूलडाउन: {{seconds}} सेकंड",
+    "sendInvite": "इनवाइट भेजें",
+    "sendRequest": "अनुरोध भेजें",
+    "sendSection": "भेजें (केवल यूज़र क्लिक)",
+    "sent": "स्लॉट {{slot}} भेजा।",
+    "slotN": "स्लॉट {{n}}",
+    "subtitle": "ये VRChat की तैयार इनवाइट पंक्तियाँ हैं (गेम जैसी चार स्लॉट)। निजी मैसेंजर नहीं। VRChat हर स्लॉट का संपादन घंटे में एक बार सीमित करता है।",
+    "title": "स्लॉट मेल",
+    "useSlot": "स्लॉट",
+    "type": {
+      "invite": "इनवाइट",
+      "inviteResponse": "इनवाइट जवाब",
+      "requestInvite": "अनुरोध",
+      "requestInviteResponse": "अनुरोध जवाब"
+    }
+  },
+  "lastInstance": {
+    "accessType": "एक्सेस",
+    "cmdHint": "नवीनतम लॉग्ड Instance में फिर जॉइन करें",
+    "copyFailed": "कॉपी विफल: {{error}}",
+    "copyHttps": "https कॉपी करें",
+    "copyVrchat": "vrchat:// कॉपी करें",
+    "empty": "लोकल लॉग इतिहास में अभी कोई वर्ल्ड विज़िट नहीं।",
+    "error": "विज़िट लोड विफल: {{detail}}",
+    "joinedAt": "जॉइन किया",
+    "loading": "विज़िट लोड हो रहे हैं…",
+    "location": "स्थान",
+    "maxAge": "अधिकतम आयु",
+    "maxAgeMinutes": "{{count}} मिनट",
+    "maxAgeOff": "बंद",
+    "noneEligible": "मौजूदा फ़िल्टर में कोई योग्य Instance नहीं।",
+    "rejoin": "फिर जॉइन करें",
+    "rejoinFailed": "फिर जॉइन विफल: {{error}}",
+    "rejoinOk": "लॉन्च का अनुरोध किया गया।",
+    "saveShortcut": ".lnk सेव करें",
+    "shortcutFailed": "शॉर्टकट सेव नहीं हुआ: {{error}}",
+    "shortcutSaved": "शॉर्टकट {{path}} पर सेव",
+    "skipPublic": "पब्लिक Instance छोड़ें",
+    "stillInWorld": "अभी वर्ल्ड में",
+    "subtitle": "क्रैश या किक के बाद नवीनतम लॉग्ड Instance में फिर जॉइन करें।",
+    "title": "पिछला इंस्टेंस",
+    "unknownWorld": "अज्ञात वर्ल्ड",
+    "world": "वर्ल्ड",
+    "copiedVrchat": "कॉपी हो गया।",
+    "copiedHttps": "कॉपी हो गया।"
+  },
+  "otpMail": {
+    "clear": "साफ़ करें",
+    "desc": "आपके IMAP इनबॉक्स से VRChat ईमेल OTP पढ़कर लॉगिन फ़ील्ड भरता है। डिफ़ॉल्ट बंद। ऑटो-लॉगिन नहीं।",
+    "filled": "मेलबॉक्स से भरा। सत्यापित करें दबाएँ।",
+    "host": "IMAP होस्ट",
+    "markSeen": "OTP मेल को पढ़ा हुआ चिह्नित करें (डिफ़ॉल्ट बंद)",
+    "password": "मेलबॉक्स ऐप पासवर्ड",
+    "passwordKeep": "सेव रखने के लिए खाली छोड़ें",
+    "passwordMissing": "मेलबॉक्स ऐप पासवर्ड नहीं है",
+    "passwordSaved": "मेलबॉक्स ऐप पासवर्ड सेव हो गया",
+    "port": "पोर्ट",
+    "save": "सेव",
+    "settingsHint": "ईमेल OTP हेल्पर बंद है।",
+    "settingsLink": "सेटिंग्स → प्रायोगिक",
+    "submitOnce": "अगला OTP एक बार सबमिट करें",
+    "test": "टेस्ट",
+    "testNoInbox": "IMAP लॉगिन सफल; INBOX नहीं मिला।",
+    "testOk": "IMAP लॉगिन सफल; INBOX मौजूद है।",
+    "title": "ईमेल OTP हेल्पर",
+    "tls": "TLS",
+    "understand": "मैं समझता हूँ",
+    "username": "मेलबॉक्स यूज़रनेम",
+    "waiting": "VRChat ईमेल की प्रतीक्षा…",
+    "waitingSubmit": "अगले ईमेल कोड की प्रतीक्षा, फिर एक बार सबमिट।"
+  },
+  "playspace": {
+    "gripHeld": "ग्रिप दबा हुआ",
+    "keyboardHint": "टेस्ट पैनल (विंडो फ़ोकस): तीर XZ हिलाते हैं, अनलॉक हो तो Page Up/Down Y हिलाते हैं। शुरू चालू होने पर कंट्रोलर पर ग्रिप + स्टिक। डबल-ग्रिप टैप मूल स्थिति पर रीसेट।",
+    "lockX": "X लॉक",
+    "lockY": "Y लॉक",
+    "lockZ": "Z लॉक",
+    "offset": "ऑफ़सेट",
+    "offsetLimit": "ऑफ़सेट सीमा 5.0 m पहुँच गई। रीसेट तक और गति अनदेखी।",
+    "reset": "रीसेट",
+    "start": "शुरू",
+    "steamvrNotRunning": "SteamVR नहीं चल रहा",
+    "stop": "रोकें",
+    "title": "प्लेस्पेस ऑफ़सेट",
+    "vrcRunning": "VRChat चल रहा है (केवल प्रदर्शन — अटैच नहीं)"
   }
 }

@@ -218,7 +218,7 @@ export function OtpMailCard() {
 
       {!greyEnabled ? (
         <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] font-mono">
-          {t("grey.disabled", {
+          {t("grey.disabled.masterHint", {
             defaultValue: "Optional helpers are off. Enable the master switch above first.",
           })}
         </p>
