@@ -8,7 +8,7 @@
 
 一款用于扫描、预览、清理与迁移 VRChat 本地数据的 Windows 11 桌面工具
 
-[![Version](https://img.shields.io/badge/version-0.16.0-blue)](https://github.com/dwgx/VRCSM/releases/latest)
+[![Version](https://img.shields.io/badge/version-0.16.1-blue)](https://github.com/dwgx/VRCSM/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D6)](#)
 [![License](https://img.shields.io/badge/license-VSAL-red)](LICENSE)
 [![Stack](https://img.shields.io/badge/stack-C%2B%2B20%20%C2%B7%20WebView2%20%C2%B7%20React%2019-success)](#)
@@ -39,8 +39,8 @@ VRCSM 是一款原生 Windows 11 桌面工具，使用 C++ 主机 + WebView2 内
 
 直接到 [Releases](https://github.com/dwgx/VRCSM/releases/latest) 下载：
 
-- `VRCSM_v0.16.0_x64_Installer.msi` — 推荐，标准 WiX 安装器
-- `VRCSM_v0.16.0_x64.zip` — 解压即用，绿色版
+- `VRCSM_v0.16.1_x64_Installer.msi` — 推荐，标准 WiX 安装器
+- `VRCSM_v0.16.1_x64.zip` — 解压即用，绿色版
 
 ### 自行编译
 
@@ -93,8 +93,8 @@ VRCSM is a native Windows 11 desktop tool that combines a C++ host with an embed
 
 Grab the prebuilt artifact from [Releases](https://github.com/dwgx/VRCSM/releases/latest):
 
-- `VRCSM_v0.16.0_x64_Installer.msi` — recommended, WiX installer
-- `VRCSM_v0.16.0_x64.zip` — portable, run in place
+- `VRCSM_v0.16.1_x64_Installer.msi` — recommended, WiX installer
+- `VRCSM_v0.16.1_x64.zip` — portable, run in place
 
 ### Build From Source
 
@@ -142,8 +142,8 @@ VRCSM は C++ ホスト + WebView2 に React フロントエンドを埋め込�
 
 [Releases](https://github.com/dwgx/VRCSM/releases/latest) からビルド済みアーティファクトを入手してください。
 
-- `VRCSM_v0.16.0_x64_Installer.msi` — 推奨、WiX インストーラ
-- `VRCSM_v0.16.0_x64.zip` — 解凍してそのまま実行可能
+- `VRCSM_v0.16.1_x64_Installer.msi` — 推奨、WiX インストーラ
+- `VRCSM_v0.16.1_x64.zip` — 解凍してそのまま実行可能
 
 ### ソースからビルド
 

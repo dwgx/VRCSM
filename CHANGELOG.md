@@ -8,7 +8,9 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
-- **i18n:** companion-tools strings (last-instance, Slot mail, Playspace, Event Watch, Hot Worlds, activity ledger, backups, TTS, IMAP OTP, Invite Assist, grey TOS) filled in all 7 locales. Locale coverage now requires every locale to match `en` keys and `{{placeholders}}`.
+## [0.16.1] — 2026-08-20
+
+i18n follow-up that the 0.16.0 MSI did not ship. Companion pages and sidebar now have full 7-locale JSON (en / zh-CN / ja / ko / ru / th / hi). Sidebar `nav.hotWorlds` / `nav.eventWatch` no longer fall through to the raw key. Locale coverage asserts every locale matches `en` keys and `{{placeholders}}`.
 
 ## [0.16.0] — 2026-08-20
 

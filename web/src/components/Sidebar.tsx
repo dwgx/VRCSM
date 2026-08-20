@@ -41,6 +41,14 @@ interface NavItem {
   to: string;
   labelKey: string;
   icon: LucideIcon;
+  defaultLabel?: string;
+}
+
+function navLabel(
+  t: ReturnType<typeof useTranslation>["t"],
+  item: Pick<NavItem, "labelKey" | "defaultLabel">,
+) {
+  return t(item.labelKey, item.defaultLabel ? { defaultValue: item.defaultLabel } : undefined);
 }
 
 const coreItems: NavItem[] = [
@@ -55,7 +63,7 @@ const coreItems: NavItem[] = [
   { to: "/worlds", labelKey: "nav.worlds", icon: Globe2 },
   { to: "/history/worlds", labelKey: "nav.worldHistory", icon: Globe2 },
   { to: "/history/activity", labelKey: "nav.activityLedger", icon: ScrollText },
-  { to: "/history/hot-worlds", labelKey: "nav.hotWorlds", icon: TrendingUp },
+  { to: "/history/hot-worlds", labelKey: "nav.hotWorlds", icon: TrendingUp, defaultLabel: "Hot Worlds" },
   { to: "/screenshots", labelKey: "nav.screenshots", icon: Camera },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
   { to: "/migrate", labelKey: "nav.migrate", icon: MoveRight },
@@ -78,7 +86,7 @@ const labItems: NavItem[] = [
 const helperItems: NavItem[] = [
   { to: "/tools/invite-slots", labelKey: "nav.inviteSlots", icon: Users },
   { to: "/tools/playspace", labelKey: "nav.playspace", icon: Orbit },
-  { to: "/tools/event-watch", labelKey: "nav.eventWatch", icon: CalendarDays },
+  { to: "/tools/event-watch", labelKey: "nav.eventWatch", icon: CalendarDays, defaultLabel: "Event Watch" },
 ];
 
 function LanguageMenu() {
@@ -217,7 +225,7 @@ function CollapsibleNavGroup({
                 />
               ) : null}
               <item.icon className="size-[14px] shrink-0" aria-hidden />
-              <span className="flex-1 truncate">{t(item.labelKey)}</span>
+              <span className="flex-1 truncate">{navLabel(t, item)}</span>
             </>
           )}
         </NavLink>
@@ -302,7 +310,7 @@ export function Sidebar() {
                   />
                 ) : null}
                 <item.icon className="size-[14px] shrink-0" aria-hidden />
-                <span className="flex-1 truncate">{t(item.labelKey)}</span>
+                <span className="flex-1 truncate">{navLabel(t, item)}</span>
               </>
             )}
           </NavLink>
