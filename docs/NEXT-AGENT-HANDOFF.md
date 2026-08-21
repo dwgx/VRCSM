@@ -33,9 +33,10 @@ this file's historical sessions. If MEMORY / this file / HANDOFF disagree with
 
 ## Latest Session (2026-08-21) — READ FIRST
 
-**v0.16.3 cut.** Friends Locations + virtual lists + local-first follow-ups are
-in this release. Pack: `docs/SESSION-HANDOFF-2026-08-21.md`. Next named slice:
-CI1 or VER1. Grey helpers stay default OFF.
+**v0.16.3 released.** Friends Locations + virtual lists + local-first follow-ups.
+MSI SHA256 `8f3495c6c0ab3a4f0d6ec780699052a179e8cf23fb351a0ee0994bf7f6c02ced`.
+ZIP SHA256 `9d0e11d8d712ca6ed53bc48843a7bf617f8ffdbe1f497be21ee21e20fe6d4795`.
+Next named slice: CI1 or VER1. Grey helpers stay default OFF.
 
 **Released product is still v0.16.2** (`e22417c`). Working tree is **dirty**
 with an uncommitted usability + co-presence slice (config.json always-named,
