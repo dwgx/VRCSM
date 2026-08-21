@@ -105,7 +105,7 @@ function EmptyState({
   const title = t(`avatars.preview3d.${code}`, {
     defaultValue:
       code === "encrypted"
-        ? "Asset encrypted"
+        ? "Encrypted UnityFS — 3D stays empty"
         : code === "extractor_missing" || code === "converter_missing"
           ? "3D preview disabled"
           : "3D preview unavailable",

@@ -134,6 +134,24 @@ std::string readMagic(const std::filesystem::path& dataFile)
     }
     return magic;
 }
+
+BundleEntry bundleEntryFromStats(const std::filesystem::path& dir, const EntryStats& stats)
+{
+    BundleEntry be;
+    be.entry = dir.filename().string();
+    be.path = toUtf8(dir.wstring());
+    be.bytes = stats.bytes;
+    be.file_count = stats.fileCount;
+    be.bytes_human = formatBytesHuman(stats.bytes);
+    if (stats.latest) be.latest_mtime = isoTimestamp(*stats.latest);
+    if (stats.oldest) be.oldest_mtime = isoTimestamp(*stats.oldest);
+    if (stats.infoFile)
+    {
+        be.info_url = readFirstLine(*stats.infoFile);
+    }
+    be.bundle_format = "unknown";
+    return be;
+}
 } // namespace
 
 std::string BundleSniff::classifyMagic(const std::string& magic)
@@ -143,6 +161,28 @@ std::string BundleSniff::classifyMagic(const std::string& magic)
     if (magic.rfind("UnityRaw", 0) == 0) return "UnityRaw";
     if (magic.rfind("UnityArchive", 0) == 0) return "UnityArchive";
     return "unknown";
+}
+
+BundleEntry BundleSniff::summarizeTopLevelDir(const std::filesystem::path& dir)
+{
+    EntryStats stats;
+    aggregate(dir, stats);
+    return bundleEntryFromStats(dir, stats);
+}
+
+void BundleSniff::fillLargestBundleFormats(std::vector<BundleEntry>& entries, std::size_t limit)
+{
+    const std::size_t n = std::min(entries.size(), limit);
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        if (entries[i].path.empty()) continue;
+        EntryStats stats;
+        aggregate(utf8Path(entries[i].path), stats);
+        if (stats.dataFile)
+        {
+            entries[i].bundle_format = classifyMagic(readMagic(*stats.dataFile));
+        }
+    }
 }
 
 std::vector<BundleEntry> BundleSniff::scanCacheWindowsPlayer(const std::filesystem::path& cwpDir)
@@ -185,33 +225,11 @@ std::vector<BundleEntry> BundleSniff::scanCacheWindowsPlayer(const std::filesyst
             if (idx >= pending.size()) return;
             const auto& dir = pending[idx];
 
-            AggRow row;
-            row.be.entry = dir.filename().string();
-            row.be.path = toUtf8(dir.wstring());
-
             EntryStats stats;
             aggregate(dir, stats);
-            row.be.bytes = stats.bytes;
-            row.be.file_count = stats.fileCount;
-            row.be.bytes_human = formatBytesHuman(stats.bytes);
-            if (stats.latest) row.be.latest_mtime = isoTimestamp(*stats.latest);
-            if (stats.oldest) row.be.oldest_mtime = isoTimestamp(*stats.oldest);
 
-            // Read the first line of __info (the asset URL). This is one
-            // extra fopen per bundle but the file is tiny (usually ~200 B)
-            // so it adds negligible overhead to the parallel scan.
-            if (stats.infoFile)
-            {
-                row.be.info_url = readFirstLine(*stats.infoFile);
-            }
-
-            // Leave bundle_format unknown here. readMagic opens a file
-            // per bundle; with thousands of bundles that used to be
-            // thousands of pointless syscalls, and the frontend only
-            // surfaces `bundle_format` via the UnityFS badge on
-            // largest_entries. We back-fill the format for the top-N
-            // after sorting.
-            row.be.bundle_format = "unknown";
+            AggRow row;
+            row.be = bundleEntryFromStats(dir, stats);
             row.dataFile = stats.dataFile;
 
             rows[idx] = std::move(row);

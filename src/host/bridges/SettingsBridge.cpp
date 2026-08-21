@@ -36,7 +36,7 @@ nlohmann::json IpcBridge::HandleConfigRead(const nlohmann::json& params, const s
 
 nlohmann::json IpcBridge::HandleConfigWrite(const nlohmann::json& params, const std::optional<std::string>&)
 {
-    return vrcsm::core::VrcConfig::WriteJson(params);
+    return rethrowIfErrorEnvelope(vrcsm::core::VrcConfig::WriteJson(params));
 }
 
 nlohmann::json IpcBridge::HandleSteamVrRead(const nlohmann::json& params, const std::optional<std::string>& id)

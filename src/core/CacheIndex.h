@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BundleSniff.h"
+
 #include <atomic>
 #include <filesystem>
 #include <functional>
@@ -8,6 +10,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 namespace vrcsm::core
 {
@@ -24,6 +27,8 @@ namespace vrcsm::core
 //      so subsequent launches start with a warm index.
 //   3. Detecting stale entries by comparing the root directory's mtime.
 //   4. Providing O(1) avatar-id → bundle-path lookups via `Lookup()`.
+//   5. Remembering top-level hash dirs from the same walk so Report /
+//      Bundles can list them without a second Cache-WindowsPlayer scan.
 //
 // Thread safety: all public methods are safe to call from any thread.
 // The background scan holds a mutex only when writing to the map, so
@@ -32,6 +37,10 @@ namespace vrcsm::core
 class CacheIndex
 {
 public:
+    // Public so tests can scan a temp tree without the process singleton
+    // (and without writing the live `%LocalAppData%\VRCSM\cache-index.json`).
+    CacheIndex() = default;
+
     // Singleton — one index per process, shared across all IPC handlers.
     static CacheIndex& Instance();
 
@@ -41,10 +50,28 @@ public:
     // old scan is abandoned and a new one starts.
     void StartScan(const std::filesystem::path& cacheWindowsPlayerDir);
 
+    // Tests only: override persist destination. An empty path disables
+    // load/save so unit tests never touch the live cache-index.json.
+    void SetPersistPathForTest(const std::filesystem::path& path);
+
     // O(1) lookup. Returns the bundle directory (the one containing
     // `__data`) for the given `avtr_*` id, or nullopt if not indexed
     // yet / not found.
     std::optional<std::filesystem::path> Lookup(const std::string& avatarId) const;
+
+    // Top-level hash-dir rows collected during the same scan as Lookup,
+    // sorted by bytes descending. Empty until a scan has produced rows
+    // (or persist loaded a `bundles` array). Does not walk the disk.
+    std::vector<BundleEntry> ListBundles() const;
+
+    // When ready for `cwpDir` and the bundle list is non-empty, returns
+    // that list. Otherwise nullopt — callers should fall back to
+    // BundleSniff::scanCacheWindowsPlayer (first report before the
+    // index finishes, or a different cache root).
+    std::optional<std::vector<BundleEntry>> TryListBundlesFor(
+        const std::filesystem::path& cwpDir) const;
+
+    std::filesystem::path CacheDir() const;
 
     // True once the background scan has completed at least once. Useful
     // for the frontend to show "indexing..." status.
@@ -52,7 +79,7 @@ public:
 
     bool IsScanning() const { return m_scanning.load(); }
 
-    // Number of entries indexed so far (grows during scan).
+    // Number of avtr_* entries indexed so far (grows during scan).
     std::size_t EntryCount() const;
 
     ~CacheIndex();
@@ -61,16 +88,18 @@ public:
     CacheIndex& operator=(const CacheIndex&) = delete;
 
 private:
-    CacheIndex() = default;
-
     void ScanWorker(std::filesystem::path cwpDir);
     void LoadPersisted();
     void SavePersisted() const;
     static std::filesystem::path PersistPath();
+    std::filesystem::path EffectivePersistPathUnlocked() const;
 
     mutable std::mutex m_mutex;
     std::unordered_map<std::string, std::filesystem::path> m_index;
+    std::vector<BundleEntry> m_bundles;
     std::filesystem::path m_cwpDir;
+    std::filesystem::path m_persistOverride;
+    bool m_persistOverrideSet{false};
     std::atomic<bool> m_ready{false};
     std::atomic<bool> m_scanning{false};
     std::atomic<bool> m_stopping{false};

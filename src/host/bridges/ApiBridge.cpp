@@ -414,6 +414,61 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
     return nlohmann::json{{"friends", std::move(out)}};
 }
 
+namespace
+{
+
+void PersistSocialMutuals(
+    const std::string& userId,
+    const nlohmann::json& friends,
+    bool hidden,
+    std::optional<std::string> lastErrorCode)
+{
+    if (userId.empty())
+    {
+        return;
+    }
+
+    vrcsm::core::Database::FriendMutualUpsert row;
+    row.user_id = userId;
+    row.hidden = hidden;
+    row.last_error_code = std::move(lastErrorCode);
+    row.fetched_at = vrcsm::core::nowIso();
+    if (!hidden && friends.is_array())
+    {
+        for (const auto& item : friends)
+        {
+            vrcsm::core::Database::FriendMutualEdge edge;
+            if (item.is_string())
+            {
+                edge.mutual_id = item.get<std::string>();
+            }
+            else if (item.is_object())
+            {
+                if (item.contains("id") && item["id"].is_string())
+                {
+                    edge.mutual_id = item["id"].get<std::string>();
+                }
+                if (item.contains("displayName") && item["displayName"].is_string())
+                {
+                    edge.display_name = item["displayName"].get<std::string>();
+                }
+            }
+            if (!edge.mutual_id.empty())
+            {
+                row.friends.push_back(std::move(edge));
+            }
+        }
+    }
+
+    const auto persisted = vrcsm::core::Database::Instance().UpsertFriendMutuals(row);
+    if (!vrcsm::core::isOk(persisted))
+    {
+        spdlog::warn("social.mutual persist failed: {}", vrcsm::core::error(persisted).message);
+    }
+}
+
+} // namespace
+
 nlohmann::json IpcBridge::HandleSocialMutualFetchOne(const nlohmann::json& params, const std::optional<std::string>&)
 {
     const auto userId = JsonStringField(params, "userId").value_or("");
@@ -425,6 +480,7 @@ nlohmann::json IpcBridge::HandleSocialMutualFetchOne(const nlohmann::json& param
         const auto& err = vrcsm::core::error(result);
         if (err.code == "hidden")
         {
+            PersistSocialMutuals(userId, nlohmann::json::array(), true, std::string{"hidden"});
             return nlohmann::json{
                 {"userId", userId},
                 {"friends", nlohmann::json::array()},
@@ -447,11 +503,23 @@ nlohmann::json IpcBridge::HandleSocialMutualFetchOne(const nlohmann::json& param
     {
         friends = payload["friends"];
     }
+    PersistSocialMutuals(userId, friends, false, std::nullopt);
     return nlohmann::json{
         {"userId", userId},
         {"friends", std::move(friends)},
         {"hidden", false},
     };
+}
+
+nlohmann::json IpcBridge::HandleSocialMutualReadCache(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId").value_or("");
+    auto result = vrcsm::core::Database::Instance().LoadFriendMutuals(userId);
+    if (!vrcsm::core::isOk(result))
+    {
+        throw IpcException{vrcsm::core::error(result)};
+    }
+    return vrcsm::core::value(result);
 }
 
 nlohmann::json IpcBridge::HandleGroupsList(const nlohmann::json&, const std::optional<std::string>&)

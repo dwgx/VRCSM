@@ -17,6 +17,9 @@
 
 #include "core/AvatarPreview.h"
 #include "core/AvatarIdHarvest.h"
+#include "core/BundleSniff.h"
+#include "core/CacheIndex.h"
+#include "core/CacheScanner.h"
 #include "core/Common.h"
 #include "core/Database.h"
 #include "core/FriendAnalytics.h"
@@ -3499,4 +3502,358 @@ TEST(CommonTests, PathProbeAlwaysNamesConfigJsonWhenBaseDirKnown)
         EXPECT_EQ(probe.configJson->filename(), L"config.json");
         EXPECT_FALSE(probe.cacheWindowsPlayerDir().empty());
     }
+}
+
+TEST(CommonTests, SearchDocsFtsTriggerKeepsFavoriteInSync)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-search-docs-fts");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+
+    auto& db = vrcsm::core::Database::Instance();
+    ASSERT_TRUE(vrcsm::core::isOk(db.AddFavorite({
+        "avatar",
+        "avtr_fts-trigger-0000-0000-000000000001",
+        "Library",
+        "ZebraFtsUnique",
+        std::nullopt,
+        "2026-08-21T00:00:00Z",
+        0,
+    })));
+    db.Close();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        EXPECT_EQ(QueryInt64(rawDb, "PRAGMA user_version;"), 21);
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'ZebraFtsUnique';"), 1);
+    }
+
+    {
+        auto opened = db.Open(dbPath);
+        ASSERT_TRUE(vrcsm::core::isOk(opened)) << vrcsm::core::error(opened).message;
+    }
+    ASSERT_TRUE(vrcsm::core::isOk(db.RemoveFavorite(
+        "avatar",
+        "avtr_fts-trigger-0000-0000-000000000001",
+        "Library")));
+    db.Close();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'ZebraFtsUnique';"), 0);
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, SearchDocsRebuildsStaleTableOnOpen)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-search-docs-rebuild");
+    const auto dbPath = dir / L"vrcsm.db";
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        ExecSql(rawDb,
+            "CREATE TABLE local_favorites ("
+            "  type TEXT NOT NULL, target_id TEXT NOT NULL, list_name TEXT NOT NULL,"
+            "  display_name TEXT, thumbnail_url TEXT, added_at TEXT NOT NULL,"
+            "  sort_order INTEGER DEFAULT 0, source TEXT NOT NULL DEFAULT 'local',"
+            "  PRIMARY KEY (type, target_id, list_name));");
+        ExecSql(rawDb,
+            "CREATE TABLE world_visits ("
+            "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "  world_id TEXT NOT NULL, instance_id TEXT NOT NULL,"
+            "  access_type TEXT, owner_id TEXT, region TEXT,"
+            "  joined_at TEXT NOT NULL, left_at TEXT);");
+        ExecSql(rawDb,
+            "INSERT INTO local_favorites (type, target_id, list_name, display_name, added_at) VALUES "
+            "('avatar', 'avtr_stale-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Library',"
+            "  'StaleAlphaToken', '2026-01-01T00:00:00Z'),"
+            "('avatar', 'avtr_stale-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Library',"
+            "  'StaleBravoToken', '2026-01-02T00:00:00Z');");
+        ExecSql(rawDb, "CREATE VIRTUAL TABLE search_docs USING fts5(kind, doc_id, title, body);");
+        ExecSql(rawDb,
+            "INSERT INTO search_docs(kind, doc_id, title, body) VALUES "
+            "('favorite', 'avtr_stale-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'StaleAlphaToken', 'Library');");
+        ExecSql(rawDb, "PRAGMA user_version = 20;");
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'StaleBravoToken';"), 0);
+    }
+
+    OpenTempDatabase(dbPath);
+    vrcsm::core::Database::Instance().Close();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        EXPECT_EQ(QueryInt64(rawDb, "PRAGMA user_version;"), 21);
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'StaleBravoToken';"), 1);
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'StaleAlphaToken';"), 1);
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, FriendMutualCachePersistsSuccessAndHidden)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-friend-mutual-cache");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+
+    const auto empty = db.LoadFriendMutuals("usr_mutual-subject");
+    ASSERT_TRUE(vrcsm::core::isOk(empty)) << vrcsm::core::error(empty).message;
+    EXPECT_FALSE(vrcsm::core::value(empty).at("cached").get<bool>());
+    EXPECT_TRUE(vrcsm::core::value(empty).at("friends").empty());
+
+    ASSERT_TRUE(vrcsm::core::isOk(db.UpsertFriendMutuals({
+        "usr_mutual-subject",
+        {
+            {"usr_mutual-one", std::optional<std::string>{"Mutual One"}},
+            {"usr_mutual-two", std::optional<std::string>{"Mutual Two"}},
+        },
+        false,
+        std::nullopt,
+        "2026-08-21T12:00:00Z",
+    })));
+
+    const auto loaded = db.LoadFriendMutuals("usr_mutual-subject");
+    ASSERT_TRUE(vrcsm::core::isOk(loaded)) << vrcsm::core::error(loaded).message;
+    const auto& success = vrcsm::core::value(loaded);
+    EXPECT_TRUE(success.at("cached").get<bool>());
+    EXPECT_FALSE(success.at("hidden").get<bool>());
+    EXPECT_EQ(success.at("mutualCount").get<int>(), 2);
+    EXPECT_EQ(success.at("fetchedAt").get<std::string>(), "2026-08-21T12:00:00Z");
+    ASSERT_EQ(success.at("friends").size(), 2u);
+
+    ASSERT_TRUE(vrcsm::core::isOk(db.UpsertFriendMutuals({
+        "usr_mutual-subject",
+        {},
+        true,
+        std::optional<std::string>{"hidden"},
+        "2026-08-21T13:00:00Z",
+    })));
+
+    const auto hidden = db.LoadFriendMutuals("usr_mutual-subject");
+    ASSERT_TRUE(vrcsm::core::isOk(hidden)) << vrcsm::core::error(hidden).message;
+    const auto& hiddenPayload = vrcsm::core::value(hidden);
+    EXPECT_TRUE(hiddenPayload.at("cached").get<bool>());
+    EXPECT_TRUE(hiddenPayload.at("hidden").get<bool>());
+    EXPECT_EQ(hiddenPayload.at("mutualCount").get<int>(), 0);
+    EXPECT_TRUE(hiddenPayload.at("friends").empty());
+    EXPECT_EQ(hiddenPayload.at("lastErrorCode").get<std::string>(), "hidden");
+
+    db.Close();
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+// ── CI1 CacheIndex is the Bundles list owner ─────────────────────────────
+// Fake Cache-WindowsPlayer trees live under %TEMP%. Persist is redirected
+// to a temp json so tests never write %LocalAppData%\VRCSM\cache-index.json.
+
+namespace
+{
+
+constexpr const char kCacheIndexAvtrA[] = "avtr_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+constexpr const char kCacheIndexAvtrB[] = "avtr_11111111-2222-3333-4444-555555555555";
+
+struct FakeCacheWindowsPlayer
+{
+    std::filesystem::path baseDir;
+    std::filesystem::path cwpDir;
+    std::filesystem::path persistPath;
+    std::filesystem::path topA;
+    std::filesystem::path topB;
+    std::filesystem::path versionA;
+    std::filesystem::path versionB;
+};
+
+FakeCacheWindowsPlayer MakeFakeCacheWindowsPlayer(std::wstring_view name)
+{
+    FakeCacheWindowsPlayer fake;
+    fake.baseDir = MakeTempTestDir(name);
+    fake.cwpDir = fake.baseDir / L"Cache-WindowsPlayer";
+    fake.persistPath = fake.baseDir / L"cache-index.json";
+    std::filesystem::create_directories(fake.cwpDir);
+    WriteBytes(fake.cwpDir / L"__info", "keep");
+    WriteBytes(fake.cwpDir / L"vrc-version", "keep");
+
+    fake.topA = fake.cwpDir / L"aaa111aa";
+    fake.versionA = fake.topA / L"bbbb222b";
+    std::filesystem::create_directories(fake.versionA);
+    WriteBytes(
+        fake.versionA / L"__info",
+        std::string("https://api.vrchat.cloud/api/1/file/file_aaa\n") + kCacheIndexAvtrA + "\n");
+    WriteBytes(fake.versionA / L"__data", std::string(120, 'A'));
+
+    fake.topB = fake.cwpDir / L"ccc333cc";
+    fake.versionB = fake.topB / L"dddd444d";
+    std::filesystem::create_directories(fake.versionB);
+    WriteBytes(
+        fake.versionB / L"__info",
+        std::string("https://api.vrchat.cloud/api/1/file/file_ccc\n") + kCacheIndexAvtrB + "\n");
+    WriteBytes(fake.versionB / L"__data", std::string(40, 'B'));
+    return fake;
+}
+
+bool WaitCacheIndexReady(const vrcsm::core::CacheIndex& index, std::chrono::milliseconds timeout)
+{
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (!index.IsReady())
+    {
+        if (std::chrono::steady_clock::now() >= deadline)
+        {
+            return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    return true;
+}
+
+} // namespace
+
+TEST(CacheIndex, LookupFindsAvtrInTempTree)
+{
+    const auto fake = MakeFakeCacheWindowsPlayer(L"vrcsm-cidx-lookup");
+    vrcsm::core::CacheIndex index;
+    index.SetPersistPathForTest(fake.persistPath);
+    index.StartScan(fake.cwpDir);
+    ASSERT_TRUE(WaitCacheIndexReady(index, std::chrono::seconds(10)));
+
+    const auto hitA = index.Lookup(kCacheIndexAvtrA);
+    const auto hitB = index.Lookup(kCacheIndexAvtrB);
+    ASSERT_TRUE(hitA.has_value());
+    ASSERT_TRUE(hitB.has_value());
+    EXPECT_EQ(hitA->lexically_normal(), fake.versionA.lexically_normal());
+    EXPECT_EQ(hitB->lexically_normal(), fake.versionB.lexically_normal());
+    EXPECT_FALSE(index.Lookup("avtr_00000000-0000-0000-0000-000000000000").has_value());
+    EXPECT_EQ(index.EntryCount(), 2u);
+
+    std::error_code rmEc;
+    std::filesystem::remove_all(fake.baseDir, rmEc);
+}
+
+TEST(CacheIndex, ListBundlesTwoHashDirs)
+{
+    const auto fake = MakeFakeCacheWindowsPlayer(L"vrcsm-cidx-bundles");
+    vrcsm::core::CacheIndex index;
+    index.SetPersistPathForTest(fake.persistPath);
+    index.StartScan(fake.cwpDir);
+    ASSERT_TRUE(WaitCacheIndexReady(index, std::chrono::seconds(10)));
+
+    const auto listed = index.ListBundles();
+    ASSERT_EQ(listed.size(), 2u);
+    EXPECT_EQ(listed[0].entry, "aaa111aa");
+    EXPECT_EQ(listed[1].entry, "ccc333cc");
+    EXPECT_GT(listed[0].bytes, listed[1].bytes);
+    EXPECT_EQ(listed[0].file_count, 2u);
+    EXPECT_EQ(listed[1].file_count, 2u);
+    EXPECT_NE(listed[0].info_url.find("file_aaa"), std::string::npos);
+    EXPECT_NE(listed[1].info_url.find("file_ccc"), std::string::npos);
+
+    const auto viaTry = index.TryListBundlesFor(fake.cwpDir);
+    ASSERT_TRUE(viaTry.has_value());
+    EXPECT_EQ(viaTry->size(), 2u);
+    EXPECT_FALSE(index.TryListBundlesFor(fake.baseDir / L"other-cwp").has_value());
+
+    std::error_code rmEc;
+    std::filesystem::remove_all(fake.baseDir, rmEc);
+}
+
+TEST(CacheIndex, OldPersistWithoutBundlesStillLoadsAvtr)
+{
+    const auto fake = MakeFakeCacheWindowsPlayer(L"vrcsm-cidx-persist");
+    nlohmann::json doc;
+    doc["cwpDir"] = vrcsm::core::toUtf8(fake.cwpDir.wstring());
+    nlohmann::json entries = nlohmann::json::object();
+    entries[kCacheIndexAvtrA] = vrcsm::core::toUtf8(fake.versionA.wstring());
+    doc["entries"] = std::move(entries);
+    WriteBytes(fake.persistPath, doc.dump());
+
+    vrcsm::core::CacheIndex index;
+    index.SetPersistPathForTest(fake.persistPath);
+    index.StartScan(fake.cwpDir);
+
+    const auto warm = index.Lookup(kCacheIndexAvtrA);
+    ASSERT_TRUE(warm.has_value()) << "old persist without bundles must still load avtr entries";
+    EXPECT_EQ(warm->lexically_normal(), fake.versionA.lexically_normal());
+
+    ASSERT_TRUE(WaitCacheIndexReady(index, std::chrono::seconds(10)));
+    EXPECT_TRUE(index.Lookup(kCacheIndexAvtrB).has_value());
+    EXPECT_EQ(index.ListBundles().size(), 2u);
+
+    std::error_code rmEc;
+    std::filesystem::remove_all(fake.baseDir, rmEc);
+}
+
+TEST(CacheIndex, TryListBundlesForReturnsNullWhenNotReady)
+{
+    vrcsm::core::CacheIndex index;
+    index.SetPersistPathForTest({});
+    EXPECT_FALSE(index.IsReady());
+    EXPECT_FALSE(index.TryListBundlesFor(std::filesystem::temp_directory_path()).has_value());
+}
+
+TEST(CacheIndex, ReportFallsBackToSniffWhenIndexNotReady)
+{
+    const auto fake = MakeFakeCacheWindowsPlayer(L"vrcsm-cidx-report-fallback");
+    const auto sniffed = vrcsm::core::BundleSniff::scanCacheWindowsPlayer(fake.cwpDir);
+    ASSERT_EQ(sniffed.size(), 2u);
+
+    vrcsm::core::LogReport logs;
+    const auto report = vrcsm::core::CacheScanner::buildReport(fake.baseDir, logs, fake.cwpDir);
+    ASSERT_TRUE(report.contains("cache_windows_player"));
+    EXPECT_EQ(report["cache_windows_player"]["entry_count"], 2);
+    ASSERT_TRUE(report["cache_windows_player"]["entries"].is_array());
+    EXPECT_EQ(report["cache_windows_player"]["entries"].size(), 2u);
+
+    std::error_code rmEc;
+    std::filesystem::remove_all(fake.baseDir, rmEc);
+}
+
+TEST(CacheIndex, ReportUsesIndexWhenReady)
+{
+    const auto fake = MakeFakeCacheWindowsPlayer(L"vrcsm-cidx-report-index");
+    auto& index = vrcsm::core::CacheIndex::Instance();
+    index.SetPersistPathForTest(fake.persistPath);
+    index.StartScan(fake.cwpDir);
+    ASSERT_TRUE(WaitCacheIndexReady(index, std::chrono::seconds(10)));
+    ASSERT_EQ(index.ListBundles().size(), 2u);
+
+    const auto topC = fake.cwpDir / L"eee555ee";
+    std::filesystem::create_directories(topC / L"ffff666f");
+    WriteBytes(topC / L"ffff666f" / L"__info", "https://api.vrchat.cloud/api/1/file/file_eee\n");
+    WriteBytes(topC / L"ffff666f" / L"__data", std::string(10, 'C'));
+    EXPECT_EQ(vrcsm::core::BundleSniff::scanCacheWindowsPlayer(fake.cwpDir).size(), 3u);
+
+    vrcsm::core::LogReport logs;
+    const auto report = vrcsm::core::CacheScanner::buildReport(fake.baseDir, logs, fake.cwpDir);
+    EXPECT_EQ(report["cache_windows_player"]["entry_count"], 2);
+    EXPECT_EQ(report["cache_windows_player"]["entries"].size(), 2u);
+    EXPECT_TRUE(index.Lookup(kCacheIndexAvtrA).has_value());
+
+    std::error_code rmEc;
+    std::filesystem::remove_all(fake.baseDir, rmEc);
 }

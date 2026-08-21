@@ -276,7 +276,7 @@ GreyPrefs DefaultGreyPrefs()
 {
     GreyPrefs prefs;
     prefs.schema = 1;
-    prefs.greyEnabled = false;
+    prefs.greyEnabled = true;
     prefs.inviteSlots = {
         {"lastType", "invite"},
         {"confirmBeforeSend", true},

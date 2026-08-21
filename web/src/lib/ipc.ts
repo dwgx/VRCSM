@@ -50,7 +50,7 @@ function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-let mockGreyPrefs: Record<string, unknown> = { schema: 1, greyEnabled: false };
+let mockGreyPrefs: Record<string, unknown> = { schema: 1, greyEnabled: true };
 
 function smokeGreyForcedOn(): boolean {
   return typeof window !== "undefined" && window.__SMOKE_GREY__ === true;
@@ -562,6 +562,13 @@ registerResultValidator(
   (r) => isObject(r) && Array.isArray((r as { friends?: unknown }).friends),
 );
 registerResultValidator(
+  "social.mutual.readCache",
+  (r) =>
+    isObject(r) &&
+    Array.isArray((r as { friends?: unknown }).friends) &&
+    typeof (r as { cached?: unknown }).cached === "boolean",
+);
+registerResultValidator(
   "scan",
   (r) => isObject(r) && typeof r.base_dir === "string" && Array.isArray(r.category_summaries),
 );
@@ -927,21 +934,43 @@ class IpcClient {
         return { deleted: 2 } satisfies DeleteResult as unknown as TResult;
       case "process.vrcRunning":
         return { running: false } satisfies ProcessStatus as unknown as TResult;
-      case "hw.recommend":
+      case "path.probe":
+        // Plugin-reachable via ipc:vrc:cache. SPA uses scan() instead.
         return {
-          report: {
-            cpu_name: "AMD Ryzen 9 9950X3D (Mock)",
-            cpu_cores: 16,
-            cpu_threads: 32,
-            cpu_clock_mhz: 5700,
-            gpu_name: "NVIDIA GeForce RTX 5090 (Mock)",
-            gpu_vram_bytes: 32 * 1024 ** 3,
-            gpu_driver: "mock-driver",
-            ram_bytes: 64 * 1024 ** 3,
-            hmd_model: "Quest 3",
-            hmd_manufacturer: "Meta",
-            os_build: "10.0.26200",
-          },
+          baseDir: "C:/Users/dev/AppData/LocalLow/VRChat/VRChat",
+          baseDirExists: true,
+          vrchatExe: "C:/Program Files (x86)/Steam/steamapps/common/VRChat/VRChat.exe",
+          configJson: "C:/Users/dev/AppData/LocalLow/VRChat/VRChat/config.json",
+          melonLoaderCfg: null,
+          steamVrSettings: null,
+          cacheRoot: "C:/Users/dev/AppData/LocalLow/VRChat/VRChat",
+          cacheWindowsPlayer: "C:/Users/dev/AppData/LocalLow/VRChat/VRChat/Cache-WindowsPlayer",
+        } as unknown as TResult;
+      case "hw.detect":
+      case "hw.recommend": {
+        const report = {
+          cpu_name: "AMD Ryzen 9 9950X3D (Mock)",
+          cpu_cores: 16,
+          cpu_threads: 32,
+          cpu_clock_mhz: 5700,
+          gpu_name: "NVIDIA GeForce RTX 5090 (Mock)",
+          gpu_vram_bytes: 32 * 1024 ** 3,
+          gpu_driver: "mock-driver",
+          gpu_vendor: "NVIDIA",
+          gpu_pnp_id: "PCI\\VEN_10DE",
+          gpu_source: "mock",
+          gpu_virtual: false,
+          ram_bytes: 64 * 1024 ** 3,
+          hmd_model: "Quest 3",
+          hmd_manufacturer: "Meta",
+          os_build: "10.0.26200",
+        };
+        // hw.detect returns the HwReport object; hw.recommend wraps it.
+        if (method === "hw.detect") {
+          return report as unknown as TResult;
+        }
+        return {
+          report,
           recommendation: {
             tier: "ultra",
             score: 205,
@@ -959,6 +988,7 @@ class IpcClient {
             rationale: "Mock hardware recommendation.",
           },
         } as unknown as TResult;
+      }
       case "hw.telemetry":
         return {
           generated_at: nowIso(),
@@ -1084,6 +1114,28 @@ class IpcClient {
           ],
           roots,
           truncated: false,
+        } as unknown as TResult;
+      }
+      case "fs.writePlan": {
+        // Plugin-only (auto-uploader). Never writes in mock/browser-dev.
+        const p = (params ?? {}) as { rootPath?: string; content?: string };
+        const rootPath = p.rootPath ?? "C:\\MockRoot";
+        const content = p.content ?? "{}";
+        return {
+          ok: true,
+          path: `${rootPath.replace(/[\\/]+$/, "")}\\.vrcsm-upload-plan.json`,
+          bytes: content.length,
+        } as unknown as TResult;
+      }
+      case "fs.appDataDir": {
+        const p = (params ?? {}) as { subdir?: string; create?: boolean };
+        const root = "C:/Users/dev/AppData/Roaming/VRCSM";
+        const sub = (p.subdir ?? "").replace(/^[/\\]+/, "");
+        return {
+          ok: true,
+          root,
+          path: sub ? `${root}/${sub}` : root,
+          created: p.create !== false && !!sub,
         } as unknown as TResult;
       }
       case "shell.openUrl":
@@ -1349,6 +1401,13 @@ class IpcClient {
         return buildMockFriends() as unknown as TResult;
       case "social.mutual.fetchOne":
         return { userId: "", friends: [], hidden: false } as unknown as TResult;
+      case "social.mutual.readCache":
+        return {
+          userId: "",
+          friends: [],
+          hidden: false,
+          cached: false,
+        } as unknown as TResult;
       case "settings.readAll":
         return buildMockSettingsReport() as unknown as TResult;
       case "settings.writeOne":
@@ -1580,6 +1639,23 @@ class IpcClient {
           plugin.id === p.id ? { ...plugin, enabled: false, virtualHost: "" } : plugin,
         );
         return { ok: true, id: p.id ?? "" } as unknown as TResult;
+      }
+      case "plugin.rpc": {
+        // Plugins post this from their iframe; the SPA wrapper is unused.
+        // Dispatch the inner method through the same mock switch so browser-dev
+        // / smoke never throw mock_not_implemented on a granted plugin call.
+        const p = (params ?? {}) as { method?: string; params?: unknown };
+        const inner = (p.method ?? "").trim();
+        if (!inner) {
+          throw new IpcError("invalid_params", "plugin.rpc: missing 'method'");
+        }
+        if (inner.startsWith("plugin.")) {
+          throw new IpcError(
+            "forbidden_method",
+            `plugin.rpc: '${inner}' is not reachable`,
+          );
+        }
+        return this.mockCall(inner, p.params);
       }
       case "favorites.lists":
         return { lists: buildMockFavoriteLists() } as unknown as TResult;
@@ -2311,6 +2387,7 @@ class IpcClient {
       case "message.send":
       case "groups.setRepresented":
       case "vector.upsertEmbedding":
+      case "vector.removeEmbedding":
       case "vr.audio.switch":
       case "rules.delete":
       case "rules.setEnabled":
@@ -3221,6 +3298,21 @@ class IpcClient {
         hidden: boolean;
       }
     >("social.mutual.fetchOne", { userId, n, offset });
+  }
+
+  async socialMutualReadCache(userId: string) {
+    return this.call<
+      { userId: string },
+      {
+        userId: string;
+        friends: Array<{ id?: string; displayName?: string | null }>;
+        hidden: boolean;
+        cached: boolean;
+        fetchedAt?: string | null;
+        mutualCount?: number;
+        lastErrorCode?: string | null;
+      }
+    >("social.mutual.readCache", { userId });
   }
 
   async ttsStatus() {

@@ -8,6 +8,30 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
+## [0.16.4] — 2026-08-21
+
+Follow-ups after v0.16.3. LICENSE remains VSAL. Encrypted UnityFS 3D stays empty
+(no decrypt keys, no GPL/VNCOL paste). Tests still use temp dirs; confirmed
+product Save/migrate/delete already write live VRChat data behind ProcessGuard.
+
+- **GH-CI:** Windows Release uses Node 22 + pnpm 11. Ubuntu vitest
+  `--no-file-parallelism` and 30s timeout. `onnxruntime-node` postinstall
+  skipped (SPA uses onnxruntime-web WASM).
+- **CI1:** CacheIndex lists top-level cache dirs for Bundles/Report when ready.
+  Boot scan uses `PathProbe::cacheWindowsPlayerDir()`. Avtr Lookup unchanged.
+- **SR1-pop:** Schema v21 rebuilds FTS `search_docs` and adds triggers. LIKE
+  remains the fallback.
+- **MU1-db:** Persist fetchOne into `friend_mutual_*`. Local `readCache`.
+- **Mutuals crawl:** Friends toolbar button walks the current friends list
+  through official `fetchOne` with delay and cancel. Not a startup job.
+- **P17-B11:** Plugin IPC mocks only; host handlers kept.
+- **Grey master default ON** so helper pages are visible. Invite Assist,
+  Event Watch auto-join, and IMAP stay off until their own confirm. G5/G6
+  clamps unchanged. Saved `greyEnabled: false` stays false.
+- **config.write** rethrows `{error}` so a blocked Save (VRChat running)
+  is not toasted as success.
+- **3D empty-state** copy for encrypted UnityFS is explicit. No keys.
+
 ## [0.16.3] — 2026-08-21
 
 Friends Locations, virtual lists, and local-first follow-ups after v0.16.2.

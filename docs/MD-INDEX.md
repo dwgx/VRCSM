@@ -4,7 +4,7 @@ Last updated: 2026-08-21
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
-> Note: **v0.16.3 cut 2026-08-21** — Friends Locations, virtual lists, config.json path, calendar, co-presence, FTS/kana, opt-in mutuals, webhook, log atoms. Grey helpers default OFF. Version files in sync at **0.16.3**. See `MEMORY.md` for the cut's ctest/Playwright numbers.
+> Note: **v0.16.3 RELEASED 2026-08-21** (HEAD `33c8e85`, tag `v0.16.3`). Friends Locations, virtual lists, config.json path, calendar, co-presence, FTS/kana, opt-in mutuals fetchOne, webhook, log atoms. Grey helpers default OFF. Version files in sync at **0.16.3**. See `MEMORY.md` / SESSION pack for ctest 239 + Playwright 62 and remaining GH-CI/VER1/CI1. Git wins if older banners disagree.
 
 ## Required Startup Order
 
@@ -34,8 +34,7 @@ This file maps the repo's Markdown documents so the next agent can start from th
   - User-facing feature list, installation, build-from-source, license notes.
 
 - `CHANGELOG.md`
-  - Release history.
-  - The `[Unreleased]` section currently records the three release-blocking regression fixes (shutdown async-IPC drain, unbounded `migrate.execute` timeout, MSI ONNX wasm inclusion) and still carries a "development is paused after v0.14.6" line that is now STALE — a major feature area (now-playing music + lyrics + tray) has since shipped on `main`.
+  - Release history. Current cut is **`[0.16.3]`**. `[Unreleased]` is empty until the next named product commit. Older "paused after v0.14.6" wording in historical notes is STALE.
 
 - `docs/release-v0.14.6.md`
   - Shipped release summary for the paused `v0.14.6` checkpoint.
@@ -46,6 +45,7 @@ This file maps the repo's Markdown documents so the next agent can start from th
 - `docs/GLOBAL-SEARCH-SPEC.md`
   - Implementation-backed spec for Global Quick Search + Timeline evidence model.
   - Defines shipped local-only `search.global` v1, the evidence-first result schema, local-first ranking, disabled remote API policy for v1, and 1-month / 3-month follow-up rollout.
+  - 2026-08-21: 0.16.3 added kana fold + optional FTS5 `search_docs` (one-shot seed). Remaining: SR1-pop triggers.
 
 - `docs/VRCSM-PLAN.md`
   - Older but still useful product roadmap: VRCX comparison, auth layer plan, social/avatar/world/history feature mapping, and explicit non-goals.
@@ -70,12 +70,12 @@ This file maps the repo's Markdown documents so the next agent can start from th
 - `docs/FRIENDS-RELATIONSHIP-REDESIGN-RESEARCH.md`
   - 2026-06-23 research baseline for rebuilding Friends into a VRCX-class social/relationship workspace.
   - Maps VRCX Friends Locations, Friend List, mutual graph, relationship feed, local stats, public VRChat API boundaries, proposed Social/Relationship modules, data model, UI target, and phased implementation order.
-  - 2026-08-21 banner: ego-graph now has `world_visits` self-seed (uncommitted); mutuals still unwrapped; see SESSION-HANDOFF.
+  - 2026-08-21: ego-graph seeds self from `world_visits` (**shipped 0.16.3**). Mutuals are fetchOne in the inspector, no persist tables, no crawl.
 
 - `docs/FRIENDS-PAGE-OPTIMIZATION-PLAN.md`
   - Focused execution plan for improving `web/src/pages/Friends.tsx` without turning the page into a large mixed-responsibility component.
   - Defines the target Friends workspace layout, state/data-flow cleanup, virtualized list strategy, smart groups, inspector extraction, VRCX-inspired view modes, phased implementation order, and acceptance tests.
-  - 2026-08-21: FL1 landed uncommitted (instance-first default + virtualizer). This file remains the design; do not rebuild FL1.
+  - 2026-08-21: FL1 **shipped in v0.16.3** (instance-first default + virtualizer). This file remains the design; do not rebuild FL1.
 
 - `docs/OSC-STUDIO-PLAN.md`
   - 2026-06-23 execution plan for turning the raw OSC sender/listener into a modular OSC Studio. **Largely shipped:** draggable card composition, template variables, hardware/system telemetry cards, and Chatbox safety rules are implemented. Since extended by the now-playing music module (see `docs/NOW-PLAYING-OSC-PLAN.md`).
@@ -115,7 +115,7 @@ This file maps the repo's Markdown documents so the next agent can start from th
 ## Current Handoff
 
 - `docs/SESSION-HANDOFF-2026-08-21.md`
-  - **Start here after 0.16.2.** Dirty usability + **FL1 landed uncommitted**. Ranked remaining: VL1 → SR1 → MU1 → P15/P2/P5.
+  - **Start here after 0.16.3.** Six leftovers landed uncommitted. Next named action: commit or 0.16.4.
 - `docs/NEXT-AGENT-HANDOFF.md`
   - Pointer at the session pack, then historical sessions, last published release verification, sensitive decisions.
   - Read before changing avatar thumbnails, global search, VRLink repair, plugin permissions, cache deletion, downloads, or release packaging.

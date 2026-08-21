@@ -274,6 +274,26 @@ public:
     Result<std::monostate> SetFriendNote(const std::string& user_id,
                                          const std::string& note,
                                          const std::string& updated_at);
+
+    // Local cache of one user's mutual-friends fetch (no network).
+    // `hidden != 0` is HTTP 403 / opted-out, not an empty friend list.
+    struct FriendMutualEdge
+    {
+        std::string mutual_id;
+        std::optional<std::string> display_name;
+    };
+    struct FriendMutualUpsert
+    {
+        std::string user_id;
+        std::vector<FriendMutualEdge> friends;
+        bool hidden{false};
+        std::optional<std::string> last_error_code;
+        std::string fetched_at; // empty → sqlite now()
+    };
+    Result<std::monostate> UpsertFriendMutuals(const FriendMutualUpsert& row);
+    // { userId, cached, hidden, friends, mutualCount, fetchedAt, lastErrorCode }
+    Result<nlohmann::json> LoadFriendMutuals(const std::string& user_id);
+
     Result<nlohmann::json> ClearHistory(bool include_friend_notes = false);
 
     // ─── unified data-management panel (data.usage / data.clear) ─────

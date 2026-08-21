@@ -1,6 +1,6 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-08-21
+Last updated: 2026-08-21 (v0.16.3 wrap)
 
 ## 承上启下 — 给接手 AI 的话（READ THIS FIRST）
 
@@ -21,34 +21,37 @@ this file's historical sessions. If MEMORY / this file / HANDOFF disagree with
 - 每次改动**亲验后再提交**：C++ = VsDevCmd + `cmake --build --preset x64-debug` + `ctest`；
   web = `corepack pnpm exec tsc -b && corepack pnpm build && corepack pnpm run test:ui-smoke`。
   绿了才提交，分组干净提交。**不盲信 subagent/workflow 汇报——自己重跑。**
-- **C++ 重活优先前台/单线程**：本会话后台 workflow/subagent 反复卡死在推理网关
+- **C++ 重活优先前台/单线程**：后台 workflow/subagent 反复卡死在推理网关
   (`192.168.11.4:8990`)；前台单线程稳定。别把重 C++ 丢后台干等。
 - 改前读周边代码匹配风格；i18n 改动保持全 7 语言键+占位符对齐；C++ 单一 ninja build dir
   不并发改，web 可与 C++ 并行。
 - 不要提交 `CLAUDE.md` / `AGENTS.md` / `.agent/` / 根目录 scratch txt。
-- 未命名切片不要开。**v0.16.3 已切。** FL1/VL1/P15/P2/P5/MU1 fetchOne/SR1 fold+FTS table 已进该切。
-  默认下一刀：CI1 CacheIndex 或 VER1 活库图。不发第二份 0.16.2 MSI。
+- 未命名切片不要开。**v0.16.3 已切、已发 GitHub Latest。** FL1/VL1/P15/P2/P5/MU1 fetchOne/SR1 fold+FTS table 已进该切。
+  默认下一刀：**commit** 这批 leftover（仍 0.16.3）然后看 GitHub Actions。
+  不发第二份 0.16.3 MSI。不 bump VERSION 除非 Owner 点名 0.16.4 / 0.17.0。
 
 ---
 
 ## Latest Session (2026-08-21) — READ FIRST
 
-**v0.16.3 released.** Friends Locations + virtual lists + local-first follow-ups.
-MSI SHA256 `8f3495c6c0ab3a4f0d6ec780699052a179e8cf23fb351a0ee0994bf7f6c02ced`.
-ZIP SHA256 `9d0e11d8d712ca6ed53bc48843a7bf617f8ffdbe1f497be21ee21e20fe6d4795`.
-Next named slice: CI1 or VER1. Grey helpers stay default OFF.
+**v0.16.3 RELEASED** then a **docs wrap** (this file). Product is not dirty.
 
-**Released product is still v0.16.2** (`e22417c`). Working tree is **dirty**
-with an uncommitted usability + co-presence slice (config.json always-named,
-calendar paging, self-player, `world_visits` as graph center, palette/feed
-load). Version stays 0.16.2 until Owner names a bump. Commit only if named.
+- HEAD `33c8e85` `docs: record v0.16.3 release hashes`. Product `984c6b6`. Tag `v0.16.3` peels to `33c8e85`. `main` = `origin/main`.
+- MSI SHA256 `8f3495c6c0ab3a4f0d6ec780699052a179e8cf23fb351a0ee0994bf7f6c02ced` (9,633,792 bytes).
+- ZIP SHA256 `9d0e11d8d712ca6ed53bc48843a7bf617f8ffdbe1f497be21ee21e20fe6d4795` (12,814,756 bytes).
+- Cut gates: ctest debug+release **239 passed / 0 failed**; Playwright **62/62**; `tsc` + `pnpm build` clean; FileVersion **0.16.3.0**.
+- Grey helpers stay default OFF. LICENSE VSAL. Encrypted UnityFS 3D still empty.
 
-Local `D:\Reference\VRCX` was **missing** at pack time — clone for research
-is allowed. Do not paste VRCX / VRCX-0 / VRCNext / SaoMoLa decrypt.
+**Do not treat the 0.16.2 dirty-tree paragraphs below as current.** They are
+historical. FL1/VL1/usability were committed in `984c6b6`. The six leftovers
+(GH-CI / VER1 / CI1 / SR1-pop / MU1-db / P17-B11) are **uncommitted on top of
+`33c8e85`**.
 
-`REMAINING-SLICES.md` no longer ranks P18/P16/P4/P12 as next (they shipped in
-0.16.0). Ranked next: FL1 Locations → VL1 virtualize → SR1 FTS/kana → MU1
-opt-in mutuals → P15 → P2 (P5 display-only later).
+Local `D:\Reference\VRCX` exists at `5ea37a2` (research only). Do not paste
+VRCX / VRCX-0 / VRCNext / SaoMoLa decrypt.
+
+Ranked remaining: **GH-CI** → VER1 → CI1 CacheIndex-vs-Bundles → SR1 populate
+→ MU1 persist tables → P17-B11. See SESSION pack §7.
 
 Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
 
@@ -56,7 +59,9 @@ Node `fs` fallback in `lyrics.ts` is **vitest-only**; WebView2 uses `lyrics.read
 
 Pre-existing unused-looking IPC (`fs.writePlan` etc.) still has host handlers — do **not** delete without a plugin/caller audit.
 
-**Reinstall trap (still true):** stop VRCSM before installing an MSI. If the same version is already installed, `msiexec /x` then `/i` — a same-version `REINSTALLMODE=amus` will NOT replace the hashed `web/` bundle. Quit the running WebView2 first.
+**Reinstall trap (still true):** stop VRCSM before installing an MSI. If the same version is already installed, `msiexec /x` then `/i` — a same-version `REINSTALLMODE=amus` will NOT replace the hashed `web/` bundle. Quit the running WebView2 first. After `pnpm build`, ninja no-op does not copy `web/dist` — Copy-Item into host `web/`.
+
+**GitHub CI on `33c8e85` is red** (local was green): Pages ok; Ubuntu Vite = onnxruntime-node postinstall ETIMEDOUT; Ubuntu Vitest = `/tools/osc` 5s timeout without `--no-file-parallelism`; Windows Release = Node 20 + pnpm 11 `node:sqlite` (also failed on 0.16.2).
 
 ---
 
@@ -749,11 +754,11 @@ gh release upload v0.14.6 "build\release\VRCSM_v0.14.6_x64_Installer.msi" "build
 
 ## If The User Says "Continue"
 
-1. `git status --short`
-2. Read `MEMORY.md` and this file.
-3. Inspect the feature area before changing code.
-4. Full verification baseline + MSI before claiming done.
-5. Commit, push, tag, release with artifacts.
+1. `git status --short --branch` (git wins).
+2. Read `docs/SESSION-HANDOFF-2026-08-21.md` then `.agent/HANDOFF.md`.
+3. Default named leftover is **GH-CI**, not a recut of 0.16.3 and not FL1.
+4. Inspect the feature area before changing code.
+5. Full verification baseline + MSI only if Owner names a release.
 
 ## Do Not Regress These Decisions
 

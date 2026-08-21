@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -40,6 +41,15 @@ class BundleSniff
 {
 public:
     static std::vector<BundleEntry> scanCacheWindowsPlayer(const std::filesystem::path& cwpDir);
+
+    // One top-level Cache-WindowsPlayer hash directory → BundleEntry.
+    // bundle_format stays "unknown"; call fillLargestBundleFormats after
+    // sorting if the UnityFS badge is needed.
+    static BundleEntry summarizeTopLevelDir(const std::filesystem::path& dir);
+
+    // Classify `__data` magic for the first `limit` entries (already
+    // sorted largest-first). Matches scanCacheWindowsPlayer's top-16 cap.
+    static void fillLargestBundleFormats(std::vector<BundleEntry>& entries, std::size_t limit = 16);
 
     static BundleSniffResult sniff(const std::filesystem::path& dataPath);
 

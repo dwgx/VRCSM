@@ -2,6 +2,7 @@
 
 #include "AvatarData.h"
 #include "BundleSniff.h"
+#include "CacheIndex.h"
 #include "CacheScanner.h"
 #include "Common.h"
 #include "JunctionUtil.h"
@@ -49,6 +50,13 @@ nlohmann::json BuildFullReport(
         return CacheScanner::scanAll(baseDir);
     });
     auto cwpEntriesFut = std::async(std::launch::async, [&cwpDir]() {
+        // Reuse the boot-time CacheIndex walk when it is ready for this
+        // cache root. First report before the index finishes (or a
+        // different cwpDir) still falls back to BundleSniff.
+        if (auto listed = CacheIndex::Instance().TryListBundlesFor(cwpDir))
+        {
+            return std::move(*listed);
+        }
         return BundleSniff::scanCacheWindowsPlayer(cwpDir);
     });
     auto avatarDataFut = std::async(std::launch::async, [&baseDir]() {
@@ -60,8 +68,8 @@ nlohmann::json BuildFullReport(
 
     // CacheScanner::scanAll skipped the full walk of
     // cache_windows_player. Fold bytes, file_count and mtime ranges
-    // in from the BundleSniff aggregate so the category row stays
-    // accurate without the duplicate walk.
+    // in from the CacheIndex/BundleSniff aggregate so the category row
+    // stays accurate without the duplicate walk.
     for (auto& s : summaries)
     {
         if (s.key != "cache_windows_player") continue;
@@ -138,8 +146,9 @@ nlohmann::json BuildFullReport(
     cwpJson["entry_count"] = cwpEntries.size();
     cwpJson["entries"] = cwpEntries;
 
-    // cwpEntries is already sorted by bytes desc inside
-    // scanCacheWindowsPlayer, so largest_entries is just a prefix.
+    // cwpEntries is already sorted by bytes desc (CacheIndex and
+    // scanCacheWindowsPlayer both sort that way), so largest_entries
+    // is just a prefix.
     nlohmann::json largest = nlohmann::json::array();
     for (std::size_t i = 0; i < cwpEntries.size() && i < kLargestEntriesLimit; ++i)
     {

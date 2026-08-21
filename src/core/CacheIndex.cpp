@@ -1,8 +1,12 @@
 #include "CacheIndex.h"
 
+#include "BundleSniff.h"
 #include "Common.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <fstream>
+#include <string_view>
 
 #include <Windows.h>
 #include <KnownFolders.h>
@@ -68,6 +72,69 @@ bool IsUsablePersistedBundlePath(
     return hasData || hasInfo;
 }
 
+bool IsUsablePersistedTopDir(
+    const std::filesystem::path& cwpDir,
+    const std::filesystem::path& topDir)
+{
+    if (topDir.empty())
+    {
+        return false;
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::is_directory(topDir, ec) || ec)
+    {
+        return false;
+    }
+
+    return ensureWithinBase(cwpDir, topDir);
+}
+
+bool SameCacheDir(const std::filesystem::path& a, const std::filesystem::path& b)
+{
+    if (a.empty() || b.empty())
+    {
+        return false;
+    }
+    if (a == b)
+    {
+        return true;
+    }
+    std::error_code ec;
+    return std::filesystem::equivalent(a, b, ec) && !ec;
+}
+
+bool IsReservedTopName(const std::filesystem::path& p)
+{
+    const auto name = p.filename();
+    return name == L"__info" || name == L"vrc-version";
+}
+
+BundleEntry BundleEntryFromJson(const nlohmann::json& j)
+{
+    BundleEntry e;
+    if (!j.is_object())
+    {
+        return e;
+    }
+    e.entry = j.value("entry", std::string{});
+    e.path = j.value("path", std::string{});
+    e.bytes = j.value("bytes", std::uint64_t{0});
+    e.bytes_human = j.value("bytes_human", std::string{});
+    e.file_count = j.value("file_count", std::uint64_t{0});
+    if (j.contains("latest_mtime") && j["latest_mtime"].is_string())
+    {
+        e.latest_mtime = j["latest_mtime"].get<std::string>();
+    }
+    if (j.contains("oldest_mtime") && j["oldest_mtime"].is_string())
+    {
+        e.oldest_mtime = j["oldest_mtime"].get<std::string>();
+    }
+    e.bundle_format = j.value("bundle_format", std::string{"unknown"});
+    e.info_url = j.value("info_url", std::string{});
+    return e;
+}
+
 } // namespace
 
 CacheIndex& CacheIndex::Instance()
@@ -109,6 +176,7 @@ void CacheIndex::StartScan(const std::filesystem::path& cacheWindowsPlayerDir)
     m_scanning = true;
     m_ready = false;
     m_index.clear();
+    m_bundles.clear();
 
     // Load persisted index first for instant warm lookups.
     LoadPersisted();
@@ -135,14 +203,69 @@ std::size_t CacheIndex::EntryCount() const
     return m_index.size();
 }
 
+std::vector<BundleEntry> CacheIndex::ListBundles() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_bundles;
+}
+
+std::filesystem::path CacheIndex::CacheDir() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_cwpDir;
+}
+
+std::optional<std::vector<BundleEntry>> CacheIndex::TryListBundlesFor(
+    const std::filesystem::path& cwpDir) const
+{
+    if (!m_ready.load())
+    {
+        return std::nullopt;
+    }
+
+    std::vector<BundleEntry> bundles;
+    std::filesystem::path indexedDir;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_bundles.empty())
+        {
+            return std::nullopt;
+        }
+        indexedDir = m_cwpDir;
+        bundles = m_bundles;
+    }
+
+    if (!SameCacheDir(indexedDir, cwpDir))
+    {
+        return std::nullopt;
+    }
+    return bundles;
+}
+
+void CacheIndex::SetPersistPathForTest(const std::filesystem::path& path)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_persistOverride = path;
+    m_persistOverrideSet = true;
+}
+
 std::filesystem::path CacheIndex::PersistPath()
 {
     return getAppDataRoot() / L"cache-index.json";
 }
 
+std::filesystem::path CacheIndex::EffectivePersistPathUnlocked() const
+{
+    if (m_persistOverrideSet)
+    {
+        return m_persistOverride;
+    }
+    return PersistPath();
+}
+
 void CacheIndex::LoadPersisted()
 {
-    const auto path = PersistPath();
+    const auto path = EffectivePersistPathUnlocked();
     if (path.empty()) return;
 
     std::ifstream in(path, std::ios::binary);
@@ -184,7 +307,33 @@ void CacheIndex::LoadPersisted()
             ++loaded;
         }
 
-        spdlog::info("CacheIndex: loaded {} persisted entries, skipped {}", loaded, skipped);
+        std::size_t bundlesLoaded = 0;
+        std::size_t bundlesSkipped = 0;
+        const auto bundlesIt = doc.find("bundles");
+        if (bundlesIt != doc.end() && bundlesIt->is_array())
+        {
+            for (const auto& row : *bundlesIt)
+            {
+                auto be = BundleEntryFromJson(row);
+                if (be.entry.empty() || be.path.empty())
+                {
+                    ++bundlesSkipped;
+                    continue;
+                }
+                const auto topDir = utf8Path(be.path);
+                if (!IsUsablePersistedTopDir(m_cwpDir, topDir))
+                {
+                    ++bundlesSkipped;
+                    continue;
+                }
+                m_bundles.push_back(std::move(be));
+                ++bundlesLoaded;
+            }
+        }
+
+        spdlog::info(
+            "CacheIndex: loaded {} persisted entries, skipped {}; bundles loaded {}, skipped {}",
+            loaded, skipped, bundlesLoaded, bundlesSkipped);
     }
     catch (const std::exception& ex)
     {
@@ -194,16 +343,18 @@ void CacheIndex::LoadPersisted()
 
 void CacheIndex::SavePersisted() const
 {
-    const auto path = PersistPath();
-    if (path.empty()) return;
-
+    std::filesystem::path path;
     std::filesystem::path cwpDir;
     std::unordered_map<std::string, std::filesystem::path> index;
+    std::vector<BundleEntry> bundles;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        path = EffectivePersistPathUnlocked();
         cwpDir = m_cwpDir;
         index = m_index;
+        bundles = m_bundles;
     }
+    if (path.empty()) return;
 
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
@@ -217,6 +368,7 @@ void CacheIndex::SavePersisted() const
         entries[avatarId] = toUtf8(bundlePath.wstring());
     }
     doc["entries"] = std::move(entries);
+    doc["bundles"] = bundles;
 
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     if (!out)
@@ -225,7 +377,7 @@ void CacheIndex::SavePersisted() const
         return;
     }
     out << doc.dump();
-    spdlog::info("CacheIndex: persisted {} entries", index.size());
+    spdlog::info("CacheIndex: persisted {} entries, {} bundles", index.size(), bundles.size());
 }
 
 void CacheIndex::ScanWorker(std::filesystem::path cwpDir)
@@ -243,13 +395,19 @@ void CacheIndex::ScanWorker(std::filesystem::path cwpDir)
 
     std::size_t scanned = 0;
     std::size_t found = 0;
+    std::vector<BundleEntry> bundles;
 
     // Two-level walk: Cache-WindowsPlayer/<topHash>/<versionHash>/__info
+    // The same outer loop records one BundleEntry per top-level hash dir
+    // so Report/Bundles can reuse this scan instead of walking again.
     for (const auto& topEntry : std::filesystem::directory_iterator(cwpDir, ec))
     {
         if (m_stopping) break;
         if (ec) break;
         if (!topEntry.is_directory(ec) || ec) continue;
+        if (IsReservedTopName(topEntry.path())) continue;
+
+        bundles.push_back(BundleSniff::summarizeTopLevelDir(topEntry.path()));
 
         for (const auto& versionEntry : std::filesystem::directory_iterator(topEntry.path(), ec))
         {
@@ -318,14 +476,22 @@ void CacheIndex::ScanWorker(std::filesystem::path cwpDir)
 
     if (!m_stopping)
     {
+        std::sort(bundles.begin(), bundles.end(), [](const BundleEntry& a, const BundleEntry& b) {
+            return a.bytes > b.bytes;
+        });
+        BundleSniff::fillLargestBundleFormats(bundles);
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_bundles = std::move(bundles);
+        }
         SavePersisted();
     }
 
     m_scanning = false;
     m_ready = true;
 
-    spdlog::info("CacheIndex: scan complete — {} __info files scanned, {} avatar IDs indexed",
-        scanned, found);
+    spdlog::info("CacheIndex: scan complete — {} __info files scanned, {} avatar IDs indexed, {} bundles",
+        scanned, found, ListBundles().size());
 }
 
 } // namespace vrcsm::core

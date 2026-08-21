@@ -139,6 +139,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "auth.verify2FA",
         "friends.list",
         "social.mutual.fetchOne",
+        "social.mutual.readCache",
         "groups.list",
         "groups.setRepresented",
         "moderations.list",
@@ -423,11 +424,15 @@ IpcBridge::IpcBridge(WebViewHost& host)
     InitTtsFromGreyPrefs();
     GreyBindBridge(this);
 
-    // Kick off background cache indexer.
+    // Kick off background cache indexer on the same cache root Report/Bundles
+    // use (config.json cache_directory when present).
     {
         const auto probe = vrcsm::core::PathProbe::Probe();
-        const auto cwpDir = std::filesystem::path(probe.baseDir) / L"Cache-WindowsPlayer";
-        vrcsm::core::CacheIndex::Instance().StartScan(cwpDir);
+        const auto cwpDir = probe.cacheWindowsPlayerDir();
+        if (!cwpDir.empty())
+        {
+            vrcsm::core::CacheIndex::Instance().StartScan(cwpDir);
+        }
     }
 
     // Spin up the VRChat process watcher.
@@ -778,6 +783,7 @@ void IpcBridge::RegisterHandlers()
     });
     m_handlers.emplace("friends.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsList(p, id); });
     m_handlers.emplace("social.mutual.fetchOne", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSocialMutualFetchOne(p, id); });
+    m_handlers.emplace("social.mutual.readCache", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSocialMutualReadCache(p, id); });
     m_handlers.emplace("groups.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGroupsList(p, id); });
     m_handlers.emplace("groups.setRepresented", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGroupsSetRepresented(p, id); });
     m_handlers.emplace("hw.applyPreset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwApplyPreset(p, id); });

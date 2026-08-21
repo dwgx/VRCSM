@@ -120,7 +120,7 @@ TEST(GreyTtsTests, GreyPrefsCorruptFileYieldsDefaults)
     const auto loaded = vrcsm::core::LoadGreyPrefsFrom(path);
     ASSERT_TRUE(vrcsm::core::isOk(loaded));
     const auto prefs = vrcsm::core::value(loaded);
-    EXPECT_FALSE(prefs.greyEnabled);
+    EXPECT_TRUE(prefs.greyEnabled);
     EXPECT_EQ(prefs.oscTts.engine, "sapi");
     EXPECT_TRUE(prefs.oscTts.voiceId.empty());
     EXPECT_EQ(prefs.oscTts.rate, 0);

@@ -13,6 +13,11 @@ struct LogReport;
 // JSON consumed by the host's IpcBridge (matches the Python prototype's
 // report.json schema).
 //
+// cache_windows_player.entries come from CacheIndex::ListBundles when
+// that index is ready for the same Cache-WindowsPlayer root; otherwise
+// BundleSniff::scanCacheWindowsPlayer (so the first report before the
+// boot scan finishes still works).
+//
 // The actual entry point is CacheScanner::buildReport(), declared in
 // CacheScanner.h and implemented in Report.cpp so that aggregation can
 // pull in every module header without polluting the scanner translation

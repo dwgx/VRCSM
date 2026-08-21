@@ -79,11 +79,12 @@ struct GreyEventWatchPrefs
 };
 
 // Host JSON at `%LocalAppData%\VRCSM\grey-prefs.json`. No secrets.
-// `greyEnabled` defaults false; enabling is the master Wave 4 gate.
+// `greyEnabled` defaults true (helpers visible). Invite Assist / Event Watch
+// auto-join / IMAP still need their own confirm rails and stay off.
 struct GreyPrefs
 {
     int schema{1};
-    bool greyEnabled{false};
+    bool greyEnabled{true};
     nlohmann::json inviteSlots = nlohmann::json::object();
     nlohmann::json playspace = nlohmann::json::object();
     OscTtsPrefs oscTts{};

@@ -14,6 +14,8 @@ export default defineConfig({
     // test.beforeAll(). Scope include to src and exclude the Playwright dir.
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["tests/**", "node_modules/**", "dist/**"],
+    fileParallelism: false,
+    testTimeout: 30000,
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },

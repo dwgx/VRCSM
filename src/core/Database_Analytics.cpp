@@ -54,7 +54,7 @@ constexpr std::array<std::string_view, 16> kUsageCountTables{
 // is built — caller-supplied strings never reach a SQL literal directly.
 bool isClearableTable(std::string_view name)
 {
-    static constexpr std::array<std::string_view, 19> kClearable{
+    static constexpr std::array<std::string_view, 21> kClearable{
         // rebuildable caches
         "asset_cache",
         "avatar_benchmark",
@@ -78,6 +78,9 @@ bool isClearableTable(std::string_view name)
         "local_favorites",
         "local_favorite_notes",
         "local_favorite_tags",
+        // opt-in mutuals cache (no crawl)
+        "friend_mutual_edges",
+        "friend_mutual_meta",
     };
     for (const auto& t : kClearable)
     {

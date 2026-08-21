@@ -4630,7 +4630,7 @@
       "masterHint": "Optional helpers are off. Enable the master switch above first."
     },
     "master": {
-      "desc": "Master switch for Slot mail and later helpers. Each helper still requires a user click (or its own opt-in). Off by default.",
+      "desc": "Master switch for Slot mail and later helpers. On by default so helper pages are visible. Each helper still requires a user click (or its own opt-in). Invite Assist and Event Watch auto-join stay off until confirmed.",
       "enable": "Enable optional social/VR helpers",
       "title": "Optional social/VR helpers"
     },

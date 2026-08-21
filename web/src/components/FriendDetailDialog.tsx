@@ -153,7 +153,33 @@ function MutualFriendsPanel({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Array<{ id?: string; displayName?: string }> | null>(null);
+  const [rows, setRows] = useState<Array<{ id?: string; displayName?: string | null }> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setError(null);
+    void (async () => {
+      try {
+        const res = await ipc.socialMutualReadCache(userId);
+        if (cancelled) return;
+        if (res.cached) {
+          setHidden(res.hidden);
+          setRows(res.friends ?? []);
+        } else {
+          setHidden(false);
+          setRows(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setHidden(false);
+          setRows(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const load = useCallback(async () => {
     setLoading(true);

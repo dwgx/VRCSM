@@ -1,5 +1,8 @@
 allowBuilds:
   esbuild: true
-  onnxruntime-node: true
+  # Native onnxruntime-node postinstall downloads binaries from Microsoft
+  # CDN and ETIMEDOUT on GitHub-hosted Ubuntu. The SPA uses onnxruntime-web
+  # WASM via @huggingface/transformers, not the Node binding.
+  onnxruntime-node: false
   protobufjs: true
   sharp: true

@@ -891,24 +891,106 @@ CREATE INDEX IF NOT EXISTS idx_grey_audit_feature ON grey_audit(feature);
         return std::get<Error>(r);
     }
 
-    // Optional FTS5 overlay. If this sqlite was built without FTS5, skip
-    // rather than failing InitSchema — GlobalSearch still has LIKE.
-    (void)ExecSimple(
+    // Optional FTS5 overlay. CREATE/rebuild/triggers run in SAVEPOINTs so a
+    // sqlite built without FTS5 does not abort this transaction — GlobalSearch
+    // still has LIKE.
+    const auto runOptionalSql = [this](const char* sql) -> bool
+    {
+        (void)ExecSimple("SAVEPOINT vrcsm_optional;");
+        const auto r = ExecSimple(sql);
+        if (std::holds_alternative<Error>(r))
+        {
+            (void)ExecSimple("ROLLBACK TO vrcsm_optional;");
+            (void)ExecSimple("RELEASE vrcsm_optional;");
+            return false;
+        }
+        (void)ExecSimple("RELEASE vrcsm_optional;");
+        return true;
+    };
+
+    const bool ftsReady = runOptionalSql(
         "CREATE VIRTUAL TABLE IF NOT EXISTS search_docs USING fts5("
         "kind, doc_id, title, body);");
-    (void)ExecSimple(
-        "INSERT INTO search_docs(kind, doc_id, title, body) "
-        "SELECT kind, doc_id, title, body FROM ("
-        "  SELECT 'favorite' AS kind, target_id AS doc_id, "
-        "         COALESCE(display_name, target_id) AS title, list_name AS body "
-        "  FROM local_favorites "
-        "  UNION ALL "
-        "  SELECT 'world', world_id, world_id, COALESCE(instance_id, '') "
-        "  FROM world_visits"
-        ") "
-        "WHERE NOT EXISTS (SELECT 1 FROM search_docs LIMIT 1);");
 
     if (const auto r = ExecSimple("PRAGMA user_version = 20;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    // ── Schema v21: FTS populate/triggers + mutual-friends cache ──
+    static const char* kSchemaV21Sql = R"SQL(
+CREATE TABLE IF NOT EXISTS friend_mutual_edges (
+    user_id TEXT NOT NULL,
+    mutual_id TEXT NOT NULL,
+    display_name TEXT,
+    PRIMARY KEY (user_id, mutual_id)
+);
+CREATE TABLE IF NOT EXISTS friend_mutual_meta (
+    user_id TEXT PRIMARY KEY,
+    fetched_at TEXT NOT NULL,
+    mutual_count INTEGER NOT NULL DEFAULT 0,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    last_error_code TEXT
+);
+    )SQL";
+
+    if (const auto r = ExecSimple(kSchemaV21Sql); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
+    if (ftsReady)
+    {
+        // Rebuild from current favorites+visits (not only-if-empty) so a v20
+        // DB with a stale empty/partial FTS table picks up existing rows.
+        (void)runOptionalSql(R"SQL(
+DELETE FROM search_docs;
+INSERT INTO search_docs(kind, doc_id, title, body)
+SELECT kind, doc_id, title, body FROM (
+  SELECT 'favorite' AS kind, target_id AS doc_id,
+         COALESCE(display_name, target_id) AS title, list_name AS body
+  FROM local_favorites
+  UNION ALL
+  SELECT 'world', world_id, world_id, COALESCE(instance_id, '')
+  FROM world_visits
+);
+        )SQL");
+
+        (void)runOptionalSql(R"SQL(
+CREATE TRIGGER IF NOT EXISTS search_docs_fav_ai AFTER INSERT ON local_favorites BEGIN
+  DELETE FROM search_docs WHERE kind = 'favorite' AND doc_id = new.target_id;
+  INSERT INTO search_docs(kind, doc_id, title, body)
+    VALUES ('favorite', new.target_id, COALESCE(new.display_name, new.target_id), new.list_name);
+END;
+CREATE TRIGGER IF NOT EXISTS search_docs_fav_au AFTER UPDATE ON local_favorites BEGIN
+  DELETE FROM search_docs WHERE kind = 'favorite' AND doc_id = old.target_id;
+  DELETE FROM search_docs WHERE kind = 'favorite' AND doc_id = new.target_id;
+  INSERT INTO search_docs(kind, doc_id, title, body)
+    VALUES ('favorite', new.target_id, COALESCE(new.display_name, new.target_id), new.list_name);
+END;
+CREATE TRIGGER IF NOT EXISTS search_docs_fav_ad AFTER DELETE ON local_favorites BEGIN
+  DELETE FROM search_docs WHERE kind = 'favorite' AND doc_id = old.target_id;
+  INSERT INTO search_docs(kind, doc_id, title, body)
+    SELECT 'favorite', target_id, COALESCE(display_name, target_id), list_name
+    FROM local_favorites WHERE target_id = old.target_id LIMIT 1;
+END;
+CREATE TRIGGER IF NOT EXISTS search_docs_wv_ai AFTER INSERT ON world_visits BEGIN
+  DELETE FROM search_docs WHERE kind = 'world' AND doc_id = new.world_id;
+  INSERT INTO search_docs(kind, doc_id, title, body)
+    VALUES ('world', new.world_id, new.world_id, COALESCE(new.instance_id, ''));
+END;
+CREATE TRIGGER IF NOT EXISTS search_docs_wv_ad AFTER DELETE ON world_visits BEGIN
+  DELETE FROM search_docs WHERE kind = 'world' AND doc_id = old.world_id;
+  INSERT INTO search_docs(kind, doc_id, title, body)
+    SELECT 'world', world_id, world_id, COALESCE(instance_id, '')
+    FROM world_visits WHERE world_id = old.world_id LIMIT 1;
+END;
+        )SQL");
+    }
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 21;"); std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
         return std::get<Error>(r);

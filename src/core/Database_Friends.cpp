@@ -674,4 +674,208 @@ Result<std::monostate> Database::SetFriendNote(const std::string& user_id,
     });
 }
 
+
+Result<std::monostate> Database::UpsertFriendMutuals(const FriendMutualUpsert& row)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+    if (row.user_id.empty())
+    {
+        return MakeError("db_invalid_argument", "user_id is empty");
+    }
+
+    const auto beginResult = ExecSimple("BEGIN;");
+    if (std::holds_alternative<Error>(beginResult))
+    {
+        return std::get<Error>(beginResult);
+    }
+
+    auto abortTx = [this](Error err) -> Result<std::monostate>
+    {
+        RollbackIfNeeded(m_db);
+        return err;
+    };
+
+    {
+        const char* delSql = "DELETE FROM friend_mutual_edges WHERE user_id = ?;";
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, delSql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            return abortTx(MakeError("db_prepare_failed"));
+        }
+        StatementGuard stmt(rawStmt);
+        if (BindText(rawStmt, 1, row.user_id) != SQLITE_OK)
+        {
+            return abortTx(MakeError("db_bind_failed"));
+        }
+        if (sqlite3_step(rawStmt) != SQLITE_DONE)
+        {
+            return abortTx(MakeError("db_step_failed"));
+        }
+    }
+
+    int mutualCount = 0;
+    if (!row.hidden)
+    {
+        const char* insSql =
+            "INSERT OR REPLACE INTO friend_mutual_edges (user_id, mutual_id, display_name) "
+            "VALUES (?, ?, ?);";
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, insSql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            return abortTx(MakeError("db_prepare_failed"));
+        }
+        StatementGuard stmt(rawStmt);
+        for (const auto& edge : row.friends)
+        {
+            if (edge.mutual_id.empty())
+            {
+                continue;
+            }
+            if (sqlite3_reset(rawStmt) != SQLITE_OK || sqlite3_clear_bindings(rawStmt) != SQLITE_OK)
+            {
+                return abortTx(MakeError("db_step_failed"));
+            }
+            if (BindText(rawStmt, 1, row.user_id) != SQLITE_OK ||
+                BindText(rawStmt, 2, edge.mutual_id) != SQLITE_OK ||
+                BindOptionalText(rawStmt, 3, edge.display_name) != SQLITE_OK)
+            {
+                return abortTx(MakeError("db_bind_failed"));
+            }
+            if (sqlite3_step(rawStmt) != SQLITE_DONE)
+            {
+                return abortTx(MakeError("db_step_failed"));
+            }
+            ++mutualCount;
+        }
+    }
+
+    {
+        const char* metaSql =
+            "INSERT INTO friend_mutual_meta "
+            "(user_id, fetched_at, mutual_count, hidden, last_error_code) "
+            "VALUES (?, COALESCE(NULLIF(?, ''), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), ?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET "
+            "fetched_at = excluded.fetched_at, "
+            "mutual_count = excluded.mutual_count, "
+            "hidden = excluded.hidden, "
+            "last_error_code = excluded.last_error_code;";
+        sqlite3_stmt* rawStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, metaSql, -1, &rawStmt, nullptr) != SQLITE_OK)
+        {
+            return abortTx(MakeError("db_prepare_failed"));
+        }
+        StatementGuard stmt(rawStmt);
+        if (BindText(rawStmt, 1, row.user_id) != SQLITE_OK ||
+            BindText(rawStmt, 2, row.fetched_at) != SQLITE_OK ||
+            BindInt(rawStmt, 3, mutualCount) != SQLITE_OK ||
+            BindInt(rawStmt, 4, row.hidden ? 1 : 0) != SQLITE_OK ||
+            BindOptionalText(rawStmt, 5, row.last_error_code) != SQLITE_OK)
+        {
+            return abortTx(MakeError("db_bind_failed"));
+        }
+        if (sqlite3_step(rawStmt) != SQLITE_DONE)
+        {
+            return abortTx(MakeError("db_step_failed"));
+        }
+    }
+
+    const auto commitResult = ExecSimple("COMMIT;");
+    if (std::holds_alternative<Error>(commitResult))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(commitResult);
+    }
+    return std::monostate{};
+}
+
+
+Result<nlohmann::json> Database::LoadFriendMutuals(const std::string& user_id)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    nlohmann::json out = {
+        {"userId", user_id},
+        {"cached", false},
+        {"hidden", false},
+        {"friends", nlohmann::json::array()},
+        {"mutualCount", 0},
+        {"fetchedAt", nullptr},
+        {"lastErrorCode", nullptr},
+    };
+
+    if (m_db == nullptr)
+    {
+        return MakeError("db_not_open");
+    }
+    if (user_id.empty())
+    {
+        return out;
+    }
+
+    const char* metaSql =
+        "SELECT fetched_at, mutual_count, hidden, last_error_code "
+        "FROM friend_mutual_meta WHERE user_id = ? LIMIT 1;";
+    sqlite3_stmt* rawMeta = nullptr;
+    if (sqlite3_prepare_v2(m_db, metaSql, -1, &rawMeta, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard metaStmt(rawMeta);
+    if (BindText(rawMeta, 1, user_id) != SQLITE_OK)
+    {
+        return MakeError("db_bind_failed");
+    }
+
+    const int metaRc = sqlite3_step(rawMeta);
+    if (metaRc == SQLITE_DONE)
+    {
+        return out;
+    }
+    if (metaRc != SQLITE_ROW)
+    {
+        return MakeError("db_step_failed");
+    }
+
+    out["cached"] = true;
+    out["fetchedAt"] = ColumnTextOrNull(rawMeta, 0);
+    out["mutualCount"] = sqlite3_column_int(rawMeta, 1);
+    out["hidden"] = sqlite3_column_int(rawMeta, 2) != 0;
+    out["lastErrorCode"] = ColumnTextOrNull(rawMeta, 3);
+
+    const char* edgeSql =
+        "SELECT mutual_id, display_name FROM friend_mutual_edges "
+        "WHERE user_id = ? ORDER BY display_name COLLATE NOCASE, mutual_id;";
+    sqlite3_stmt* rawEdges = nullptr;
+    if (sqlite3_prepare_v2(m_db, edgeSql, -1, &rawEdges, nullptr) != SQLITE_OK)
+    {
+        return MakeError("db_prepare_failed");
+    }
+    StatementGuard edgeStmt(rawEdges);
+    if (BindText(rawEdges, 1, user_id) != SQLITE_OK)
+    {
+        return MakeError("db_bind_failed");
+    }
+
+    nlohmann::json friends = nlohmann::json::array();
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(rawEdges)) == SQLITE_ROW)
+    {
+        nlohmann::json item = nlohmann::json::object();
+        item["id"] = ColumnOptionalText(rawEdges, 0).value_or("");
+        item["displayName"] = ColumnTextOrNull(rawEdges, 1);
+        friends.push_back(std::move(item));
+    }
+    if (rc != SQLITE_DONE)
+    {
+        return MakeError("db_step_failed");
+    }
+    out["friends"] = std::move(friends);
+    return out;
+}
+
 } // namespace vrcsm::core

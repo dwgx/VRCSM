@@ -164,14 +164,21 @@ TEST(GreyPrefs, RoundTripAndUnknownKeyRejected)
     std::filesystem::remove(path, ec);
 
     auto defaults = DefaultGreyPrefs();
-    EXPECT_FALSE(defaults.greyEnabled);
+    EXPECT_TRUE(defaults.greyEnabled);
     EXPECT_EQ(defaults.inviteSlots["confirmBeforeSend"], true);
     EXPECT_EQ(defaults.inviteSlots["lastType"], "invite");
 
     ASSERT_TRUE(isOk(SaveGreyPrefsTo(path, defaults)));
     auto loaded = LoadGreyPrefsFrom(path);
     ASSERT_TRUE(isOk(loaded));
-    EXPECT_FALSE(vrcsm::core::value(loaded).greyEnabled);
+    EXPECT_TRUE(vrcsm::core::value(loaded).greyEnabled);
+
+    auto off = defaults;
+    off.greyEnabled = false;
+    ASSERT_TRUE(isOk(SaveGreyPrefsTo(path, off)));
+    auto loadedOff = LoadGreyPrefsFrom(path);
+    ASSERT_TRUE(isOk(loadedOff));
+    EXPECT_FALSE(vrcsm::core::value(loadedOff).greyEnabled);
 
     auto patched = MergeGreyPrefsPatch(vrcsm::core::value(loaded), nlohmann::json{
         {"greyEnabled", true},
@@ -224,6 +231,7 @@ TEST(GreyPrefs, MergePatchClampsAssistAndWatchSeconds)
 TEST(GreyPrefs, EnablingMasterStampsTosAcceptedAt)
 {
     auto defaults = DefaultGreyPrefs();
+    defaults.greyEnabled = false;
     EXPECT_FALSE(defaults.masterTosAcceptedAt.has_value());
     auto on = MergeGreyPrefsPatch(defaults, nlohmann::json{{"greyEnabled", true}});
     ASSERT_TRUE(isOk(on));
@@ -246,7 +254,7 @@ TEST(GreyPrefs, CorruptFileYieldsDefaults)
     }
     auto loaded = LoadGreyPrefsFrom(path);
     ASSERT_TRUE(isOk(loaded));
-    EXPECT_FALSE(vrcsm::core::value(loaded).greyEnabled);
+    EXPECT_TRUE(vrcsm::core::value(loaded).greyEnabled);
     EXPECT_EQ(GreyPrefsToJson(vrcsm::core::value(loaded))["schema"], 1);
 }
 

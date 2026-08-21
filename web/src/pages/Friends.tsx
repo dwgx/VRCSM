@@ -56,6 +56,7 @@ import {
   type FriendsListLayout,
 } from "@/lib/friends-view-model";
 import { useSelfLocation } from "@/lib/useSelfLocation";
+import { crawlMutuals } from "@/lib/mutuals-crawl";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { inviteSelf, inviteUser, requestInvite } from "@/lib/social";
 import {
@@ -1006,6 +1007,8 @@ export default function Friends() {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set(),
   );
+  const [mutualsCrawling, setMutualsCrawling] = useState(false);
+  const mutualsCrawlCancelRef = useRef(false);
 
   const { items: favoriteItems } = useFavoriteItems(LIBRARY_LIST_NAME, status.authed);
   const favoriteUserIds = useMemo(
@@ -1213,6 +1216,44 @@ export default function Friends() {
     [friendsWithComputed, debouncedFilter, t, noteSearchIndex],
   );
 
+  const runMutualsCrawl = useCallback(async () => {
+    const ids = (data?.friends ?? []).map((f) => f.id).filter(Boolean);
+    if (ids.length === 0 || mutualsCrawling) return;
+    mutualsCrawlCancelRef.current = false;
+    setMutualsCrawling(true);
+    try {
+      const out = await crawlMutuals(
+        ids,
+        (userId) => ipc.socialMutualFetchOne(userId),
+        {
+          delayMs: 400,
+          shouldCancel: () => mutualsCrawlCancelRef.current,
+        },
+      );
+      if (out.cancelled) {
+        toast.message(
+          t("friends.mutualsCrawlCancelled", {
+            defaultValue: "Mutuals crawl cancelled ({{done}} fetched).",
+            done: out.fetched,
+          }),
+        );
+      } else {
+        toast.success(
+          t("friends.mutualsCrawlDone", {
+            defaultValue: "Mutuals crawl finished: {{fetched}} fetched, {{hidden}} hidden, {{errors}} errors.",
+            fetched: out.fetched,
+            hidden: out.hidden,
+            errors: out.errors,
+          }),
+        );
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMutualsCrawling(false);
+    }
+  }, [data?.friends, mutualsCrawling, t]);
+
   const toggleSection = (sectionId: string) => {
     setCollapsedSections((prev) => {
       const next = new Set(prev);
@@ -1412,6 +1453,26 @@ export default function Friends() {
           >
             <RefreshCcw className={loading ? "animate-spin" : undefined} />
             {t("common.refresh")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!status.authed || (data?.friends.length ?? 0) === 0}
+            onClick={() => {
+              if (mutualsCrawling) {
+                mutualsCrawlCancelRef.current = true;
+                return;
+              }
+              void runMutualsCrawl();
+            }}
+            title={t("friends.mutualsCrawl", {
+              defaultValue: "Crawl mutuals for the current friends list",
+            })}
+          >
+            <Users className={mutualsCrawling ? "size-3 animate-spin" : "size-3"} />
+            {mutualsCrawling
+              ? t("friends.mutualsCrawlCancel", { defaultValue: "Cancel crawl" })
+              : t("friends.mutualsCrawl", { defaultValue: "Mutuals crawl" })}
           </Button>
           <Button
             variant={listLayout === "locations" ? "tonal" : "outline"}
