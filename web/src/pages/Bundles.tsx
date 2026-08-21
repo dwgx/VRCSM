@@ -1,16 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Card,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import {
   Dialog,
   DialogContent,
@@ -28,38 +22,7 @@ import { formatBytes, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import type { BundleEntry, BundlePreview } from "@/lib/types";
 import { AvatarPreview3D } from "@/components/AvatarPreview3D";
-
-/** Extract asset type and ID from a VRChat cache __info URL */
-function parseInfoUrl(url: string): { type: "avatar" | "world" | "unknown"; id: string | null } {
-  if (!url) return { type: "unknown", id: null };
-  const avtrMatch = url.match(/(avtr_[0-9a-f-]{36})/i);
-  if (avtrMatch) return { type: "avatar", id: avtrMatch[1] };
-  const wrldMatch = url.match(/(wrld_[0-9a-f-]{36})/i);
-  if (wrldMatch) return { type: "world", id: wrldMatch[1] };
-  return { type: "unknown", id: null };
-}
-
-/**
- * Parse the key=value lines VRChat stores inside `__info`. The file is
- * a plain-text manifest (Unity's cache entry metadata), so a simple
- * split handles it without pulling in a real parser.
- */
-function parseInfoText(infoText: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const rawLine of infoText.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const eq = line.indexOf("=");
-    const colon = line.indexOf(":");
-    const sep =
-      eq >= 0 && (colon < 0 || eq < colon) ? eq : colon >= 0 ? colon : -1;
-    if (sep <= 0) continue;
-    const key = line.slice(0, sep).trim();
-    const value = line.slice(sep + 1).trim();
-    if (key && value) out[key] = value;
-  }
-  return out;
-}
+import { parseInfoText, parseInfoUrl } from "@/lib/bundle-info";
 
 function syntheticAvatarId(entry: BundleEntry): string {
   return `cache:${entry.entry}`;
@@ -170,6 +133,14 @@ function Bundles() {
       const name = worldNames?.[parsed.id];
       return { label: name ?? parsed.id, type: "world", id: parsed.id };
     }
+    const info = parseInfoText(entry.info_url ?? "");
+    if (info.format === "unity-cache") {
+      return {
+        label: entry.entry.slice(0, 12) + "…",
+        type: "unknown",
+        id: null,
+      };
+    }
     return { label: entry.entry.slice(0, 16) + "…", type: "unknown", id: null };
   }
 
@@ -186,6 +157,16 @@ function Bundles() {
       return false;
     });
   }, [report, filter, avatarNames, worldNames]);
+
+  const listScrollRef = useRef<HTMLDivElement | null>(null);
+  const listVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => listScrollRef.current,
+    estimateSize: () => 56,
+    overscan: 8,
+    getItemKey: (index) => filtered[index]?.entry ?? index,
+  });
+  const listVirtualItems = listVirtualizer.getVirtualItems();
 
   const infoFields = useMemo(
     () => (preview ? parseInfoText(preview.data.infoText) : {}),
@@ -309,93 +290,105 @@ function Bundles() {
         </div>
 
         {loading && !report ? (
-          <div className="py-10 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
-            {t("bundles.scanning")}
+          <div className="flex flex-col gap-2 p-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-12 animate-pulse rounded-[var(--radius-sm)] bg-[hsl(var(--muted)/0.16)]"
+              />
+            ))}
+            <p className="py-2 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
+              {t("bundles.scanning")}
+            </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("bundles.colEntry")}</TableHead>
-                <TableHead>{t("bundles.colSize")}</TableHead>
-                <TableHead>{t("bundles.colFiles")}</TableHead>
-                <TableHead>{t("bundles.colMtime")}</TableHead>
-                <TableHead>{t("bundles.colFormat")}</TableHead>
-                <TableHead className="text-right">
-                  {t("bundles.colActions")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((entry) => {
-                const resolved = resolveAssetName(entry);
-                return (
-                <TableRow key={entry.entry}>
-                  <TableCell className="text-[11px]">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {resolved.type === "avatar" ? (
-                        <User className="size-3.5 shrink-0 text-purple-400" />
-                      ) : resolved.type === "world" ? (
-                        <Globe2 className="size-3.5 shrink-0 text-blue-400" />
-                      ) : (
-                        <Package className="size-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
-                      )}
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-[hsl(var(--foreground))]">
-                          {resolved.label}
+          <div>
+            <div className="grid grid-cols-[minmax(0,2fr)_repeat(3,minmax(4.5rem,1fr))_minmax(5rem,1fr)_auto] items-center gap-2 border-b border-[hsl(var(--border))] px-3 py-2 text-[11px] font-medium text-[hsl(var(--muted-foreground))]">
+              <div>{t("bundles.colEntry")}</div>
+              <div>{t("bundles.colSize")}</div>
+              <div>{t("bundles.colFiles")}</div>
+              <div>{t("bundles.colMtime")}</div>
+              <div>{t("bundles.colFormat")}</div>
+              <div className="text-right">{t("bundles.colActions")}</div>
+            </div>
+            {filtered.length === 0 ? (
+              <div className="py-8 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
+                {report && report.cache_windows_player.entry_count === 0
+                  ? t("bundles.emptyCache", { defaultValue: "No cache entries on disk." })
+                  : t("bundles.noMatch")}
+              </div>
+            ) : (
+              <div
+                ref={listScrollRef}
+                className="h-[560px] max-h-[560px] overflow-y-auto"
+              >
+                <div
+                  className="relative w-full"
+                  style={{ height: `${listVirtualizer.getTotalSize()}px` }}
+                >
+                  {listVirtualItems.map((vi) => {
+                    const entry = filtered[vi.index];
+                    if (!entry) return null;
+                    const resolved = resolveAssetName(entry);
+                    return (
+                      <div
+                        key={vi.key}
+                        data-index={vi.index}
+                        ref={listVirtualizer.measureElement}
+                        className="absolute left-0 top-0 grid w-full grid-cols-[minmax(0,2fr)_repeat(3,minmax(4.5rem,1fr))_minmax(5rem,1fr)_auto] items-center gap-2 border-b border-[hsl(var(--border))] px-3 py-2"
+                        style={{ transform: `translateY(${vi.start}px)` }}
+                      >
+                        <div className="flex min-w-0 items-center gap-2 text-[11px]">
+                          {resolved.type === "avatar" ? (
+                            <User className="size-3.5 shrink-0 text-purple-400" />
+                          ) : resolved.type === "world" ? (
+                            <Globe2 className="size-3.5 shrink-0 text-blue-400" />
+                          ) : (
+                            <Package className="size-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-[hsl(var(--foreground))]">
+                              {resolved.label}
+                            </div>
+                            <div className="truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
+                              {entry.entry.slice(0, 12)}…
+                            </div>
+                          </div>
                         </div>
-                        <div className="truncate font-mono text-[10px] text-[hsl(var(--muted-foreground))]">
-                          {entry.entry.slice(0, 12)}…
+                        <div className="text-[11px]">{entry.bytes_human}</div>
+                        <div className="text-[11px]">{entry.file_count}</div>
+                        <div className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
+                          {formatDate(entry.latest_mtime)}
+                        </div>
+                        <div>
+                          <Badge variant="outline">
+                            {entry.bundle_format || "unknown"}
+                          </Badge>
+                        </div>
+                        <div className="space-x-1.5 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openPreview(entry)}
+                            disabled={previewLoading}
+                          >
+                            {t("bundles.preview")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => beginDelete(entry)}
+                          >
+                            {t("bundles.delete")}
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-[11px]">
-                    {entry.bytes_human}
-                  </TableCell>
-                  <TableCell className="text-[11px]">
-                    {entry.file_count}
-                  </TableCell>
-                  <TableCell className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
-                    {formatDate(entry.latest_mtime)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {entry.bundle_format || "unknown"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="space-x-1.5 text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openPreview(entry)}
-                      disabled={previewLoading}
-                    >
-                      {t("bundles.preview")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => beginDelete(entry)}
-                    >
-                      {t("bundles.delete")}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                );
-              })}
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-8 text-center text-[12px] text-[hsl(var(--muted-foreground))]"
-                  >
-                    {t("bundles.noMatch")}
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </Card>
 
@@ -429,7 +422,7 @@ function Bundles() {
                   <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
                     <p>
                       {t("bundles.local3dPreviewHint", {
-                        defaultValue: "Uses the cached __data bundle directly. This does not require an avatar ID; encrypted or non-avatar bundles may still fail to render.",
+                        defaultValue: "Uses the cached UnityFS __data file. VRChat encrypts most avatar/world payloads, so mesh preview may stay empty even when the bundle is valid. The file tree and __info below still describe the cache entry.",
                       })}
                     </p>
                     <div className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--canvas))] px-3 py-2 font-mono text-[10.5px]">

@@ -40,6 +40,7 @@ import { EntityLink } from "@/components/EntityLink";
 import { useIpcQuery } from "@/hooks/useIpcQuery";
 import { useCachedImageUrl } from "@/lib/image-cache";
 import type { Friend, VrcSavedMessage, WorldDetails, VrcInventoryItem } from "@/lib/types";
+import { ipc } from "@/lib/ipc";
 import type { FriendOnlinePredictionDto } from "@/lib/ipc";
 import type { VrcUserProfile } from "@/components/ProfileCard";
 import { deriveNameHistory } from "@/lib/name-history";
@@ -145,6 +146,58 @@ interface PlayerEncounter {
   first_seen: string | null;
   last_seen: string | null;
   encounter_count: number;
+}
+
+function MutualFriendsPanel({ userId }: { userId: string }) {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<Array<{ id?: string; displayName?: string }> | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await ipc.socialMutualFetchOne(userId);
+      setHidden(res.hidden);
+      setRows(res.friends ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+        {loading ? <Loader2 className="size-3 animate-spin" /> : null}
+        {t("friendDetail.loadMutuals", { defaultValue: "Load mutuals" })}
+      </Button>
+      {hidden ? (
+        <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+          {t("friendDetail.mutualsHidden", { defaultValue: "This user hides mutual friends." })}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="text-[11px] text-[hsl(var(--destructive))]">{error}</p>
+      ) : null}
+      {rows && !hidden ? (
+        <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+          {t("friendDetail.mutualsCount", {
+            defaultValue: "{{count}} mutual friends",
+            count: rows.length,
+          })}
+        </p>
+      ) : null}
+      {rows?.slice(0, 12).map((row) => (
+        <div key={row.id ?? row.displayName} className="truncate text-[11px]">
+          {row.displayName || row.id}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 const EVENT_ICONS: Record<string, typeof History> = {
@@ -968,6 +1021,15 @@ export function FriendDetailDialog({ friend, onClose, readOnly = false }: Friend
               </div>
             );
           })()}
+
+          {!readOnly && friend?.id ? (
+            <div className="border-b border-[hsl(var(--border)/0.4)] px-5 py-4">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                {t("friendDetail.mutuals", { defaultValue: "Mutual friends" })}
+              </div>
+              <MutualFriendsPanel userId={friend.id} />
+            </div>
+          ) : null}
 
           {/* ========== 5b. Boop / Quick Action — pick which saved request-invite slot to send ========== */}
           {/* Boop/requestInvite are friend-only; hidden in profile-only mode

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useReport } from "@/lib/report-context";
 import { useAuth } from "@/lib/auth-context";
+import { collectSelfIdentity, isSelfPlayer } from "@/lib/self-player";
 import { ipc } from "@/lib/ipc";
 import { vrcApiThrottle } from "@/lib/api-throttle";
 import { prefetchThumbnails, useThumbnail } from "@/lib/thumbnails";
@@ -23,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThumbImage } from "@/components/ThumbImage";
 import { ImageZoom } from "@/components/ImageZoom";
-import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Trash2 } from "lucide-react";
+import { Gauge, AlertTriangle, CheckCircle2, Info, Copy, Clock, Eye, Lock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2 } from "lucide-react";
 import { SmartWearButton } from "@/components/SmartWearButton";
 import { UserPopupBadge } from "@/components/UserPopupBadge";
 import type { AvatarSwitchEvent } from "@/lib/types";
@@ -278,9 +279,32 @@ function buildSeenLogAvatars(events: AvatarSwitchEvent[], historyRows: SeenAvata
     .sort((a, b) => compareIsoish(b.last_seen_at, a.last_seen_at));
 }
 
+function useVisibleOnce<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || visible) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "240px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible]);
+  return { ref, visible };
+}
+
 export default function AvatarBenchmark() {
   const { t } = useTranslation();
-  const { report } = useReport();
+  const { report, loading: reportLoading } = useReport();
+  const { status } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>("benchmark");
   const [seenPage, setSeenPage] = useState(1);
@@ -304,20 +328,49 @@ export default function AvatarBenchmark() {
     staleTime: 10_000,
   });
 
+  const ownedQuery = useQuery({
+    queryKey: ["avatars.listOwned", "all"],
+    queryFn: () => ipc.avatarsListOwned({ releaseStatus: "all", count: 100 }),
+    enabled: status.authed,
+    staleTime: 30 * 60_000,
+    retry: 0,
+  });
+
+  const ownedById = useMemo(() => {
+    const map = new Map<string, { name: string; thumb?: string | null }>();
+    for (const avatar of ownedQuery.data?.avatars ?? []) {
+      if (!avatar.id?.startsWith("avtr_")) continue;
+      map.set(avatar.id, { name: avatar.name, thumb: avatar.thumbnailImageUrl });
+    }
+    return map;
+  }, [ownedQuery.data?.avatars]);
+
   const mergedAvatars = useMemo(() => {
     const byId = new Map<string, AvatarItem>();
+    const logNames = report?.logs?.avatar_names;
+    const nameFor = (id: string, current?: string) =>
+      current
+      || ownedById.get(id)?.name
+      || logNames?.[id]?.name
+      || undefined;
     for (const row of benchmarkQuery.data?.items ?? []) {
       if (!row.avatar_id || row.parameter_count <= 0) continue;
       byId.set(row.avatar_id, {
         avatar_id: row.avatar_id,
+        display_name: nameFor(row.avatar_id),
         parameter_count: row.parameter_count,
         modified_at: row.last_seen_at ?? undefined,
       });
     }
     // Live scan wins: overwrite persisted rows with the current measurement.
-    for (const a of avatars) byId.set(a.avatar_id, a);
+    for (const a of avatars) {
+      byId.set(a.avatar_id, {
+        ...a,
+        display_name: nameFor(a.avatar_id, a.display_name),
+      });
+    }
     return [...byId.values()].sort((a, b) => b.parameter_count - a.parameter_count);
-  }, [avatars, benchmarkQuery.data?.items]);
+  }, [avatars, benchmarkQuery.data?.items, ownedById, report?.logs?.avatar_names]);
 
   const maxParams = useMemo(() => Math.max(1, ...mergedAvatars.map((a) => a.parameter_count)), [mergedAvatars]);
 
@@ -352,14 +405,35 @@ export default function AvatarBenchmark() {
     () => (seenQuery.data?.items ?? []) as SeenAvatar[],
     [seenQuery.data?.items],
   );
-  const seenLogAvatars = useMemo(
-    () => buildSeenLogAvatars(report?.logs?.avatar_switches ?? [], seenAvatars),
-    [report, seenAvatars],
-  );
+  const self = useMemo(() => {
+    const localUserIds = [...new Set(
+      (report?.local_avatar_data?.recent_items ?? [])
+        .map((item) => item.user_id)
+        .filter((id): id is string => Boolean(id?.startsWith("usr_"))),
+    )];
+    return collectSelfIdentity({
+      userId: status.userId,
+      displayName: status.displayName,
+      localUserIds,
+    });
+  }, [status.userId, status.displayName, report]);
+
+  const seenLogAvatars = useMemo(() => {
+    const raw = buildSeenLogAvatars(report?.logs?.avatar_switches ?? [], seenAvatars);
+    return raw
+      .map((item) => {
+        const wearers = item.wearers.filter((w) => !isSelfPlayer(self, w.userId, w.displayName));
+        return { ...item, wearers, wearer_count: wearers.length };
+      })
+      .filter((item) => item.wearers.length > 0);
+  }, [report, seenAvatars, self]);
   const effectiveSeenTotal = seenLogAvatars.length || totalSeen;
 
   useEffect(() => {
+    const ownedIds = [...ownedById.keys()];
     const ids = [
+      ...ownedIds,
+      ...mergedAvatars.map((a) => a.avatar_id).filter((id) => id.startsWith("avtr_")),
       ...seenLogAvatars
         .map((a) => a.resolved_avatar_id ?? a.avatar_id)
         .filter((id): id is string => Boolean(id?.startsWith("avtr_"))),
@@ -368,7 +442,7 @@ export default function AvatarBenchmark() {
         .filter((id): id is string => Boolean(id?.startsWith("avtr_"))),
     ];
     if (ids.length > 0) prefetchThumbnails([...new Set(ids)]);
-  }, [seenLogAvatars, seenAvatars]);
+  }, [seenLogAvatars, seenAvatars, mergedAvatars, ownedById]);
 
   // Clear targets the currently-visible tab: the "My Avatars" benchmark table
   // vs the "Seen Avatars" encounter history. Live-scan data (from the running
@@ -509,7 +583,17 @@ export default function AvatarBenchmark() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-0.5 max-h-[500px] overflow-y-auto">
-              {mergedAvatars.length === 0 && (
+              {mergedAvatars.length === 0 && (reportLoading || benchmarkQuery.isPending) && (
+                <div className="flex flex-col gap-2 py-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-8 animate-pulse rounded-[var(--radius-sm)] bg-[hsl(var(--muted)/0.16)]"
+                    />
+                  ))}
+                </div>
+              )}
+              {mergedAvatars.length === 0 && !reportLoading && !benchmarkQuery.isPending && (
                 <div className="py-8 text-center">
                   <Gauge className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
                   <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -547,12 +631,24 @@ export default function AvatarBenchmark() {
               </div>
             )}
             {seenLogAvatars.length === 0 && seenQuery.isPending && seenAvatars.length === 0 && (
-              <div className="flex items-center justify-center gap-2 py-8 text-[11px] text-[hsl(var(--muted-foreground))]">
-                <Loader2 className="size-3.5 animate-spin" />
-                <span>{t("common.loading")}</span>
+              <div className="flex flex-col gap-2 py-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-12 animate-pulse rounded-[var(--radius-sm)] bg-[hsl(var(--muted)/0.16)]"
+                  />
+                ))}
               </div>
             )}
-            {seenLogAvatars.length === 0 && !seenQuery.isPending && totalSeen === 0 && (
+            {seenQuery.isError && seenLogAvatars.length === 0 && seenAvatars.length === 0 && (
+              <div className="py-8 text-center text-[11px] text-[hsl(var(--destructive))]">
+                {t("benchmark.seenFailed", {
+                  defaultValue: "Failed to load seen avatars: {{error}}",
+                  error: seenQuery.error instanceof Error ? seenQuery.error.message : String(seenQuery.error),
+                })}
+              </div>
+            )}
+            {seenLogAvatars.length === 0 && !seenQuery.isPending && !seenQuery.isError && totalSeen === 0 && (
               <div className="py-8 text-center">
                 <Eye className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
                 <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -800,6 +896,7 @@ function SeenAvatarRow({ a }: { a: SeenAvatar }) {
 function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
   const { t } = useTranslation();
   const { status: authStatus } = useAuth();
+  const { ref, visible } = useVisibleOnce<HTMLDivElement>();
   const [expanded, setExpanded] = useState(false);
   const primaryWearer = a.wearers[0];
   const rowAvatarId = a.resolved_avatar_id?.startsWith("avtr_")
@@ -842,6 +939,7 @@ function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
       };
     },
     enabled:
+      visible &&
       authStatus.authed &&
       !rowAvatarId &&
       !a.resolved_thumbnail_url &&
@@ -871,7 +969,8 @@ function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
   // resolveQuery.isFetched left it disabled forever in practice when the
   // resolveQuery never settled (cache cold + slow API).
   const wearerEnabled =
-    authStatus.authed
+    visible
+    && authStatus.authed
     && !rowAvatarId
     && !a.resolved_thumbnail_url
     && a.resolution_status !== "miss"
@@ -1057,7 +1156,7 @@ function SeenLogAvatarRow({ a }: { a: SeenLogAvatar }) {
   );
 
   return (
-    <div className="flex flex-col gap-2 border-b border-[hsl(var(--border)/0.35)] py-2">
+    <div ref={ref} className="flex flex-col gap-2 border-b border-[hsl(var(--border)/0.35)] py-2">
       <div className="flex items-center gap-2.5 text-[11px]">
         {thumbUrl ? (
           <ImageZoom src={thumbUrl} alt={a.avatar_name} className="size-10 shrink-0">

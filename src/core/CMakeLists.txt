@@ -55,6 +55,7 @@ add_library(vrcsm_core STATIC
     Pipeline.cpp
     DiscordRpc.cpp
     ToastNotifier.cpp
+    WebhookNotifier.cpp
     NowPlaying.cpp
     LyricsProxy.cpp
     VrOverlayNotifier.cpp

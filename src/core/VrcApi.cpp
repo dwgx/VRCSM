@@ -623,7 +623,8 @@ nlohmann::json parseJsonBody(const HttpResponse& response, std::string_view endp
 
 Result<std::vector<nlohmann::json>> fetchPagedAuthedArray(
     std::string_view endpointLabel,
-    const std::function<std::wstring(int limit, int offset)>& buildPath)
+    const std::function<std::wstring(int limit, int offset)>& buildPath,
+    int maxPages = 0)
 {
     const std::string cookieHeader = getLoadedCookieHeader();
     if (cookieHeader.empty())
@@ -634,6 +635,7 @@ Result<std::vector<nlohmann::json>> fetchPagedAuthedArray(
     static constexpr int kPageSize = 100;
 
     std::vector<nlohmann::json> out;
+    int pages = 0;
     for (int offset = 0;; offset += kPageSize)
     {
         const auto response = httpGet(
@@ -660,7 +662,12 @@ Result<std::vector<nlohmann::json>> fetchPagedAuthedArray(
             out.push_back(item);
         }
 
+        ++pages;
         if (static_cast<int>(doc.size()) < kPageSize)
+        {
+            break;
+        }
+        if (maxPages > 0 && pages >= maxPages)
         {
             break;
         }
@@ -1744,7 +1751,8 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchCalendar()
                 "/api/1/calendar?n={}&offset={}",
                 limit,
                 offset));
-        });
+        },
+        3);
 }
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchCalendarDiscover()
@@ -1757,7 +1765,8 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchCalendarDiscover()
                 "/api/1/calendar/discover?n={}&offset={}",
                 limit,
                 offset));
-        });
+        },
+        2);
 }
 
 Result<std::vector<nlohmann::json>> VrcApi::fetchCalendarFeatured()
@@ -1770,7 +1779,8 @@ Result<std::vector<nlohmann::json>> VrcApi::fetchCalendarFeatured()
                 "/api/1/calendar/featured?n={}&offset={}",
                 limit,
                 offset));
-        });
+        },
+        2);
 }
 
 Result<nlohmann::json> VrcApi::fetchJams()
@@ -1908,6 +1918,47 @@ Result<nlohmann::json> VrcApi::fetchUser(const std::string& userId)
     if (response.status != 200) return Error{"api_error", fmt::format("/users/{} returned HTTP {}", userId, response.status), static_cast<int>(response.status)};
 
     return parseJsonBody(response, "/users/{id}");
+}
+
+Result<nlohmann::json> VrcApi::fetchMutualFriends(
+    const std::string& userId, int n, int offset)
+{
+    if (userId.empty())
+    {
+        return Error{"not_found", "Empty user id", 404};
+    }
+    const std::string cookieHeader = getLoadedCookieHeader();
+    if (cookieHeader.empty())
+    {
+        return Error{"auth_expired", "No session cookie", 401};
+    }
+    if (n < 1) n = 1;
+    if (n > 100) n = 100;
+    if (offset < 0) offset = 0;
+    const std::wstring path = toWide(fmt::format(
+        "/api/1/users/{}/mutuals/friends?apiKey={}&n={}&offset={}",
+        percentEncode(userId), kApiKey, n, offset));
+    const auto response = httpGet(
+        kApiHostW,
+        path,
+        std::make_optional(cookieHeader));
+    if (response.status == 403)
+    {
+        return Error{"hidden", "Mutuals hidden or opted out", 403};
+    }
+    if (auto err = checkStandardHttpError(response, "")) return *err;
+    if (response.status == 404)
+    {
+        return Error{"not_found", fmt::format("User {} not found", userId), 404};
+    }
+    if (response.status != 200)
+    {
+        return Error{
+            "api_error",
+            fmt::format("/users/{}/mutuals/friends returned HTTP {}", userId, response.status),
+            static_cast<int>(response.status)};
+    }
+    return parseJsonBody(response, "/users/{id}/mutuals/friends");
 }
 
 Result<nlohmann::json> VrcApi::selectAvatar(const std::string& avatarId)

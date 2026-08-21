@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import {
   Card,
@@ -683,6 +684,10 @@ const FILTER_COLORS: Record<FilterKey, string> = {
   diagnostic: "bg-amber-400",
 };
 
+function timelineItemKey(ev: TimelineEvent): string {
+  return `${ev.kind}|${ev.iso_time ?? ""}|${ev.sortKey}|${ev.title}|${ev.detail ?? ""}|${ev.meta ?? ""}`;
+}
+
 function matchesFilter(kind: TimelineEventKind, filters: Record<FilterKey, boolean>): boolean {
   if (kind === "player_join" || kind === "player_left") return filters.players;
   if (kind === "avatar_switch" || kind === "avatar_pedestal") return filters.avatars;
@@ -702,12 +707,6 @@ function matchesFilter(kind: TimelineEventKind, filters: Record<FilterKey, boole
     return filters.diagnostic;
   return true;
 }
-
-// ---------------------------------------------------------------------------
-// Page size for virtual scroll
-// ---------------------------------------------------------------------------
-
-const PAGE_SIZE = 100;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -740,7 +739,6 @@ function Logs() {
     diagnostic: false,
   });
 
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [clearingLogFiles, setClearingLogFiles] = useState(false);
   const [clearLogFilesOpen, setClearLogFilesOpen] = useState(false);
 
@@ -760,7 +758,6 @@ function Logs() {
 
   const toggleFilter = useCallback((key: FilterKey) => {
     setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
-    setVisibleCount(PAGE_SIZE);
   }, []);
 
   // -- Live streaming deltas ------------------------------------------------
@@ -1065,6 +1062,19 @@ function Logs() {
     });
   }, [timeline, filters, debouncedSearch]);
 
+  const timelineScrollRef = useRef<HTMLDivElement | null>(null);
+  const timelineVirtualizer = useVirtualizer({
+    count: filteredTimeline.length,
+    getScrollElement: () => timelineScrollRef.current,
+    estimateSize: () => 64,
+    overscan: 8,
+    getItemKey: (index) => {
+      const ev = filteredTimeline[index];
+      return ev ? timelineItemKey(ev) : index;
+    },
+  });
+  const timelineVirtualItems = timelineVirtualizer.getVirtualItems();
+
   // -- Stats counts ---------------------------------------------------------
 
   const stats = useMemo(() => {
@@ -1125,30 +1135,6 @@ function Logs() {
       .filter((sec) => sec.entries.length > 0);
   }, [logs, debouncedSettingsFilter]);
 
-  // -- Scroll sentinel for "load more" -------------------------------------
-
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredTimeline.length));
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [filteredTimeline.length]);
-
-  // Reset visible count when filters change
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [debouncedSearch, filters]);
-
   const handleClearLogFiles = useCallback(async () => {
     setClearingLogFiles(true);
     try {
@@ -1208,9 +1194,6 @@ function Logs() {
   // =========================================================================
   // Render
   // =========================================================================
-
-  const visibleEvents = filteredTimeline.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredTimeline.length;
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
@@ -1414,11 +1397,18 @@ function Logs() {
               {t("logs.noPlayerEvents", { defaultValue: "No events match the current filters." })}
             </div>
           ) : (
-            <div className="relative flex flex-col">
-              {/* Vertical timeline line */}
+            <div
+              ref={timelineScrollRef}
+              className="relative h-[560px] max-h-[560px] overflow-y-auto"
+            >
+              <div
+                className="relative w-full"
+                style={{ height: `${timelineVirtualizer.getTotalSize()}px` }}
+              >
               <div className="absolute left-[59px] top-0 bottom-0 w-px bg-[hsl(var(--border))]" />
-
-              {visibleEvents.map((ev, i) => {
+              {timelineVirtualItems.map((vi) => {
+                const ev = filteredTimeline[vi.index];
+                if (!ev) return null;
                 const style = KIND_STYLES[ev.kind];
                 const Icon = style.icon;
                 const isJoin = ev.kind === "player_join";
@@ -1426,12 +1416,15 @@ function Logs() {
 
                 return (
                   <div
-                    key={`${ev.kind}-${i}-${ev.sortKey}`}
+                    key={vi.key}
+                    data-index={vi.index}
+                    ref={timelineVirtualizer.measureElement}
                     className={[
-                      "group relative flex items-start gap-3 py-1.5 pl-0 pr-2",
+                      "group absolute left-0 top-0 flex w-full items-start gap-3 py-1.5 pl-0 pr-2",
                       "transition-colors hover:bg-[hsl(var(--surface-raised))]",
                       "rounded-[var(--radius-sm)]",
                     ].join(" ")}
+                    style={{ transform: `translateY(${vi.start}px)` }}
                   >
                     {/* Timestamp */}
                     <span className="w-[50px] shrink-0 pt-1 text-right font-mono text-[10px] leading-tight text-[hsl(var(--muted-foreground))]">
@@ -1509,16 +1502,7 @@ function Logs() {
                   </div>
                 );
               })}
-
-              {/* Load-more sentinel */}
-              {hasMore ? (
-                <div
-                  ref={sentinelRef}
-                  className="flex items-center justify-center py-4 text-[11px] text-[hsl(var(--muted-foreground))]"
-                >
-                  {t("common.loading", { defaultValue: "Loading..." })}
-                </div>
-              ) : null}
+              </div>
             </div>
           )}
         </CardContent>

@@ -786,9 +786,19 @@
       "userId": "user ID",
       "worldId": "world ID"
     },
+    "layout": {
+      "locations": "By instance",
+      "status": "By status"
+    },
+    "section": {
+      "sameAsYou": "Same as you"
+    },
     "inspector": {
       "empty": "Select a friend to see their location, avatar and quick actions.",
       "title": "Friend at a glance"
+    },
+    "recommend": {
+      "title": "Seen in your worlds"
     }
   },
   "layout": {
@@ -1097,8 +1107,8 @@
   "cmd": {
     "title": "Command Palette",
     "placeholder": "Type a command or search logs, players, worlds…",
-    "empty": "No matching commands.",
-    "loading": "Loading session logs…",
+    "empty": "No matching people, worlds, or commands.",
+    "loading": "Loading local evidence…",
     "navigate": "navigate",
     "select": "select",
     "dismiss": "dismiss",
@@ -1214,7 +1224,8 @@
     "local3dPreviewHint": "Uses the cached __data bundle directly. This does not require an avatar ID; encrypted or non-avatar bundles may still fail to render.",
     "noInfoFields": "No parsable fields in __info.",
     "fileTree": "Entry contents",
-    "emptyTree": "Entry is empty."
+    "emptyTree": "Entry is empty.",
+    "emptyCache": "No cache entries on disk."
   },
   "library": {
     "title": "Library",
@@ -3772,6 +3783,7 @@
       "successSave": "Successfully updated config.json!",
       "errorSave": "Failed to save config.json: {{msg}}",
       "errorRead": "Failed to read config.json: {{msg}}",
+      "missingFileHint": "config.json is missing. Save creates it. VRChat is not modified until you Save.",
       "cacheDirectory": {
         "label": "Cache Directory",
         "hint": "Absolute path to Custom Cache directory"
@@ -4336,7 +4348,10 @@
     "groupsSignIn": "Sign in to VRChat to see events from groups you've joined.",
     "noGroups": "You haven't joined any VRChat groups yet.",
     "noGroupEvents": "Your {{count}} group(s) have no public events right now.",
-    "openGroupPage": "Open group"
+    "openGroupPage": "Open group",
+    "loadFailed": "Failed to load calendar: {{error}}",
+    "featured": "Featured",
+    "attending": "{{count}} attending"
   },
   "worldHistory": {
     "title": "World History",
@@ -4503,7 +4518,10 @@
     "clearFailed": "Failed to clear: {{error}}",
     "clearSuccess": "Social analytics cleared.",
     "clearTitle": "Clear social analytics?",
-    "nodeFocused": "{{name}} focused"
+    "nodeFocused": "{{name}} focused",
+    "graphFailed": "Co-presence graph failed: {{error}}",
+    "windowDays": "Window (days)",
+    "minOverlap": "Min overlap (sec)"
   },
   "benchmark": {
     "title": "Avatar Performance Benchmark",
@@ -4519,6 +4537,7 @@
     "seenAvatars": "Seen Avatars",
     "seenTitle": "Avatars Seen on Others",
     "noSeen": "No avatars recorded yet. VRCSM records avatars seen on other players from VRChat logs and friend activity.",
+    "seenFailed": "Failed to load seen avatars: {{error}}",
     "public": "Public",
     "private": "Private",
     "logOnly": "Log only",

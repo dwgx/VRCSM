@@ -297,6 +297,7 @@ Result<nlohmann::json> Database::CoPresenceEgoNetwork(
     int min_overlap_sec)
 {
     std::vector<analytics::PresenceEventRow> rows;
+    std::vector<analytics::VisitPresenceRow> visits;
     std::time_t nowT = 0;
 
     {
@@ -324,11 +325,13 @@ Result<nlohmann::json> Database::CoPresenceEgoNetwork(
         // within each instance session. We over-fetch a little (no lexical
         // cutoff that could drop a session straddling the boundary) and apply
         // the time window during pairing instead.
+        // instance_id may be NULL on older rows — COALESCE to world_id so
+        // they still group instead of being dropped (empty graph with 10k events).
         const char* sql =
-            "SELECT user_id, display_name, world_id, instance_id, kind, occurred_at "
+            "SELECT user_id, display_name, world_id, COALESCE(instance_id, world_id), kind, occurred_at "
             "FROM player_events "
-            "WHERE user_id IS NOT NULL AND world_id IS NOT NULL AND instance_id IS NOT NULL "
-            "ORDER BY world_id, instance_id, occurred_at ASC;";
+            "WHERE user_id IS NOT NULL AND user_id != '' AND world_id IS NOT NULL AND world_id != '' "
+            "ORDER BY world_id, COALESCE(instance_id, world_id), occurred_at ASC;";
 
         sqlite3_stmt* rawStmt = nullptr;
         if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
@@ -360,9 +363,39 @@ Result<nlohmann::json> Database::CoPresenceEgoNetwork(
         {
             return MakeError("db_step_failed");
         }
+
+        const char* visitSql =
+            "SELECT world_id, instance_id, joined_at, left_at "
+            "FROM world_visits "
+            "WHERE world_id IS NOT NULL AND world_id != '' "
+            "ORDER BY joined_at ASC;";
+        sqlite3_stmt* visitStmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, visitSql, -1, &visitStmt, nullptr) != SQLITE_OK)
+        {
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard visitGuard(visitStmt);
+        int vrc = SQLITE_OK;
+        while ((vrc = sqlite3_step(visitStmt)) == SQLITE_ROW)
+        {
+            analytics::VisitPresenceRow visit;
+            const auto wJson = ColumnTextOrNull(visitStmt, 0);
+            visit.world_id = wJson.is_string() ? wJson.get<std::string>() : std::string();
+            const auto iJson = ColumnTextOrNull(visitStmt, 1);
+            visit.instance_id = iJson.is_string() ? iJson.get<std::string>() : std::string();
+            const auto jJson = ColumnTextOrNull(visitStmt, 2);
+            visit.joined_at = jJson.is_string() ? jJson.get<std::string>() : std::string();
+            const auto lJson = ColumnTextOrNull(visitStmt, 3);
+            visit.left_at = lJson.is_string() ? lJson.get<std::string>() : std::string();
+            visits.push_back(std::move(visit));
+        }
+        if (vrc != SQLITE_DONE)
+        {
+            return MakeError("db_step_failed");
+        }
     } // release m_mutex before pure compute
 
-    return analytics::coPresenceEgoNetwork(rows, center_user_id, since_days, min_overlap_sec, nowT);
+    return analytics::coPresenceEgoNetwork(rows, center_user_id, since_days, min_overlap_sec, nowT, visits);
 }
 
 

@@ -274,6 +274,23 @@ void to_json(nlohmann::json& j, const AudioDeviceEvent& e)
     };
 }
 
+void to_json(nlohmann::json& j, const RoomLeftEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+    };
+}
+
+void to_json(nlohmann::json& j, const ResourceLoadEvent& e)
+{
+    j = nlohmann::json{
+        {"iso_time", e.iso_time ? nlohmann::json(*e.iso_time) : nlohmann::json(nullptr)},
+        {"media", e.media},
+        {"url", e.url},
+        {"host", e.host},
+    };
+}
+
 void to_json(nlohmann::json& j, const WorldSwitchEvent& e)
 {
     j = nlohmann::json{
@@ -323,6 +340,8 @@ void to_json(nlohmann::json& j, const LogReport& r)
         {"instance_resets", r.instance_resets},
         {"shader_keywords", r.shader_keywords},
         {"audio_devices", r.audio_devices},
+        {"room_left", r.room_left},
+        {"resource_loads", r.resource_loads},
     };
 }
 
@@ -1006,6 +1025,25 @@ void handleNormalLine(const std::string& line, LogReport& report, ParseState& st
                 }
                 break;
             }
+            case LogAtomKind::RoomLeft:
+                if (report.room_left.size() < kMaxEventsPerKind)
+                {
+                    RoomLeftEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    report.room_left.push_back(std::move(ev));
+                }
+                break;
+            case LogAtomKind::ResourceLoad:
+                if (report.resource_loads.size() < kMaxEventsPerKind)
+                {
+                    ResourceLoadEvent ev;
+                    ev.iso_time = st.lastTimestamp;
+                    ev.media = atom->getOr("media");
+                    ev.url = atom->getOr("url");
+                    ev.host = atom->getOr("host");
+                    report.resource_loads.push_back(std::move(ev));
+                }
+                break;
             default:
                 break;
         }

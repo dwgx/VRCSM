@@ -27,6 +27,8 @@ import { useUiPrefBoolean, useUiPrefString } from "@/lib/ui-prefs";
 import { DISCORD_PREF_CLIENT_ID, DISCORD_PREF_ENABLED } from "@/lib/useDiscordPresence";
 import {
   NOTIFY_PREF_FRIEND_ONLINE,
+  NOTIFY_PREF_WEBHOOK,
+  NOTIFY_PREF_WEBHOOK_URL,
   NOTIFY_PREF_INVITE,
   NOTIFY_PREF_FRIEND_REQUEST,
   NOTIFY_PREF_VR_OVERLAY,
@@ -82,6 +84,8 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
   const [toastInvite, setToastInvite] = useUiPrefBoolean(NOTIFY_PREF_INVITE, false);
   const [toastFriendRequest, setToastFriendRequest] = useUiPrefBoolean(NOTIFY_PREF_FRIEND_REQUEST, false);
   const [toastVrOverlay, setToastVrOverlay] = useUiPrefBoolean(NOTIFY_PREF_VR_OVERLAY, false);
+  const [webhookEnabled, setWebhookEnabled] = useUiPrefBoolean(NOTIFY_PREF_WEBHOOK, false);
+  const [webhookUrl, setWebhookUrl] = useUiPrefString(NOTIFY_PREF_WEBHOOK_URL, "");
   // Spoken announcements. Host SAPI is primary; Web Speech is fallback.
   const [ttsEnabled, setTtsEnabled] = useUiPrefBoolean(TTS_PREF_ENABLED, false);
   const [ttsScope, setTtsScope] = useUiPrefString(TTS_PREF_SCOPE, "friends");
@@ -705,6 +709,38 @@ export function TabGeneral({ version }: { version: AppVersion | null }) {
                 : t("common.disabled", { defaultValue: "Disabled" })}
             </Button>
           </SettingRow>
+          <SettingRow
+            label={t("settings.notify.webhook.label", { defaultValue: "Discord webhook" })}
+            hint={t("settings.notify.webhook.desc", {
+              defaultValue: "Optional discord.com incoming webhook. Off by default. HTTPS discord.com / discordapp.com only.",
+            })}
+          >
+            <Button
+              variant={webhookEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setWebhookEnabled(!webhookEnabled)}
+              className="h-7 px-3 text-[12px]"
+            >
+              {webhookEnabled
+                ? t("common.enabled", { defaultValue: "Enabled" })
+                : t("common.disabled", { defaultValue: "Disabled" })}
+            </Button>
+          </SettingRow>
+          {webhookEnabled ? (
+            <SettingRow
+              label={t("settings.notify.webhookUrl.label", { defaultValue: "Webhook URL" })}
+              hint={t("settings.notify.webhookUrl.desc", {
+                defaultValue: "Paste your own Discord webhook. Stored locally. Never a bot token.",
+              })}
+            >
+              <Input
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value.trim())}
+                placeholder="https://discord.com/api/webhooks/…"
+                className="h-8 w-[260px] font-mono text-[11px]"
+              />
+            </SettingRow>
+          ) : null}
           <SettingRow
             label={t("settings.notify.tts.label", { defaultValue: "Speak Notifications" })}
             hint={

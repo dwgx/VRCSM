@@ -1,13 +1,16 @@
 {
   "name": "vrcsm",
-  "version": "0.16.2",
+  "version": "0.16.3",
   "dependencies": [
     "nlohmann-json",
     "fmt",
     "spdlog",
     "wil",
     "webview2",
-    "sqlite3",
+    {
+      "name": "sqlite3",
+      "features": ["fts5"]
+    },
     "lz4",
     "liblzma"
   ]

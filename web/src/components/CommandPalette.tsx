@@ -92,6 +92,7 @@ export function CommandPalette({
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [globalResults, setGlobalResults] = useState<GlobalSearchResult[]>([]);
   const [loadingSearch, setLoadingSearch] = useState(false);
+  const logsLoadedRef = useRef(false);
   const [, setSidebarHidden] = useUiPrefBoolean("vrcsm.layout.sidebar.hidden", false);
   const [, setDockHidden] = useUiPrefBoolean("vrcsm.layout.dock.hidden", false);
 
@@ -162,13 +163,27 @@ export function CommandPalette({
     [navigate, onRescan, onOpenAbout, setSidebarHidden, setDockHidden, t, panelPlugins, helpersOn],
   );
 
+  // Fetch logs once per open after the user types. Depend on a boolean so
+  // extra keystrokes cannot cancel the in-flight request (cleanup must not
+  // run on every `query` change).
+  const wantsLogs = open && query.trim().length > 0;
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      logsLoadedRef.current = false;
+      setLogs([]);
+      setLoadingLogs(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!wantsLogs || logsLoadedRef.current) return;
     setLoadingLogs(true);
     let alive = true;
     void listPlayerEvents(MAX_LOGS, 0)
       .then((res) => {
         if (!alive) return;
+        logsLoadedRef.current = true;
         const items = (res.items ?? []) as Array<{
           id: number | string;
           kind: string;
@@ -190,7 +205,10 @@ export function CommandPalette({
         setLogs(mapped);
       })
       .catch(() => {
-        if (alive) setLogs([]);
+        if (alive) {
+          setLogs([]);
+          logsLoadedRef.current = false;
+        }
       })
       .finally(() => {
         if (alive) setLoadingLogs(false);
@@ -198,7 +216,7 @@ export function CommandPalette({
     return () => {
       alive = false;
     };
-  }, [open, navigate, t]);
+  }, [wantsLogs, navigate, t]);
 
   useEffect(() => {
     if (!open) {
@@ -380,7 +398,7 @@ export function CommandPalette({
             <div className="px-4 py-10 text-center text-[12px] text-[hsl(var(--muted-foreground))]">
               {loadingSearch || loadingLogs
                 ? t("cmd.loading", { defaultValue: "Loading local evidence…" })
-                : t("cmd.empty", { defaultValue: "No matching commands." })}
+                : t("cmd.empty", { defaultValue: "No matching people, worlds, or commands." })}
             </div>
           ) : (
             grouped.map(([section, items]) => (

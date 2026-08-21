@@ -108,13 +108,16 @@ nlohmann::json IpcBridge::HandleScan(const nlohmann::json&, const std::optional<
         }
     }
 
+    const auto cwpDir = probe.cacheWindowsPlayerDir();
     if (parsedLogs.has_value())
     {
-        auto report = vrcsm::core::CacheScanner::buildReport(probe.baseDir, std::move(*parsedLogs));
+        auto report = vrcsm::core::CacheScanner::buildReport(
+            probe.baseDir, std::move(*parsedLogs), cwpDir);
         PersistAvatarBenchmarks(report);
         return ToJson(report);
     }
-    auto report = vrcsm::core::CacheScanner::buildReport(probe.baseDir);
+    auto report = vrcsm::core::CacheScanner::buildReport(
+        probe.baseDir, vrcsm::core::LogParser::parse(probe.baseDir), cwpDir);
     PersistAvatarBenchmarks(report);
     return ToJson(report);
 }
@@ -124,7 +127,7 @@ nlohmann::json IpcBridge::HandleBundlePreview(const nlohmann::json& params, cons
     const auto entryPath = Utf8ToWide(params.at("entry").get<std::string>());
     const std::filesystem::path base(entryPath);
     const auto probe = vrcsm::core::PathProbe::Probe();
-    const auto cwpDir = std::filesystem::path(probe.baseDir) / L"Cache-WindowsPlayer";
+    const auto cwpDir = probe.cacheWindowsPlayerDir();
     if (probe.baseDir.empty() || !vrcsm::core::ensureWithinBase(cwpDir, base))
     {
         throw std::runtime_error("bundle.preview: entry escapes Cache-WindowsPlayer");

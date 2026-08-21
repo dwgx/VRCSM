@@ -96,6 +96,9 @@ const std::regex kShaderKeywordRe(
     R"(Maximum number \(384\) of shader global keywords exceeded)");
 const std::regex kAudioDeviceRe(
     R"(\[Always\] uSpeak: SetInputDevice 0 \(\d+ total\) '(.+?)'\s*$)");
+const std::regex kOnLeftRoomRe(R"(\[Behaviour\] OnLeftRoom\s*$)");
+const std::regex kResourceLoadRe(
+    R"(Attempting to load (String|image) from URL '([^']+)')");
 
 const std::regex kHashSuffixRe(R"(_[0-9a-f]{4,}$)");
 const std::regex kTrailingHexRe(R"(\s+[0-9a-f]{7,}$|(?:_[0-9a-f]{4,})?[0-9a-f]{7,}$)");
@@ -562,6 +565,40 @@ std::optional<LogAtom> ParseVrchatLogAtom(std::string_view bodyView)
     {
         LogAtom atom{LogAtomKind::AudioDevice, {}};
         put(atom, "device_name", match[1].str());
+        return atom;
+    }
+
+    if (std::regex_search(body, match, kOnLeftRoomRe))
+    {
+        return LogAtom{LogAtomKind::RoomLeft, {}};
+    }
+    if (std::regex_search(body, match, kResourceLoadRe))
+    {
+        const std::string media = match[1].str();
+        const std::string url = match[2].str();
+        std::smatch hostMatch;
+        std::string host;
+        std::string port;
+        static const std::regex kUrlHostRe(
+            R"(^https?://([^/:]+)(?::(\d+))?)", std::regex::icase);
+        if (std::regex_search(url, hostMatch, kUrlHostRe))
+        {
+            host = hostMatch[1].str();
+            port = hostMatch[2].matched ? hostMatch[2].str() : std::string{};
+        }
+        std::string hostLower = host;
+        for (char& ch : hostLower)
+        {
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+        if ((hostLower == "localhost" || hostLower == "127.0.0.1") && port == "22500")
+        {
+            return std::nullopt;
+        }
+        LogAtom atom{LogAtomKind::ResourceLoad, {}};
+        put(atom, "media", media);
+        put(atom, "url", url);
+        put(atom, "host", host);
         return atom;
     }
 

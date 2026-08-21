@@ -365,25 +365,14 @@ function AppContent() {
     };
   }, []);
 
-  // Warm the Calendar/Jams/Groups caches in the background so the first
-  // click on each nav entry renders instantly from React Query cache.
-  // These endpoints are auth-gated but skip cleanly if the session
-  // isn't ready yet — the next hook fire picks them up.
+  // Warm the small Calendar/Groups caches. Do NOT prefetch
+  // calendar.discover here — that feed paginates the public catalog and
+  // blocked the Groups tab on four skeleton cards.
   useEffect(() => {
     if (!authStatus.authed) return;
     void queryClient.prefetchQuery({
-      queryKey: ["calendar.discover"],
-      queryFn: () => ipc.calendarDiscover(),
-      staleTime: 5 * 60_000,
-    });
-    void queryClient.prefetchQuery({
-      queryKey: ["calendar.featured"],
-      queryFn: () => ipc.calendarFeatured(),
-      staleTime: 5 * 60_000,
-    });
-    void queryClient.prefetchQuery({
-      queryKey: ["jams.list"],
-      queryFn: () => ipc.jamsList(),
+      queryKey: ["calendar.list"],
+      queryFn: () => ipc.calendarList(),
       staleTime: 5 * 60_000,
     });
     void queryClient.prefetchQuery({

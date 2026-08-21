@@ -1,18 +1,19 @@
 # VRCSM Markdown Index
 
-Last updated: 2026-08-20
+Last updated: 2026-08-21
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
-> Note: **v0.16.0 released 2026-08-20 (Latest on GitHub)** — companion-tools wave (last-instance, grey helpers default OFF, backups, Hot Worlds, `{hr.bpm}`, visit-time normalize). Version files (`VERSION`, `web/package.json`, `vcpkg.json`, README badge+artifacts) are in sync at 0.16.0. Prior Latest was v0.15.2. Several docs below labeled "plan" now describe shipped work (OSC Studio, now-playing module, companion helpers). Current test baseline: see `MEMORY.md`. i18n full parity across all 7 locales for older keys; 0.16.0 new UI uses `defaultValue`. See `docs/review-2026-07/GUI-API-CONTRACT-AUDIT-2026-07-09.md` for the GUI↔API audit + remediation.
+> Note: **v0.16.3 cut 2026-08-21** — Friends Locations, virtual lists, config.json path, calendar, co-presence, FTS/kana, opt-in mutuals, webhook, log atoms. Grey helpers default OFF. Version files in sync at **0.16.3**. See `MEMORY.md` for the cut's ctest/Playwright numbers.
 
 ## Required Startup Order
 
-1. `MEMORY.md` — repo-local continuity summary and current verification baseline.
-2. `AGENTS.md` / `CLAUDE.md` — build rules, architecture, safety constraints.
-3. `docs/NEXT-AGENT-HANDOFF.md` — current state and last known release verification.
-4. `CHANGELOG.md` — current user-visible behavior and release history.
-5. Target-specific docs below.
+1. `docs/SESSION-HANDOFF-2026-08-21.md` — present-tense acceptance pack, copy-paste subagent prompts, ranked backlog. **Git wins** if older docs disagree.
+2. `MEMORY.md` — repo-local continuity summary and current verification baseline.
+3. `AGENTS.md` / `CLAUDE.md` — build rules, architecture, safety constraints.
+4. `docs/NEXT-AGENT-HANDOFF.md` — pointer + historical sessions + last published release verification.
+5. `CHANGELOG.md` — current user-visible behavior and release history.
+6. Target-specific docs below.
 
 ## Root Docs
 
@@ -67,12 +68,14 @@ This file maps the repo's Markdown documents so the next agent can start from th
   - Read before resuming feature work on cache/bundle/telemetry/social tracks; it carries the legal boundary (inspection only, no avatar-export-for-redistribution) and a suggested execution order.
 
 - `docs/FRIENDS-RELATIONSHIP-REDESIGN-RESEARCH.md`
-  - Current 2026-06-23 research baseline for rebuilding Friends into a VRCX-class social/relationship workspace.
+  - 2026-06-23 research baseline for rebuilding Friends into a VRCX-class social/relationship workspace.
   - Maps VRCX Friends Locations, Friend List, mutual graph, relationship feed, local stats, public VRChat API boundaries, proposed Social/Relationship modules, data model, UI target, and phased implementation order.
+  - 2026-08-21 banner: ego-graph now has `world_visits` self-seed (uncommitted); mutuals still unwrapped; see SESSION-HANDOFF.
 
 - `docs/FRIENDS-PAGE-OPTIMIZATION-PLAN.md`
   - Focused execution plan for improving `web/src/pages/Friends.tsx` without turning the page into a large mixed-responsibility component.
   - Defines the target Friends workspace layout, state/data-flow cleanup, virtualized list strategy, smart groups, inspector extraction, VRCX-inspired view modes, phased implementation order, and acceptance tests.
+  - 2026-08-21: FL1 landed uncommitted (instance-first default + virtualizer). This file remains the design; do not rebuild FL1.
 
 - `docs/OSC-STUDIO-PLAN.md`
   - 2026-06-23 execution plan for turning the raw OSC sender/listener into a modular OSC Studio. **Largely shipped:** draggable card composition, template variables, hardware/system telemetry cards, and Chatbox safety rules are implemented. Since extended by the now-playing music module (see `docs/NOW-PLAYING-OSC-PLAN.md`).
@@ -111,8 +114,10 @@ This file maps the repo's Markdown documents so the next agent can start from th
 
 ## Current Handoff
 
+- `docs/SESSION-HANDOFF-2026-08-21.md`
+  - **Start here after 0.16.2.** Dirty usability + **FL1 landed uncommitted**. Ranked remaining: VL1 → SR1 → MU1 → P15/P2/P5.
 - `docs/NEXT-AGENT-HANDOFF.md`
-  - Current branch, latest commits, verification commands, sensitive decisions, likely next work.
+  - Pointer at the session pack, then historical sessions, last published release verification, sensitive decisions.
   - Read before changing avatar thumbnails, global search, VRLink repair, plugin permissions, cache deletion, downloads, or release packaging.
 
 ## Internal Reference Documentation

@@ -1,6 +1,6 @@
 # Beat-VRCX Execution Plan — Telemetry, Social, GUI
 
-Last updated: 2026-06-29
+Last updated: 2026-06-29 (plan). **Status 2026-08-21:** Feed persistence + Hot Worlds shipped in 0.16.0. Co-presence is log-overlap + `world_visits` self-seed (uncommitted). Mutuals still unwrapped — **opt-in, no startup crawl** (MU1). Daily VRCX miss is Friends Locations (FL1), not a prettier force graph. Pack: `docs/SESSION-HANDOFF-2026-08-21.md`.
 
 This is the execution plan for three tracks the user wants to not just match but
 **beat VRCX** on. It builds on, and does not duplicate:

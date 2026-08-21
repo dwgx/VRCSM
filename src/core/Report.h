@@ -19,5 +19,9 @@ struct LogReport;
 // unit.
 nlohmann::json BuildFullReport(const std::filesystem::path& baseDir);
 nlohmann::json BuildFullReport(const std::filesystem::path& baseDir, LogReport parsedLogs);
+nlohmann::json BuildFullReport(
+    const std::filesystem::path& baseDir,
+    LogReport parsedLogs,
+    const std::filesystem::path& cacheWindowsPlayerDir);
 
 } // namespace vrcsm::core

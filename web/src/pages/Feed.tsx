@@ -219,9 +219,32 @@ export function FeedPanel({ embedded = false }: FeedPanelProps) {
   // Live refresh: any friend pipeline event means new feed rows may have been
   // written by the recorder. Invalidate the root so the visible page refetches.
   // Debounce via React Query's own dedup — invalidate is cheap and coalesced.
+  const lastFeedInvalidate = useRef(0);
+  const feedFlushTimer = useRef<number | null>(null);
   const onPipeline = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: qk.feed.root });
+    const now = Date.now();
+    const wait = 1500 - (now - lastFeedInvalidate.current);
+    const flush = () => {
+      feedFlushTimer.current = null;
+      lastFeedInvalidate.current = Date.now();
+      void queryClient.invalidateQueries({ queryKey: qk.feed.root });
+    };
+    if (wait <= 0) {
+      if (feedFlushTimer.current !== null) {
+        window.clearTimeout(feedFlushTimer.current);
+        feedFlushTimer.current = null;
+      }
+      flush();
+      return;
+    }
+    if (feedFlushTimer.current !== null) return;
+    feedFlushTimer.current = window.setTimeout(flush, wait);
   }, [queryClient]);
+  useEffect(() => {
+    return () => {
+      if (feedFlushTimer.current !== null) window.clearTimeout(feedFlushTimer.current);
+    };
+  }, []);
   usePipelineEvent("friend-online", onPipeline);
   usePipelineEvent("friend-offline", onPipeline);
   usePipelineEvent("friend-location", onPipeline);

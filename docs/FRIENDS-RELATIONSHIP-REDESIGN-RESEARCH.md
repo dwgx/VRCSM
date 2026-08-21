@@ -1,6 +1,6 @@
 # Friends Relationship Redesign Research
 
-Last updated: 2026-06-23
+Last updated: 2026-06-23 (research baseline). **Status 2026-08-21:** ego-graph now seeds self from `world_visits` (uncommitted on `main`). Mutuals API still **not** wrapped. No startup crawl. Successor pack: `docs/SESSION-HANDOFF-2026-08-21.md`. Local VRCX clone `D:\Reference\VRCX` was missing at pack time — re-clone before trusting file:line citations below.
 
 本文是 VRCSM 好友/关系系统改版的研究基线。目标不是照搬 VRCX，而是在尊重 VRChat API、隐私和限流边界的前提下，把 VRCSM 的好友功能做成更清晰、更可查、更可维护的本地关系系统。
 

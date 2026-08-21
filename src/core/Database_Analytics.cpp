@@ -494,6 +494,39 @@ Result<nlohmann::json> Database::GlobalSearch(const nlohmann::json& request)
         limit = std::clamp(limit, 1, 50);
         offset = std::max(offset, 0);
 
+        if (!normalizedQuery.empty())
+        {
+            sqlite3_stmt* ftsStmt = nullptr;
+            if (sqlite3_prepare_v2(
+                    m_db,
+                    "SELECT kind, doc_id, title FROM search_docs WHERE search_docs MATCH ?1 LIMIT 50;",
+                    -1,
+                    &ftsStmt,
+                    nullptr) == SQLITE_OK)
+            {
+                StatementGuard ftsGuard(ftsStmt);
+                if (BindText(ftsStmt, 1, normalizedQuery) == SQLITE_OK)
+                {
+                    int ftsRc = SQLITE_OK;
+                    while ((ftsRc = sqlite3_step(ftsStmt)) == SQLITE_ROW)
+                    {
+                        const auto kind = ColumnOptionalText(ftsStmt, 0).value_or("");
+                        const auto docId = ColumnOptionalText(ftsStmt, 1).value_or("");
+                        const auto title = ColumnOptionalText(ftsStmt, 2).value_or(docId);
+                        if (kind == "favorite")
+                        {
+                            analytics::FavoriteRow row;
+                            row.type = "other";
+                            row.target_id = docId;
+                            row.list_name = "Library";
+                            row.display_name = title;
+                            input.favorites.push_back(std::move(row));
+                        }
+                    }
+                }
+            }
+        }
+
         auto bindQueryPair = [&](sqlite3_stmt* stmt, int firstIndex) -> bool
         {
             return BindText(stmt, firstIndex, normalizedQuery) == SQLITE_OK

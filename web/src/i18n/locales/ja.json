@@ -741,9 +741,19 @@
       "userId": "ユーザーID",
       "worldId": "ワールドID"
     },
+    "layout": {
+      "locations": "インスタンス別",
+      "status": "ステータス別"
+    },
+    "section": {
+      "sameAsYou": "同じインスタンス"
+    },
     "inspector": {
       "empty": "フレンドを選択すると、場所・アバター・クイックアクションが表示されます。",
       "title": "フレンドの概要"
+    },
+    "recommend": {
+      "title": "あなたのワールドで見かけた人"
     }
   },
   "layout": {
@@ -1040,8 +1050,8 @@
   "cmd": {
     "title": "コマンドパレット",
     "placeholder": "コマンドを入力、またはログ・プレイヤー・ワールドを検索…",
-    "empty": "一致するコマンドはありません。",
-    "loading": "セッションログを読み込み中…",
+    "empty": "一致する人・ワールド・コマンドはありません。",
+    "loading": "ローカルの記録を読み込み中…",
     "navigate": "移動",
     "select": "選択",
     "dismiss": "閉じる",
@@ -1157,7 +1167,8 @@
     "local3dPreviewHint": "キャッシュ済みの __data バンドルを直接使用します。アバター ID は不要ですが、暗号化済みまたはアバター以外のバンドルは表示できない場合があります。",
     "noInfoFields": "__info に解析可能なフィールドはありません。",
     "fileTree": "項目内容",
-    "emptyTree": "項目は空です。"
+    "emptyTree": "項目は空です。",
+    "emptyCache": "ディスクにキャッシュがありません。"
   },
   "library": {
     "title": "ライブラリ",
@@ -3855,6 +3866,7 @@
       "disabled": "無効",
       "enabled": "有効",
       "errorRead": "config.jsonの読み込みに失敗しました: {{msg}}",
+      "missingFileHint": "config.json がありません。保存すると作成されます。保存するまで VRChat は変わりません。",
       "errorSave": "config.jsonの保存に失敗しました: {{msg}}",
       "fpsLimitDesktop": {
         "hint": "デスクトップモードの最大フレームレート（0 = 無制限）",
@@ -4259,6 +4271,9 @@
     "noGroups": "まだ VRChat グループに参加していません。",
     "noGroupEvents": "参加中の {{count}} グループには現在公開イベントがありません。",
     "openGroupPage": "グループページを開く",
+    "loadFailed": "カレンダーの読み込みに失敗しました: {{error}}",
+    "featured": "注目",
+    "attending": "{{count}} 人が参加",
     "resolvingPreview": "プレビューを探しています...",
     "noPreview": "プレビュー画像なし"
   },
@@ -4346,7 +4361,10 @@
     "clearFailed": "クリアに失敗しました: {{error}}",
     "clearSuccess": "ソーシャル分析をクリアしました。",
     "clearTitle": "ソーシャル分析をクリアしますか？",
-    "nodeFocused": "{{name}}にフォーカスしました"
+    "nodeFocused": "{{name}}にフォーカスしました",
+    "graphFailed": "同席グラフに失敗しました: {{error}}",
+    "windowDays": "期間（日）",
+    "minOverlap": "最短重複（秒）"
   },
   "benchmark": {
     "title": "アバターパフォーマンスベンチマーク",
@@ -4362,6 +4380,7 @@
     "seenAvatars": "遭遇したアバター",
     "seenTitle": "他のプレイヤーが着用していたアバター",
     "noSeen": "まだアバターが記録されていません。VRCSM は VRChat のログとフレンドのアクティビティから、他のプレイヤーで見たアバターを記録します。",
+    "seenFailed": "遭遇アバターの読み込みに失敗しました: {{error}}",
     "public": "公開",
     "private": "非公開",
     "logOnly": "ログのみ",

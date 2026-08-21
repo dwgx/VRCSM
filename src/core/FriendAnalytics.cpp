@@ -182,6 +182,95 @@ std::string LowerAscii(std::string_view value)
     return lowered;
 }
 
+void AppendUtf8(std::string& out, char32_t cp)
+{
+    if (cp <= 0x7F)
+    {
+        out.push_back(static_cast<char>(cp));
+        return;
+    }
+    if (cp <= 0x7FF)
+    {
+        out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        return;
+    }
+    if (cp <= 0xFFFF)
+    {
+        out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        return;
+    }
+    out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+    out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+    out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+    out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+}
+
+char32_t FoldSearchCodepoint(char32_t cp)
+{
+    if (cp >= 0xFF01 && cp <= 0xFF5E)
+    {
+        cp -= 0xFEE0;
+    }
+    if (cp >= 0x30A1 && cp <= 0x30F6)
+    {
+        cp -= 0x60;
+    }
+    if (cp >= 'A' && cp <= 'Z')
+    {
+        cp = static_cast<char32_t>(cp + 32);
+    }
+    return cp;
+}
+
+std::string FoldSearchUtf8(std::string_view in)
+{
+    std::string out;
+    out.reserve(in.size());
+    std::size_t i = 0;
+    while (i < in.size())
+    {
+        const unsigned char b0 = static_cast<unsigned char>(in[i]);
+        char32_t cp = 0;
+        int n = 1;
+        if (b0 < 0x80)
+        {
+            cp = b0;
+        }
+        else if ((b0 & 0xE0) == 0xC0 && i + 1 < in.size())
+        {
+            cp = (b0 & 0x1F) << 6;
+            cp |= static_cast<unsigned char>(in[i + 1]) & 0x3F;
+            n = 2;
+        }
+        else if ((b0 & 0xF0) == 0xE0 && i + 2 < in.size())
+        {
+            cp = (b0 & 0x0F) << 12;
+            cp |= (static_cast<unsigned char>(in[i + 1]) & 0x3F) << 6;
+            cp |= static_cast<unsigned char>(in[i + 2]) & 0x3F;
+            n = 3;
+        }
+        else if ((b0 & 0xF8) == 0xF0 && i + 3 < in.size())
+        {
+            cp = (b0 & 0x07) << 18;
+            cp |= (static_cast<unsigned char>(in[i + 1]) & 0x3F) << 12;
+            cp |= (static_cast<unsigned char>(in[i + 2]) & 0x3F) << 6;
+            cp |= static_cast<unsigned char>(in[i + 3]) & 0x3F;
+            n = 4;
+        }
+        else
+        {
+            ++i;
+            continue;
+        }
+        AppendUtf8(out, FoldSearchCodepoint(cp));
+        i += static_cast<std::size_t>(n);
+    }
+    return out;
+}
+
 std::string CollapseWhitespaceAscii(std::string value)
 {
     value = TrimAscii(std::move(value));
@@ -209,7 +298,16 @@ std::string CollapseWhitespaceAscii(std::string value)
 
 std::string normalizeSearchQuery(const std::string& raw)
 {
-    return LowerAscii(CollapseWhitespaceAscii(raw));
+    return LowerAscii(CollapseWhitespaceAscii(FoldSearchUtf8(raw)));
+}
+
+std::string presenceSessionKey(std::string_view worldId, std::string_view instanceId)
+{
+    if (instanceId.empty() || instanceId == worldId)
+    {
+        return std::string(worldId);
+    }
+    return std::string(instanceId);
 }
 
 // ─── CoPresenceEgoNetwork ───────────────────────────────────────
@@ -218,8 +316,44 @@ nlohmann::json coPresenceEgoNetwork(const std::vector<PresenceEventRow>& rows,
                                     const std::string& center_user_id,
                                     int since_days,
                                     int min_overlap_sec,
-                                    std::time_t now)
+                                    std::time_t now,
+                                    const std::vector<VisitPresenceRow>& visits)
 {
+    std::vector<PresenceEventRow> work = rows;
+    if (!visits.empty() && !center_user_id.empty())
+    {
+        work.reserve(work.size() + visits.size() * 2);
+        for (const auto& v : visits)
+        {
+            if (v.world_id.empty() || v.joined_at.empty()) continue;
+            const std::string inst = presenceSessionKey(v.world_id, v.instance_id);
+            PresenceEventRow join;
+            join.user_id = center_user_id;
+            join.world_id = v.world_id;
+            join.instance_id = inst;
+            join.kind = "joined";
+            join.occurred_at = v.joined_at;
+            work.push_back(join);
+            if (!v.left_at.empty())
+            {
+                PresenceEventRow left = join;
+                left.kind = "left";
+                left.occurred_at = v.left_at;
+                work.push_back(std::move(left));
+            }
+        }
+        std::stable_sort(work.begin(), work.end(), [](const PresenceEventRow& a, const PresenceEventRow& b) {
+            if (a.world_id != b.world_id) return a.world_id < b.world_id;
+            if (a.instance_id != b.instance_id) return a.instance_id < b.instance_id;
+            const auto ta = parsePresenceInstant(a.occurred_at);
+            const auto tb = parsePresenceInstant(b.occurred_at);
+            if (ta && tb) return *ta < *tb;
+            if (ta && !tb) return true;
+            if (!ta && tb) return false;
+            return a.occurred_at < b.occurred_at;
+        });
+    }
+
     // Lower time bound. player_events.occurred_at is wall-clock ISO; we
     // filter loosely in SQL by lexical comparison (ISO sorts lexically)
     // and rely on parsePresenceInstant for exact overlap math.
@@ -264,6 +398,49 @@ nlohmann::json coPresenceEgoNetwork(const std::vector<PresenceEventRow>& rows,
     std::string curInstance;
     // user_id -> presence within the current session.
     std::unordered_map<std::string, UserPresence> sessionUsers;
+
+    struct SessionSnap
+    {
+        std::string world;
+        std::string instance;
+        std::unordered_map<std::string, UserPresence> users;
+    };
+    std::vector<SessionSnap> snaps;
+
+    auto addEdge = [&](const std::string& uidA, const UserPresence& a,
+                       const std::string& uidB, const UserPresence& b)
+    {
+        if (uidA == uidB) return;
+        std::time_t best = 0;
+        std::time_t lastEnd = 0;
+        for (const auto& ia : a.intervals)
+        {
+            for (const auto& ib : b.intervals)
+            {
+                const std::time_t ov = intervalOverlap(ia, ib);
+                if (ov > 0)
+                {
+                    best += ov;
+                    lastEnd = std::max(lastEnd, std::min(ia.end, ib.end));
+                }
+            }
+        }
+        if (best < min_overlap_sec || best == 0)
+        {
+            return;
+        }
+        std::string s = uidA;
+        std::string t = uidB;
+        if (s > t) std::swap(s, t);
+        auto& edge = edges[{s, t}];
+        edge.overlapCount += 1;
+        edge.overlapSeconds += best;
+        edge.lastOverlap = std::max(edge.lastOverlap, lastEnd);
+        if (s == center_user_id || t == center_user_id)
+        {
+            edge.touchesCenter = true;
+        }
+    };
 
     auto flushSession = [&]()
     {
@@ -329,39 +506,20 @@ nlohmann::json coPresenceEgoNetwork(const std::vector<PresenceEventRow>& rows,
         {
             for (std::size_t j = i + 1; j < uids.size(); ++j)
             {
-                const auto& a = sessionUsers[uids[i]];
-                const auto& b = sessionUsers[uids[j]];
-                std::time_t best = 0;
-                std::time_t lastEnd = 0;
-                for (const auto& ia : a.intervals)
-                {
-                    for (const auto& ib : b.intervals)
-                    {
-                        const std::time_t ov = intervalOverlap(ia, ib);
-                        if (ov > 0)
-                        {
-                            best += ov;
-                            lastEnd = std::max(lastEnd, std::min(ia.end, ib.end));
-                        }
-                    }
-                }
-                if (best < min_overlap_sec || best == 0)
-                {
-                    continue;
-                }
-                // Order the pair deterministically.
-                std::string s = uids[i];
-                std::string t = uids[j];
-                if (s > t) std::swap(s, t);
-                auto& edge = edges[{s, t}];
-                edge.overlapCount += 1;
-                edge.overlapSeconds += best;
-                edge.lastOverlap = std::max(edge.lastOverlap, lastEnd);
-                if (s == center_user_id || t == center_user_id)
-                {
-                    edge.touchesCenter = true;
-                }
+                addEdge(uids[i], sessionUsers[uids[i]], uids[j], sessionUsers[uids[j]]);
             }
+        }
+
+        SessionSnap snap;
+        snap.world = curWorld;
+        snap.instance = curInstance;
+        for (const auto& uid : uids)
+        {
+            snap.users[uid] = sessionUsers[uid];
+        }
+        if (!snap.users.empty())
+        {
+            snaps.push_back(std::move(snap));
         }
 
         sessionUsers.clear();
@@ -369,12 +527,12 @@ nlohmann::json coPresenceEgoNetwork(const std::vector<PresenceEventRow>& rows,
         curInstance.clear();
     };
 
-    for (const auto& row : rows)
+    for (const auto& row : work)
     {
         const std::string& userId = row.user_id;
         const std::string& displayName = row.display_name;
         const std::string& worldId = row.world_id;
-        const std::string& instanceId = row.instance_id;
+        const std::string instanceId = presenceSessionKey(row.world_id, row.instance_id);
         const std::string& kind = row.kind;
         const std::string& occurredAt = row.occurred_at;
 
@@ -434,6 +592,32 @@ nlohmann::json coPresenceEgoNetwork(const std::vector<PresenceEventRow>& rows,
         }
     }
     flushSession();
+
+    // World-only rows (NULL instance_id coalesced to world_id) live in a
+    // different session key than visit-seeded self (`wrld_:inst~…`). Pair
+    // those users against full-instance sessions of the same world. Two
+    // distinct full instances still do not merge.
+    for (const auto& worldOnly : snaps)
+    {
+        if (worldOnly.instance != worldOnly.world) continue;
+        for (const auto& inst : snaps)
+        {
+            if (inst.world != worldOnly.world) continue;
+            if (inst.instance == worldOnly.world) continue;
+            for (const auto& [uidA, a] : worldOnly.users)
+            {
+                for (const auto& [uidB, b] : inst.users)
+                {
+                    if (uidA == uidB) continue;
+                    std::string s = uidA;
+                    std::string t = uidB;
+                    if (s > t) std::swap(s, t);
+                    if (edges.find({s, t}) != edges.end()) continue;
+                    addEdge(uidA, a, uidB, b);
+                }
+            }
+        }
+    }
 
     // Materialize JSON. Only keep nodes that are the center or are linked
     // to it by at least one edge path of length 1 OR appear in any edge —

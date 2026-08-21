@@ -516,7 +516,8 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                          || kind == "avatarPedestal" || kind == "vrcQuit"
                          || kind == "sessionMode" || kind == "oscFail"
                          || kind == "udonException" || kind == "instanceReset"
-                         || kind == "shaderKeyword" || kind == "audioDevice")
+                         || kind == "shaderKeyword" || kind == "audioDevice"
+                         || kind == "roomLeft" || kind == "resourceLoad")
                 {
                     // Track L atoms → generic log_events table. `detail` packs
                     // the source-specific payload so the unified feed renders
@@ -635,8 +636,15 @@ nlohmann::json IpcBridge::HandleLogsStreamStart(const nlohmann::json&, const std
                         }
                         e.detail = device;
                     }
-                    // portalSpawn / shaderKeyword carry no extra payload — kind
-                    // alone is the signal.
+                    else if (kind == "resourceLoad")
+                    {
+                        e.detail = str("url");
+                        if (auto h = str("host"))
+                        {
+                            e.detail = e.detail ? *e.detail + " host=" + *h : *h;
+                        }
+                    }
+                    // portalSpawn / shaderKeyword / roomLeft carry no extra payload.
 
                     (void)vrcsm::core::Database::Instance().RecordLogEvent(e);
                 }

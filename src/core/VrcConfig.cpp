@@ -136,11 +136,18 @@ nlohmann::json VrcConfig::ReadJson(const nlohmann::json& params)
     else
     {
         const auto probe = PathProbe::Probe();
-        if (!probe.configJson.has_value())
+        if (probe.configJson.has_value())
+        {
+            path = *probe.configJson;
+        }
+        else if (!probe.baseDir.empty())
+        {
+            path = probe.baseDir / L"config.json";
+        }
+        else
         {
             return nlohmann::json{{"error", {{"code", "not_found"}, {"message", "VRChat config.json path not detected"}}}};
         }
-        path = *probe.configJson;
     }
 
     auto result = Read(path);
@@ -149,6 +156,13 @@ nlohmann::json VrcConfig::ReadJson(const nlohmann::json& params)
         return value(result);
     }
     const auto& err = error(result);
+    // VRChat does not create config.json until a setting is changed.
+    // Surface an empty object so Settings can show defaults and Save
+    // creates the file. Any other failure (parse/open) still errors.
+    if (err.code == "not_found")
+    {
+        return nlohmann::json::object();
+    }
     return nlohmann::json{{"error", {{"code", err.code}, {"message", err.message}}}};
 }
 
@@ -162,11 +176,18 @@ nlohmann::json VrcConfig::WriteJson(const nlohmann::json& params)
     else
     {
         const auto probe = PathProbe::Probe();
-        if (!probe.configJson.has_value())
+        if (probe.configJson.has_value())
+        {
+            path = *probe.configJson;
+        }
+        else if (!probe.baseDir.empty())
+        {
+            path = probe.baseDir / L"config.json";
+        }
+        else
         {
             return nlohmann::json{{"error", {{"code", "not_found"}, {"message", "VRChat config.json path not detected"}}}};
         }
-        path = *probe.configJson;
     }
 
     if (!params.contains("config"))

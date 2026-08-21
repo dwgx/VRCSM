@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ipc } from "@/lib/ipc";
@@ -7,10 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import { useReport } from "@/lib/report-context";
+import { collectSelfIdentity, friendStubFromIdentity, isSelfPlayer, primarySelfUserId } from "@/lib/self-player";
+import type { Friend } from "@/lib/types";
 import { Users, Globe2, RefreshCcw, TrendingUp, Share2, Trash2 } from "lucide-react";
 import { WorldPopupBadge } from "@/components/WorldPopupBadge";
 import { EntityLink } from "@/components/EntityLink";
 import { RelationshipGraph } from "@/components/RelationshipGraph";
+import { FriendDetailDialog } from "@/components/FriendDetailDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type SocialTab = "rankings" | "graph";
@@ -31,16 +35,38 @@ interface FriendEncounter {
 export default function SocialGraph() {
   const { t } = useTranslation();
   const { status } = useAuth();
+  const { report } = useReport();
   const [topWorlds, setTopWorlds] = useState<WorldVisitStat[]>([]);
   const [topFriends, setTopFriends] = useState<FriendEncounter[]>([]);
   const [graph, setGraph] = useState<CoPresenceGraph | null>(null);
+  const [graphError, setGraphError] = useState<string | null>(null);
   const [tab, setTab] = useState<SocialTab>("rankings");
   const [loading, setLoading] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [sinceDays, setSinceDays] = useState(90);
+  const [minOverlapSec, setMinOverlapSec] = useState(60);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+
+  const localUserIdsKey = useMemo(() => {
+    const ids = (report?.local_avatar_data?.recent_items ?? [])
+      .map((item) => item.user_id)
+      .filter((id): id is string => Boolean(id?.startsWith("usr_")));
+    return [...new Set(ids)].sort().join("|");
+  }, [report]);
+  const self = useMemo(
+    () => collectSelfIdentity({
+      userId: status.userId,
+      displayName: status.displayName,
+      localUserIds: localUserIdsKey ? localUserIdsKey.split("|") : [],
+    }),
+    [status.userId, status.displayName, localUserIdsKey],
+  );
+  const selfUserId = primarySelfUserId(self);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setGraphError(null);
     try {
       // Use existing world visits + player encounters from DB
       const visits = await ipc.dbWorldVisits(200, 0);
@@ -64,14 +90,14 @@ export default function SocialGraph() {
         .map(([id, s]) => ({ world_id: id, visit_count: s.count, total_minutes: Math.round(s.minutes) }));
       setTopWorlds(sorted);
 
-      // Player encounters from DB
-      const events = await ipc.dbPlayerEvents(500, 0);
+      // Player encounters from DB. Pull more rows so self-filtering does not
+      // leave the leaderboard empty, then drop the local account everywhere.
+      const events = await ipc.dbPlayerEvents(2000, 0);
       const playerItems = (events.items ?? []) as Array<{ user_id?: string; display_name?: string; kind?: string; occurred_at?: string }>;
       const friendMap = new Map<string, { name: string; count: number; lastSeen: string }>();
-      const selfUserId = status.userId ?? "";
       for (const e of playerItems) {
         if (!e.user_id || e.kind !== "joined") continue;
-        if (selfUserId && e.user_id === selfUserId) continue;
+        if (isSelfPlayer(self, e.user_id, e.display_name)) continue;
         const existing = friendMap.get(e.user_id) ?? { name: e.display_name ?? "", count: 0, lastSeen: "" };
         existing.count += 1;
         if (e.display_name) existing.name = e.display_name;
@@ -84,21 +110,22 @@ export default function SocialGraph() {
         .map(([id, s]) => ({ user_id: id, display_name: s.name, encounter_count: s.count, last_seen: s.lastSeen }));
       setTopFriends(sortedFriends);
 
-      // Co-presence ego-network (own-algorithm, computed in C++ from raw
-      // player_events). Only meaningful once we know our own user id.
       if (selfUserId) {
         try {
-          const g = await ipc.dbCoPresenceGraph(selfUserId, 90, 60);
+          const g = await ipc.dbCoPresenceGraph(selfUserId, sinceDays, minOverlapSec);
           setGraph(g);
-        } catch {
+        } catch (e) {
           setGraph(null);
+          setGraphError(e instanceof Error ? e.message : String(e));
         }
+      } else {
+        setGraph(null);
       }
     } catch {
     } finally {
       setLoading(false);
     }
-  }, [status.userId]);
+  }, [self, selfUserId, sinceDays, minOverlapSec]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -152,6 +179,36 @@ export default function SocialGraph() {
           </Button>
         </div>
       </header>
+      {tab === "graph" && (
+        <div className="flex flex-wrap items-center gap-3 text-[11px] text-[hsl(var(--muted-foreground))]">
+          <label className="flex items-center gap-1.5">
+            {t("socialGraph.windowDays", { defaultValue: "Window" })}
+            <select
+              className="h-7 rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1.5 font-mono text-[11px]"
+              value={sinceDays}
+              onChange={(e) => setSinceDays(Number(e.target.value))}
+            >
+              <option value={14}>14d</option>
+              <option value={30}>30d</option>
+              <option value={90}>90d</option>
+              <option value={365}>365d</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5">
+            {t("socialGraph.minOverlap", { defaultValue: "Min overlap" })}
+            <select
+              className="h-7 rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-1.5 font-mono text-[11px]"
+              value={minOverlapSec}
+              onChange={(e) => setMinOverlapSec(Number(e.target.value))}
+            >
+              <option value={15}>15s</option>
+              <option value={60}>60s</option>
+              <option value={300}>5m</option>
+              <option value={900}>15m</option>
+            </select>
+          </label>
+        </div>
+      )}
 
       <ConfirmDialog
         open={clearOpen}
@@ -217,13 +274,37 @@ export default function SocialGraph() {
             <p className="text-[10px] text-[hsl(var(--muted-foreground))] mb-2">
               {t("socialGraph.graphGuide", { defaultValue: "Players who shared your instances, linked by overlapping time. Solid lines are confirmed (logged from your own instance); dashed lines are inferred co-presence between others — not confirmed friendships." })}
             </p>
-            {graph ? (
-              <RelationshipGraph graph={graph} />
+            {graph && graph.nodes.some((n) => !n.is_center) ? (
+              <RelationshipGraph
+                graph={graph}
+                onSelect={(userId) => {
+                  const node = graph.nodes.find((n) => n.user_id === userId);
+                  const stub = friendStubFromIdentity(userId, node?.display_name);
+                  if (stub) setSelectedFriend(stub);
+                }}
+              />
             ) : (
               <div className="py-10 text-center text-[11px] text-[hsl(var(--muted-foreground))]">
-                {loading
-                  ? t("socialGraph.graphLoading", { defaultValue: "Building co-presence graph…" })
-                  : t("socialGraph.graphEmpty", { defaultValue: "No co-presence data yet. Edges appear once VRCSM has logged players sharing your instances." })}
+                {loading ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="grid w-full max-w-sm grid-cols-3 gap-2 px-6">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-16 animate-pulse rounded-full bg-[hsl(var(--muted)/0.16)]"
+                        />
+                      ))}
+                    </div>
+                    <p>
+                      {t("socialGraph.graphLoading", { defaultValue: "Building co-presence graph…" })}
+                    </p>
+                  </div>
+                ) : graphError
+                    ? t("socialGraph.graphFailed", {
+                        defaultValue: "Co-presence graph failed: {{error}}",
+                        error: graphError,
+                      })
+                    : t("socialGraph.graphEmpty", { defaultValue: "No co-presence data yet. Edges appear once VRCSM has logged players sharing your instances." })}
               </div>
             )}
           </CardContent>
@@ -239,6 +320,13 @@ export default function SocialGraph() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-1 max-h-[400px] overflow-y-auto">
+            {loading && topWorlds.length === 0 && (
+              <div className="flex flex-col gap-1 py-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-6 rounded bg-[hsl(var(--muted)/0.25)] animate-pulse" />
+                ))}
+              </div>
+            )}
             {topWorlds.length === 0 && !loading && (
               <div className="py-6 text-center">
                 <Globe2 className="size-6 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
@@ -273,6 +361,13 @@ export default function SocialGraph() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-1 max-h-[400px] overflow-y-auto">
+            {loading && topFriends.length === 0 && (
+              <div className="flex flex-col gap-1 py-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-6 rounded bg-[hsl(var(--muted)/0.25)] animate-pulse" />
+                ))}
+              </div>
+            )}
             {topFriends.length === 0 && !loading && (
               <div className="py-6 text-center">
                 <Users className="size-6 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
@@ -282,18 +377,31 @@ export default function SocialGraph() {
               </div>
             )}
             {topFriends.map((f, i) => (
-              <div key={f.user_id} className="flex items-center gap-2 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)]">
+              <button
+                key={f.user_id}
+                type="button"
+                className="flex w-full items-center gap-2 text-[11px] py-1.5 border-b border-[hsl(var(--border)/0.3)] text-left hover:bg-[hsl(var(--muted)/0.2)]"
+                onClick={() => {
+                  const stub = friendStubFromIdentity(f.user_id, f.display_name);
+                  if (stub) setSelectedFriend(stub);
+                }}
+              >
                 <span className="w-5 text-[hsl(var(--muted-foreground))] text-right font-mono">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <EntityLink id={f.user_id} name={f.display_name} />
                 </div>
                 <Badge variant="outline" className="text-[9px] font-mono">{f.encounter_count}x</Badge>
-              </div>
+              </button>
             ))}
           </CardContent>
         </Card>
       </div>
       )}
+      <FriendDetailDialog
+        friend={selectedFriend}
+        onClose={() => setSelectedFriend(null)}
+        readOnly
+      />
     </div>
   );
 }

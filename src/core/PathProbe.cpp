@@ -3,6 +3,7 @@
 #include "Common.h"
 #include "ProcessGuard.h"
 #include "SteamVrConfig.h"
+#include "VrcConfig.h"
 
 #include <array>
 #include <fstream>
@@ -338,7 +339,77 @@ void to_json(nlohmann::json& j, const PathProbeResult& r)
         {"configJson", pathOrNull(r.configJson)},
         {"melonLoaderCfg", pathOrNull(r.melonLoaderCfg)},
         {"steamVrSettings", pathOrNull(r.steamVrSettings)},
+        {"cacheRoot", pathOrNull(r.cacheRoot)},
+        {"cacheWindowsPlayer", toUtf8(r.cacheWindowsPlayerDir().wstring())},
     };
+}
+
+std::filesystem::path PathProbeResult::cacheWindowsPlayerDir() const
+{
+    if (cacheRoot && !cacheRoot->empty())
+    {
+        const auto name = cacheRoot->filename().wstring();
+        if (_wcsicmp(name.c_str(), L"Cache-WindowsPlayer") == 0)
+        {
+            return *cacheRoot;
+        }
+        return *cacheRoot / L"Cache-WindowsPlayer";
+    }
+    if (baseDir.empty())
+    {
+        return {};
+    }
+    return baseDir / L"Cache-WindowsPlayer";
+}
+
+std::optional<std::filesystem::path> ResolveVrchatCacheRoot(
+    const std::filesystem::path& baseDir,
+    const nlohmann::json& config)
+{
+    if (!config.is_object() || !config.contains("cache_directory") || !config["cache_directory"].is_string())
+    {
+        return std::nullopt;
+    }
+    auto raw = utf8Path(config["cache_directory"].get<std::string>());
+    if (raw.empty())
+    {
+        return std::nullopt;
+    }
+    if (!raw.is_absolute())
+    {
+        if (baseDir.empty())
+        {
+            return std::nullopt;
+        }
+        raw = (baseDir / raw).lexically_normal();
+    }
+
+    std::error_code ec;
+    auto consider = [&](const std::filesystem::path& candidate) -> std::optional<std::filesystem::path>
+    {
+        if (candidate.empty()) return std::nullopt;
+        if (std::filesystem::exists(candidate, ec) && !ec)
+        {
+            return candidate.lexically_normal();
+        }
+        return std::nullopt;
+    };
+
+    const auto name = raw.filename().wstring();
+    if (_wcsicmp(name.c_str(), L"Cache-WindowsPlayer") == 0)
+    {
+        if (auto hit = consider(raw)) return hit->parent_path();
+        return std::nullopt;
+    }
+    if (auto nested = consider(raw / L"Cache-WindowsPlayer"))
+    {
+        return nested->parent_path();
+    }
+    if (auto hit = consider(raw))
+    {
+        return hit;
+    }
+    return std::nullopt;
 }
 
 PathProbeResult PathProbe::Probe()
@@ -366,11 +437,25 @@ PathProbeResult PathProbe::Probe()
 
     if (!result.baseDir.empty())
     {
-        std::filesystem::path cfgCandidate = result.baseDir / L"config.json";
+        // Canonical location even when the file does not exist yet. VRChat
+        // creates config.json lazily; Settings must still be able to Save
+        // defaults into that path on every machine.
+        result.configJson = result.baseDir / L"config.json";
         std::error_code ec;
-        if (std::filesystem::exists(cfgCandidate, ec) && !ec)
+        if (std::filesystem::exists(*result.configJson, ec) && !ec)
         {
-            result.configJson = cfgCandidate;
+            auto parsed = VrcConfig::Read(*result.configJson);
+            if (isOk(parsed))
+            {
+                if (auto custom = ResolveVrchatCacheRoot(result.baseDir, value(parsed)))
+                {
+                    result.cacheRoot = std::move(custom);
+                }
+            }
+        }
+        if (!result.cacheRoot)
+        {
+            result.cacheRoot = result.baseDir;
         }
     }
 

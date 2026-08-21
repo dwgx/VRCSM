@@ -22,6 +22,7 @@
 #include "core/FriendAnalytics.h"
 #include "core/DiscordRpc.h"
 #include "core/ToastNotifier.h"
+#include "core/WebhookNotifier.h"
 #include "core/VrOverlayNotifier.h"
 #include "core/JunctionUtil.h"
 #include "core/LogAtoms.h"
@@ -34,6 +35,8 @@
 #include "core/SafeDelete.h"
 #include "core/UnityBundle.h"
 #include "core/VrcApi.h"
+#include "core/VrcConfig.h"
+#include "core/PathProbe.h"
 #include "core/VrDiagnostics.h"
 #include "core/hw/HwTelemetry.h"
 #include "core/plugins/PluginRegistry.h"
@@ -2387,6 +2390,46 @@ TEST(CommonTests, LogAtomsParseSessionModeAndDiagnostics)
     EXPECT_EQ(reset->getOr("minutes"), "60");
 }
 
+TEST(CommonTests, WebhookAllowlistAndBody)
+{
+    EXPECT_TRUE(vrcsm::core::IsAllowedWebhookUrl("https://discord.com/api/webhooks/1/abc"));
+    EXPECT_TRUE(vrcsm::core::IsAllowedWebhookUrl("https://discordapp.com/api/webhooks/1/abc"));
+    EXPECT_FALSE(vrcsm::core::IsAllowedWebhookUrl("http://discord.com/api/webhooks/1/abc"));
+    EXPECT_FALSE(vrcsm::core::IsAllowedWebhookUrl("https://localhost/hook"));
+    EXPECT_FALSE(vrcsm::core::IsAllowedWebhookUrl("https://evil.example/discord.com"));
+    const auto body = vrcsm::core::BuildDiscordWebhookBody("Hello", "world");
+    EXPECT_EQ(body["content"].get<std::string>(), "**Hello**\nworld");
+}
+
+TEST(CommonTests, LogAtomParsesOnLeftRoomAndDropsLocalVideoCacherUrl)
+{
+    const auto left = vrcsm::core::ParseVrchatLogAtom("[Behaviour] OnLeftRoom");
+    ASSERT_TRUE(left.has_value());
+    EXPECT_EQ(left->kind, vrcsm::core::LogAtomKind::RoomLeft);
+
+    const auto img = vrcsm::core::ParseVrchatLogAtom(
+        "] Attempting to load image from URL 'https://files.example.com/a.png'");
+    ASSERT_TRUE(img.has_value());
+    EXPECT_EQ(img->kind, vrcsm::core::LogAtomKind::ResourceLoad);
+    EXPECT_EQ(img->getOr("host"), "files.example.com");
+    EXPECT_EQ(img->getOr("media"), "image");
+
+    const auto str = vrcsm::core::ParseVrchatLogAtom(
+        "] Attempting to load String from URL 'http://localhost:22500/file'");
+    EXPECT_FALSE(str.has_value());
+
+    const auto loopback = vrcsm::core::ParseVrchatLogAtom(
+        "] Attempting to load String from URL 'http://127.0.0.1:22500/x'");
+    EXPECT_FALSE(loopback.has_value());
+
+    const auto remoteLeft = vrcsm::core::ParseVrchatLogAtom(
+        "[Behaviour] OnPlayerLeft Bob (usr_aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb)");
+    ASSERT_TRUE(remoteLeft.has_value());
+    EXPECT_EQ(remoteLeft->kind, vrcsm::core::LogAtomKind::PlayerPresence);
+    EXPECT_EQ(remoteLeft->getOr("kind"), "left");
+    EXPECT_NE(left->kind, vrcsm::core::LogAtomKind::PlayerPresence);
+}
+
 TEST(CommonTests, LogEventClassifierEmitsSectionAKinds)
 {
     auto classify = [](const std::string& raw) {
@@ -3403,5 +3446,57 @@ TEST(CommonTests, NowPlayingSessionsReadsCleanlyWithOrWithoutSession)
             EXPECT_TRUE(snap.status == "playing" || snap.status == "paused" ||
                         snap.status == "stopped");
         }
+    }
+}
+
+TEST(CommonTests, VrcConfigReadMissingFileReturnsEmptyObjectViaJsonFacade)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-config-missing");
+    const auto path = dir / L"config.json";
+    nlohmann::json params{{"path", vrcsm::core::toUtf8(path.wstring())}};
+    const auto doc = vrcsm::core::VrcConfig::ReadJson(params);
+    ASSERT_TRUE(doc.is_object());
+    EXPECT_FALSE(doc.contains("error"));
+    EXPECT_TRUE(doc.empty());
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, ResolveVrchatCacheRootAcceptsParentOrCacheFolder)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-cache-root");
+    const auto cwp = dir / L"Cache-WindowsPlayer";
+    std::error_code ec;
+    std::filesystem::create_directories(cwp, ec);
+    const nlohmann::json parentCfg{{"cache_directory", vrcsm::core::toUtf8(dir.wstring())}};
+    const auto fromParent = vrcsm::core::ResolveVrchatCacheRoot(dir, parentCfg);
+    ASSERT_TRUE(fromParent.has_value());
+    EXPECT_EQ(fromParent->lexically_normal(), dir.lexically_normal());
+
+    const nlohmann::json cwpCfg{{"cache_directory", vrcsm::core::toUtf8(cwp.wstring())}};
+    const auto fromCwp = vrcsm::core::ResolveVrchatCacheRoot(dir, cwpCfg);
+    ASSERT_TRUE(fromCwp.has_value());
+    EXPECT_EQ(fromCwp->lexically_normal(), dir.lexically_normal());
+
+    const nlohmann::json missing{{"cache_directory", "Z:/definitely-not-a-vrc-cache"}};
+    EXPECT_FALSE(vrcsm::core::ResolveVrchatCacheRoot(dir, missing).has_value());
+
+    const auto nested = dir / L"rel-cache" / L"Cache-WindowsPlayer";
+    std::filesystem::create_directories(nested, ec);
+    const nlohmann::json relCfg{{"cache_directory", "rel-cache"}};
+    const auto fromRel = vrcsm::core::ResolveVrchatCacheRoot(dir, relCfg);
+    ASSERT_TRUE(fromRel.has_value());
+    EXPECT_EQ(fromRel->lexically_normal(), (dir / L"rel-cache").lexically_normal());
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, PathProbeAlwaysNamesConfigJsonWhenBaseDirKnown)
+{
+    const auto probe = vrcsm::core::PathProbe::Probe();
+    if (!probe.baseDir.empty())
+    {
+        ASSERT_TRUE(probe.configJson.has_value());
+        EXPECT_EQ(probe.configJson->filename(), L"config.json");
+        EXPECT_FALSE(probe.cacheWindowsPlayerDir().empty());
     }
 }

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { ipc } from "./ipc";
-import { readUiPrefBoolean } from "./ui-prefs";
+import { readUiPrefBoolean, readUiPrefString } from "./ui-prefs";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Desktop toast notifications — reusable domain module.
@@ -21,12 +21,16 @@ export const NOTIFY_PREF_FRIEND_REQUEST = "vrcsm.notify.toast.friendRequest";
 // SteamVR overlay (XSOverlay). Layered on top of the per-event toggles above —
 // an event reaches VR only when its toast type is on AND this is on.
 export const NOTIFY_PREF_VR_OVERLAY = "vrcsm.notify.vrOverlay";
+export const NOTIFY_PREF_WEBHOOK = "vrcsm.notify.webhook.enabled";
+export const NOTIFY_PREF_WEBHOOK_URL = "vrcsm.notify.webhook.url";
 
 export interface ToastPrefs {
   friendOnline: boolean;
   invite: boolean;
   friendRequest: boolean;
   vrOverlay: boolean;
+  webhookEnabled: boolean;
+  webhookUrl: string;
 }
 
 /** Read all toggles from local UI prefs (default OFF). */
@@ -36,6 +40,8 @@ export function readToastPrefs(): ToastPrefs {
     invite: readUiPrefBoolean(NOTIFY_PREF_INVITE, false),
     friendRequest: readUiPrefBoolean(NOTIFY_PREF_FRIEND_REQUEST, false),
     vrOverlay: readUiPrefBoolean(NOTIFY_PREF_VR_OVERLAY, false),
+    webhookEnabled: readUiPrefBoolean(NOTIFY_PREF_WEBHOOK, false),
+    webhookUrl: readUiPrefString(NOTIFY_PREF_WEBHOOK_URL, ""),
   };
 }
 
@@ -52,6 +58,8 @@ const TOAST_PREF_KEYS = new Set<string>([
   NOTIFY_PREF_INVITE,
   NOTIFY_PREF_FRIEND_REQUEST,
   NOTIFY_PREF_VR_OVERLAY,
+  NOTIFY_PREF_WEBHOOK,
+  NOTIFY_PREF_WEBHOOK_URL,
 ]);
 
 /**

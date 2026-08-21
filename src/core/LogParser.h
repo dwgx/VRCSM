@@ -290,6 +290,25 @@ struct AudioDeviceEvent
 
 void to_json(nlohmann::json& j, const AudioDeviceEvent& e);
 
+/// P15 — local `[Behaviour] OnLeftRoom`.
+struct RoomLeftEvent
+{
+    std::optional<std::string> iso_time;
+};
+
+void to_json(nlohmann::json& j, const RoomLeftEvent& e);
+
+/// P15 — Udon String/image URL load. localhost:22500 is dropped in ParseVrchatLogAtom.
+struct ResourceLoadEvent
+{
+    std::optional<std::string> iso_time;
+    std::string media;
+    std::string url;
+    std::string host;
+};
+
+void to_json(nlohmann::json& j, const ResourceLoadEvent& e);
+
 /// Detailed instance connection tracking for the worlds tab.
 struct WorldSwitchEvent
 {
@@ -364,6 +383,8 @@ struct LogReport
     std::vector<InstanceResetEvent> instance_resets;
     std::vector<ShaderKeywordEvent> shader_keywords;
     std::vector<AudioDeviceEvent> audio_devices;
+    std::vector<RoomLeftEvent> room_left;
+    std::vector<ResourceLoadEvent> resource_loads;
 };
 
 void to_json(nlohmann::json& j, const LogReport& r);

@@ -414,6 +414,46 @@ nlohmann::json IpcBridge::HandleFriendsList(const nlohmann::json& params, const 
     return nlohmann::json{{"friends", std::move(out)}};
 }
 
+nlohmann::json IpcBridge::HandleSocialMutualFetchOne(const nlohmann::json& params, const std::optional<std::string>&)
+{
+    const auto userId = JsonStringField(params, "userId").value_or("");
+    const int n = ParamInt(params, "n", 100);
+    const int offset = ParamInt(params, "offset", 0);
+    auto result = vrcsm::core::VrcApi::fetchMutualFriends(userId, n, offset);
+    if (!vrcsm::core::isOk(result))
+    {
+        const auto& err = vrcsm::core::error(result);
+        if (err.code == "hidden")
+        {
+            return nlohmann::json{
+                {"userId", userId},
+                {"friends", nlohmann::json::array()},
+                {"hidden", true},
+            };
+        }
+        if (err.code == "auth_expired")
+        {
+            vrcsm::core::AuthStore::Instance().Clear("SocialMutual/auth_expired");
+        }
+        throw IpcException{err};
+    }
+    const auto& payload = vrcsm::core::value(result);
+    nlohmann::json friends = nlohmann::json::array();
+    if (payload.is_array())
+    {
+        friends = payload;
+    }
+    else if (payload.is_object() && payload.contains("friends") && payload["friends"].is_array())
+    {
+        friends = payload["friends"];
+    }
+    return nlohmann::json{
+        {"userId", userId},
+        {"friends", std::move(friends)},
+        {"hidden", false},
+    };
+}
+
 nlohmann::json IpcBridge::HandleGroupsList(const nlohmann::json&, const std::optional<std::string>&)
 {
     const auto result = vrcsm::core::VrcApi::fetchGroups();
@@ -469,8 +509,9 @@ nlohmann::json IpcBridge::HandleCalendarList(const nlohmann::json&, const std::o
         if (err.code == "auth_expired")
         {
             vrcsm::core::AuthStore::Instance().Clear("CalendarList/auth_expired");
+            return nlohmann::json{{"events", nlohmann::json::array()}};
         }
-        return nlohmann::json{{"events", nlohmann::json::array()}};
+        throw IpcException{err};
     }
     return nlohmann::json{{"events", vrcsm::core::value(result)}};
 }
@@ -1077,25 +1118,55 @@ nlohmann::json IpcBridge::HandleAvatarPreviewRequest(const nlohmann::json& param
     }
 }
 
+namespace
+{
+nlohmann::json CalendarEventsFromResult(vrcsm::core::Result<std::vector<nlohmann::json>> res)
+{
+    if (std::holds_alternative<vrcsm::core::Error>(res))
+    {
+        const auto& err = std::get<vrcsm::core::Error>(res);
+        if (err.code == "auth_expired")
+        {
+            return nlohmann::json{{"events", nlohmann::json::array()}};
+        }
+        throw IpcException(err);
+    }
+    return nlohmann::json{{"events", std::get<std::vector<nlohmann::json>>(res)}};
+}
+
+nlohmann::json NormalizeJamsPayload(nlohmann::json raw)
+{
+    if (raw.is_array())
+    {
+        return raw;
+    }
+    if (raw.is_object())
+    {
+        for (const char* key : {"content", "jams", "results", "submissions", "data"})
+        {
+            if (raw.contains(key) && raw[key].is_array())
+            {
+                return raw[key];
+            }
+        }
+    }
+    return nlohmann::json::array();
+}
+} // namespace
+
 nlohmann::json IpcBridge::HandleCalendarDiscover(const nlohmann::json&, const std::optional<std::string>&)
 {
-    auto res = vrcsm::core::VrcApi::fetchCalendarDiscover();
-    if (std::holds_alternative<vrcsm::core::Error>(res))
-        throw IpcException(std::get<vrcsm::core::Error>(res));
-    return nlohmann::json{{"events", std::get<std::vector<nlohmann::json>>(res)}};
+    return CalendarEventsFromResult(vrcsm::core::VrcApi::fetchCalendarDiscover());
 }
 
 nlohmann::json IpcBridge::HandleCalendarFeatured(const nlohmann::json&, const std::optional<std::string>&)
 {
-    auto res = vrcsm::core::VrcApi::fetchCalendarFeatured();
-    if (std::holds_alternative<vrcsm::core::Error>(res))
-        throw IpcException(std::get<vrcsm::core::Error>(res));
-    return nlohmann::json{{"events", std::get<std::vector<nlohmann::json>>(res)}};
+    return CalendarEventsFromResult(vrcsm::core::VrcApi::fetchCalendarFeatured());
 }
 
 nlohmann::json IpcBridge::HandleJamsList(const nlohmann::json&, const std::optional<std::string>&)
 {
-    return unwrapResult(vrcsm::core::VrcApi::fetchJams());
+    return NormalizeJamsPayload(unwrapResult(vrcsm::core::VrcApi::fetchJams()));
 }
 
 nlohmann::json IpcBridge::HandleJamDetail(const nlohmann::json& params, const std::optional<std::string>&)

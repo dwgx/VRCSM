@@ -21,10 +21,18 @@ constexpr std::size_t kLargestEntriesLimit = 10;
 
 nlohmann::json BuildFullReport(const std::filesystem::path& baseDir)
 {
-    return BuildFullReport(baseDir, LogParser::parse(baseDir));
+    return BuildFullReport(baseDir, LogParser::parse(baseDir), baseDir / L"Cache-WindowsPlayer");
 }
 
 nlohmann::json BuildFullReport(const std::filesystem::path& baseDir, LogReport parsedLogs)
+{
+    return BuildFullReport(baseDir, std::move(parsedLogs), baseDir / L"Cache-WindowsPlayer");
+}
+
+nlohmann::json BuildFullReport(
+    const std::filesystem::path& baseDir,
+    LogReport parsedLogs,
+    const std::filesystem::path& cacheWindowsPlayerDir)
 {
     nlohmann::json report;
     report["generated_at"] = nowIso();
@@ -33,7 +41,10 @@ nlohmann::json BuildFullReport(const std::filesystem::path& baseDir, LogReport p
     // Kick the remaining filesystem walkers off in parallel. Callers such as
     // HandleScan may pass logs already parsed for DB backfill, avoiding a
     // second cold read of the same output_log_*.txt files.
-    const auto cwpDir = baseDir / L"Cache-WindowsPlayer";
+    const auto cwpDir = cacheWindowsPlayerDir.empty()
+        ? (baseDir / L"Cache-WindowsPlayer")
+        : cacheWindowsPlayerDir;
+    report["cache_windows_player_dir"] = toUtf8(cwpDir.wstring());
     auto summariesFut = std::async(std::launch::async, [&baseDir]() {
         return CacheScanner::scanAll(baseDir);
     });
@@ -152,6 +163,14 @@ nlohmann::json CacheScanner::buildReport(const std::filesystem::path& baseDir)
 nlohmann::json CacheScanner::buildReport(const std::filesystem::path& baseDir, LogReport parsedLogs)
 {
     return BuildFullReport(baseDir, std::move(parsedLogs));
+}
+
+nlohmann::json CacheScanner::buildReport(
+    const std::filesystem::path& baseDir,
+    LogReport parsedLogs,
+    const std::filesystem::path& cacheWindowsPlayerDir)
+{
+    return BuildFullReport(baseDir, std::move(parsedLogs), cacheWindowsPlayerDir);
 }
 
 } // namespace vrcsm::core

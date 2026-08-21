@@ -741,9 +741,19 @@
       "userId": "用户 ID",
       "worldId": "世界 ID"
     },
+    "layout": {
+      "locations": "按房间",
+      "status": "按状态"
+    },
+    "section": {
+      "sameAsYou": "与你同房"
+    },
     "inspector": {
       "empty": "选择一个好友查看位置、模型和快捷操作。",
       "title": "好友速览"
+    },
+    "recommend": {
+      "title": "在你的世界里见过"
     }
   },
   "layout": {
@@ -1052,8 +1062,8 @@
   "cmd": {
     "title": "命令面板",
     "placeholder": "输入命令，或搜索日志、玩家、世界…",
-    "empty": "没有匹配的命令。",
-    "loading": "正在加载会话日志…",
+    "empty": "没有匹配的人、世界或命令。",
+    "loading": "正在加载本地记录…",
     "navigate": "导航",
     "select": "选择",
     "dismiss": "关闭",
@@ -1169,7 +1179,8 @@
     "local3dPreviewHint": "直接使用缓存中的 __data 资源包，不需要模型 ID；加密资源包或非模型资源包仍可能无法渲染。",
     "noInfoFields": "__info 中没有可解析的字段。",
     "fileTree": "条目内容",
-    "emptyTree": "条目为空。"
+    "emptyTree": "条目为空。",
+    "emptyCache": "磁盘上没有缓存条目。"
   },
   "library": {
     "title": "资料库",
@@ -3573,6 +3584,7 @@
       "successSave": "成功更新 config.json！",
       "errorSave": "保存 config.json 失败：{{msg}}",
       "errorRead": "读取 config.json 失败：{{msg}}",
+      "missingFileHint": "缺少 config.json。点保存会创建它。在保存之前不会改 VRChat。",
       "cacheDirectory": {
         "label": "缓存目录",
         "hint": "自定义缓存目录的绝对路径"
@@ -4260,7 +4272,10 @@
     "groupsSignIn": "登录 VRChat 后才能看到加入团体的活动。",
     "noGroups": "你还没有加入任何 VRChat 团体。",
     "noGroupEvents": "你加入的 {{count}} 个团体目前没有公开活动。",
-    "openGroupPage": "打开团体页"
+    "openGroupPage": "打开团体页",
+    "loadFailed": "加载日历失败：{{error}}",
+    "featured": "精选",
+    "attending": "{{count}} 人参加"
   },
   "worldHistory": {
     "title": "世界历史",
@@ -4352,7 +4367,10 @@
     "clearFailed": "清除失败:{{error}}",
     "clearSuccess": "社交分析数据已清除。",
     "clearTitle": "清除社交分析数据?",
-    "nodeFocused": "已聚焦 {{name}}"
+    "nodeFocused": "已聚焦 {{name}}",
+    "graphFailed": "共同在场图失败：{{error}}",
+    "windowDays": "窗口（天）",
+    "minOverlap": "最短重叠（秒）"
   },
   "benchmark": {
     "title": "虚拟形象性能基准测试",
@@ -4368,6 +4386,7 @@
     "seenAvatars": "已见模型",
     "seenTitle": "在其他玩家身上看到的模型",
     "noSeen": "暂无记录。VRCSM 会从 VRChat 日志和好友活动中记录其他玩家使用过的模型。",
+    "seenFailed": "加载已见模型失败：{{error}}",
     "public": "公开",
     "private": "私有",
     "logOnly": "仅日志",

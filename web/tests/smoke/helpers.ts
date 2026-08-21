@@ -49,6 +49,7 @@ export const ROUTES = [
   "/friend-log",
   "/history/worlds",
   "/rules",
+  "/migrate",
   "/settings",
   "/plugins",
   "/plugins/installed",
@@ -65,7 +66,6 @@ export const INTERACTION_ROUTES = [
   "/tools/invite-slots",
   "/tools/playspace",
   "/tools/event-watch",
-  "/migrate",
 ] as const;
 
 export function routeSlug(route: string): string {

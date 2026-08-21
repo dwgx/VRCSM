@@ -47,6 +47,8 @@ enum class LogAtomKind
     InstanceReset,         // A7: [ModerationManager] instance age reset
     ShaderKeyword,         // A8: shader global keyword limit (stateful dedupe)
     AudioDevice,           // A8: uSpeak SetInputDevice (stateful change-only)
+    RoomLeft,              // P15: [Behaviour] OnLeftRoom (local leave)
+    ResourceLoad,          // P15: Udon String/image URL (localhost:22500 dropped)
 };
 
 struct LogAtom

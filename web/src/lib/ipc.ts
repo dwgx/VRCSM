@@ -558,6 +558,10 @@ registerResultValidator(
   (r) => isObject(r) && Array.isArray((r as { friends?: unknown }).friends),
 );
 registerResultValidator(
+  "social.mutual.fetchOne",
+  (r) => isObject(r) && Array.isArray((r as { friends?: unknown }).friends),
+);
+registerResultValidator(
   "scan",
   (r) => isObject(r) && typeof r.base_dir === "string" && Array.isArray(r.category_summaries),
 );
@@ -1343,6 +1347,8 @@ class IpcClient {
         } satisfies AuthUserDetailsResult as unknown as TResult;
       case "friends.list":
         return buildMockFriends() as unknown as TResult;
+      case "social.mutual.fetchOne":
+        return { userId: "", friends: [], hidden: false } as unknown as TResult;
       case "settings.readAll":
         return buildMockSettingsReport() as unknown as TResult;
       case "settings.writeOne":
@@ -3188,6 +3194,8 @@ class IpcClient {
     ttsEnabled?: boolean;
     ttsScope?: "all" | "friends";
     ttsChatbox?: boolean;
+    webhookEnabled?: boolean;
+    webhookUrl?: string;
   }) {
     return this.call<
       typeof prefs,
@@ -3202,6 +3210,17 @@ class IpcClient {
         ttsChatbox?: boolean;
       }
     >("notify.setPrefs", prefs);
+  }
+
+  async socialMutualFetchOne(userId: string, n = 100, offset = 0) {
+    return this.call<
+      { userId: string; n: number; offset: number },
+      {
+        userId: string;
+        friends: Array<{ id?: string; displayName?: string }>;
+        hidden: boolean;
+      }
+    >("social.mutual.fetchOne", { userId, n, offset });
   }
 
   async ttsStatus() {

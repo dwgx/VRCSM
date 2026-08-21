@@ -138,6 +138,7 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "auth.login",
         "auth.verify2FA",
         "friends.list",
+        "social.mutual.fetchOne",
         "groups.list",
         "groups.setRepresented",
         "moderations.list",
@@ -776,6 +777,7 @@ void IpcBridge::RegisterHandlers()
         return nlohmann::json{{"ok", true}};
     });
     m_handlers.emplace("friends.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleFriendsList(p, id); });
+    m_handlers.emplace("social.mutual.fetchOne", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleSocialMutualFetchOne(p, id); });
     m_handlers.emplace("groups.list", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGroupsList(p, id); });
     m_handlers.emplace("groups.setRepresented", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleGroupsSetRepresented(p, id); });
     m_handlers.emplace("hw.applyPreset", [this](const nlohmann::json& p, const std::optional<std::string>& id) { return HandleHwApplyPreset(p, id); });

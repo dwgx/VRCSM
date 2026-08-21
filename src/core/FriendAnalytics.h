@@ -47,6 +47,13 @@ std::time_t intervalOverlap(const PresenceInterval& a, const PresenceInterval& b
 // Normalize a raw search query: collapse ASCII whitespace then lowercase.
 std::string normalizeSearchQuery(const std::string& raw);
 
+// Session grouping key for co-presence. Empty / world-only instance_id
+// (SQL COALESCE(instance_id, world_id) on old player_events) becomes world_id.
+// A full location tag (`wrld_…:inst~…`) is kept so two instances of the same
+// world stay distinct. Callers must still run a world-only ↔ full-instance
+// overlap pass so visit-seeded self can meet NULL-instance event rows.
+std::string presenceSessionKey(std::string_view worldId, std::string_view instanceId);
+
 // ─── CoPresenceEgoNetwork ───────────────────────────────────────
 
 // Raw player_events row (cols 0-5 of the co-presence SELECT). occurred_at is
@@ -63,13 +70,25 @@ struct PresenceEventRow
     std::string occurred_at;
 };
 
+// Local player's own presence from world_visits. VRChat logs rarely emit
+// OnPlayerJoined for the local user, so the graph would otherwise have no
+// center node and no "confirmed" edges even with thousands of other-player rows.
+struct VisitPresenceRow
+{
+    std::string world_id;
+    std::string instance_id;
+    std::string joined_at;
+    std::string left_at;
+};
+
 // since_days / min_overlap_sec are passed ALREADY CLAMPED by the caller.
 // `now` is injected so sinceT is deterministic. Compute cannot fail.
 nlohmann::json coPresenceEgoNetwork(const std::vector<PresenceEventRow>& rows,
                                     const std::string& center_user_id,
                                     int since_days,
                                     int min_overlap_sec,
-                                    std::time_t now);
+                                    std::time_t now,
+                                    const std::vector<VisitPresenceRow>& visits = {});
 
 // ─── PredictFriendOnlineWindows ─────────────────────────────────
 

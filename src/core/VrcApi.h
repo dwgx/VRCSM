@@ -202,6 +202,11 @@ public:
     /// through for the frontend. Returns structured Error on 401/404/network.
     static Result<nlohmann::json> fetchUser(const std::string& userId);
 
+    /// Official `GET /users/{id}/mutuals/friends`. Caller must not loop this
+    /// on startup. n is clamped to 1..100. 403 means hidden, not zero.
+    static Result<nlohmann::json> fetchMutualFriends(
+        const std::string& userId, int n = 100, int offset = 0);
+
     /// Switch the current session's active avatar via
     /// `PUT /api/1/avatars/{id}/select`. Returns `{ok:true}` on success,
     /// structured Error on auth/network failure.

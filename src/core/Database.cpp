@@ -891,6 +891,29 @@ CREATE INDEX IF NOT EXISTS idx_grey_audit_feature ON grey_audit(feature);
         return std::get<Error>(r);
     }
 
+    // Optional FTS5 overlay. If this sqlite was built without FTS5, skip
+    // rather than failing InitSchema — GlobalSearch still has LIKE.
+    (void)ExecSimple(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS search_docs USING fts5("
+        "kind, doc_id, title, body);");
+    (void)ExecSimple(
+        "INSERT INTO search_docs(kind, doc_id, title, body) "
+        "SELECT kind, doc_id, title, body FROM ("
+        "  SELECT 'favorite' AS kind, target_id AS doc_id, "
+        "         COALESCE(display_name, target_id) AS title, list_name AS body "
+        "  FROM local_favorites "
+        "  UNION ALL "
+        "  SELECT 'world', world_id, world_id, COALESCE(instance_id, '') "
+        "  FROM world_visits"
+        ") "
+        "WHERE NOT EXISTS (SELECT 1 FROM search_docs LIMIT 1);");
+
+    if (const auto r = ExecSimple("PRAGMA user_version = 20;"); std::holds_alternative<Error>(r))
+    {
+        RollbackIfNeeded(m_db);
+        return std::get<Error>(r);
+    }
+
     const auto commitResult = ExecSimple("COMMIT;");
     if (std::holds_alternative<Error>(commitResult))
     {

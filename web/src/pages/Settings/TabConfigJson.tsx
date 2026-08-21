@@ -106,6 +106,13 @@ export function TabConfigJson({ vrcRunning }: { vrcRunning: boolean }) {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 pt-0">
+        {Object.keys(config).length === 0 && !loading && (
+          <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+            {t("settings.configJson.missingFileHint", {
+              defaultValue: "VRChat has not created config.json yet. Defaults are shown. Save writes %LocalLow%\\VRChat\\VRChat\\config.json on this machine — that path is the same for every user.",
+            })}
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           {configKeys.map(({ key, type, label, hint }) => (
             <SettingRow key={key} label={label} hint={hint}>

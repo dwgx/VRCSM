@@ -741,9 +741,19 @@
       "userId": "사용자 ID",
       "worldId": "월드 ID"
     },
+    "layout": {
+      "locations": "인스턴스별",
+      "status": "상태별"
+    },
+    "section": {
+      "sameAsYou": "나와 같은 방"
+    },
     "inspector": {
       "empty": "친구를 선택하면 위치, 아바타, 빠른 작업을 볼 수 있습니다.",
       "title": "친구 한눈에 보기"
+    },
+    "recommend": {
+      "title": "내 월드에서 본 사람"
     }
   },
   "layout": {
@@ -1040,8 +1050,8 @@
   "cmd": {
     "title": "명령 팔레트",
     "placeholder": "명령어를 입력하거나 로그 · 플레이어 · 월드를 검색…",
-    "empty": "일치하는 명령이 없습니다.",
-    "loading": "세션 로그를 불러오는 중…",
+    "empty": "일치하는 사람, 월드 또는 명령이 없습니다.",
+    "loading": "로컬 기록을 불러오는 중…",
     "navigate": "이동",
     "select": "선택",
     "dismiss": "닫기",
@@ -1157,7 +1167,8 @@
     "local3dPreviewHint": "캐시된 __data 번들을 직접 사용합니다. 아바타 ID는 필요 없지만, 암호화되었거나 아바타가 아닌 번들은 렌더링되지 않을 수 있습니다.",
     "noInfoFields": "__info 에서 해석 가능한 필드가 없습니다.",
     "fileTree": "항목 내용",
-    "emptyTree": "항목이 비어 있습니다."
+    "emptyTree": "항목이 비어 있습니다.",
+    "emptyCache": "디스크에 캐시 항목이 없습니다."
   },
   "library": {
     "title": "라이브러리",
@@ -3855,6 +3866,7 @@
       "disabled": "비활성화됨",
       "enabled": "활성화됨",
       "errorRead": "config.json 읽기 실패: {{msg}}",
+      "missingFileHint": "config.json이 없습니다. 저장하면 만들어집니다. 저장 전에는 VRChat을 바꾸지 않습니다.",
       "errorSave": "config.json 저장 실패: {{msg}}",
       "fpsLimitDesktop": {
         "hint": "데스크톱 모드의 최대 프레임 속도 (0 = 무제한)",
@@ -4259,6 +4271,9 @@
     "noGroups": "아직 가입한 VRChat 그룹이 없습니다.",
     "noGroupEvents": "가입한 {{count}}개 그룹에 현재 공개 이벤트가 없습니다.",
     "openGroupPage": "그룹 페이지 열기",
+    "loadFailed": "캘린더를 불러오지 못했습니다: {{error}}",
+    "featured": "추천",
+    "attending": "{{count}}명 참석",
     "resolvingPreview": "미리보기 찾는 중...",
     "noPreview": "미리보기 이미지 없음"
   },
@@ -4346,7 +4361,10 @@
     "clearFailed": "지우기 실패: {{error}}",
     "clearSuccess": "소셜 분석을 지웠습니다.",
     "clearTitle": "소셜 분석을 지울까요?",
-    "nodeFocused": "{{name}}에 집중됨"
+    "nodeFocused": "{{name}}에 집중됨",
+    "graphFailed": "동석 그래프 실패: {{error}}",
+    "windowDays": "기간(일)",
+    "minOverlap": "최소 겹침(초)"
   },
   "benchmark": {
     "title": "아바타 성능 벤치마크",
@@ -4362,6 +4380,7 @@
     "seenAvatars": "본 아바타",
     "seenTitle": "다른 플레이어에게서 본 아바타",
     "noSeen": "아직 아바타가 기록되지 않았습니다. VRCSM 은 VRChat 로그와 친구 활동에서 다른 플레이어에게서 본 아바타를 기록합니다.",
+    "seenFailed": "본 아바타를 불러오지 못했습니다: {{error}}",
     "public": "공개",
     "private": "비공개",
     "logOnly": "로그 전용",

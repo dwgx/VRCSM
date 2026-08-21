@@ -62,6 +62,13 @@ TEST(FriendAnalytics, NormalizeSearchQueryCollapsesAndLowercases)
 {
     EXPECT_EQ(normalizeSearchQuery("  Hello   WORLD  "), "hello world");
     EXPECT_EQ(normalizeSearchQuery(""), "");
+    EXPECT_EQ(normalizeSearchQuery(" vis "), "vis");
+}
+
+TEST(FriendAnalytics, NormalizeSearchQueryFoldsKanaAndFullwidth)
+{
+    EXPECT_EQ(normalizeSearchQuery("ガ"), normalizeSearchQuery("が"));
+    EXPECT_EQ(normalizeSearchQuery("Ａｖｔｒ"), "avtr");
 }
 
 // ─── coPresenceEgoNetwork ───────────────────────────────────────
@@ -138,6 +145,76 @@ TEST(FriendAnalytics, CoPresenceDropsBelowMinOverlap)
     };
     const std::time_t now = parsePresenceInstant("2026-01-02T00:00:00Z").value();
     const auto out = coPresenceEgoNetwork(rows, "usr_a", 90, 3600, now);
+    EXPECT_EQ(out["edges"].size(), 0u);
+}
+
+TEST(FriendAnalytics, CoPresenceUsesWorldVisitsWhenSelfAbsentFromEvents)
+{
+    // Real VRChat logs almost never emit OnPlayerJoined for the local user.
+    // Presence lives in world_visits. Without that, the graph has no center
+    // and no confirmed edges even when thousands of other players are logged.
+    std::vector<PresenceEventRow> rows{
+        {"usr_b", "Bob", "wrld_1", "i1", "joined", "2026-01-01T10:30:00Z"},
+        {"usr_b", "Bob", "wrld_1", "i1", "left",   "2026-01-01T11:30:00Z"},
+    };
+    std::vector<VisitPresenceRow> visits{
+        {"wrld_1", "i1", "2026-01-01T10:00:00Z", "2026-01-01T12:00:00Z"},
+    };
+    const std::time_t now = parsePresenceInstant("2026-01-02T00:00:00Z").value();
+    const auto out = coPresenceEgoNetwork(rows, "usr_self", 90, 60, now, visits);
+
+    ASSERT_EQ(out["edges"].size(), 1u);
+    EXPECT_EQ(out["edges"][0]["kind"], "confirmed");
+    EXPECT_EQ(out["edges"][0]["source"], "usr_b");
+    EXPECT_EQ(out["edges"][0]["target"], "usr_self");
+    bool sawCenter = false;
+    for (const auto& n : out["nodes"])
+    {
+        if (n["user_id"] == "usr_self")
+        {
+            EXPECT_TRUE(n["is_center"].get<bool>());
+            sawCenter = true;
+        }
+    }
+    EXPECT_TRUE(sawCenter);
+}
+
+TEST(FriendAnalytics, PresenceSessionKeyWorldOnlyAndFullTag)
+{
+    EXPECT_EQ(presenceSessionKey("wrld_1", ""), "wrld_1");
+    EXPECT_EQ(presenceSessionKey("wrld_1", "wrld_1"), "wrld_1");
+    EXPECT_EQ(presenceSessionKey("wrld_1", "wrld_1:i1~hidden"), "wrld_1:i1~hidden");
+    EXPECT_EQ(presenceSessionKey("wrld_1", "i1"), "i1");
+}
+
+TEST(FriendAnalytics, CoPresenceMatchesVisitFullInstanceToNullEventInstance)
+{
+    // player_events.instance_id is often NULL on old rows (SQL COALESCE → world_id).
+    // world_visits stores the full location tag. Those must still overlap.
+    std::vector<PresenceEventRow> rows{
+        {"usr_b", "Bob", "wrld_1", "", "joined", "2026-01-01T10:30:00Z"},
+        {"usr_b", "Bob", "wrld_1", "", "left",   "2026-01-01T11:30:00Z"},
+    };
+    std::vector<VisitPresenceRow> visits{
+        {"wrld_1", "wrld_1:i1~hidden", "2026-01-01T10:00:00Z", "2026-01-01T12:00:00Z"},
+    };
+    const std::time_t now = parsePresenceInstant("2026-01-02T00:00:00Z").value();
+    const auto out = coPresenceEgoNetwork(rows, "usr_self", 90, 60, now, visits);
+
+    ASSERT_EQ(out["edges"].size(), 1u);
+    EXPECT_EQ(out["edges"][0]["kind"], "confirmed");
+}
+
+TEST(FriendAnalytics, CoPresenceKeepsDistinctFullInstancesSeparate)
+{
+    std::vector<PresenceEventRow> rows{
+        {"usr_a", "Alice", "wrld_1", "wrld_1:aaa", "joined", "2026-01-01T10:00:00Z"},
+        {"usr_a", "Alice", "wrld_1", "wrld_1:aaa", "left",   "2026-01-01T12:00:00Z"},
+        {"usr_b", "Bob",   "wrld_1", "wrld_1:bbb", "joined", "2026-01-01T10:00:00Z"},
+        {"usr_b", "Bob",   "wrld_1", "wrld_1:bbb", "left",   "2026-01-01T12:00:00Z"},
+    };
+    const std::time_t now = parsePresenceInstant("2026-01-02T00:00:00Z").value();
+    const auto out = coPresenceEgoNetwork(rows, "usr_a", 90, 60, now);
     EXPECT_EQ(out["edges"].size(), 0u);
 }
 

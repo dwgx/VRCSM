@@ -8,6 +8,47 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
+## [0.16.3] — 2026-08-21
+
+Friends Locations, virtual lists, and local-first follow-ups after v0.16.2.
+Grey helpers stay **default OFF**. LICENSE remains VSAL. Encrypted UnityFS 3D
+preview stays empty. Mutual friends are fetch-one and button-gated; there is
+no startup crawl.
+
+- **Friends Locations:** `/friends` defaults to instance-first sections keyed
+  by the full location tag, virtualized like Feed. Same-instance-as-me is first.
+  Private / traveling / offline stay separate. Status buckets remain as a toggle.
+  `world.details` only for visible rows plus the inspector.
+- **Logs and Bundles** lists use the same virtualizer. Unity `__info` cache
+  manifests parse as metadata; encrypted 3D stays empty.
+- **config.json** is always named under the VRChat base dir. A missing file
+  reads as `{}`; Save is the only write and still blocks while VRChat is running.
+  Relative `cache_directory` resolves against that base dir.
+- **Calendar:** paging caps, non-auth list errors surface instead of an empty
+  Groups tab, Featured/attending copy is localized.
+- **Co-presence:** `world_visits` seeds the graph center; world-only event
+  instances can overlap a full visit tag; two distinct full instances stay split.
+  Self matching prefers `usr_` over a shared display name.
+- **Search:** ASCII/kana/fullwidth fold in `normalizeSearchQuery`. Optional
+  sqlite FTS5 `search_docs` (schema v20) when the linked sqlite enables FTS5;
+  LIKE remains the fallback.
+- **Logs:** `[Behaviour] OnLeftRoom` and Udon String/image URL atoms. Loads from
+  `localhost:22500` / `127.0.0.1:22500` are dropped. Remote `OnPlayerLeft` is
+  unchanged.
+- **Opt-in mutuals** via official `GET /users/{id}/mutuals/friends` from the
+  friend inspector. HTTP 403 is hidden, not zero friends.
+- **Discord webhook** notify (HTTPS discord.com / discordapp.com only, default
+  OFF) next to existing toasts.
+- **Display-only** “seen in your worlds” suggestions. No auto-invite.
+- Command palette fetches session logs after the first non-empty query and does
+  not cancel that fetch on extra keystrokes. Feed invalidation keeps a 1.5s
+  trailing flush.
+- Playwright visual + click-through includes `/migrate`.
+
+Verified on the cut: x64-debug ctest **239 passed / 0 failed** (1 skipped, 5
+live/network DISABLED); Playwright `pnpm test:ui-smoke` **62/62**; `tsc -b` and
+`pnpm build` clean.
+
 ## [0.16.2] — 2026-08-20
 
 Grey-rail wrap-up after the 0.16.1 i18n cut.

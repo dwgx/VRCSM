@@ -1,6 +1,6 @@
 # Friends Page Optimization Plan
 
-Last updated: 2026-06-23
+Last updated: 2026-06-23 (design). **Status 2026-08-21:** FL1 landed uncommitted — Locations is the default list + Feed-style virtualizer. This file remains the design. Present tense: `docs/SESSION-HANDOFF-2026-08-21.md`. Do not rebuild FL1.
 
 This is the page-level execution guide for improving `web/src/pages/Friends.tsx`.
 It narrows the broader relationship-system research into an implementable UI and

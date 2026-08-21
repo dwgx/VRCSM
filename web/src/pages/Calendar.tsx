@@ -8,6 +8,22 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import type { WorkspaceGroup, WorkspaceGroupsResult } from "@/lib/types";
 import {
+  asDisplayString,
+  dedupeEvents,
+  getAttending,
+  getEndsAt,
+  getEventTitle,
+  getGroupId,
+  getGroupName,
+  getHostName,
+  getJamState,
+  getStartsAt,
+  getWorldId,
+  normalizeJams,
+  type CalendarEventLike,
+  type JamLike,
+} from "@/lib/calendar-events";
+import {
   Calendar as CalendarIcon,
   Star,
   Trophy,
@@ -19,90 +35,8 @@ import {
 } from "lucide-react";
 
 type CalendarTab = "groups" | "jams" | "featured";
-
-interface CalendarEvent {
-  id?: string;
-  name?: string;
-  title?: string;
-  description?: string;
-  startsAt?: string;
-  starts_at?: string;
-  endsAt?: string;
-  ends_at?: string;
-  worldId?: string;
-  world_id?: string;
-  region?: string;
-  groupId?: string;
-  group_id?: string;
-  groupName?: string;
-  group_name?: string;
-  hostUserId?: string;
-  host_user_id?: string;
-  hostUserName?: string;
-  host_user_name?: string;
-  hostUserDisplayName?: string;
-  attendingUserCount?: number;
-  attending_user_count?: number;
-  tags?: string[];
-  category?: string;
-  isFeatured?: boolean;
-  [key: string]: unknown;
-}
-
-interface Jam {
-  id?: string;
-  title?: string;
-  name?: string;
-  description?: string;
-  state?: string;
-  isActive?: boolean;
-  submissionsCanBeVoted?: boolean;
-  closedAt?: string;
-  startedAt?: string;
-  [key: string]: unknown;
-}
-
-function firstString(...values: (string | undefined | null)[]): string | undefined {
-  for (const v of values) if (v) return v;
-  return undefined;
-}
-
-function firstNumber(...values: (number | undefined | null)[]): number | undefined {
-  for (const v of values) if (typeof v === "number") return v;
-  return undefined;
-}
-
-function getEventTitle(e: CalendarEvent): string {
-  return firstString(e.name, e.title) ?? "Untitled";
-}
-
-function getStartsAt(e: CalendarEvent): string | undefined {
-  return firstString(e.startsAt, e.starts_at);
-}
-
-function getEndsAt(e: CalendarEvent): string | undefined {
-  return firstString(e.endsAt, e.ends_at);
-}
-
-function getWorldId(e: CalendarEvent): string | undefined {
-  return firstString(e.worldId, e.world_id);
-}
-
-function getGroupId(e: CalendarEvent): string | undefined {
-  return firstString(e.groupId, e.group_id);
-}
-
-function getGroupName(e: CalendarEvent): string | undefined {
-  return firstString(e.groupName, e.group_name);
-}
-
-function getHostName(e: CalendarEvent): string | undefined {
-  return firstString(e.hostUserName, e.host_user_name, e.hostUserDisplayName as string | undefined);
-}
-
-function getAttending(e: CalendarEvent): number | undefined {
-  return firstNumber(e.attendingUserCount, e.attending_user_count);
-}
+type CalendarEvent = CalendarEventLike;
+type Jam = JamLike;
 
 function formatWhen(iso: string | undefined): string {
   if (!iso) return "";
@@ -133,29 +67,15 @@ function openGroup(groupId: string) {
   });
 }
 
-function dedupeEvents(events: CalendarEvent[]): CalendarEvent[] {
-  const seen = new Set<string>();
-  const out: CalendarEvent[] = [];
-  for (const e of events) {
-    const key = e.id ?? `${getEventTitle(e)}|${getStartsAt(e) ?? ""}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(e);
-  }
-  return out;
-}
-
 export default function CalendarPage() {
   const { t } = useTranslation();
   const { status } = useAuth();
   const [tab, setTab] = useState<CalendarTab>("groups");
 
-  // The two calendar feeds we know about. /discover is region-gated and
-  // /featured is the curator surface; merging both gives us the widest
-  // pool to filter against the user's joined groups.
-  const discover = useQuery({
-    queryKey: ["calendar.discover"],
-    queryFn: () => ipc.calendarDiscover(),
+  const mine = useQuery({
+    queryKey: ["calendar.list"],
+    queryFn: () => ipc.calendarList(),
+    enabled: status.authed,
     staleTime: 5 * 60_000,
   });
 
@@ -163,12 +83,14 @@ export default function CalendarPage() {
     queryKey: ["calendar.featured"],
     queryFn: () => ipc.calendarFeatured(),
     staleTime: 5 * 60_000,
+    enabled: tab === "featured" || (tab === "groups" && !mine.isPending && (mine.data?.events?.length ?? 0) === 0),
   });
 
   const jams = useQuery({
     queryKey: ["jams.list"],
     queryFn: () => ipc.jamsList(),
     staleTime: 5 * 60_000,
+    enabled: tab === "jams",
   });
 
   const groups = useQuery<WorkspaceGroupsResult>({
@@ -186,32 +108,37 @@ export default function CalendarPage() {
     return set;
   }, [groups.data]);
 
-  const allEvents: CalendarEvent[] = useMemo(() => {
-    const a = (discover.data?.events ?? []) as CalendarEvent[];
-    const b = (featured.data?.events ?? []) as CalendarEvent[];
-    return dedupeEvents([...a, ...b]);
-  }, [discover.data, featured.data]);
+  const myEvents = useMemo(
+    () => dedupeEvents((mine.data?.events ?? []) as CalendarEvent[]),
+    [mine.data],
+  );
+
+  const featuredEvents = useMemo(
+    () => dedupeEvents((featured.data?.events ?? []) as CalendarEvent[]),
+    [featured.data],
+  );
 
   const groupEvents = useMemo(() => {
+    if (myEvents.length > 0) return myEvents;
     if (joinedGroupIds.size === 0) return [];
-    return allEvents.filter((e) => {
+    return featuredEvents.filter((e) => {
       const gid = getGroupId(e);
       return gid ? joinedGroupIds.has(gid) : false;
     });
-  }, [allEvents, joinedGroupIds]);
+  }, [myEvents, featuredEvents, joinedGroupIds]);
 
-  const featuredEvents: CalendarEvent[] =
-    (featured.data?.events ?? []) as CalendarEvent[];
+  const jamItems = useMemo(() => normalizeJams(jams.data), [jams.data]);
 
-  const rawJams = jams.data;
-  const jamItems: Jam[] = Array.isArray(rawJams)
-    ? (rawJams as Jam[])
-    : ((rawJams as unknown as Record<string, unknown>)?.submissions as Jam[] ?? []);
-
+  const groupsLoading = status.authed && (groups.isPending || mine.isPending);
   const isLoading =
-    tab === "groups" ? (discover.isPending || featured.isPending || groups.isPending)
+    tab === "groups" ? groupsLoading
       : tab === "featured" ? featured.isPending
         : jams.isPending;
+
+  const loadError =
+    tab === "groups" ? (groups.error ?? mine.error)
+      : tab === "featured" ? featured.error
+        : jams.error;
 
   const tabDefs = [
     {
@@ -275,7 +202,18 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {tab === "groups" && !isLoading && (
+      {loadError && !isLoading && (
+        <Card className="unity-panel">
+          <CardContent className="p-4 text-[12px] text-[hsl(var(--destructive))]">
+            {t("calendar.loadFailed", {
+              defaultValue: "Failed to load calendar: {{error}}",
+              error: loadError instanceof Error ? loadError.message : String(loadError),
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {tab === "groups" && !isLoading && !mine.error && (
         <GroupsTab
           authed={status.authed}
           groupCount={joinedGroupIds.size}
@@ -283,7 +221,7 @@ export default function CalendarPage() {
         />
       )}
 
-      {tab === "featured" && !isLoading && featuredEvents.length === 0 && (
+      {tab === "featured" && !isLoading && featuredEvents.length === 0 && !loadError && (
         <Card className="unity-panel">
           <CardContent className="p-6 text-center">
             <CalendarIcon className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
@@ -302,7 +240,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {tab === "jams" && !isLoading && jamItems.length === 0 && (
+      {tab === "jams" && !isLoading && jamItems.length === 0 && !loadError && (
         <Card className="unity-panel">
           <CardContent className="p-6 text-center">
             <Trophy className="size-8 mx-auto mb-2 text-[hsl(var(--muted-foreground)/0.3)]" />
@@ -350,7 +288,7 @@ function GroupsTab({
     );
   }
 
-  if (groupCount === 0) {
+  if (groupCount === 0 && events.length === 0) {
     return (
       <Card className="unity-panel">
         <CardContent className="p-6 text-center">
@@ -407,23 +345,29 @@ function EventCard({
   const groupName = getGroupName(event);
   const hostName = getHostName(event);
   const attending = getAttending(event);
+  const region = asDisplayString(event.region);
+  const description = asDisplayString(event.description);
 
   return (
     <Card className="unity-panel overflow-hidden flex flex-col">
       <CardContent className="p-3 flex flex-col gap-1.5 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 text-[13px] font-medium line-clamp-1">{getEventTitle(event)}</div>
+          <div className="min-w-0 text-[13px] font-medium line-clamp-1">
+            {getEventTitle(event) === "Untitled"
+              ? t("calendar.untitledEvent", { defaultValue: "Untitled event" })
+              : getEventTitle(event)}
+          </div>
           <div className="flex shrink-0 gap-1">
             {event.isFeatured && (
               <Badge variant="warning" className="gap-1">
                 <Star className="size-3" />
-                Featured
+                {t("calendar.featured", { defaultValue: "Featured" })}
               </Badge>
             )}
-            {event.region && (
+            {region && (
               <Badge variant="outline" className="gap-1">
                 <Globe className="size-3" />
-                {String(event.region).toUpperCase()}
+                {region.toUpperCase()}
               </Badge>
             )}
           </div>
@@ -443,7 +387,9 @@ function EventCard({
             <Badge variant="outline" className="text-[10px] gap-1"><UserCircle className="size-2.5" />{hostName}</Badge>
           )}
           {attending !== undefined && attending > 0 && (
-            <Badge variant="secondary" className="text-[10px]">{attending} attending</Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              {t("calendar.attending", { defaultValue: "{{count}} attending", count: attending })}
+            </Badge>
           )}
           {worldId && (
             <Badge variant="outline" className="text-[10px]">
@@ -451,9 +397,9 @@ function EventCard({
             </Badge>
           )}
         </div>
-        {event.description && (
+        {description && (
           <p className="text-[11px] text-[hsl(var(--muted-foreground))] line-clamp-2 mt-0.5">
-            {String(event.description)}
+            {description}
           </p>
         )}
         <div className="mt-auto pt-1 flex flex-wrap gap-1.5">
@@ -492,8 +438,10 @@ function openJam(jam: Jam) {
 
 function JamCard({ jam }: { jam: Jam }) {
   const { t } = useTranslation();
-  const title = firstString(jam.title, jam.name) ?? "Untitled Jam";
-  const state = firstString(jam.state) ?? (jam.isActive ? "active" : undefined);
+  const title = firstStringSafe(jam.title, jam.name)
+    ?? t("calendar.untitledEvent", { defaultValue: "Untitled event" });
+  const state = getJamState(jam);
+  const description = asDisplayString(jam.description);
 
   return (
     <Card className="unity-panel overflow-hidden flex flex-col">
@@ -507,9 +455,9 @@ function JamCard({ jam }: { jam: Jam }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-0 flex-1 flex flex-col">
-        {jam.description && (
+        {description && (
           <p className="text-[11px] text-[hsl(var(--muted-foreground))] line-clamp-3">
-            {String(jam.description)}
+            {description}
           </p>
         )}
         {jam.closedAt && (
@@ -531,4 +479,11 @@ function JamCard({ jam }: { jam: Jam }) {
       </CardContent>
     </Card>
   );
+}
+
+function firstStringSafe(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  return undefined;
 }

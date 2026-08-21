@@ -2,7 +2,7 @@
 
 Status: `search.global` v1 local-only implementation exists; remote enrichment, Timeline inspectors, and advanced query grammar remain roadmap/spec.
 Owner surface: current `search.global` core/IPC/quick-search UI plus future Timeline integration.
-Last updated: 2026-04-29.
+Last updated: 2026-04-29. **Status 2026-08-21:** v1 is still `lower(col) LIKE %q%`. `vcpkg.json` sqlite3 has **no FTS5 overlay**. Kana fold is parked P24. Ranked later slice **SR1** in `docs/SESSION-HANDOFF-2026-08-21.md`. CommandPalette no longer prefetches 500 logs until the user types (uncommitted).
 
 ## Goal
 

@@ -1,27 +1,31 @@
 # VRCSM Agent Memory
 
-Last updated: 2026-08-20 (v0.16.0 release)
+Last updated: 2026-08-21 (v0.16.3 release cut)
 
 This is the repo-local handoff entrypoint. It exists because future agents should not have to rediscover the project state, document map, or the avatar/SteamVR decisions from chat history.
 
 ## Read First
 
-1. `AGENTS.md` or `CLAUDE.md` — operating rules, architecture, build commands, safety constraints.
-2. `docs/NEXT-AGENT-HANDOFF.md` — current repo state, last verified build, release checkpoint, and open follow-ups.
-3. `docs/MD-INDEX.md` — all Markdown files and what each one is for.
-4. `CHANGELOG.md` — release history and user-visible behavior.
-5. Only then inspect code.
+1. `docs/SESSION-HANDOFF-2026-08-21.md` — **present-tense acceptance pack**, subagent prompts, ranked backlog. Git wins if this file disagrees.
+2. `AGENTS.md` or `CLAUDE.md` — operating rules, architecture, build commands, safety constraints.
+3. `docs/NEXT-AGENT-HANDOFF.md` — pointer + historical sessions.
+4. `docs/MD-INDEX.md` — all Markdown files and what each one is for.
+5. `CHANGELOG.md` — release history and user-visible behavior. `[0.16.3]` is the current cut.
+6. Only then inspect code. Then `git status --short --branch`.
 
 ## Current Continuity Snapshot
 
-- **2026-08-20 v0.16.2 RELEASE.** Grey-rail wrap-up on top of 0.16.1 i18n. G5/G6 seconds clamped, IMAP connect pins sockaddr, grey IPC `grey_disabled` when master off. Grey helpers default OFF. LICENSE still VSAL. Do not commit the scratch txt at repo root.
-- **Verified 2026-08-20 (v0.16.2 cut):** `tsc -b` + `vite build` clean; jsdom smoke **76/76**; x64-release FileVersion **0.16.2.0**; ctest release **229/229** (6 live probes disabled/skipped). Version files in sync at **0.16.2**. Artifacts: MSI `VRCSM_v0.16.2_x64_Installer.msi` (9,187,328 bytes, SHA256 `730fca138908a438daaba0792a1d12070a1a2c215bb5495a1bee2f0f273c14fe`), ZIP `VRCSM_v0.16.2_x64.zip` (21,630,672 bytes, SHA256 `3c0f463bdf250b278f38798e7e7520292fe8921b63134f26c8e7c6294b33b02a`). `SHA256:` line is required in GitHub release notes.
-- Current branch: `main` after merging `feat/companion-waves`. Previous Latest was **v0.15.2**. Historical v0.15.1 notes follow.
+- **2026-08-21 v0.16.3 RELEASE.** Friends Locations (instance-first + virtualizer), Logs/Bundles virtual lists, config.json always-named path, calendar paging/errors, self-player id-wins, world_visits graph center, FTS5 `search_docs` + kana fold, OnLeftRoom/Udon URL atoms, opt-in mutuals fetchOne, Discord webhook default OFF, display-only join recommend. Grey helpers default OFF. LICENSE VSAL. Encrypted UnityFS 3D still empty.
+- **Verified 2026-08-21 (v0.16.3 cut):** `tsc -b` + `pnpm build` clean; x64-debug ctest **239 passed / 0 failed** (1 skipped, 5 live DISABLED); Playwright `pnpm test:ui-smoke` **62/62** including `/migrate`. Artifact hashes land in a follow-up docs commit after MSI.
+- Do **not** commit `CLAUDE.md`, `AGENTS.md`, `.agent/`, or the scratch txt.
+- **P18 / P16 / P4 / P12 shipped in 0.16.0.** Remaining later: CI1 CacheIndex list owner, VER1 live 10k graph, FTS populate/triggers beyond the v20 table.
+- Local `D:\Reference\VRCX` cloned 2026-08-21 (`5ea37a2`, Version 2026.07.18) for FL1 research. Ideas only. No GPL/VNCOL paste. No SaoMoLa decrypt into VRCSM. Encrypted UnityFS 3D stays empty.
+- Current branch: `main` (companion-waves already merged and released). Previous Latest before 0.16.x was **v0.15.2**. Historical v0.15.1 notes follow.
 - **v0.15.1 is RELEASED to GitHub** (tag `v0.15.1` + MSI/ZIP, marked Latest, 2026-07-09). All version files are now in sync at `0.15.1` (`VERSION`, `web/package.json`, README badge/artifacts, **and `vcpkg.json`** — bumped from the stale `0.14.6` at release). Release artifacts + hashes: MSI `VRCSM_v0.15.1_x64_Installer.msi` (8,970,240 bytes, SHA256 `5d23965044e3e5136dc968527feecc57b0fc9a69c48dc00370ed9de1825ffd2c`), ZIP `VRCSM_v0.15.1_x64.zip` (19,882,673 bytes, SHA256 `5d9b152e22298691342d2952c658fb77ac04e522aa1e20ad1cac3ae4ca97951e`). The `SHA256:` line is present in the published release notes (updater fail-closed gate satisfied). 0.15.1 bundled (in commit order): i18n language-persistence fix, QQ Music lyrics source, OSC progress/marquee sliders, factory-reset thumbnail fix, `{music.lyrics}` send fix, **Kugou 4th lyrics source + QQ title-only fallback (`77393a7`)**, gh-pages landing rewrite, and the **VRChat-safe OSC seek bar + 4 rich Now Playing presets (`600440e`)**.
 - **Lyrics chain is now LRCLIB → NetEase → QQ → Kugou** (`web/src/lib/lyrics.ts`; `LyricsSource` union includes `"kugou"`), plus a QQ title-only fallback for obscure/uploaded tracks (title+artist misses them). OSC progress bar is a **seek bar** `━━━━━●────` (old `▬/▭` rendered as empty circles in the VRChat chatbox font); knob optional via `oscProgressBar(...,knob="")`.
-- Working tree is **clean** apart from one intentionally-untracked scratch file at repo root (`2026-07-04-111708-...txt`, a local command transcript). Do NOT commit it.
+- Historical note (v0.15.1 era): the tree was clean except the scratch txt. **As of 2026-08-21 the tree is dirty** — see the snapshot bullets at the top of this section. Still do NOT commit `2026-07-04-111708-...txt`.
 - Release mechanics reminder: bump all of `VERSION`, `web/package.json`, README badge+artifact names together; **reconfigure the CMake preset after editing `VERSION`** (it's read at configure time — a plain rebuild says "ninja: no work to do"); the updater's fail-closed hash gate needs the `SHA256:` line in the GitHub release notes; **stop VRCSM before reinstalling** or the running WebView2 locks `web/` and the MSI silently keeps the stale bundle (a real trap hit this session).
-- **Current test baseline (re-confirmed 2026-08-20 at 0.16.0):** C++ ctest **225/225** (6 opt-in live probes DISABLED/skipped), jsdom smoke 76/76, Playwright UI smoke **61/61**, tsc + release build clean. Full web vitest still needs `--no-file-parallelism`. Release compile still emits PluginBridge.cpp:172 u8path C4996, CommonTests.cpp getenv C4996, plus new sscanf C4996 in OtpMailParser/ImapClient and a wchar→char C4244 in LyricsProxy (pre-existing in this wave, not a ship blocker).
+- **Release-cut test baseline:** 0.16.0 was ctest **225/225** + Playwright **61/61**; 0.16.2 cut was ctest **229/229** + jsdom **76/76**. Those numbers are **not** a re-run of the 2026-08-21 dirty tree. Full web vitest still needs `--no-file-parallelism`. Release compile still emits PluginBridge.cpp:172 u8path C4996, CommonTests.cpp getenv C4996, plus sscanf C4996 in OtpMailParser/ImapClient and a wchar→char C4244 in LyricsProxy (pre-existing, not a ship blocker).
 - Reliability lesson: background workflows/subagents can hang on the inference gateway; **prefer foreground single-threaded execution for heavy C++ work.** Read-only recon/audit workflows (no heavy compute) ARE reliable and were used heavily this session. `D:\Tool\debugger` (Frida/Ghidra/x64dbg/radare2/DIE/FLOSS + MCP bridges) is available for reverse-engineering; Frida 17 API uses `Process.findModuleByName(...).findExportByName(...)` (the old `Module.findExportByName` is gone).
 
 ### GUI↔API remediation (2026-07-09) — DONE + released in v0.15.0

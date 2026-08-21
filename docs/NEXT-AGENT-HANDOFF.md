@@ -1,6 +1,6 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-08-20
+Last updated: 2026-08-21
 
 ## 承上启下 — 给接手 AI 的话（READ THIS FIRST）
 
@@ -8,9 +8,13 @@ Last updated: 2026-08-20
 要质量：该开 ultracode workflow 大规模并行验证/审查就开，该前台单线程稳做就稳做，
 **按可靠性选，不按省 token 选**。
 
-开工前按序读：本文件 → `MEMORY.md` → `docs/MD-INDEX.md` → `CLAUDE.md` →
-`docs/reference/ARCHITECTURE-COMPREHENSION-2026-07.md`。这些刚被逐条对代码核实刷新过，
-但仍要自己 `git log` + 读代码确认，别盲信文档或任何 subagent 自报结果。
+**Present tense is `docs/SESSION-HANDOFF-2026-08-21.md`.** Read that pack before
+this file's historical sessions. If MEMORY / this file / HANDOFF disagree with
+`git status`, **git wins**.
+
+开工前按序读：`docs/SESSION-HANDOFF-2026-08-21.md` → 本文件 → `MEMORY.md` →
+`docs/MD-INDEX.md` → `CLAUDE.md` → `docs/reference/ARCHITECTURE-COMPREHENSION-2026-07.md`。
+自己 `git log` + 读代码确认，别盲信文档或任何 subagent 自报结果。
 
 工作纪律（血泪教训）：
 - 提交消息**绝不加** `Co-Authored-By: Claude` / Anthropic / "Generated with" 署名。
@@ -21,27 +25,47 @@ Last updated: 2026-08-20
   (`192.168.11.4:8990`)；前台单线程稳定。别把重 C++ 丢后台干等。
 - 改前读周边代码匹配风格；i18n 改动保持全 7 语言键+占位符对齐；C++ 单一 ninja build dir
   不并发改，web 可与 C++ 并行。
-
-把下面「Open / parked work」三项做到完美，并始终保持文档对下一位可完美接手。
+- 不要提交 `CLAUDE.md` / `AGENTS.md` / `.agent/` / 根目录 scratch txt。
+- 未命名切片不要开。**v0.16.3 已切。** FL1/VL1/P15/P2/P5/MU1 fetchOne/SR1 fold+FTS table 已进该切。
+  默认下一刀：CI1 CacheIndex 或 VER1 活库图。不发第二份 0.16.2 MSI。
 
 ---
 
+## Latest Session (2026-08-21) — READ FIRST
 
-## Latest Session (2026-08-20) — READ FIRST
+**v0.16.3 cut.** Friends Locations + virtual lists + local-first follow-ups are
+in this release. Pack: `docs/SESSION-HANDOFF-2026-08-21.md`. Next named slice:
+CI1 or VER1. Grey helpers stay default OFF.
 
-**v0.16.2 RELEASE.** Grey-rail wrap-up (clamp G5/G6 windows, IMAP sockaddr pin, grey_disabled on grey reads/writes). 0.16.1 already shipped 7-locale i18n. Grey helpers default OFF. LICENSE VSAL.
+**Released product is still v0.16.2** (`e22417c`). Working tree is **dirty**
+with an uncommitted usability + co-presence slice (config.json always-named,
+calendar paging, self-player, `world_visits` as graph center, palette/feed
+load). Version stays 0.16.2 until Owner names a bump. Commit only if named.
 
-Verified: tsc + vite build clean; jsdom smoke 76/76; x64-release FileVersion **0.16.2.0**; ctest release **229/229**. GitHub Latest **v0.16.2**. MSI SHA256 `730fca138908a438daaba0792a1d12070a1a2c215bb5495a1bee2f0f273c14fe`. Local reinstall: stop VRCSM, uninstall 0.16.1, install 0.16.2.
+Local `D:\Reference\VRCX` was **missing** at pack time — clone for research
+is allowed. Do not paste VRCX / VRCX-0 / VRCNext / SaoMoLa decrypt.
+
+`REMAINING-SLICES.md` no longer ranks P18/P16/P4/P12 as next (they shipped in
+0.16.0). Ranked next: FL1 Locations → VL1 virtualize → SR1 FTS/kana → MU1
+opt-in mutuals → P15 → P2 (P5 display-only later).
 
 Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
-
-Parked next: P15 OnLeftRoom atoms, P2 Discord webhook, P5 join-recommender panel. Review was deferred by Owner.
 
 Node `fs` fallback in `lyrics.ts` is **vitest-only**; WebView2 uses `lyrics.readFolder`. Keep it.
 
 Pre-existing unused-looking IPC (`fs.writePlan` etc.) still has host handlers — do **not** delete without a plugin/caller audit.
 
-**Reinstall trap (still true):** stop VRCSM before installing an MSI. If the same version is already installed, `msiexec /x` then `/i` — a same-version `REINSTALLMODE=amus` will NOT replace the hashed `web/` bundle. 0.16.0 is a new version so MajorUpgrade should replace 0.15.2, but still quit the running WebView2 first.
+**Reinstall trap (still true):** stop VRCSM before installing an MSI. If the same version is already installed, `msiexec /x` then `/i` — a same-version `REINSTALLMODE=amus` will NOT replace the hashed `web/` bundle. Quit the running WebView2 first.
+
+---
+
+## Session (2026-08-20) — v0.16.2 RELEASE (historical)
+
+**v0.16.2 RELEASE.** Grey-rail wrap-up (clamp G5/G6 windows, IMAP sockaddr pin, grey_disabled on grey reads/writes). 0.16.1 already shipped 7-locale i18n. Grey helpers default OFF. LICENSE VSAL.
+
+Verified at cut: tsc + vite build clean; jsdom smoke 76/76; x64-release FileVersion **0.16.2.0**; ctest release **229/229**. GitHub Latest **v0.16.2**. MSI SHA256 `730fca138908a438daaba0792a1d12070a1a2c215bb5495a1bee2f0f273c14fe`. Local reinstall: stop VRCSM, uninstall 0.16.1, install 0.16.2.
+
+Those ctest/smoke numbers are the **release cut**, not a re-run of the 2026-08-21 dirty tree. Parked at that cut: P15 / P2 / P5. Review was deferred by Owner.
 
 ---
 

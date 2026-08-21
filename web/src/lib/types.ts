@@ -270,6 +270,19 @@ export interface LogReport {
   instance_resets: InstanceResetEvent[];
   shader_keywords: ShaderKeywordEvent[];
   audio_devices: AudioDeviceEvent[];
+  room_left?: RoomLeftEvent[];
+  resource_loads?: ResourceLoadEvent[];
+}
+
+export interface RoomLeftEvent {
+  iso_time: string | null;
+}
+
+export interface ResourceLoadEvent {
+  iso_time: string | null;
+  media: string;
+  url: string;
+  host: string;
 }
 
 export interface BrokenLink {

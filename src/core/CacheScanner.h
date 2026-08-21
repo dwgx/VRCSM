@@ -61,6 +61,10 @@ public:
     // forward declared in Report.h, but we expose buildReport here too for the host's IpcBridge to call.
     static nlohmann::json buildReport(const std::filesystem::path& baseDir);
     static nlohmann::json buildReport(const std::filesystem::path& baseDir, LogReport parsedLogs);
+    static nlohmann::json buildReport(
+        const std::filesystem::path& baseDir,
+        LogReport parsedLogs,
+        const std::filesystem::path& cacheWindowsPlayerDir);
 };
 
 } // namespace vrcsm::core

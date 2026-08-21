@@ -1,7 +1,10 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { LocationSectionHeader } from "@/components/friends/LocationSectionHeader";
+import { JoinRecommend } from "@/components/friends/JoinRecommend";
 import {
   Card,
   CardContent,
@@ -34,7 +37,6 @@ import {
   parseLocation,
   regionLabel,
   relativeTime,
-  STATUS_BUCKET_ORDER,
   statusBucket,
   trustColorClass,
   trustDotColor,
@@ -42,6 +44,17 @@ import {
   trustRank,
   type StatusBucket,
 } from "@/lib/vrcFriends";
+import {
+  buildLocationGroups,
+  buildLocationVirtualRows,
+  buildStatusVirtualRows,
+  countSmartViews,
+  filterFriendsByQuery,
+  filterFriendsBySmartView,
+  visibleWorldIdsFromRows,
+  type FriendSmartView,
+  type FriendsListLayout,
+} from "@/lib/friends-view-model";
 import { useSelfLocation } from "@/lib/useSelfLocation";
 import { useUiPrefBoolean } from "@/lib/ui-prefs";
 import { inviteSelf, inviteUser, requestInvite } from "@/lib/social";
@@ -76,6 +89,7 @@ import {
   Clipboard,
   ExternalLink,
   Heart,
+  LayoutList,
   LogIn,
   MailPlus,
   MapPin,
@@ -95,14 +109,6 @@ import {
   Send,
   UserSearch,
 } from "lucide-react";
-
-type FriendSmartView =
-  | "all"
-  | "favorites"
-  | "sameInstance"
-  | "joinable"
-  | "online"
-  | "offline";
 
 function statusColor(
   bucket: StatusBucket,
@@ -983,6 +989,7 @@ function writeFriendsCache(data: FriendsListResult): void {
 export default function Friends() {
   const { t } = useTranslation();
   const { status, error: authError } = useAuth();
+  const self = useSelfLocation();
   // Seed from localStorage so the UI has something to paint immediately
   // while the IPC round-trip to the VRChat API resolves (commonly 1-3s).
   const [data, setData] = useState<FriendsListResult | null>(() => readFriendsCache());
@@ -992,10 +999,11 @@ export default function Friends() {
   const debouncedFilter = useDebouncedValue(filter, 150);
   const [showOffline, setShowOffline] = useState(false);
   const [smartView, setSmartView] = useState<FriendSmartView>("all");
+  const [listLayout, setListLayout] = useState<FriendsListLayout>("locations");
   const [loginOpen, setLoginOpen] = useState(false);
   const [dialogFriend, setDialogFriend] = useState<Friend | null>(null);
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
-  const [collapsedBuckets, setCollapsedBuckets] = useState<Set<StatusBucket>>(
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set(),
   );
 
@@ -1039,40 +1047,6 @@ export default function Friends() {
     }
     return map;
   }, [notesData]);
-
-  // Batched world-name resolution. Each visible friend in a world used to fire
-  // its own `world.details` query from inside FriendRow — with many friends
-  // sharing an instance (or across many worlds) that is an N+1 that hammers the
-  // API and mounts one query observer per row. Instead we resolve the DISTINCT
-  // set of worldIds once here via useQueries (React Query still dedupes by key
-  // and caches for 5min), then hand each row its resolved name as a prop.
-  const worldIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const f of data?.friends ?? []) {
-      const loc = parseLocation(f.location);
-      if (loc.kind === "world" && loc.worldId) ids.add(loc.worldId);
-    }
-    return [...ids];
-  }, [data?.friends]);
-
-  const worldQueries = useQueries({
-    queries: worldIds.map((id) => ({
-      queryKey: ["world.details", { id }] as const,
-      queryFn: () =>
-        ipc.call<{ id: string }, { details: WorldDetails | null }>("world.details", { id }),
-      enabled: status.authed && !!id,
-      staleTime: 300_000,
-    })),
-  });
-
-  const worldNames = useMemo(() => {
-    const map = new Map<string, string>();
-    worldIds.forEach((id, i) => {
-      const name = worldQueries[i]?.data?.details?.name;
-      if (name) map.set(id, name);
-    });
-    return map;
-  }, [worldIds, worldQueries]);
 
   const openDetail = useCallback((friend: Friend) => {
     setDialogFriend(friend);
@@ -1210,124 +1184,40 @@ export default function Friends() {
     };
   }, [status.authed, showOffline]);
 
-  const locationGroups = useMemo(() => {
-    const groups: Record<string, Friend[]> = {};
-    for (const f of data?.friends ?? []) {
-      if (!f.location || f.location === "offline" || f.location === "private") continue;
-      const loc = parseLocation(f.location);
-      if (loc.kind === "world") {
-        if (!groups[f.location]) groups[f.location] = [];
-        groups[f.location].push(f);
-      }
-    }
-    return groups;
-  }, [data?.friends]);
+  const locationGroups = useMemo(
+    () => buildLocationGroups(data?.friends ?? []),
+    [data?.friends],
+  );
 
-  const viewCounts = useMemo(() => {
-    const friends = data?.friends ?? [];
-    let sameInstance = 0;
-    let joinable = 0;
-    let online = 0;
-    let offline = 0;
-    for (const f of friends) {
-      const loc = parseLocation(f.location);
-      if (f.location && loc.kind === "world" && (locationGroups[f.location]?.length ?? 0) > 1) {
-        sameInstance += 1;
-      }
-      if (loc.kind === "world" && loc.worldId) joinable += 1;
-      if (loc.kind === "offline" || f.status === "offline") offline += 1;
-      else online += 1;
-    }
-    return {
-      all: friends.length,
-      favorites: friends.filter((f) => favoriteUserIds.has(f.id)).length,
-      sameInstance,
-      joinable,
-      online,
-      offline,
-    } satisfies Record<FriendSmartView, number>;
-  }, [data?.friends, favoriteUserIds, locationGroups]);
+  const viewCounts = useMemo(
+    () => countSmartViews(data?.friends ?? [], favoriteUserIds, locationGroups),
+    [data?.friends, favoriteUserIds, locationGroups],
+  );
 
-  // Filter first, then group — doing filter-post-group wastes work rebuilding
-  // every bucket when the query changes, and it also breaks the "total count"
-  // on the header which expects the filtered view.
   const friendsWithComputed = useMemo(() => {
     if (!data) return [];
-    return data.friends.filter((f) => {
-      const loc = parseLocation(f.location);
-      switch (smartView) {
-        case "favorites":
-          return favoriteUserIds.has(f.id);
-        case "sameInstance":
-          return !!f.location && loc.kind === "world" && (locationGroups[f.location]?.length ?? 0) > 1;
-        case "joinable":
-          return loc.kind === "world" && !!loc.worldId;
-        case "online":
-          return loc.kind !== "offline" && f.status !== "offline";
-        case "offline":
-          return loc.kind === "offline" || f.status === "offline";
-        default:
-          return true;
-      }
-    });
+    return filterFriendsBySmartView(
+      data.friends,
+      smartView,
+      favoriteUserIds,
+      locationGroups,
+    );
   }, [data, favoriteUserIds, locationGroups, smartView]);
 
-  const filtered = useMemo(() => {
-    const source = friendsWithComputed;
-    const q = debouncedFilter.trim().toLowerCase();
-    if (!q) return source;
-    return source.filter((f) => {
-      // Display name, status description, bio (original filters)
-      if (f.displayName.toLowerCase().includes(q)) return true;
-      if (f.statusDescription?.toLowerCase().includes(q)) return true;
-      if (f.bio?.toLowerCase().includes(q)) return true;
-      // User ID
-      if (f.id.toLowerCase().includes(q)) return true;
-      // Trust rank name (e.g. typing "trusted" matches Trusted Users)
-      const rank = trustRank(f.tags);
-      if (t(trustLabelKey(rank)).toLowerCase().includes(q)) return true;
-      // World ID / location
-      if (f.location && f.location !== "offline" && f.location !== "private") {
-        const loc = parseLocation(f.location);
-        if (loc.worldId?.toLowerCase().includes(q)) return true;
-      }
-      // Avatar name
-      if (f.currentAvatarName?.toLowerCase().includes(q)) return true;
-      // Friend note / memo — match the full note body, not just the nickname.
-      const note = noteSearchIndex.get(f.id);
-      if (note?.includes(q)) return true;
-      return false;
-    });
-  }, [friendsWithComputed, debouncedFilter, t, noteSearchIndex]);
+  const filtered = useMemo(
+    () =>
+      filterFriendsByQuery(friendsWithComputed, debouncedFilter, {
+        noteSearchIndex,
+        trustLabel: (f) => t(trustLabelKey(trustRank(f.tags))),
+      }),
+    [friendsWithComputed, debouncedFilter, t, noteSearchIndex],
+  );
 
-  // Group filtered friends into status buckets. Sort within each bucket by
-  // display name so the order stays stable across refreshes (VRChat's list
-  // comes back in last-modified order, which jumps around mid-session).
-  const grouped = useMemo(() => {
-    const buckets: Record<StatusBucket, Friend[]> = {
-      joinMe: [],
-      active: [],
-      askMe: [],
-      busy: [],
-      offline: [],
-    };
-    for (const f of filtered) {
-      buckets[statusBucket(f.status)].push(f);
-    }
-    for (const key of STATUS_BUCKET_ORDER) {
-      buckets[key].sort((a, b) => a.displayName.localeCompare(b.displayName));
-    }
-    return buckets;
-  }, [filtered]);
-
-  const toggleBucket = (bucket: StatusBucket) => {
-    setCollapsedBuckets((prev) => {
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections((prev) => {
       const next = new Set(prev);
-      if (next.has(bucket)) {
-        next.delete(bucket);
-      } else {
-        next.add(bucket);
-      }
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
       return next;
     });
   };
@@ -1340,6 +1230,58 @@ export default function Friends() {
     }
     return filtered[0] ?? null;
   }, [data?.friends, filtered, selectedFriendId]);
+
+  const virtualRows = useMemo(() => {
+    if (listLayout === "status") {
+      return buildStatusVirtualRows({
+        friends: filtered,
+        collapsed: collapsedSections,
+      });
+    }
+    return buildLocationVirtualRows({
+      friends: filtered,
+      selfLocation: self.raw,
+      collapsed: collapsedSections,
+    });
+  }, [listLayout, filtered, self.raw, collapsedSections]);
+
+  const scrollParentRef = useRef<HTMLDivElement | null>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: virtualRows.length,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: (index) => (virtualRows[index]?.kind === "header" ? 28 : 64),
+    overscan: 8,
+    getItemKey: (index) => virtualRows[index]?.key ?? index,
+  });
+  const virtualItems = rowVirtualizer.getVirtualItems();
+
+  const visibleWorldIdList = visibleWorldIdsFromRows(
+    virtualRows,
+    virtualItems.map((vi) => vi.index),
+    selectedFriend,
+  );
+
+  const worldQueries = useQueries({
+    queries: visibleWorldIdList.map((id) => ({
+      queryKey: ["world.details", { id }] as const,
+      queryFn: () =>
+        ipc.call<{ id: string }, { details: WorldDetails | null }>(
+          "world.details",
+          { id },
+        ),
+      enabled: status.authed && !!id,
+      staleTime: 300_000,
+    })),
+  });
+
+  const worldNames = useMemo(() => {
+    const map = new Map<string, string>();
+    visibleWorldIdList.forEach((id, i) => {
+      const name = worldQueries[i]?.data?.details?.name;
+      if (name) map.set(id, name);
+    });
+    return map;
+  }, [visibleWorldIdList, worldQueries]);
 
   const smartViews: Array<{
     id: FriendSmartView;
@@ -1408,6 +1350,13 @@ export default function Friends() {
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">
+      <JoinRecommend
+        friends={data?.friends ?? []}
+        selfUserId={status.userId ?? null}
+        onOpen={(stub) => {
+          setDialogFriend(stub);
+        }}
+      />
       <header className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-semibold leading-none tracking-tight">
@@ -1464,6 +1413,24 @@ export default function Friends() {
             <RefreshCcw className={loading ? "animate-spin" : undefined} />
             {t("common.refresh")}
           </Button>
+          <Button
+            variant={listLayout === "locations" ? "tonal" : "outline"}
+            size="sm"
+            onClick={() => setListLayout("locations")}
+            title={t("friends.layout.locations", { defaultValue: "By instance" })}
+            aria-label={t("friends.layout.locations", { defaultValue: "By instance" })}
+          >
+            <MapPin className="size-3" />
+          </Button>
+          <Button
+            variant={listLayout === "status" ? "tonal" : "outline"}
+            size="sm"
+            onClick={() => setListLayout("status")}
+            title={t("friends.layout.status", { defaultValue: "By status" })}
+            aria-label={t("friends.layout.status", { defaultValue: "By status" })}
+          >
+            <LayoutList className="size-3" />
+          </Button>
         </div>
         <div className="flex gap-1 overflow-x-auto border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-raised))] px-2 py-1.5">
           {smartViews.map((view) => {
@@ -1487,7 +1454,10 @@ export default function Friends() {
             );
           })}
         </div>
-        <div className="scrollbar-thin max-h-[600px] flex-1 overflow-y-auto p-2">
+        <div
+          ref={scrollParentRef}
+          className="scrollbar-thin max-h-[600px] flex-1 overflow-y-auto"
+        >
           {error ? (
             <div className="py-6 text-center text-[12px] text-[hsl(var(--warn-foreground,var(--destructive)))]">
               {error}
@@ -1501,54 +1471,85 @@ export default function Friends() {
               {t("friends.empty")}
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {STATUS_BUCKET_ORDER.map((bucket) => {
-                const rows = grouped[bucket];
-                if (rows.length === 0) return null;
-                const collapsed = collapsedBuckets.has(bucket);
-                return (
-                  <section key={bucket} className="flex flex-col gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => toggleBucket(bucket)}
-                      className="flex items-center gap-1.5 px-1 text-left text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+            <div
+              className="relative w-full"
+              style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+            >
+              {virtualItems.map((vi) => {
+                const row = virtualRows[vi.index];
+                if (!row) return null;
+                if (row.kind === "header") {
+                  const collapsed = collapsedSections.has(row.sectionId);
+                  let title = t("friends.location.unknown");
+                  let subtitle: string | undefined;
+                  if (row.groupKind === "status" && row.bucket) {
+                    title = t(`friends.bucket.${row.bucket}`);
+                  } else if (row.groupKind === "world") {
+                    title =
+                      (row.worldId && worldNames.get(row.worldId)) ||
+                      row.worldId ||
+                      t("friends.location.world", { defaultValue: "In world" });
+                    const typeText = instanceTypeLabel(row.instanceType);
+                    const regionText = regionLabel(row.region);
+                    const pieces = [typeText, regionText].filter(Boolean);
+                    subtitle = pieces.length > 0 ? pieces.join(" · ") : undefined;
+                  } else if (row.groupKind === "private") {
+                    title = t("friends.location.private");
+                  } else if (row.groupKind === "traveling") {
+                    title = t("friends.location.traveling");
+                  } else if (row.groupKind === "offline") {
+                    title = t("friends.location.offline");
+                  }
+                  return (
+                    <div
+                      key={vi.key}
+                      data-index={vi.index}
+                      ref={rowVirtualizer.measureElement}
+                      className="absolute left-0 top-0 w-full px-2 pt-1"
+                      style={{ transform: `translateY(${vi.start}px)` }}
                     >
-                      {collapsed ? (
-                        <ChevronRight className="size-3" />
-                      ) : (
-                        <ChevronDown className="size-3" />
-                      )}
-                      <span>{t(`friends.bucket.${bucket}`)}</span>
-                      <Badge
-                        variant={statusColor(bucket)}
-                        className="h-4 rounded-full px-1.5 text-[9px] font-mono normal-case tracking-normal"
-                      >
-                        {rows.length}
-                      </Badge>
-                    </button>
-                    {!collapsed ? (
-                      <div className="flex flex-col gap-1.5">
-                        {rows.map((f) => {
-                          const colocated = locationGroups[f.location || ""]?.filter(
-                            (x) => x.id !== f.id
-                          );
-                          const wid = parseLocation(f.location).worldId;
-                          return (
-                            <FriendRow
-                              key={f.id}
-                              friend={f}
-                              colocatedFriends={colocated}
-                              nickname={nicknames.get(f.id)}
-                              worldName={wid ? worldNames.get(wid) : undefined}
-                              onOpenDetail={openDetail}
-                              onSelect={selectFriend}
-                              selected={selectedFriend?.id === f.id}
-                            />
-                          );
-                        })}
-                      </div>
-                    ) : null}
-                  </section>
+                      <LocationSectionHeader
+                        title={title}
+                        subtitle={subtitle}
+                        count={row.count}
+                        collapsed={collapsed}
+                        pinnedLabel={
+                          row.pinned === "self"
+                            ? t("friends.section.sameAsYou", {
+                                defaultValue: "Same as you",
+                              })
+                            : undefined
+                        }
+                        onToggle={() => toggleSection(row.sectionId)}
+                      />
+                    </div>
+                  );
+                }
+                const colocated =
+                  listLayout === "locations"
+                    ? []
+                    : locationGroups[row.friend.location || ""]?.filter(
+                        (x) => x.id !== row.friend.id,
+                      );
+                const wid = parseLocation(row.friend.location).worldId;
+                return (
+                  <div
+                    key={vi.key}
+                    data-index={vi.index}
+                    ref={rowVirtualizer.measureElement}
+                    className="absolute left-0 top-0 w-full px-2 pb-1.5"
+                    style={{ transform: `translateY(${vi.start}px)` }}
+                  >
+                    <FriendRow
+                      friend={row.friend}
+                      colocatedFriends={colocated}
+                      nickname={nicknames.get(row.friend.id)}
+                      worldName={wid ? worldNames.get(wid) : undefined}
+                      onOpenDetail={openDetail}
+                      onSelect={selectFriend}
+                      selected={selectedFriend?.id === row.friend.id}
+                    />
+                  </div>
                 );
               })}
             </div>

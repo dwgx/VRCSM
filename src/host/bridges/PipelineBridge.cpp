@@ -9,6 +9,7 @@
 #include "../../core/PngMetadata.h"
 #include "../../core/ScreenshotWatcher.h"
 #include "../../core/ToastNotifier.h"
+#include "../../core/WebhookNotifier.h"
 #include "../../core/VrOverlayNotifier.h"
 #include "../../core/VrcApi.h"
 
@@ -104,6 +105,18 @@ nlohmann::json IpcBridge::HandlePipelineStart(const nlohmann::json&, const std::
                         vrcsm::core::VrOverlayNotifier::Notify(overlay);
                     }
                 }
+                if (m_webhookEnabled.load())
+                {
+                    std::string url;
+                    {
+                        std::lock_guard<std::mutex> lk(m_webhookMutex);
+                        url = m_webhookUrl;
+                    }
+                    if (!url.empty())
+                    {
+                        (void)vrcsm::core::SendDiscordWebhook(url, toast->title, toast->body);
+                    }
+                }
             }
         },
         [this](vrcsm::core::Pipeline::ConnState state, const std::string& detail)
@@ -145,6 +158,14 @@ nlohmann::json IpcBridge::HandleNotifySetPrefs(const nlohmann::json& params, con
     readBool("vrOverlay", m_vrOverlayEnabled);
     readBool("ttsEnabled", m_ttsEnabled);
     readBool("ttsChatbox", m_ttsChatbox);
+    readBool("webhookEnabled", m_webhookEnabled);
+    auto webhookIt = params.find("webhookUrl");
+    if (webhookIt != params.end() && webhookIt->is_string())
+    {
+        const auto url = webhookIt->get<std::string>();
+        std::lock_guard<std::mutex> lk(m_webhookMutex);
+        m_webhookUrl = vrcsm::core::IsAllowedWebhookUrl(url) ? url : std::string{};
+    }
     auto scopeIt = params.find("ttsScope");
     if (scopeIt != params.end() && scopeIt->is_string())
     {
@@ -160,6 +181,7 @@ nlohmann::json IpcBridge::HandleNotifySetPrefs(const nlohmann::json& params, con
         {"ttsEnabled", m_ttsEnabled.load()},
         {"ttsScope", m_ttsScopeAll.load() ? "all" : "friends"},
         {"ttsChatbox", m_ttsChatbox.load()},
+        {"webhookEnabled", m_webhookEnabled.load()},
     };
 }
 

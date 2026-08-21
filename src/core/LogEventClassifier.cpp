@@ -201,6 +201,23 @@ AudioDeviceEvent audioDeviceFromAtom(const LogAtom& atom, const LogTailLine& lin
     return event;
 }
 
+RoomLeftEvent roomLeftFromAtom(const LogTailLine& line)
+{
+    RoomLeftEvent event;
+    event.iso_time = isoTimeOrNull(line.iso_time);
+    return event;
+}
+
+ResourceLoadEvent resourceLoadFromAtom(const LogAtom& atom, const LogTailLine& line)
+{
+    ResourceLoadEvent event;
+    event.iso_time = isoTimeOrNull(line.iso_time);
+    event.media = atom.getOr("media");
+    event.url = atom.getOr("url");
+    event.host = atom.getOr("host");
+    return event;
+}
+
 } // namespace
 
 nlohmann::json ClassifyStreamLine(const LogTailLine& line)
@@ -319,6 +336,16 @@ nlohmann::json ClassifyStreamLine(const LogTailLine& line)
             return nlohmann::json{
                 {"kind", "audioDevice"},
                 {"data", audioDeviceFromAtom(*atom, line)},
+            };
+        case LogAtomKind::RoomLeft:
+            return nlohmann::json{
+                {"kind", "roomLeft"},
+                {"data", roomLeftFromAtom(line)},
+            };
+        case LogAtomKind::ResourceLoad:
+            return nlohmann::json{
+                {"kind", "resourceLoad"},
+                {"data", resourceLoadFromAtom(*atom, line)},
             };
         default:
             return nullptr;

@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <future>
+#include <mutex>
 
 class WebViewHost;
 
@@ -126,6 +127,7 @@ private:
     nlohmann::json HandleAvatarPreviewStatus(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleAvatarPreviewPrefetch(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleFriendsList(const nlohmann::json& params, const std::optional<std::string>& id);
+    nlohmann::json HandleSocialMutualFetchOne(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleGroupsList(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleGroupsSetRepresented(const nlohmann::json& params, const std::optional<std::string>& id);
     nlohmann::json HandleHwApplyPreset(const nlohmann::json& params, const std::optional<std::string>& id);
@@ -420,6 +422,9 @@ private:
     std::atomic<bool> m_toastFriendOnline{false};
     std::atomic<bool> m_toastInvite{false};
     std::atomic<bool> m_toastFriendRequest{false};
+    std::atomic<bool> m_webhookEnabled{false};
+    std::mutex m_webhookMutex;
+    std::string m_webhookUrl;
     // Mirror the enabled toast events into the headset via XSOverlay. Gated by
     // a single master toggle (default OFF) layered on top of the per-event
     // toast toggles above — an event surfaces in VR only when its toast type

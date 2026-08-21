@@ -8,7 +8,7 @@
 
 ### 1.1 版本单一真源
 
-`CMakeLists.txt:5-8` 读取仓库根 `VERSION` 文件（当前 `0.16.2`；改后须 reconfigure preset，否则 ninja 不重建）作为 `project(VRCSM VERSION ...)`，派生 `VRCSM_PRODUCT_VERSION`（`a.b.c.0`）与逗号分隔的 `VRCSM_FILE_VERSION`，供 `resources/app.rc` 用 `@ONLY` 展开。C++20、无扩展、标准强制；MSVC 全局 `/utf-8 /W4 /permissive- /Zc:__cplusplus /MP /EHsc` + `NOMINMAX/WIN32_LEAN_AND_MEAN/UNICODE`。运行时库为动态多线程（`CMAKE_MSVC_RUNTIME_LIBRARY`）—— 对 gtest 一致性重要。
+`CMakeLists.txt:5-8` 读取仓库根 `VERSION` 文件（当前 `0.16.3`；改后须 reconfigure preset，否则 ninja 不重建）作为 `project(VRCSM VERSION ...)`，派生 `VRCSM_PRODUCT_VERSION`（`a.b.c.0`）与逗号分隔的 `VRCSM_FILE_VERSION`，供 `resources/app.rc` 用 `@ONLY` 展开。C++20、无扩展、标准强制；MSVC 全局 `/utf-8 /W4 /permissive- /Zc:__cplusplus /MP /EHsc` + `NOMINMAX/WIN32_LEAN_AND_MEAN/UNICODE`。运行时库为动态多线程（`CMAKE_MSVC_RUNTIME_LIBRARY`）—— 对 gtest 一致性重要。
 
 ### 1.2 目标依赖树
 
