@@ -79,4 +79,8 @@ private:
     GreyCooldownMap m_joinCooldown;
 };
 
+// Fire-time recheck after joinDelay: grey still on, auto-join still confirmed,
+// the watch still exists/enabled/autoJoin, and the location is still launchable.
+bool CanFirePendingWatchJoin(const GreyPrefs& prefs, const EventJoinPending& due, const EventWatchEngine& engine);
+
 } // namespace vrcsm::core

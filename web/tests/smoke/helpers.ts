@@ -57,7 +57,7 @@ export const ROUTES = [
   "/tools/memory-radar",
 ] as const;
 
-/** Click-through coverage for companion-waves pages. Visual baselines stay on ROUTES. */
+/** Click-through: visual ROUTES plus companion pages, plugin/settings/workspace tabs. */
 export const INTERACTION_ROUTES = [
   ...ROUTES,
   "/history/activity",
@@ -66,6 +66,22 @@ export const INTERACTION_ROUTES = [
   "/tools/invite-slots",
   "/tools/playspace",
   "/tools/event-watch",
+  "/plugins/dev.vrcsm.autouploader",
+  "/plugins/dev.vrcsm.hello",
+  "/p/dev.vrcsm.autouploader",
+  "/p/dev.vrcsm.missing",
+  "/settings?tab=config",
+  "/settings?tab=steamvr",
+  "/settings?tab=registry",
+  "/settings?tab=hardware",
+  "/settings?tab=experimental",
+  "/settings?tab=vrdiag",
+  "/settings?tab=data",
+  "/vrchat?tab=friends",
+  "/vrchat?tab=worlds",
+  "/vrchat?tab=social",
+  "/vrchat?tab=vrcplus",
+  "/avatars?tab=owned",
 ] as const;
 
 export function routeSlug(route: string): string {

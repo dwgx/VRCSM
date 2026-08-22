@@ -5,6 +5,8 @@
 #include "core/LocationParse.h"
 #include "core/VrcApi.h"
 
+using vrcsm::core::CanFirePendingWatchJoin;
+using vrcsm::core::DefaultGreyPrefs;
 using vrcsm::core::EventJoinPending;
 using vrcsm::core::EventWatchEngine;
 using vrcsm::core::GreyPrefsFromJson;
@@ -264,4 +266,29 @@ TEST(EventWatchLocation, LaunchableRejectsUnsafe)
     EXPECT_FALSE(isLaunchableVrchatLocation("usr_abc"));
     EXPECT_FALSE(isLaunchableVrchatLocation("offline"));
     EXPECT_TRUE(isLaunchableVrchatLocation("wrld_aaa:12345~region(us)"));
+}
+
+TEST(EventWatchJoin, FireRecheckRejectsWhenUnconfirmedOrWatchGone)
+{
+    EventWatchEngine engine;
+    auto w = BaseWatch();
+    w.autoJoin = true;
+    ASSERT_TRUE(isOk(engine.upsert(w)));
+
+    EventJoinPending due;
+    due.watchId = "w1";
+    due.location = "wrld_aaa:12345~region(us)";
+
+    auto prefs = DefaultGreyPrefs();
+    EXPECT_FALSE(CanFirePendingWatchJoin(prefs, due, engine));
+    prefs.eventWatch.autoJoinConfirmed = true;
+    EXPECT_TRUE(CanFirePendingWatchJoin(prefs, due, engine));
+    prefs.greyEnabled = false;
+    EXPECT_FALSE(CanFirePendingWatchJoin(prefs, due, engine));
+    prefs.greyEnabled = true;
+    due.location.clear();
+    EXPECT_FALSE(CanFirePendingWatchJoin(prefs, due, engine));
+    due.location = "wrld_aaa:12345~region(us)";
+    ASSERT_TRUE(isOk(engine.remove("w1")));
+    EXPECT_FALSE(CanFirePendingWatchJoin(prefs, due, engine));
 }

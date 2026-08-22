@@ -165,6 +165,41 @@ inline void RollbackIfNeeded(sqlite3* db) noexcept
     }
 }
 
+// Julian-day expression for a TEXT instant that may be VRChat DOT
+// (`2026.08.21 12:00:00`) or ISO (`2026-08-21T12:00:00` / `...Z` / `...+09:00`).
+// Matches Database_Analytics.cpp StatsOverview dwell math. Lexical `>=` is
+// wrong across formats: `.` > `-`, so all DOT strings sort after all ISO,
+// and `DOT_event <= ISO_left_at` is always false.
+inline std::string SqlInstantJd(std::string_view column)
+{
+    std::string sql;
+    sql.reserve(72 + column.size());
+    sql += "julianday(substr(replace(replace(";
+    sql.append(column);
+    sql += ", '.', '-'), 'T', ' '), 1, 19))";
+    return sql;
+}
+
+inline std::string SqlEventInVisitWindow(std::string_view eventCol,
+                                         std::string_view joinedCol,
+                                         std::string_view leftCol)
+{
+    const std::string ev = SqlInstantJd(eventCol);
+    std::string sql;
+    sql.reserve(ev.size() * 2 + joinedCol.size() + leftCol.size() + 96);
+    sql += ev;
+    sql += " >= ";
+    sql += SqlInstantJd(joinedCol);
+    sql += " AND (";
+    sql.append(leftCol);
+    sql += " IS NULL OR ";
+    sql += ev;
+    sql += " <= ";
+    sql += SqlInstantJd(leftCol);
+    sql += ")";
+    return sql;
+}
+
 } // namespace detail
 
 using namespace detail;

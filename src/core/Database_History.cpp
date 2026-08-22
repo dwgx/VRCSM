@@ -67,17 +67,17 @@ Result<std::monostate> Database::MarkVisitLeft(const std::string& world_id,
 
     const std::string leftAt = analytics::NormalizeVisitTimestamp(left_at);
 
-    const char* sql =
+    const std::string sql =
         "UPDATE world_visits "
         "SET left_at = ? "
         "WHERE id = ("
         "    SELECT id FROM world_visits "
         "    WHERE world_id = ? AND instance_id = ? AND left_at IS NULL "
-        "    ORDER BY joined_at DESC "
+        "    ORDER BY " + SqlInstantJd("joined_at") + " DESC "
         "    LIMIT 1"
         ");";
 
-    return RunOnce(sql, [this, &world_id, &instance_id, &leftAt](sqlite3_stmt* stmt) -> Result<std::monostate>
+    return RunOnce(sql.c_str(), [this, &world_id, &instance_id, &leftAt](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
         if (BindText(stmt, 1, leftAt) != SQLITE_OK ||
             BindText(stmt, 2, world_id) != SQLITE_OK ||
@@ -125,38 +125,40 @@ Result<nlohmann::json> Database::RecentWorldVisits(int limit, int offset)
         return MakeError("db_not_open");
     }
 
-    const char* sql =
+    const std::string inWindow = SqlEventInVisitWindow("pe.occurred_at", "w.joined_at", "w.left_at");
+    const std::string peJd = SqlInstantJd("pe.occurred_at");
+    const std::string joinJd = SqlInstantJd("w.joined_at");
+    const std::string sql =
         "SELECT w.id, w.world_id, w.instance_id, w.access_type, w.owner_id, w.region, w.joined_at, w.left_at, "
         "       ("
         "           SELECT COUNT(DISTINCT COALESCE(NULLIF(pe.user_id, ''), pe.display_name)) "
         "           FROM player_events pe "
         "           WHERE pe.world_id = w.world_id "
         "             AND pe.instance_id = w.instance_id "
-        "             AND pe.occurred_at >= w.joined_at "
-        "             AND (w.left_at IS NULL OR pe.occurred_at <= w.left_at)"
+        "             AND " + inWindow +
         "       ) AS player_count, "
         "       ("
         "           SELECT COUNT(*) "
         "           FROM player_events pe "
         "           WHERE pe.world_id = w.world_id "
         "             AND pe.instance_id = w.instance_id "
-        "             AND pe.occurred_at >= w.joined_at "
-        "             AND (w.left_at IS NULL OR pe.occurred_at <= w.left_at)"
+        "             AND " + inWindow +
         "       ) AS player_event_count, "
         "       ("
-        "           SELECT MAX(pe.occurred_at) "
+        "           SELECT pe.occurred_at "
         "           FROM player_events pe "
         "           WHERE pe.world_id = w.world_id "
         "             AND pe.instance_id = w.instance_id "
-        "             AND pe.occurred_at >= w.joined_at "
-        "             AND (w.left_at IS NULL OR pe.occurred_at <= w.left_at)"
+        "             AND " + inWindow +
+        "           ORDER BY " + peJd + " DESC "
+        "           LIMIT 1"
         "       ) AS last_player_seen_at "
         "FROM world_visits w "
-        "ORDER BY joined_at DESC "
+        "ORDER BY " + joinJd + " DESC "
         "LIMIT ? OFFSET ?;";
 
     sqlite3_stmt* rawStmt = nullptr;
-    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &rawStmt, nullptr) != SQLITE_OK)
     {
         return MakeError("db_prepare_failed");
     }
@@ -204,6 +206,8 @@ Result<std::monostate> Database::RecordPlayerEvent(const PlayerEventInsert& e)
         return MakeError("db_not_open");
     }
 
+    const std::string occurredAt = analytics::NormalizeVisitTimestamp(e.occurred_at);
+
     const auto beginResult = ExecSimple("BEGIN;");
     if (std::holds_alternative<Error>(beginResult))
     {
@@ -215,14 +219,14 @@ Result<std::monostate> Database::RecordPlayerEvent(const PlayerEventInsert& e)
         "VALUES (?, ?, ?, ?, ?, ?);";
 
     const auto insertEventResult =
-        RunOnce(insertEventSql, [this, &e](sqlite3_stmt* stmt) -> Result<std::monostate>
+        RunOnce(insertEventSql, [this, &e, &occurredAt](sqlite3_stmt* stmt) -> Result<std::monostate>
     {
         if (BindText(stmt, 1, e.kind) != SQLITE_OK ||
             BindOptionalText(stmt, 2, e.user_id) != SQLITE_OK ||
             BindText(stmt, 3, e.display_name) != SQLITE_OK ||
             BindOptionalText(stmt, 4, e.world_id) != SQLITE_OK ||
             BindOptionalText(stmt, 5, e.instance_id) != SQLITE_OK ||
-            BindText(stmt, 6, e.occurred_at) != SQLITE_OK)
+            BindText(stmt, 6, occurredAt) != SQLITE_OK)
         {
             return MakeError("db_bind_failed");
         }
@@ -246,13 +250,13 @@ Result<std::monostate> Database::RecordPlayerEvent(const PlayerEventInsert& e)
             "display_name = excluded.display_name;";
 
         const auto upsertResult =
-            RunOnce(upsertEncounterSql, [this, &e](sqlite3_stmt* stmt) -> Result<std::monostate>
+            RunOnce(upsertEncounterSql, [this, &e, &occurredAt](sqlite3_stmt* stmt) -> Result<std::monostate>
         {
             if (BindText(stmt, 1, *e.user_id) != SQLITE_OK ||
                 BindText(stmt, 2, e.display_name) != SQLITE_OK ||
                 BindText(stmt, 3, *e.world_id) != SQLITE_OK ||
-                BindText(stmt, 4, e.occurred_at) != SQLITE_OK ||
-                BindText(stmt, 5, e.occurred_at) != SQLITE_OK)
+                BindText(stmt, 4, occurredAt) != SQLITE_OK ||
+                BindText(stmt, 5, occurredAt) != SQLITE_OK)
             {
                 return MakeError("db_bind_failed");
             }
@@ -456,18 +460,21 @@ Result<nlohmann::json> Database::RecentPlayerEvents(
         return MakeError("db_not_open");
     }
 
-    const char* sql =
+    const std::string occJd = SqlInstantJd("occurred_at");
+    const std::string afterJd = SqlInstantJd("?6");
+    const std::string beforeJd = SqlInstantJd("?8");
+    const std::string sql =
         "SELECT id, kind, user_id, display_name, world_id, instance_id, occurred_at "
         "FROM player_events "
         "WHERE (?1 IS NULL OR world_id = ?2) "
         "  AND (?3 IS NULL OR instance_id = ?4) "
-        "  AND (?5 IS NULL OR occurred_at >= ?6) "
-        "  AND (?7 IS NULL OR occurred_at < ?8) "
-        "ORDER BY occurred_at DESC "
+        "  AND (?5 IS NULL OR " + occJd + " >= " + afterJd + ") "
+        "  AND (?7 IS NULL OR " + occJd + " < " + beforeJd + ") "
+        "ORDER BY " + occJd + " DESC "
         "LIMIT ?9 OFFSET ?10;";
 
     sqlite3_stmt* rawStmt = nullptr;
-    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &rawStmt, nullptr) != SQLITE_OK)
     {
         return MakeError("db_prepare_failed");
     }

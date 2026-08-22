@@ -5,6 +5,7 @@
 #include "core/LocationParse.h"
 
 using vrcsm::core::AssistSkipReason;
+using vrcsm::core::CanFirePendingAssist;
 using vrcsm::core::EvaluateInviteAssist;
 using vrcsm::core::GreyRateLimit;
 using vrcsm::core::InviteAssistContext;
@@ -113,6 +114,28 @@ TEST(InviteAssistEval, Table)
     }
 }
 
+TEST(InviteAssistEval, FireRecheckRejectsEmptyAndPrivateLocation)
+{
+    EXPECT_TRUE(CanFirePendingAssist(GoodCtx(), "wrld_aaa:12345~region(us)"));
+
+    auto ctx = GoodCtx();
+    EXPECT_FALSE(CanFirePendingAssist(ctx, ""));
+    EXPECT_FALSE(CanFirePendingAssist(ctx, "private"));
+    EXPECT_FALSE(CanFirePendingAssist(ctx, "offline"));
+
+    ctx.inWorld = false;
+    EXPECT_FALSE(CanFirePendingAssist(ctx, "wrld_aaa:12345~region(us)"));
+    ctx = GoodCtx();
+    ctx.vrcRunning = false;
+    EXPECT_FALSE(CanFirePendingAssist(ctx, "wrld_aaa:12345~region(us)"));
+    ctx = GoodCtx();
+    ctx.inAllowlist = false;
+    EXPECT_FALSE(CanFirePendingAssist(ctx, "wrld_aaa:12345~region(us)"));
+    ctx = GoodCtx();
+    ctx.confirmed = false;
+    EXPECT_FALSE(CanFirePendingAssist(ctx, "wrld_aaa:12345~region(us)"));
+}
+
 TEST(InviteAssistEngine, CooldownAndCancelWindow)
 {
     InviteAssistEngine engine;
@@ -140,6 +163,24 @@ TEST(InviteAssistEngine, CooldownAndCancelWindow)
     auto second = engine.consider("notification", Request(), ctx, t0 + std::chrono::seconds{10});
     EXPECT_FALSE(second.accept);
     EXPECT_EQ(second.skip, AssistSkipReason::Cooldown);
+}
+
+TEST(InviteAssistEngine, FailedInviteDoesNotBurnCooldown)
+{
+    InviteAssistEngine engine;
+    const auto t0 = std::chrono::steady_clock::now();
+    auto ctx = GoodCtx();
+    ASSERT_TRUE(engine.consider("notification", Request(), ctx, t0).accept);
+
+    AssistPending pending;
+    pending.senderUserId = "usr_friend";
+    pending.due = t0;
+    ASSERT_TRUE(engine.armPending(pending, std::chrono::seconds{0}));
+    ASSERT_TRUE(engine.takeDue(t0).has_value());
+
+    auto retry = engine.consider("notification", Request(), ctx, t0 + std::chrono::seconds{1});
+    EXPECT_TRUE(retry.accept);
+    EXPECT_EQ(engine.globalRemaining(t0 + std::chrono::seconds{1}), 3);
 }
 
 TEST(InviteAssistEngine, GlobalThreePerWindow)

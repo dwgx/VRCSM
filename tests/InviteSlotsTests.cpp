@@ -165,6 +165,10 @@ TEST(GreyPrefs, RoundTripAndUnknownKeyRejected)
 
     auto defaults = DefaultGreyPrefs();
     EXPECT_TRUE(defaults.greyEnabled);
+    EXPECT_FALSE(defaults.inviteAssist.enabled);
+    EXPECT_FALSE(defaults.inviteAssist.confirmedAt.has_value());
+    EXPECT_FALSE(defaults.eventWatch.autoJoinConfirmed);
+    EXPECT_FALSE(defaults.authOtpMail.enabled);
     EXPECT_EQ(defaults.inviteSlots["confirmBeforeSend"], true);
     EXPECT_EQ(defaults.inviteSlots["lastType"], "invite");
 

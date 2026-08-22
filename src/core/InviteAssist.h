@@ -6,6 +6,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -71,6 +72,10 @@ AssistDecision EvaluateInviteAssist(
     const std::string& pipelineType,
     const nlohmann::json& content,
     const InviteAssistContext& ctx);
+
+// Fire-time recheck after the cancel window. Location must still be a
+// launchable in-world instance; empty / private / offline must not invite.
+bool CanFirePendingAssist(const InviteAssistContext& ctx, std::string_view location);
 
 class InviteAssistEngine
 {

@@ -167,13 +167,8 @@ export default function PlayspaceOffsetPage() {
     try {
       const raw = await ipc.call<typeof patch, unknown>("playspace.setLocks", patch);
       applyStatus(asStatus(raw, { ...statusRef.current, locks: { ...locksRef.current, [key]: value } }));
-    } catch {
-      try {
-        const raw = await ipc.call<typeof patch, unknown>("playspace.set", patch);
-        applyStatus(asStatus(raw, { ...statusRef.current, locks: { ...locksRef.current, [key]: value } }));
-      } catch (err) {
-        applyStatus(handleIpcError(err, statusRef.current));
-      }
+    } catch (err) {
+      applyStatus(handleIpcError(err, statusRef.current));
     }
   }
 
@@ -191,16 +186,7 @@ export default function PlayspaceOffsetPage() {
         applyStatus({ ...statusRef.current, offsetLimitHit: true });
         return;
       }
-      try {
-        const raw = await ipc.call<Record<string, number>, unknown>("playspace.set", {
-          dx: delta.x,
-          dy: delta.y,
-          dz: delta.z,
-        });
-        applyStatus(asStatus(raw, statusRef.current));
-      } catch (inner) {
-        applyStatus(handleIpcError(inner, statusRef.current));
-      }
+      applyStatus(handleIpcError(err, statusRef.current));
     }
   }
 

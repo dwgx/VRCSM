@@ -26,8 +26,8 @@
 // Intentionally independent of VrcApi.cpp (parked). Mirrors the WinHttpHandle
 // RAII wrapper + Open/Connect/OpenRequest/SendRequest/ReceiveResponse + body
 // drain pattern from Pipeline.cpp, but this is a plain HTTPS GET (no WebSocket
-// upgrade). Follows redirects, bounds itself with ~8s timeouts, and never
-// throws — every failure is reported through LyricsFetchResult::error.
+// upgrade). Refuses redirects (SSRF), bounds itself with ~8s timeouts, and
+// never throws — every failure is reported through LyricsFetchResult::error.
 // ─────────────────────────────────────────────────────────────────────────
 
 namespace vrcsm::core
@@ -167,8 +167,17 @@ bool IsBlockedProxyHost(const std::string& hostRaw)
         if (ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31) return true;
         // 169.254.0.0/16 link-local
         if (ip[0] == 169 && ip[1] == 254) return true;
+        // 100.64.0.0/10 CGNAT
+        if (ip[0] == 100 && ip[1] >= 64 && ip[1] <= 127) return true;
         // 0.0.0.0/8 "this host"
         if (ip[0] == 0) return true;
+    }
+
+    // IPv6 unique-local fc00::/7 (fc00:… and fd00:…) — only on literals (colon).
+    if (host.find(':') != std::string::npos
+        && (host.rfind("fc", 0) == 0 || host.rfind("fd", 0) == 0))
+    {
+        return true;
     }
 
     return false;
@@ -274,7 +283,7 @@ LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer
     }
 
     const std::wstring hostW(uc.lpszHostName, uc.dwHostNameLength);
-    const std::string hostUtf8(hostW.begin(), hostW.end());
+    const std::string hostUtf8 = toUtf8(hostW);
 
     // SSRF rail: refuse loopback / link-local / private-range literal hosts.
     if (IsBlockedProxyHost(hostUtf8))
@@ -351,7 +360,7 @@ LyricsFetchResult LyricsFetch(const std::string& url, const std::string& referer
     if (!referer.empty())
     {
         std::wstring refererHeader = L"Referer: ";
-        refererHeader.append(referer.begin(), referer.end());
+        refererHeader.append(toWide(referer));
         WinHttpAddRequestHeaders(
             request.get(),
             refererHeader.c_str(),

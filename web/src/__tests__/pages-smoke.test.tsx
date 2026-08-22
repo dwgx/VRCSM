@@ -158,6 +158,13 @@ const ROUTES: Array<{ path: string; marker: RegExp }> = [
   { path: "/fbt", marker: /fbt|tracker|full.body/i },
   { path: "/rules", marker: /rule/i },
   { path: "/plugins/installed", marker: /plugin|installed/i },
+  { path: "/plugins/dev.vrcsm.autouploader", marker: /auto-uploader|plugin|permission/i },
+  { path: "/plugins/dev.vrcsm.hello", marker: /hello|plugin/i },
+  { path: "/p/dev.vrcsm.missing", marker: /not installed|installed|plugin/i },
+  { path: "/settings?tab=experimental", marker: /grey|experimental|invite/i },
+  { path: "/settings?tab=data", marker: /data|clear|usage|factory/i },
+  { path: "/settings?tab=steamvr", marker: /steamvr|link|repair/i },
+  { path: "/vrchat?tab=vrcplus", marker: /vrc|plus|gallery|workspace/i },
   { path: "/tools/memory-radar", marker: /memory|radar/i },
 ];
 

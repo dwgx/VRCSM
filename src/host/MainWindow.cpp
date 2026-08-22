@@ -455,6 +455,12 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
             m_webViewHost->RefreshPluginMappings();
         }
         return 0;
+    case WM_APP_CLEAR_VRC_COOKIES:
+        if (m_webViewHost != nullptr)
+        {
+            m_webViewHost->ClearVrcCookies();
+        }
+        return 0;
     default:
         return DefWindowProcW(m_hwnd, message, wParam, lParam);
     }

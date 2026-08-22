@@ -328,21 +328,20 @@ Result<nlohmann::json> Database::ActivityHeatmap(int days)
         return MakeError("db_not_open");
     }
 
-    // world_visits.joined_at is stored in VRChat's DOT format
-    // "YYYY.MM.DD HH:MM:SS", which SQLite's date functions do NOT understand
-    // (strftime/datetime return NULL). Normalize the date dots to dashes inline
-    // so strftime/datetime work; there are no dots in the HH:MM:SS part, so a
-    // blanket replace('.','-') is safe. An already-ISO value is unaffected.
-    const char* sql =
-        "SELECT strftime('%w', replace(joined_at, '.', '-')) AS dow, "
-        "strftime('%H', replace(joined_at, '.', '-')) AS hr, "
+    // joined_at is DOT (`2026.08.21 12:00:00`) or ISO (`2026-08-21T12:00:00`).
+    // strftime/datetime need a space-separated wall clock; lexical compare
+    // against datetime('now') also fails across the `T` vs space forms.
+    const std::string wall = "substr(replace(replace(joined_at, '.', '-'), 'T', ' '), 1, 19)";
+    const std::string sql =
+        "SELECT strftime('%w', " + wall + ") AS dow, "
+        "strftime('%H', " + wall + ") AS hr, "
         "COUNT(*) "
         "FROM world_visits "
-        "WHERE replace(joined_at, '.', '-') >= datetime('now', '-' || ? || ' days') "
+        "WHERE julianday(" + wall + ") >= julianday('now', '-' || ? || ' days') "
         "GROUP BY dow, hr;";
 
     sqlite3_stmt* rawStmt = nullptr;
-    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &rawStmt, nullptr) != SQLITE_OK)
     {
         return MakeError("db_prepare_failed");
     }
@@ -508,6 +507,15 @@ Result<nlohmann::json> Database::GlobalSearch(const nlohmann::json& request)
                     nullptr) == SQLITE_OK)
             {
                 StatementGuard ftsGuard(ftsStmt);
+                sqlite3_stmt* favLookup = nullptr;
+                const bool haveFavLookup = sqlite3_prepare_v2(
+                    m_db,
+                    "SELECT type, target_id, list_name, COALESCE(display_name, target_id) "
+                    "FROM local_favorites WHERE target_id = ?1 LIMIT 8;",
+                    -1,
+                    &favLookup,
+                    nullptr) == SQLITE_OK;
+                StatementGuard lookupGuard(favLookup);
                 if (BindText(ftsStmt, 1, normalizedQuery) == SQLITE_OK)
                 {
                     int ftsRc = SQLITE_OK;
@@ -516,13 +524,28 @@ Result<nlohmann::json> Database::GlobalSearch(const nlohmann::json& request)
                         const auto kind = ColumnOptionalText(ftsStmt, 0).value_or("");
                         const auto docId = ColumnOptionalText(ftsStmt, 1).value_or("");
                         const auto title = ColumnOptionalText(ftsStmt, 2).value_or(docId);
-                        if (kind == "favorite")
+                        if (kind != "favorite" || docId.empty() || !haveFavLookup)
+                        {
+                            continue;
+                        }
+                        sqlite3_reset(favLookup);
+                        sqlite3_clear_bindings(favLookup);
+                        if (BindText(favLookup, 1, docId) != SQLITE_OK)
+                        {
+                            continue;
+                        }
+                        int lookupRc = SQLITE_OK;
+                        while ((lookupRc = sqlite3_step(favLookup)) == SQLITE_ROW)
                         {
                             analytics::FavoriteRow row;
-                            row.type = "other";
-                            row.target_id = docId;
-                            row.list_name = "Library";
-                            row.display_name = title;
+                            row.type = ColumnOptionalText(favLookup, 0).value_or("");
+                            if (row.type.empty())
+                            {
+                                continue;
+                            }
+                            row.target_id = ColumnOptionalText(favLookup, 1).value_or(docId);
+                            row.list_name = ColumnOptionalText(favLookup, 2).value_or("Library");
+                            row.display_name = ColumnOptionalText(favLookup, 3).value_or(title);
                             input.favorites.push_back(std::move(row));
                         }
                     }
@@ -590,11 +613,20 @@ Result<nlohmann::json> Database::GlobalSearch(const nlohmann::json& request)
 
         // world_visits
         {
-            const char* sql =
-                "SELECT w.world_id, COUNT(*) AS visit_count, MIN(w.joined_at), MAX(w.joined_at), "
-                "       (SELECT instance_id FROM world_visits w2 WHERE w2.world_id = w.world_id ORDER BY joined_at DESC LIMIT 1), "
-                "       (SELECT access_type FROM world_visits w2 WHERE w2.world_id = w.world_id ORDER BY joined_at DESC LIMIT 1), "
-                "       (SELECT region FROM world_visits w2 WHERE w2.world_id = w.world_id ORDER BY joined_at DESC LIMIT 1), "
+            const std::string joinJd = SqlInstantJd("w.joined_at");
+            const std::string joinJd2 = SqlInstantJd("w2.joined_at");
+            const std::string sql =
+                "SELECT w.world_id, COUNT(*) AS visit_count, "
+                "       (SELECT w2.joined_at FROM world_visits w2 WHERE w2.world_id = w.world_id "
+                "         ORDER BY " + joinJd2 + " ASC LIMIT 1), "
+                "       (SELECT w2.joined_at FROM world_visits w2 WHERE w2.world_id = w.world_id "
+                "         ORDER BY " + joinJd2 + " DESC LIMIT 1), "
+                "       (SELECT w2.instance_id FROM world_visits w2 WHERE w2.world_id = w.world_id "
+                "         ORDER BY " + joinJd2 + " DESC LIMIT 1), "
+                "       (SELECT w2.access_type FROM world_visits w2 WHERE w2.world_id = w.world_id "
+                "         ORDER BY " + joinJd2 + " DESC LIMIT 1), "
+                "       (SELECT w2.region FROM world_visits w2 WHERE w2.world_id = w.world_id "
+                "         ORDER BY " + joinJd2 + " DESC LIMIT 1), "
                 "       MAX(w.id) "
                 "FROM world_visits w "
                 "WHERE (?1 = '' "
@@ -609,11 +641,11 @@ Result<nlohmann::json> Database::GlobalSearch(const nlohmann::json& request)
                 "         AND (lower(COALESCE(f.display_name, '')) LIKE ?2 "
                 "              OR lower(f.list_name) LIKE ?2))) "
                 "GROUP BY w.world_id "
-                "ORDER BY MAX(w.joined_at) DESC "
+                "ORDER BY MAX(" + joinJd + ") DESC "
                 "LIMIT 200;";
 
             sqlite3_stmt* rawStmt = nullptr;
-            if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+            if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &rawStmt, nullptr) != SQLITE_OK)
             {
                 return MakeError("db_prepare_failed");
             }

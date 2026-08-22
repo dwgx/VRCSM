@@ -233,7 +233,7 @@ function GreyMasterCard() {
           <div className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
             {t("grey.master.desc", {
               defaultValue:
-                "Master switch for Slot mail and later helpers. Each helper still requires a user click (or its own opt-in). Off by default.",
+                "Master switch for Slot mail and later helpers. On by default so helper pages are visible. Each helper still requires a user click (or its own opt-in). Invite Assist and Event Watch auto-join stay off until confirmed.",
             })}
           </div>
         </div>

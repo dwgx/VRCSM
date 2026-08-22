@@ -330,6 +330,24 @@ CREATE INDEX IF NOT EXISTS idx_local_favorite_tags_lookup ON local_favorite_tags
         return std::get<Error>(beginResult);
     }
 
+    // Snapshot before this Open() writes later PRAGMA user_version bumps.
+    // Schema v21's FTS wipe must run only on the upgrade path, not on every
+    // subsequent Open of an already-v21 file.
+    int incomingUserVersion = 0;
+    {
+        sqlite3_stmt* rawVer = nullptr;
+        if (sqlite3_prepare_v2(m_db, "PRAGMA user_version;", -1, &rawVer, nullptr) != SQLITE_OK)
+        {
+            RollbackIfNeeded(m_db);
+            return MakeError("db_prepare_failed");
+        }
+        StatementGuard verGuard(rawVer);
+        if (sqlite3_step(rawVer) == SQLITE_ROW)
+        {
+            incomingUserVersion = sqlite3_column_int(rawVer, 0);
+        }
+    }
+
     if (const auto r = ExecSimple(kSchemaSql); std::holds_alternative<Error>(r))
     {
         RollbackIfNeeded(m_db);
@@ -945,7 +963,12 @@ CREATE TABLE IF NOT EXISTS friend_mutual_meta (
     {
         // Rebuild from current favorites+visits (not only-if-empty) so a v20
         // DB with a stale empty/partial FTS table picks up existing rows.
-        (void)runOptionalSql(R"SQL(
+        // Skip when this file is already on v21 — wiping search_docs on every
+        // Open() dropped live FTS rows and re-scanned the source tables at
+        // each startup. Triggers stay CREATE IF NOT EXISTS either way.
+        if (incomingUserVersion < 21)
+        {
+            (void)runOptionalSql(R"SQL(
 DELETE FROM search_docs;
 INSERT INTO search_docs(kind, doc_id, title, body)
 SELECT kind, doc_id, title, body FROM (
@@ -956,7 +979,8 @@ SELECT kind, doc_id, title, body FROM (
   SELECT 'world', world_id, world_id, COALESCE(instance_id, '')
   FROM world_visits
 );
-        )SQL");
+            )SQL");
+        }
 
         (void)runOptionalSql(R"SQL(
 CREATE TRIGGER IF NOT EXISTS search_docs_fav_ai AFTER INSERT ON local_favorites BEGIN
