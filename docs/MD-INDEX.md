@@ -1,14 +1,14 @@
 # VRCSM Markdown Index
 
-Last updated: 2026-08-21
+Last updated: 2026-08-22
 
 This file maps the repo's Markdown documents so the next agent can start from the right source instead of scanning randomly.
 
-> Note: **v0.16.3 RELEASED 2026-08-21** (HEAD `33c8e85`, tag `v0.16.3`). Friends Locations, virtual lists, config.json path, calendar, co-presence, FTS/kana, opt-in mutuals fetchOne, webhook, log atoms. Grey helpers default OFF. Version files in sync at **0.16.3**. See `MEMORY.md` / SESSION pack for ctest 239 + Playwright 62 and remaining GH-CI/VER1/CI1. Git wins if older banners disagree.
+> Note: **v0.16.5 RELEASED 2026-08-22** (HEAD `881368d`, tag `v0.16.5`). FTS-gate + I18N-grey + history julian shipped. Encrypted 3D empty. See `MEMORY.md` / SESSION pack. Git wins.
 
 ## Required Startup Order
 
-1. `docs/SESSION-HANDOFF-2026-08-21.md` — present-tense acceptance pack, copy-paste subagent prompts, ranked backlog. **Git wins** if older docs disagree.
+1. `docs/SESSION-HANDOFF-2026-08-22.md` — present-tense acceptance pack, copy-paste subagent prompts, ranked backlog. **Git wins** if older docs disagree. `docs/SESSION-HANDOFF-2026-08-21.md` is the 0.16.4 wrap.
 2. `MEMORY.md` — repo-local continuity summary and current verification baseline.
 3. `AGENTS.md` / `CLAUDE.md` — build rules, architecture, safety constraints.
 4. `docs/NEXT-AGENT-HANDOFF.md` — pointer + historical sessions + last published release verification.
@@ -34,7 +34,7 @@ This file maps the repo's Markdown documents so the next agent can start from th
   - User-facing feature list, installation, build-from-source, license notes.
 
 - `CHANGELOG.md`
-  - Release history. Current cut is **`[0.16.3]`**. `[Unreleased]` is empty until the next named product commit. Older "paused after v0.14.6" wording in historical notes is STALE.
+  - Release history. Current cut is **`[0.16.5]`**. `[Unreleased]` is empty until the next named product commit.
 
 - `docs/release-v0.14.6.md`
   - Shipped release summary for the paused `v0.14.6` checkpoint.
@@ -114,8 +114,10 @@ This file maps the repo's Markdown documents so the next agent can start from th
 
 ## Current Handoff
 
+- `docs/SESSION-HANDOFF-2026-08-22.md`
+  - **Start here after 0.16.5.** Present-tense wrap. Ranked remaining: WIN-CI → parked P6/P7/P14/P25/P1.
 - `docs/SESSION-HANDOFF-2026-08-21.md`
-  - **Start here after 0.16.3.** Six leftovers landed uncommitted. Next named action: commit or 0.16.4.
+  - Historical 0.16.4 wrap. Do not treat I18N-grey / FTS-gate as still open.
 - `docs/NEXT-AGENT-HANDOFF.md`
   - Pointer at the session pack, then historical sessions, last published release verification, sensitive decisions.
   - Read before changing avatar thumbnails, global search, VRLink repair, plugin permissions, cache deletion, downloads, or release packaging.

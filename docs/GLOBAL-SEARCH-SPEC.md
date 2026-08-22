@@ -2,7 +2,7 @@
 
 Status: `search.global` v1 local-only implementation exists; remote enrichment, Timeline inspectors, and advanced query grammar remain roadmap/spec.
 Owner surface: current `search.global` core/IPC/quick-search UI plus future Timeline integration.
-Last updated: 2026-04-29. **Status 2026-08-21:** v1 LIKE remains the fallback. **v0.16.3** added kana/fullwidth fold in `normalizeSearchQuery`, sqlite3 `fts5` feature, and optional `search_docs` v20 (MATCH then LIKE). Seed is one-shot if the table is empty — **no triggers** (remaining **SR1-pop**). CommandPalette defers logs until the user types (shipped).
+Last updated: 2026-04-29. **Status 2026-08-22:** LIKE remains the fallback. **v0.16.3** fold + FTS table. **v0.16.4** schema v21 rebuild + triggers. **v0.16.5 FTS-gate:** skip `search_docs` wipe when `user_version >= 21`. Favorites MATCH joins `local_favorites` for real `type`.
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # VRCSM Next Agent Handoff
 
-Last updated: 2026-08-21 (v0.16.3 wrap)
+Last updated: 2026-08-22 (v0.16.5 wrap)
 
 ## 承上启下 — 给接手 AI 的话（READ THIS FIRST）
 
@@ -8,50 +8,43 @@ Last updated: 2026-08-21 (v0.16.3 wrap)
 要质量：该开 ultracode workflow 大规模并行验证/审查就开，该前台单线程稳做就稳做，
 **按可靠性选，不按省 token 选**。
 
-**Present tense is `docs/SESSION-HANDOFF-2026-08-21.md`.** Read that pack before
+**Present tense is `docs/SESSION-HANDOFF-2026-08-22.md`.** Read that pack before
 this file's historical sessions. If MEMORY / this file / HANDOFF disagree with
 `git status`, **git wins**.
 
-开工前按序读：`docs/SESSION-HANDOFF-2026-08-21.md` → 本文件 → `MEMORY.md` →
+开工前按序读：`docs/SESSION-HANDOFF-2026-08-22.md` → 本文件 → `MEMORY.md` →
 `docs/MD-INDEX.md` → `CLAUDE.md` → `docs/reference/ARCHITECTURE-COMPREHENSION-2026-07.md`。
 自己 `git log` + 读代码确认，别盲信文档或任何 subagent 自报结果。
 
 工作纪律（血泪教训）：
 - 提交消息**绝不加** `Co-Authored-By: Claude` / Anthropic / "Generated with" 署名。
 - 每次改动**亲验后再提交**：C++ = VsDevCmd + `cmake --build --preset x64-debug` + `ctest`；
-  web = `corepack pnpm exec tsc -b && corepack pnpm build && corepack pnpm run test:ui-smoke`。
+  web = `corepack pnpm@11.8.0 --dir web exec tsc -b && corepack pnpm@11.8.0 --dir web build`。
   绿了才提交，分组干净提交。**不盲信 subagent/workflow 汇报——自己重跑。**
 - **C++ 重活优先前台/单线程**：后台 workflow/subagent 反复卡死在推理网关
-  (`192.168.11.4:8990`)；前台单线程稳定。别把重 C++ 丢后台干等。
+  (`192.168.11.4:8990`)；前台单线程稳定。别把重 C++ 丢后台干等。MSVC C1060 → ninja `-j4`。
 - 改前读周边代码匹配风格；i18n 改动保持全 7 语言键+占位符对齐；C++ 单一 ninja build dir
   不并发改，web 可与 C++ 并行。
 - 不要提交 `CLAUDE.md` / `AGENTS.md` / `.agent/` / 根目录 scratch txt。
-- 未命名切片不要开。**v0.16.3 已切、已发 GitHub Latest。** FL1/VL1/P15/P2/P5/MU1 fetchOne/SR1 fold+FTS table 已进该切。
-  默认下一刀：**commit** 这批 leftover（仍 0.16.3）然后看 GitHub Actions。
-  不发第二份 0.16.3 MSI。不 bump VERSION 除非 Owner 点名 0.16.4 / 0.17.0。
+- 未命名切片不要开。**v0.16.5 已切** (`881368d`)。不 recut 0.16.4 或 0.16.5。
+  默认下一刀：停放的 **P6 / P7 / P14 / P25 / P1**，或等老板点名。
 
 ---
 
-## Latest Session (2026-08-21) — READ FIRST
+## Latest Session (2026-08-22) — READ FIRST
 
-**v0.16.3 RELEASED** then a **docs wrap** (this file). Product is not dirty.
+**v0.16.5 RELEASED** then this **docs wrap**. Product commit is `881368d`.
 
-- HEAD `33c8e85` `docs: record v0.16.3 release hashes`. Product `984c6b6`. Tag `v0.16.3` peels to `33c8e85`. `main` = `origin/main`.
-- MSI SHA256 `8f3495c6c0ab3a4f0d6ec780699052a179e8cf23fb351a0ee0994bf7f6c02ced` (9,633,792 bytes).
-- ZIP SHA256 `9d0e11d8d712ca6ed53bc48843a7bf617f8ffdbe1f497be21ee21e20fe6d4795` (12,814,756 bytes).
-- Cut gates: ctest debug+release **239 passed / 0 failed**; Playwright **62/62**; `tsc` + `pnpm build` clean; FileVersion **0.16.3.0**.
-- Grey helpers stay default OFF. LICENSE VSAL. Encrypted UnityFS 3D still empty.
+- HEAD `881368d`. Tag `v0.16.5` peels to HEAD.
+- MSI SHA256 `6174a30a8541a80b6b8cb6ae017ca03d63d878cafd0f3f93ef3e025f8463b6c6` (9,351,168 bytes).
+- ZIP SHA256 `f02ab9681762c2223eeae82c87fce92ff6db16678966ed5937d2fb3649943e0c` (21,850,459 bytes).
+- Cut gates: x64-release ctest **255 passed / 0 failed**; FileVersion **0.16.5.0**; vite production build clean.
+- I18N-grey + FTS-gate shipped. Assist / auto-join / IMAP still confirm. LICENSE VSAL. Encrypted UnityFS 3D still empty. No GPL paste.
+- This machine: no `pnpm` on PATH; use `corepack pnpm@11.8.0`. Installed app was 0.16.2-era (schema 19) — do not Open live `vrcsm.db` with this tree without Owner knowing.
 
-**Do not treat the 0.16.2 dirty-tree paragraphs below as current.** They are
-historical. FL1/VL1/usability were committed in `984c6b6`. The six leftovers
-(GH-CI / VER1 / CI1 / SR1-pop / MU1-db / P17-B11) are **uncommitted on top of
-`33c8e85`**.
+**Do not treat 0.16.4 “next is I18N-grey / FTS-gate” paragraphs below as current.** They shipped. Next is Owner-named or parked P6/P7/P14/P25/P1.
 
-Local `D:\Reference\VRCX` exists at `5ea37a2` (research only). Do not paste
-VRCX / VRCX-0 / VRCNext / SaoMoLa decrypt.
-
-Ranked remaining: **GH-CI** → VER1 → CI1 CacheIndex-vs-Bundles → SR1 populate
-→ MU1 persist tables → P17-B11. See SESSION pack §7.
+Ranked remaining: **WIN-CI** → parked P-items. See SESSION pack §7.
 
 Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
 
@@ -59,9 +52,32 @@ Node `fs` fallback in `lyrics.ts` is **vitest-only**; WebView2 uses `lyrics.read
 
 Pre-existing unused-looking IPC (`fs.writePlan` etc.) still has host handlers — do **not** delete without a plugin/caller audit.
 
-**Reinstall trap (still true):** stop VRCSM before installing an MSI. If the same version is already installed, `msiexec /x` then `/i` — a same-version `REINSTALLMODE=amus` will NOT replace the hashed `web/` bundle. Quit the running WebView2 first. After `pnpm build`, ninja no-op does not copy `web/dist` — Copy-Item into host `web/`.
+**Reinstall trap (still true):** stop VRCSM before installing an MSI. Same-version `REINSTALLMODE=amus` will NOT replace hashed `web/`. After `pnpm build`, ninja no-op does not copy `web/dist`.
 
-**GitHub CI on `33c8e85` is red** (local was green): Pages ok; Ubuntu Vite = onnxruntime-node postinstall ETIMEDOUT; Ubuntu Vitest = `/tools/osc` 5s timeout without `--no-file-parallelism`; Windows Release = Node 20 + pnpm 11 `node:sqlite` (also failed on 0.16.2).
+---
+
+## Session (2026-08-21) — v0.16.4 RELEASE (historical)
+
+**v0.16.4 RELEASED** then a **docs wrap**. Product commit is `803adca`.
+
+- HEAD `803adca`. Tag `v0.16.4` peels to HEAD. `main` = `origin/main`.
+- MSI SHA256 `018cd4e4a1ba4973670fcbb95f8d960133f647bad5293bbb3a72c10c75697363` (9,342,976 bytes).
+- ZIP SHA256 `2138528e0f38cc7a6cb021642f0d38469cb2a9477c0d04c8944f1442fc2c6736` (21,838,741 bytes).
+- Cut gates: ctest **248 passed / 0 failed**; Playwright **62/62**; FileVersion **0.16.4.0**.
+- Grey master default ON. Assist / auto-join / IMAP still confirm. LICENSE VSAL. Encrypted UnityFS 3D still empty. No GPL paste.
+- Ubuntu CI on this SHA **green**. Windows Release Actions was in_progress at wrap.
+
+**Do not treat 0.16.2 dirty-tree or “leftovers uncommitted on 33c8e85” paragraphs below as current.** They are historical. 0.16.4 includes those leftovers.
+
+Ranked remaining **at that wrap:** I18N-grey → FTS-gate → confirm WIN-CI (first two shipped in 0.16.5).
+
+Do not commit `2026-07-04-111708-local-command-caveatcaveat-the-messages-below.txt`.
+
+Node `fs` fallback in `lyrics.ts` is **vitest-only**; WebView2 uses `lyrics.readFolder`. Keep it.
+
+Pre-existing unused-looking IPC (`fs.writePlan` etc.) still has host handlers — do **not** delete without a plugin/caller audit.
+
+**Reinstall trap (still true):** stop VRCSM before installing an MSI. Same-version `REINSTALLMODE=amus` will NOT replace hashed `web/`. After `pnpm build`, ninja no-op does not copy `web/dist`.
 
 ---
 
@@ -756,7 +772,7 @@ gh release upload v0.14.6 "build\release\VRCSM_v0.14.6_x64_Installer.msi" "build
 
 1. `git status --short --branch` (git wins).
 2. Read `docs/SESSION-HANDOFF-2026-08-21.md` then `.agent/HANDOFF.md`.
-3. Default named leftover is **GH-CI**, not a recut of 0.16.3 and not FL1.
+3. Default named leftover is **I18N-grey** as 0.16.5, not a recut of 0.16.4.
 4. Inspect the feature area before changing code.
 5. Full verification baseline + MSI only if Owner names a release.
 
