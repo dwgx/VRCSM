@@ -474,7 +474,14 @@ TEST(CommonTests, JunctionRepairRejectsExistingSourceOutsideVrchatBase)
     }
     catch (const std::runtime_error& ex)
     {
-        EXPECT_NE(std::string(ex.what()).find("detected VRChat cache roots"), std::string::npos);
+        const std::string msg{ex.what()};
+        // Repair refuses VRChat-running before the cache-root check. Both are
+        // valid rejects of an outside source; the running check is even
+        // stricter. The cache-root wording is what CI sees with VRChat closed.
+        EXPECT_TRUE(
+            msg.find("detected VRChat cache roots") != std::string::npos ||
+            msg.find("cannot run while VRChat is running") != std::string::npos)
+            << msg;
     }
 
     std::error_code ec;
@@ -663,6 +670,46 @@ TEST(CommonTests, UnifiedFeedMergesSourcesInTimeOrder)
     db.Close();
     std::error_code ec;
     std::filesystem::remove_all(dir, ec);
+}
+
+// Live vrcsm.db: friend_log is ISO, player_events are DOT. Lexical DESC would
+// rank every DOT player_event above every ISO friend_log in the same year.
+TEST(CommonTests, UnifiedFeedOrdersDotPlayerEventsAgainstIsoFriendLog)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-unified-feed-mixed-ts");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    vrcsm::core::Database::Instance().Close();
+
+    sqlite3* rawDb = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(
+        vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+        &rawDb,
+        SQLITE_OPEN_READWRITE,
+        nullptr), SQLITE_OK);
+    ASSERT_NE(rawDb, nullptr);
+    {
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        ExecSql(rawDb, R"SQL(
+INSERT INTO friend_log (user_id, event_type, old_value, new_value, occurred_at, display_name)
+VALUES ('usr_mix', 'status', NULL, 'join me', '2026-08-20T22:00:00', 'Mix');
+INSERT INTO player_events (kind, user_id, display_name, world_id, instance_id, occurred_at)
+VALUES ('joined', 'usr_mix', 'Mix', 'wrld_mix', 'wrld_mix:1', '2026.08.19 23:00:00');
+)SQL");
+    }
+
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+    auto feed = db.UnifiedFeed(10, 0);
+    ASSERT_TRUE(vrcsm::core::isOk(feed)) << vrcsm::core::error(feed).message;
+    const auto& items = vrcsm::core::value(feed);
+    ASSERT_EQ(items.size(), 2u);
+    EXPECT_EQ(items[0].at("source_kind"), "friend_log");
+    EXPECT_EQ(items[1].at("source_kind"), "player_event");
+
+    db.Close();
+    std::error_code mixEc;
+    std::filesystem::remove_all(dir, mixEc);
 }
 
 // Own-algorithm: CoPresenceEgoNetwork reconstructs per-user presence intervals
@@ -1052,6 +1099,10 @@ TEST(CommonTests, GlobalSearchMergesFavoriteAndVisitEvidence)
     }
     EXPECT_TRUE(ContainsSubstring(evidenceKinds, "favorite"));
     EXPECT_TRUE(ContainsSubstring(evidenceKinds, "world_visit"));
+    for (const auto& searchItem : payload.at("items"))
+    {
+        EXPECT_NE(searchItem.at("type").get<std::string>(), "other");
+    }
 
     db.Close();
     std::error_code ec;
@@ -1295,7 +1346,7 @@ TEST(CommonTests, RecentWorldVisitsIncludesLoggedPlayerCounts)
     ASSERT_EQ(rows.size(), 1u);
     EXPECT_EQ(rows[0].at("player_count"), 2);
     EXPECT_EQ(rows[0].at("player_event_count"), 3);
-    EXPECT_EQ(rows[0].at("last_player_seen_at"), "2026-04-27T10:40:00Z");
+    EXPECT_EQ(rows[0].at("last_player_seen_at"), "2026-04-27T10:40:00");
 
     auto limited = db.RecentWorldVisits(0, 0);
     ASSERT_TRUE(vrcsm::core::isOk(limited)) << vrcsm::core::error(limited).message;
@@ -1304,6 +1355,98 @@ TEST(CommonTests, RecentWorldVisitsIncludesLoggedPlayerCounts)
     db.Close();
     std::error_code ec;
     std::filesystem::remove_all(dir, ec);
+}
+
+// Live vrcsm.db (0.16.2-era) stores player_events in VRChat DOT (`2026.08.20 22:37:40`)
+// while InsertWorldVisit/MarkVisitLeft persist ISO (`2026-08-20T22:35:44`). Lexical
+// `occurred_at >= joined_at` then yields player_count=0; ORDER BY joined_at DESC
+// also ranks every DOT visit above every ISO visit (`.` > `-`).
+TEST(CommonTests, RecentWorldVisitsWindowsAcrossDotAndIsoTimestamps)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-world-visits-mixed-ts");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    vrcsm::core::Database::Instance().Close();
+
+    sqlite3* rawDb = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(
+        vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+        &rawDb,
+        SQLITE_OPEN_READWRITE,
+        nullptr), SQLITE_OK);
+    ASSERT_NE(rawDb, nullptr);
+    {
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        ExecSql(rawDb, R"SQL(
+INSERT INTO world_visits (world_id, instance_id, access_type, owner_id, region, joined_at, left_at)
+VALUES
+    ('wrld_iso', 'wrld_iso:1', 'hidden', 'usr_owner', 'jp', '2026-08-20T22:35:44', '2026-08-20T22:49:24'),
+    ('wrld_dot', 'wrld_dot:1', 'public', 'usr_owner', 'jp', '2026.08.19 10:00:00', '2026.08.19 11:00:00');
+INSERT INTO player_events (kind, user_id, display_name, world_id, instance_id, occurred_at)
+VALUES
+    ('joined', 'usr_alice', 'Alice', 'wrld_iso', 'wrld_iso:1', '2026.08.20 22:37:40'),
+    ('left', 'usr_alice', 'Alice', 'wrld_iso', 'wrld_iso:1', '2026.08.20 22:49:23'),
+    ('joined', 'usr_late', 'Late', 'wrld_iso', 'wrld_iso:1', '2026.08.20 22:50:00'),
+    ('joined', 'usr_early', 'Early', 'wrld_iso', 'wrld_iso:1', '2026.08.20 22:34:00');
+)SQL");
+    }
+
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+    auto result = db.RecentWorldVisits(10, 0);
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    const auto& rows = vrcsm::core::value(result);
+    ASSERT_EQ(rows.size(), 2u);
+    EXPECT_EQ(rows[0].at("world_id"), "wrld_iso");
+    EXPECT_EQ(rows[0].at("player_count"), 1);
+    EXPECT_EQ(rows[0].at("player_event_count"), 2);
+    EXPECT_EQ(rows[0].at("last_player_seen_at"), "2026.08.20 22:49:23");
+    EXPECT_EQ(rows[1].at("world_id"), "wrld_dot");
+    EXPECT_EQ(rows[1].at("player_count"), 0);
+
+    db.Close();
+    std::error_code mixedEc;
+    std::filesystem::remove_all(dir, mixedEc);
+}
+
+TEST(CommonTests, ActivityHeatmapCountsDotAndIsoVisits)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-heatmap-mixed-ts");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    vrcsm::core::Database::Instance().Close();
+
+    sqlite3* rawDb = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(
+        vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+        &rawDb,
+        SQLITE_OPEN_READWRITE,
+        nullptr), SQLITE_OK);
+    ASSERT_NE(rawDb, nullptr);
+    {
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        ExecSql(rawDb, R"SQL(
+INSERT INTO world_visits (world_id, instance_id, access_type, owner_id, region, joined_at, left_at)
+VALUES
+    ('wrld_iso_hm', 'wrld_iso_hm:1', 'public', NULL, 'jp', '2026-08-20T22:00:00', '2026-08-20T23:00:00'),
+    ('wrld_dot_hm', 'wrld_dot_hm:1', 'public', NULL, 'jp', '2026.08.19 10:00:00', '2026.08.19 11:00:00');
+)SQL");
+    }
+
+    OpenTempDatabase(dbPath);
+    auto& db = vrcsm::core::Database::Instance();
+    auto result = db.ActivityHeatmap(14);
+    ASSERT_TRUE(vrcsm::core::isOk(result)) << vrcsm::core::error(result).message;
+    const auto& heat = vrcsm::core::value(result);
+    ASSERT_EQ(heat.size(), 7u);
+    ASSERT_EQ(heat[0].size(), 24u);
+    // 2026-08-20 Thursday (%w=4) 22:00 ISO; 2026-08-19 Wednesday (%w=3) 10:00 DOT.
+    EXPECT_EQ(heat[4].at(22).get<std::int64_t>(), 1);
+    EXPECT_EQ(heat[3].at(10).get<std::int64_t>(), 1);
+
+    db.Close();
+    std::error_code heatEc;
+    std::filesystem::remove_all(dir, heatEc);
 }
 
 TEST(CommonTests, DatabaseOpenDedupesWorldVisitsBeforeUniqueIndex)
@@ -1944,6 +2087,17 @@ TEST(CommonTests, LogAtomsParsePrefixAndWorldInstanceParameters)
     ASSERT_TRUE(parsed.iso_time.has_value());
     EXPECT_EQ(*parsed.iso_time, "2026.06.23 22:11:45");
     EXPECT_EQ(parsed.level, "warn");
+
+    const auto debugParsed = vrcsm::core::ParseVrchatLogLine(
+        "2026.08.22 08:39:59 Debug      -  [Behaviour] OnPlayerJoined dwgx "
+        "(usr_8817eeb8-13b2-43e7-a0f4-b3b27adf2726)");
+    ASSERT_TRUE(debugParsed.has_prefix);
+    ASSERT_TRUE(debugParsed.iso_time.has_value());
+    EXPECT_EQ(*debugParsed.iso_time, "2026.08.22 08:39:59");
+    EXPECT_EQ(debugParsed.level, "info");
+    const auto debugAtom = vrcsm::core::ParseVrchatLogAtom(debugParsed.body);
+    ASSERT_TRUE(debugAtom.has_value());
+    EXPECT_EQ(debugAtom->kind, vrcsm::core::LogAtomKind::PlayerPresence);
 
     const auto atom = vrcsm::core::ParseVrchatLogAtom(parsed.body);
     ASSERT_TRUE(atom.has_value());
@@ -3609,6 +3763,46 @@ TEST(CommonTests, SearchDocsRebuildsStaleTableOnOpen)
             "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'StaleBravoToken';"), 1);
         EXPECT_EQ(QueryInt64(rawDb,
             "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'StaleAlphaToken';"), 1);
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+}
+
+TEST(CommonTests, SearchDocsSkipsFullRebuildWhenAlreadyV21)
+{
+    const auto dir = MakeTempTestDir(L"vrcsm-search-docs-skip-rebuild");
+    const auto dbPath = dir / L"vrcsm.db";
+    OpenTempDatabase(dbPath);
+    vrcsm::core::Database::Instance().Close();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        EXPECT_EQ(QueryInt64(rawDb, "PRAGMA user_version;"), 21);
+        ExecSql(rawDb,
+            "INSERT INTO search_docs(kind, doc_id, title, body) VALUES "
+            "('favorite', 'avtr_orphan-fts-0000-0000-000000000001', "
+            " 'OrphanFtsKeepToken', 'Library');");
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'OrphanFtsKeepToken';"), 1);
+    }
+
+    OpenTempDatabase(dbPath);
+    vrcsm::core::Database::Instance().Close();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(
+            vrcsm::core::toUtf8(dbPath.wstring()).c_str(),
+            &rawDb, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+        const auto close = wil::scope_exit([&]() { sqlite3_close_v2(rawDb); });
+        EXPECT_EQ(QueryInt64(rawDb, "PRAGMA user_version;"), 21);
+        EXPECT_EQ(QueryInt64(rawDb,
+            "SELECT COUNT(*) FROM search_docs WHERE search_docs MATCH 'OrphanFtsKeepToken';"), 1);
     }
 
     std::error_code ec;

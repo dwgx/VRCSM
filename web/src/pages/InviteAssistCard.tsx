@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export default function InviteAssistCard() {
   const { t } = useTranslation();
-  const { prefs, patch, reload } = useGreyPrefs();
+  const { prefs, reload } = useGreyPrefs();
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -41,8 +41,13 @@ export default function InviteAssistCard() {
   }
 
   async function disable() {
-    await ipc.call("inviteAssist.setEnabled", { enabled: false });
-    await reload();
+    setError(null);
+    try {
+      await ipc.call("inviteAssist.setEnabled", { enabled: false });
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   if (!prefs?.greyEnabled) {
@@ -70,7 +75,15 @@ export default function InviteAssistCard() {
             {t("inviteAssist.enable", { defaultValue: "Enable Invite Assist" })}
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={() => void ipc.call("inviteAssist.cancelPending", {})}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            void ipc.call("inviteAssist.cancelPending", {}).catch((e: unknown) => {
+              setError(e instanceof Error ? e.message : String(e));
+            })
+          }
+        >
           {t("inviteAssist.cancel", { defaultValue: "Cancel pending" })}
         </Button>
       </div>
@@ -88,13 +101,6 @@ export default function InviteAssistCard() {
         </div>
       ) : null}
       {error ? <p className="text-[11px] text-[hsl(var(--destructive))]">{error}</p> : null}
-      {prefs?.inviteAssist?.["enabled"] === true ? null : (
-        <button
-          type="button"
-          className="hidden"
-          onClick={() => void patch({ inviteAssist: { enabled: false } })}
-        />
-      )}
     </div>
   );
 }

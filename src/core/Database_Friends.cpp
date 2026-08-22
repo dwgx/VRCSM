@@ -17,6 +17,7 @@
 #include <ctime>
 #include <limits>
 #include <set>
+#include <string>
 #include <string_view>
 #include <system_error>
 #include <unordered_map>
@@ -494,7 +495,10 @@ Result<nlohmann::json> Database::UnifiedFeed(
     // avatar name) so the frontend can render without a second round-trip.
     // The outer WHERE filters on the unified columns; named params are reused
     // by position so each bound value maps to one ?N placeholder.
-    const char* sql =
+    const std::string occJd = SqlInstantJd("feed.occurred_at");
+    const std::string afterJd = SqlInstantJd("?6");
+    const std::string beforeJd = SqlInstantJd("?8");
+    const std::string sql =
         "SELECT * FROM ("
         "  SELECT 'friend_log' AS source_kind, fl.id AS event_id, fl.user_id AS user_id, "
         "         fl.display_name AS display_name, fl.event_type AS event_type, "
@@ -521,13 +525,13 @@ Result<nlohmann::json> Database::UnifiedFeed(
         ") feed "
         "WHERE (?1 IS NULL OR feed.user_id = ?2) "
         "  AND (?3 IS NULL OR feed.source_kind = ?4) "
-        "  AND (?5 IS NULL OR feed.occurred_at >= ?6) "
-        "  AND (?7 IS NULL OR feed.occurred_at < ?8) "
-        "ORDER BY feed.occurred_at DESC "
+        "  AND (?5 IS NULL OR " + occJd + " >= " + afterJd + ") "
+        "  AND (?7 IS NULL OR " + occJd + " < " + beforeJd + ") "
+        "ORDER BY " + occJd + " DESC "
         "LIMIT ?9 OFFSET ?10;";
 
     sqlite3_stmt* rawStmt = nullptr;
-    if (sqlite3_prepare_v2(m_db, sql, -1, &rawStmt, nullptr) != SQLITE_OK)
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &rawStmt, nullptr) != SQLITE_OK)
     {
         return MakeError("db_prepare_failed");
     }

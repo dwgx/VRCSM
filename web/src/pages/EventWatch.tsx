@@ -84,7 +84,11 @@ export default function EventWatch() {
       </header>
 
       {!greyOn ? (
-        <p className="text-[12px]">{t("grey.disabled", { defaultValue: "Optional helpers are off." })}</p>
+        <p className="text-[12px]">
+          {t("grey.disabled.settingsHint", {
+            defaultValue: "Optional social/VR helpers are off. Enable them in Settings → Experimental.",
+          })}
+        </p>
       ) : (
         <>
           <div className="unity-panel p-3 flex flex-col gap-2">
@@ -158,14 +162,25 @@ export default function EventWatch() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => void ipc.call("eventWatch.cancelJoin", {})}
+                    onClick={() =>
+                      void ipc.call("eventWatch.cancelJoin", {}).catch((e: unknown) => {
+                        setError(e instanceof Error ? e.message : String(e));
+                      })
+                    }
                   >
                     {t("eventWatch.cancelJoin", { defaultValue: "Cancel join" })}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => void ipc.call("eventWatch.remove", { id: w.id }).then(refresh)}
+                    onClick={() =>
+                      void ipc
+                        .call("eventWatch.remove", { id: w.id })
+                        .then(refresh)
+                        .catch((e: unknown) => {
+                          setError(e instanceof Error ? e.message : String(e));
+                        })
+                    }
                   >
                     {t("common.remove", { defaultValue: "Remove" })}
                   </Button>

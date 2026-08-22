@@ -285,7 +285,6 @@ const std::unordered_set<std::string>& AsyncMethodSet()
         "friendPresence.record",
         "friendPresence.recent",
         "friendPresence.predict",
-        "db.coPresenceGraph",
         "feed.unified",
 
         // Pipeline + notifications + DM send

@@ -11,7 +11,7 @@ namespace
 {
 
 const std::regex kLinePrefixRe(
-    R"(^(\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}) +(Log|Warning|Error) +- +(.*)$)");
+    R"(^(\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}) +(Log|Warning|Error|Debug) +- +(.*)$)");
 
 const std::regex kUserAuthRe(R"(User Authenticated: (.+?) \((usr_[0-9a-fA-F-]+)\))");
 const std::regex kProfileAvatarRe(R"(^\s*-\s*avatar:\s*(avtr_[0-9a-fA-F-]+))");

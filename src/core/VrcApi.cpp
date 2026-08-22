@@ -889,8 +889,10 @@ bool downloadUrlToFileAtomic(
     if (!hRequest) return false;
 
     std::wstring headerBlock = L"Accept: */*\r\n";
+    // Session cookies leave the box if we attach them to arbitrary HTTPS
+    // (plugin/IPC-supplied assetUrl, redirect). Same host rail as thumbnails.
     const auto cookie = getLoadedCookieHeader();
-    if (!cookie.empty())
+    if (!cookie.empty() && isTrustedVrchatImageUrl(url))
     {
         headerBlock += L"Cookie: " + toWide(cookie) + L"\r\n";
     }

@@ -34,6 +34,10 @@ TEST(LyricsProxySsrf, BlocksPrivateRangeLiterals)
     EXPECT_TRUE(IsBlockedProxyHost("172.31.255.255"));
     EXPECT_TRUE(IsBlockedProxyHost("169.254.1.1"));
     EXPECT_TRUE(IsBlockedProxyHost("0.0.0.0"));
+    EXPECT_TRUE(IsBlockedProxyHost("100.64.0.1"));
+    EXPECT_TRUE(IsBlockedProxyHost("100.127.255.254"));
+    EXPECT_TRUE(IsBlockedProxyHost("fd12:3456:789a::1"));
+    EXPECT_TRUE(IsBlockedProxyHost("[fc00::1]"));
 }
 
 TEST(LyricsProxySsrf, AllowsPublicHostsAndPublicIps)
@@ -45,7 +49,8 @@ TEST(LyricsProxySsrf, AllowsPublicHostsAndPublicIps)
     EXPECT_FALSE(IsBlockedProxyHost("172.15.0.1"));
     EXPECT_FALSE(IsBlockedProxyHost("172.32.0.1"));
     // 8.8.8.8 is a public resolver, not private.
-    EXPECT_FALSE(IsBlockedProxyHost("8.8.8.8"));
+    EXPECT_FALSE(IsBlockedProxyHost("100.63.0.1"));
+    EXPECT_FALSE(IsBlockedProxyHost("100.128.0.1"));
     // 192.169.x is not the 192.168/16 private block.
     EXPECT_FALSE(IsBlockedProxyHost("192.169.0.1"));
 }

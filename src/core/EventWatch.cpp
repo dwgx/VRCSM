@@ -454,4 +454,24 @@ bool EventWatchEngine::anyEnabled() const
     return std::any_of(m_watches.begin(), m_watches.end(), [](const GreyWatch& w) { return w.enabled; });
 }
 
+bool CanFirePendingWatchJoin(const GreyPrefs& prefs, const EventJoinPending& due, const EventWatchEngine& engine)
+{
+    if (!prefs.greyEnabled || !prefs.eventWatch.autoJoinConfirmed)
+    {
+        return false;
+    }
+    if (due.watchId.empty() || !isLaunchableVrchatLocation(due.location))
+    {
+        return false;
+    }
+    for (const auto& w : engine.watches())
+    {
+        if (w.id == due.watchId)
+        {
+            return w.enabled && w.autoJoin;
+        }
+    }
+    return false;
+}
+
 } // namespace vrcsm::core

@@ -8,6 +8,56 @@ them rather than as a terse bullet list. Dates are UTC.
 
 ## [Unreleased]
 
+## [0.16.5] — 2026-08-22
+
+Quality leftovers after v0.16.4. LICENSE remains VSAL. Encrypted UnityFS 3D
+stays empty (no decrypt keys, no GPL/VNCOL paste). Tests still use temp dirs.
+
+- **FTS-gate:** Schema v21 still rebuilds FTS `search_docs` on the v20→v21
+  upgrade (stale empty/partial table). Later `Open()` of an already-v21
+  database no longer `DELETE FROM search_docs`. LIKE fallback unchanged.
+- **I18N-grey:** zh-CN / ja / ko / ru / th / hi `grey.master.desc` now match
+  English: master switch on by default so helper pages are visible; Invite
+  Assist / Event Watch auto-join still confirm. IMAP copy stays off-by-default.
+- **LyricsProxy:** host and Referer conversions use `toUtf8` / `toWide`
+  instead of iterator narrowing (MSVC C4244 on wchar_t→char). File comment
+  matches `REDIRECT_POLICY_NEVER`. CGNAT/ULA rails in the later bullet.
+- **Invite Assist fire-time:** after the 5s cancel window, re-check grey /
+  confirm / in-world / VRChat running / allowlist / launchable location.
+  Failed `inviteUser` no longer burns cooldown.
+- **GlobalSearch:** FTS favorite hits join `local_favorites` for real `type`
+  instead of inventing `"other"` (duplicate candidate keys).
+- **Event Watch:** disabled copy uses `grey.disabled.settingsHint` (was the
+  object key `grey.disabled`). Dropped dead `playspace.set`; removed a
+  duplicate `db.coPresenceGraph` async entry.
+- **World History timestamps:** `RecentWorldVisits` windows and sort use
+  julian-day of DOT (`2026.08.21 12:00:00`) or ISO (`2026-08-21T12:00:00`)
+  wall clocks. Live `vrcsm.db` had ISO visits vs DOT `player_events`, so
+  lexical `<= left_at` counted 0 players and ISO recents sorted under older
+  DOT rows. New `player_events` ingest also runs `NormalizeVisitTimestamp`.
+  GlobalSearch world last-seen uses the same compare. Heatmap buckets both
+  formats. Query-only; no live DB rewrite.
+- **Smoke:** jsdom pages/interaction cover plugin detail, missing plugin host,
+  settings tabs, and VRChat workspace tabs. Playwright click-through matrix
+  matches. Visual screenshot baselines stay on the previous ROUTES set.
+- **Downloads:** `downloadUrlToFileAtomic` attaches the session cookie only for
+  trusted VRChat HTTPS hosts (same rail as thumbnails).
+- **LyricsProxy SSRF:** block CGNAT `100.64.0.0/10` and IPv6 ULA `fc00::/7`
+  literals. DNS fail-open unchanged.
+- **Log prefix:** `ParseVrchatLogLine` accepts Unity `Debug` severity (live
+  Behaviour join/leave lines). Without it LogTailer dropped every VRChat stamp.
+- **Event Watch fire-time:** re-check grey / auto-join confirm / watch still
+  armed / launchable location; failed `inviteSelf` does not burn cooldown;
+  stop/remove cancel a pending join; `eventWatch.start` no longer forces a
+  loop with zero watches.
+- **UnifiedFeed:** julian-day order/filter so ISO `friend_log` and DOT
+  `player_events` interleave by wall clock.
+- **auth.logout:** WebView2 cookie clear marshals onto the UI thread.
+- **Invite Assist UI:** hidden prefs-set button removed; Event Watch / Assist
+  IPC calls use `.catch` so a host miss does not become an unhandled rejection.
+- **Tests:** `junction.repair` outside-base case accepts the VRChat-running
+  refuse as well as the cache-root refuse (same safety, check order).
+
 ## [0.16.4] — 2026-08-21
 
 Follow-ups after v0.16.3. LICENSE remains VSAL. Encrypted UnityFS 3D stays empty

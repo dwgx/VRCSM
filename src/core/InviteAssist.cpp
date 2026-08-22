@@ -1,5 +1,7 @@
 #include "InviteAssist.h"
 
+#include "LocationParse.h"
+
 namespace vrcsm::core
 {
 
@@ -141,6 +143,23 @@ AssistDecision EvaluateInviteAssist(
         return {false, AssistSkipReason::GlobalLimit, AssistSkipName(AssistSkipReason::GlobalLimit)};
     }
     return {true, AssistSkipReason::None, "ok"};
+}
+
+bool CanFirePendingAssist(const InviteAssistContext& ctx, std::string_view location)
+{
+    if (!ctx.greyEnabled || !ctx.enabled || !ctx.confirmed)
+    {
+        return false;
+    }
+    if (!ctx.vrcRunning || !ctx.inWorld || ctx.friendsStale || !ctx.isFriend || !ctx.inAllowlist)
+    {
+        return false;
+    }
+    if (location.empty() || !isInWorld(location))
+    {
+        return false;
+    }
+    return true;
 }
 
 InviteAssistEngine::InviteAssistEngine()

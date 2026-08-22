@@ -83,4 +83,22 @@ describe("locale key coverage", () => {
       .slice(0, 25);
     expect(drift).toEqual([]);
   });
+
+  it("grey.master.desc says the master switch is on by default", () => {
+    expect(enFlat["grey.master.desc"]).toMatch(/On by default/i);
+    expect(enFlat["grey.master.desc"]).not.toMatch(/Off by default/i);
+
+    const staleOff: Record<string, string> = {
+      "zh-CN": "默认关闭",
+      ja: "既定はオフ",
+      ko: "기본값 꺼짐",
+      ru: "По умолчанию выкл",
+      th: "ค่าเริ่มต้นปิด",
+      hi: "डिफ़ॉल्ट बंद",
+    };
+    for (const { id, data } of LOCALES) {
+      const desc = flatten(data)["grey.master.desc"];
+      expect(desc, id).not.toContain(staleOff[id]);
+    }
+  });
 });

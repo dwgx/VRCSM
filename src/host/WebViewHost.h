@@ -31,6 +31,10 @@ inline constexpr UINT WM_APP_REFRESH_PLUGIN_MAPPINGS = WM_APP + 3;
 // WParam is the tray icon id. Handled entirely on the UI thread.
 inline constexpr UINT WM_APP_TRAY_CALLBACK = WM_APP + 4;
 
+// Posted from auth.logout's async worker. ClearVrcCookies is WebView2 COM
+// and must run on the UI apartment (factory reset already marshals this way).
+inline constexpr UINT WM_APP_CLEAR_VRC_COOKIES = WM_APP + 5;
+
 // Marshalled payload for WM_APP_POST_WEB_MESSAGE. `targetPluginId`
 // is non-empty only when the message should go to a specific plugin
 // iframe; otherwise DeliverWebMessage falls back to the top-level

@@ -168,7 +168,11 @@ nlohmann::json IpcBridge::HandleAuthVerify2FA(const nlohmann::json& params, cons
 nlohmann::json IpcBridge::HandleAuthLogout(const nlohmann::json&, const std::optional<std::string>&)
 {
     vrcsm::core::AuthStore::Instance().Clear("AuthLogout/user-initiated");
-    m_host.ClearVrcCookies();
+    const HWND parent = m_host.ParentHwnd();
+    if (parent != nullptr && IsWindow(parent))
+    {
+        PostMessageW(parent, WM_APP_CLEAR_VRC_COOKIES, 0, 0);
+    }
     return nlohmann::json{{"ok", true}};
 }
 

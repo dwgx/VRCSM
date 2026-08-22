@@ -156,6 +156,10 @@ void SyncWatchFromPrefs(const GreyPrefs& prefs)
     auto& st = GS();
     st.watch.replaceAll(prefs.eventWatch.watches);
     st.watch.setJoinCooldown(std::chrono::seconds{prefs.eventWatch.joinCooldownSec});
+    if (!st.watch.anyEnabled())
+    {
+        st.watch.cancelJoin();
+    }
 }
 
 void StopThread(std::thread& t)
@@ -254,16 +258,41 @@ void AssistWaitLoop()
             continue;
         }
         auto prefs = GreyPrefsStore::Instance().Load();
-        if (!isOk(prefs) || !value(prefs).greyEnabled || !value(prefs).inviteAssist.enabled)
+        if (!isOk(prefs))
         {
             continue;
         }
+        InviteAssistContext fireCtx;
+        fireCtx.greyEnabled = value(prefs).greyEnabled;
+        fireCtx.enabled = value(prefs).inviteAssist.enabled;
+        fireCtx.confirmed = value(prefs).inviteAssist.confirmedAt.has_value();
+        fireCtx.inWorld = PresenceCache::Instance().isInWorld();
+        fireCtx.vrcRunning = ProcessGuard::IsVRChatRunning().running;
+        fireCtx.friendsStale = PresenceCache::Instance().friendsStale(std::chrono::system_clock::now());
+        fireCtx.isFriend = PresenceCache::Instance().isFriend(due->senderUserId);
+        fireCtx.inAllowlist = InAllowlist(due->senderUserId);
         const auto loc = PresenceCache::Instance().location().value_or("");
+        if (!CanFirePendingAssist(fireCtx, loc))
+        {
+            (void)AppendGreyAudit("inviteAssist", "assist.skip", nlohmann::json{
+                {"reason", "fire_revalidate"},
+                {"senderUserId", due->senderUserId},
+            });
+            continue;
+        }
         auto invited = VrcApi::inviteUser(due->senderUserId, loc, 0);
+        if (!isOk(invited))
+        {
+            (void)AppendGreyAudit("inviteAssist", "assist.accept", nlohmann::json{
+                {"senderUserId", due->senderUserId},
+                {"ok", false},
+            });
+            continue;
+        }
         st.assist.markAccepted(due->senderUserId, std::chrono::steady_clock::now());
         (void)AppendGreyAudit("inviteAssist", "assist.accept", nlohmann::json{
             {"senderUserId", due->senderUserId},
-            {"ok", isOk(invited)},
+            {"ok", true},
         });
         if (!due->notificationId.empty())
         {
@@ -348,7 +377,7 @@ std::vector<nlohmann::json> CollectWatchInstances(const GreyPrefs& prefs)
 void MaybeJoin(const EventWatchMatch& match, const GreyPrefs& prefs)
 {
     auto& st = GS();
-    if (!match.autoJoin)
+    if (!match.autoJoin || !prefs.eventWatch.autoJoinConfirmed)
     {
         return;
     }
@@ -438,27 +467,49 @@ void WatchLoop()
         }
         if (auto due = st.watch.takeJoinDue(now))
         {
-            if (isLaunchableVrchatLocation(due->location))
+            auto firePrefs = GreyPrefsStore::Instance().Load();
+            if (isOk(firePrefs) && CanFirePendingWatchJoin(value(firePrefs), *due, st.watch))
             {
+                bool joined = false;
                 if (ProcessGuard::IsVRChatRunning().running)
                 {
-                    (void)VrcApi::inviteSelf(due->location);
+                    joined = isOk(VrcApi::inviteSelf(due->location));
                 }
                 else
                 {
                     const std::wstring url = toWide("vrchat://launch?id=" + due->location);
-                    ShellExecuteW(nullptr, L"open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                    const auto rc = reinterpret_cast<INT_PTR>(
+                        ShellExecuteW(nullptr, L"open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+                    joined = rc > 32;
                 }
-                (void)AppendGreyAudit("eventWatch", "watch.join", nlohmann::json{
+                if (joined)
+                {
+                    (void)AppendGreyAudit("eventWatch", "watch.join", nlohmann::json{
+                        {"watchId", due->watchId},
+                        {"location", due->location},
+                    });
+                    Post(st.bridge, "eventWatch.joined", nlohmann::json{
+                        {"watchId", due->watchId},
+                        {"location", due->location},
+                    });
+                    st.watch.markJoined(due->watchId, now);
+                }
+                else
+                {
+                    (void)AppendGreyAudit("eventWatch", "watch.join", nlohmann::json{
+                        {"watchId", due->watchId},
+                        {"location", due->location},
+                        {"ok", false},
+                    });
+                }
+            }
+            else
+            {
+                (void)AppendGreyAudit("eventWatch", "watch.skip", nlohmann::json{
+                    {"reason", "fire_revalidate"},
                     {"watchId", due->watchId},
-                    {"location", due->location},
-                });
-                Post(st.bridge, "eventWatch.joined", nlohmann::json{
-                    {"watchId", due->watchId},
-                    {"location", due->location},
                 });
             }
-            st.watch.markJoined(due->watchId, now);
         }
         auto waitFor = std::chrono::milliseconds{200};
         if (auto pending = st.watch.joinPending())
@@ -510,6 +561,7 @@ void StartWatchIfNeeded()
 void StopWatch()
 {
     auto& st = GS();
+    st.watch.cancelJoin();
     st.watchRunning.store(false);
     st.cv.notify_all();
 }
@@ -655,7 +707,8 @@ void GreyHandlePipeline(IpcBridge* bridge, const std::string& type, const nlohma
     const auto name = pending.displayName.empty() ? pending.senderUserId : pending.displayName;
     ShowSocialToast(
         "Invite request",
-        "Invite request from " + name + " — auto-invite in 5s. Cancel in VRCSM.",
+        "Invite request from " + name + " — auto-invite in "
+            + std::to_string(prefs.inviteAssist.cancelWindowSec) + "s. Cancel in VRCSM.",
         std::nullopt);
     Post(bridge, "inviteAssist.pending", st.assist.pendingJson());
 }
@@ -1030,20 +1083,7 @@ nlohmann::json IpcBridge::HandleEventWatchStart(const nlohmann::json&, const std
 {
     Unwrap(RequireGrey());
     StartWatchIfNeeded();
-    auto& st = GS();
-    if (!st.watchRunning.load())
-    {
-        bool expected = false;
-        if (st.watchRunning.compare_exchange_strong(expected, true))
-        {
-            if (st.watchThread.joinable())
-            {
-                st.watchThread.join();
-            }
-            st.watchThread = std::thread(WatchLoop);
-        }
-    }
-    return nlohmann::json{{"running", true}};
+    return nlohmann::json{{"running", GS().watchRunning.load()}};
 }
 
 nlohmann::json IpcBridge::HandleEventWatchStop(const nlohmann::json&, const std::optional<std::string>&)
