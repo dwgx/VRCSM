@@ -1,0 +1,14 @@
+# repo-kit · 本仓库的 banner 规格
+# 改这个文件，workflow 会重新渲染 docs/assets/banner*.svg 与 README 区块
+# 生成器：https://github.com/dwgx/DWGX/tree/main/repo-kit
+owner = "dwgx"
+
+[[repo]]
+name = "VRCSM"
+style = "tree"
+tagline = "VRChat Settings Manager · Windows 缓存清理 / 配置备份 / 迁移 / 诊断"
+install = "cd web && pnpm install && pnpm build && cmake --preset x64-release && cmake --build --preset x64-release"
+lang = "TypeScript"
+license = "NOASSERTION"
+topics = ["cache-cleaner", "desktop-app", "electron", "vr"]
+links = [{ label = "docs", url = "https://dwgx.github.io/VRCSM/" }, { label = "releases", url = "https://github.com/dwgx/VRCSM/releases" }]
