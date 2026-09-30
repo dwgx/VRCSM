@@ -8,9 +8,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner.svg?t=b9a03fa0cf7e" />
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/banner-light.svg?t=b9a03fa0cf7e" />
-  <img src="docs/assets/banner.svg?t=b9a03fa0cf7e" width="100%" alt="VRCSM — VRChat Settings Manager · Windows 缓存清理 / 配置备份 / 迁移 / 诊断" />
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner.svg?t=0d1c861d550c" />
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/banner-light.svg?t=0d1c861d550c" />
+  <img src="docs/assets/banner.svg?t=0d1c861d550c" width="100%" alt="VRCSM — VRChat Settings Manager · Windows 缓存清理 / 配置备份 / 迁移 / 诊断" />
 </picture>
 
 <br/>
